@@ -10,8 +10,6 @@ import csv
 import json
 import requests
 import urllib
-#import urllib2
-#import shutil
 import zipfile
 import datetime
 import socket
@@ -99,7 +97,7 @@ def query():
         newSurveysNum = int(surveyNumJSON['features'][0]['attributes']['value'])
     else:
         newSurveysNum = 1000
-    print newSurveysNum
+    print (newSurveysNum)
     # Actuall response of survey details used as a json object
     page = test.json()
     records = json.dumps(page, indent = 4)
@@ -127,7 +125,7 @@ def surveyCompile(page, newSurveysNum):
     rows = []
     links = []
     while x < newSurveysNum:
-        print x,
+        print (x, end=' ')
         row = []
         for attribute in attributes:
             if attribute == "SOURCEDATALOCATION":
@@ -147,17 +145,16 @@ def surveyCompile(page, newSurveysNum):
                 row.append(str(page['features'][x]['attributes'][attribute]))
         rows.append(row[:13])
         x += 1
-    print len(rows), len(links)
+    print (len(rows), len(links))
     lines = csvCheck()
     if lines != False:
         for line in lines:
-            print line
             if line in rows:
                 rows.remove(line)
             if line[7] in links:
                 links.remove(line[7])
-    print len(rows), len(links)
-    print 'rows complete'
+    print (len(rows), len(links))
+    print ('rows complete')
     return links, rows
 
 def contentSearch(contents, link, saved):
@@ -176,7 +173,7 @@ def contentSearch(contents, link, saved):
     for content in contents:
         if full.search(content):
             if [link, saved] not in resPresent:
-                print '\nviva la resolution', content, #link + '\n'
+                print ('\nviva la resolution', content, end=' ') #link + '\n')
                 resPresent.append([link, saved])
             x = 1
             return x
@@ -201,47 +198,47 @@ def downloadAndCheck(links, rows):
     complete survey data as provided by the query response ('rows') only
     populated by data positive results.
     '''
-    x = len(rows)
+    x = len(links)
     for link in links:
         name = link.split('/')[-1]
         saved = holding + '/' + name
         saved = os.path.normpath(saved)
         while True:
             if os.path.exists(saved):
-                print  x, 'x',
+                print  (x, 'x', end=' ')
                 break
             else:
                 try:
-                    urllib.urlretrieve(link, saved)
+                    urllib.request.urlretrieve(link, saved)
                 except socket.timeout:
-                    urllib.urlretrieve(link, saved)
+                    urllib.request.urlretrieve(link, saved)
         try:
             zipped = zipfile.ZipFile(saved)
             contents = zipped.namelist()
             if contentSearch(contents, link, saved) != True:
-                print 'n',
+                print ('n', end=' ')
                 zipped.close()
                 os.remove(saved)
                 for row in rows:
                     if row[7] == link:
-                        print 'r',
+                        print ('r', end=' ')
                         row.append('No')
 
             else:
                 zipped.close()
                 for row in rows:
                     if row[7] == link:
-                        print 'y',
+                        print ('y', end=' ')
                         row.append('Yes')
         except zipfile.BadZipfile:
             os.remove(saved)
             for row in rows:
                     if row[7] == link:
-                        print 'r',
+                        print ('r', end=' ')
                         rows.remove(row)
         x -= 1
 
-    print 'row downloads verified'
+    print ('row downloads verified')
     return rows
 
 def csvCheck():
@@ -253,7 +250,7 @@ def csvCheck():
     retunrs a boolean False
     '''
     if os.path.isfile(progLoc + '/eHydro_txt.txt'):
-        opened = open(progLoc + '/eHydro_txt.txt', 'rb')
+        opened = open(progLoc + '/eHydro_txt.txt', 'r')
         csvRead = csv.reader(opened, delimiter = ',')
         lines = []
         for line in csvRead:
@@ -274,13 +271,13 @@ def csvPopulate(rows):
     The CSV text file is then closed
     '''
     if os.path.isfile(progLoc + '/eHydro_txt.txt'):
-        opened = open(progLoc + '/eHydro_txt.txt', 'rb')
+        opened = open(progLoc + '/eHydro_txt.txt', 'r')
         csvRead = csv.reader(opened, delimiter = ',')
         lines = []
         for line in csvRead:
             lines.append(line)
         opened.close()
-        opened = open(progLoc + '/eHydro_txt.txt', 'ab')
+        opened = open(progLoc + '/eHydro_txt.txt', 'a')
         txtFile = csv.writer(opened, delimiter = ',')
         for row in rows:
             if row in lines:
@@ -289,14 +286,14 @@ def csvPopulate(rows):
                 txtFile.writerow(row[:13])
         opened.close()
     else:
-        opened = open(progLoc + '/eHydro_txt.txt', 'wb')
+        opened = open(progLoc + '/eHydro_txt.txt', 'w')
         txtFile = csv.writer(opened, delimiter = ',')
         attributes.append('FULL.xyz?')
         txtFile.writerow(attributes)
         for row in rows:
             txtFile.writerow(row[:13])
         opened.close()
-    print 'csv saved'
+    print ('csv saved')
 
 def emailWriter(rows):
     name = (str(datetime.datetime.today().strftime('%Y%m%d'))
@@ -311,6 +308,6 @@ def main():
         csvPopulate(returnedRows)
 #        emailWriter(returnedRows)
     else:
-        print 'no new surveys'
+        print ('no new surveys')
 
 main()
