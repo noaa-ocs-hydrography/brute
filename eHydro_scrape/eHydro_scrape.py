@@ -143,14 +143,16 @@ def surveyCompile(page, newSurveysNum):
                         row.append(str(date.strftime('%Y-%m-%d')))
             else:
                 row.append(str(page['features'][x]['attributes'][attribute]))
-        rows.append(row[:13])
+        if len(row) != 0:
+            rows.append(row[:13])
         x += 1
     print (len(rows), len(links))
     lines = csvCheck()
     if lines != False:
         for line in lines:
+            print (line, end=' ')
             if line in rows:
-                rows.remove(line)
+                rows.remove(line) 
             if line[7] in links:
                 links.remove(line[7])
     print (len(rows), len(links))
@@ -212,30 +214,38 @@ def downloadAndCheck(links, rows):
                     urllib.request.urlretrieve(link, saved)
                 except socket.timeout:
                     urllib.request.urlretrieve(link, saved)
-        try:
-            zipped = zipfile.ZipFile(saved)
-            contents = zipped.namelist()
-            if contentSearch(contents, link, saved) != True:
-                print ('n', end=' ')
-                zipped.close()
+                except urllib.error.HTTPError:
+                    for row in rows:
+                        if row[7] == link:
+                            print ('e', end=' ')
+                            rows.remove(row)
+                            links.remove(link)
+                    break
+        if os.path.exists(saved):
+            try:
+                zipped = zipfile.ZipFile(saved)
+                contents = zipped.namelist()
+                if contentSearch(contents, link, saved) != True:
+                    print ('n', end=' ')
+                    zipped.close()
+                    os.remove(saved)
+                    for row in rows:
+                        if row[7] == link:
+                            print ('r', end=' ')
+                            row.append('No')
+    
+                else:
+                    zipped.close()
+                    for row in rows:
+                        if row[7] == link:
+                            print ('y', end=' ')
+                            row.append('Yes')
+            except zipfile.BadZipfile:
                 os.remove(saved)
                 for row in rows:
-                    if row[7] == link:
-                        print ('r', end=' ')
-                        row.append('No')
-
-            else:
-                zipped.close()
-                for row in rows:
-                    if row[7] == link:
-                        print ('y', end=' ')
-                        row.append('Yes')
-        except zipfile.BadZipfile:
-            os.remove(saved)
-            for row in rows:
-                    if row[7] == link:
-                        print ('r', end=' ')
-                        rows.remove(row)
+                        if row[7] == link:
+                            print ('r', end=' ')
+                            rows.remove(row)
         x -= 1
 
     print ('row downloads verified')
@@ -254,7 +264,8 @@ def csvCheck():
         csvRead = csv.reader(opened, delimiter = ',')
         lines = []
         for line in csvRead:
-            lines.append(line)
+            if len(line) < 0:
+                lines.append(line)
         opened.close()
         return lines
     else:
