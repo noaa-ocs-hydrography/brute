@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jul 06 15:10:17 2018
+Created on Thu Aug 16 11:41:02 2018
 
 @author: Casiano.Koprowski
 """
+
 import os
 import re
 import csv
@@ -19,7 +20,13 @@ import socket
 progLoc = os.getcwd()
 # regex object for searching zipfile contents
 full = re.compile(r'FULL.xyz', re.IGNORECASE)
-# location of downloaded data
+# location of data items
+txtName = 'eHydro_txt.txt'
+txtLocation = os.path.join(progLoc, txtName)
+csvName = 'eHydro_csv.txt'
+csvLocation = os.path.join(progLoc, csvName)
+logName = 'eHydro_log.txt'
+logLocation = os.path.join(progLoc, logName)
 holding = progLoc + '/downloads/'
 # eHydro survey entry attributes
 attributes = [ "OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
@@ -32,8 +39,6 @@ if os.path.exists(holding):
 else:
     os.mkdir(holding)
 # global list to be populated with the download link and local location of data
-resPresent = []
-
 
 def query():
     '''Holds the Queries for the eHydro REST API, asks for responses, and uses
@@ -51,9 +56,9 @@ def query():
     # Today (ex. '2018-08-08'), unformatted
     today = datetime.datetime.today()
     # Today - 1 (ex. '2018-08-06'), unformatted
-    yesterday = today - datetime.timedelta(30)
+    yesterday = today - datetime.timedelta(10)
     # Today - 10 (ex. '2018-07-29'), unformatted
-    otherday = today - datetime.timedelta(40)
+    otherday = today - datetime.timedelta(20)
 
     # Prints of the formated versions of the date used by the query
     print (today.strftime('%Y-%m-%d'),
@@ -107,7 +112,6 @@ def query():
     # Returns the json object for the query responses, and int for number of.
     return page, newSurveysNum
 
-
 def surveyCompile(page, newSurveysNum):
     '''Uses the json object return of the query and the total number of surveys
     included to compile two lists:
@@ -123,13 +127,10 @@ def surveyCompile(page, newSurveysNum):
     '''
     x = 0
     rows = []
-    links = []
     while x < newSurveysNum:
         print (x, end=' ')
         row = []
         for attribute in attributes:
-            if attribute == "SOURCEDATALOCATION":
-                links.append(str(page['features'][x]['attributes'][attribute]))
             if page['features'][x]['attributes'][attribute] == None:
                 row.append('null')
             elif (attribute == "SURVEYDATEUPLOADED"
@@ -143,21 +144,11 @@ def surveyCompile(page, newSurveysNum):
                         row.append(str(date.strftime('%Y-%m-%d')))
             else:
                 row.append(str(page['features'][x]['attributes'][attribute]))
-        if len(row) != 0:
-            rows.append(row[:13])
+        rows.append(row)
         x += 1
-    print (len(rows), len(links))
-    lines = csvCheck()
-    if lines != False:
-        for line in lines:
-#            print (line, end=' ')
-            if line in rows:
-                rows.remove(line) 
-            if line[7] in links:
-                links.remove(line[7])
-    print (len(rows), len(links))
+    print (len(rows))
     print ('rows complete')
-    return links, rows
+    return rows
 
 def contentSearch(contents, link, saved):
     '''This funtion takes a list of zipfile contents, the download link the
@@ -174,15 +165,13 @@ def contentSearch(contents, link, saved):
     x = 0
     for content in contents:
         if full.search(content):
-            if [link, saved] not in resPresent:
-                print ('\nviva la resolution', content, end=' ') #link + '\n')
-                resPresent.append([link, saved])
+            print ('\nviva la resolution', content, end=' ') #link + '\n')
             x = 1
             return x
         else:
             x = 0
 
-def downloadAndCheck(links, rows):
+def downloadAndCheck(rows):
     '''This function takes a list of download links for survey contents and the
     list of the complete survey data as provided by the query response ('rows').
 
@@ -200,8 +189,9 @@ def downloadAndCheck(links, rows):
     complete survey data as provided by the query response ('rows') only
     populated by data positive results.
     '''
-    x = len(links)
-    for link in links:
+    x = len(rows)
+    for row in rows:
+        link = row[7]
         name = link.split('/')[-1]
         saved = holding + '/' + name
         saved = os.path.normpath(saved)
@@ -215,11 +205,8 @@ def downloadAndCheck(links, rows):
                 except socket.timeout:
                     urllib.request.urlretrieve(link, saved)
                 except urllib.error.HTTPError:
-                    for row in rows:
-                        if row[7] == link:
-                            print ('e', end=' ')
-                            rows.remove(row)
-                            links.remove(link)
+                    print ('e', end=' ')
+                    row.append('BadURL')
                     break
         if os.path.exists(saved):
             try:
@@ -229,95 +216,160 @@ def downloadAndCheck(links, rows):
                     print ('n', end=' ')
                     zipped.close()
                     os.remove(saved)
-                    for row in rows:
-                        if row[7] == link:
-                            print ('r', end=' ')
-                            row.append('No')
+                    print ('r', end=' ')
+                    row.append('No')
                 else:
                     zipped.close()
-                    for row in rows:
-                        if row[7] == link:
-                            print ('y', end=' ')
-                            row.append('Yes')
+                    print ('y', end=' ')
+                    row.append('Yes')
             except zipfile.BadZipfile:
                 os.remove(saved)
-                for row in rows:
-                    if row[7] == link:
-                        print ('r', end=' ')
-                        rows.remove(row)
+                print ('z', end=' ')
+                row.append('BadZip')
         x -= 1
 
     print ('row downloads verified')
     return rows
 
-def csvCheck():
-    '''This looks for the CSV text file of currently held results and opens it
-    for reading and converts the contents using the python csv library.  A list
-    of rows is then compiled by the function and returned as an array 'lines',
-
-    If the CSV text file of currently held results does not exist, the function
-    retunrs a boolean False
-    '''
-    if os.path.isfile(progLoc + '/eHydro_txt.txt'):
-        opened = open(progLoc + '/eHydro_txt.txt', 'r')
-        csvRead = csv.reader(opened, delimiter = ',')
-        lines = []
-        for line in csvRead:
-            if len(line) < 0:
-                lines.append(line)
-        opened.close()
-        return lines
+'''Takes file path of the saved NCEI.txt file and the list 'csvFile'.
+Opens NCEI.txt for reading and populates a list 'txtFile' with it's
+contents. Creates new empty list 'changes' Passes the lists 'csvFile'
+and 'txtFile' to surveyLists. Appends the results to list 'changes'.
+If list 'changes' is empty, returns a list ['No Changes']. If not
+empty, returns the list 'changes' '''
+def csvCompare(rows, csvFile, newSurveysNum):
+    print(len(rows), end = ' ')
+    for line in csvFile:
+        x = 0
+        y = len(rows)   
+        while x < y:
+            row = rows[x]
+            i = 0
+            m = 0
+            for item in line:
+                if i != 12:
+                    if item == row[i]:
+                        m += 1
+                i += 1
+            if m == 12:
+                rows.remove(row)
+                y = len(rows)  
+            x += 1
+    print(len(rows))
+    if len(rows) != 0:
+        return rows
     else:
-        return False
+        return 'No Changes'
 
+'''String "fileText" is writen to the "txtLocation" save path'''
+def txtWriter(fileText, txtLocation):
+    save = open(txtLocation, 'w')
+    save.write(fileText)
+    save.close()
 
-def csvPopulate(rows):
-    '''This funtion takes takes the list of refined query results. It also
-    checks to see if a current CSV text file of data results exists.  If not,
-    it will create one.  It then opens this file for reading and uses the csv
-    library to treat the text file as a csv object. The function then:
-        1) Compiles a list of the file's current contents
-        2) Writes the results to the csv file if they do not already exist
-    The CSV text file is then closed
-    '''
-    if os.path.isfile(progLoc + '/eHydro_txt.txt'):
-        opened = open(progLoc + '/eHydro_txt.txt', 'r')
-        csvRead = csv.reader(opened, delimiter = ',')
-        lines = []
-        for line in csvRead:
-            lines.append(line)
-        opened.close()
-        opened = open(progLoc + '/eHydro_txt.txt', 'a')
-        txtFile = csv.writer(opened, delimiter = ',')
-        for row in rows:
-            if row in lines:
-                pass
-            else:
-                txtFile.writerow(row[:13])
-        opened.close()
-    else:
-        opened = open(progLoc + '/eHydro_txt.txt', 'w')
-        txtFile = csv.writer(opened, delimiter = ',')
-        attributes.append('FULL.xyz?')
-        txtFile.writerow(attributes)
-        for row in rows:
-            txtFile.writerow(row[:13])
-        opened.close()
-    print ('csv saved')
+'''Uses global variable csvLocation to open NCEI_csv.txt for use.
+Populates a list 'csvFile' with it's contents. Returns list and
+closes file'''
+def csvOpen():
+    fileOpened = open(csvLocation, 'r', newline='\n')
+    opened = csv.reader(fileOpened, delimiter = ',')
+    csvFile = []
+    for row in opened:
+        csvFile.append(row[:13])
+    fileOpened.close()
+    return csvFile[1:]
 
-def emailWriter(rows):
-    name = (str(datetime.datetime.today().strftime('%Y%m%d'))
-            + '_eHydroUpdates.txt')
-    text = open(name, 'w')
+'''Uses global variables txtLocation and csvLocation. Opens file
+at txtLocation for reading and overwrites file at csvLocation for
+writing. Iterates line by line through 'txt' and imediatly writes
+to 'csv'. Closes both opened files.'''
+def csvWriter(csvFile, csvLocation):
+    csvOpen = open(csvLocation, 'w')
+    save = csv.writer(csvOpen, delimiter = ',')
+    for row in csvFile:
+        save.writerow(row)
+    csvOpen.close()
 
+'''Uses global variable logLocation. Opens file at logLocation
+for appending. Writes text stating when the function was called.
+Returns the file object for future writing.'''
+def logOpen():
+    timestamp = time()
+    fileLog = open(logLocation, 'a')
+    message = '\n' + timestamp + ': Program Initiated, Log Opened'
+    logWriter(fileLog, message)
+    return fileLog
+
+'''Takes a file object 'fileLog' and a string 'message'. Writes
+'messege' to 'fileLog' '''
+def logWriter(fileLog, message):
+    fileLog.write(message + '\n')
+
+'''Takes a file object 'fileLog'. Writes text stating when the
+function was called. Closes the file object upon completion'''
+def logClose(fileLog):
+    timestamp = time()
+    message = timestamp +': Program Finished, Log Closed'
+    logWriter(fileLog, message)
+    fileLog.close()
+
+'''Creates and returns a string 'timestamp' that contains a
+formated current date and time at the time of calling.'''
+def time():
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %X')
+    return timestamp
+
+'''Main function of the program. When called, runs most above functions
+in order to complete it's task. Uses logOpen to ensure steps and changes
+are recorded in file object 'fileLog'. Keeps track of called function
+successes and errors by writing them to the file object 'fileLog' using
+logWriter. Calls logClose to mark completion of the program and close
+file object 'fileLog' '''
 def main():
-    page, newSurveysNum = query()
-    if newSurveysNum != 0:
-        links, rows = surveyCompile(page, newSurveysNum)
-        returnedRows = downloadAndCheck(links, rows)
-        csvPopulate(returnedRows)
-#        emailWriter(returnedRows)
-    else:
-        print ('no new surveys')
+    fileLog = logOpen()
+    try:
+        page, newSurveysNum = query()
+        rows = surveyCompile(page, newSurveysNum)
+        logWriter(fileLog, '\tSurveys queried from eHydro')
+    except:
+        logWriter(fileLog, '\teHydro query failed')
+    try:
+        csvFile = csvOpen()
+        txtWriter(csvFile, txtLocation)
+        logWriter(fileLog, '\teHydo_csv.txt opened for reading')
+    except:
+        logWriter(fileLog, '\teHydo_csv.txt unable to be opened')
+    try:
+        changes = csvCompare(rows, csvFile, newSurveysNum)
+        logWriter(fileLog, '\teHydo_csv.txt changes:')
+    except:
+        logWriter(fileLog, '\teHydo_csv.txt unable to be parse changes')
+    try:
+        logWriter(fileLog, '\tParsing new entries for resolution')
+        if changes != 'No Changes':
+            attributes.append("FULL.xyz?")
+            checked = downloadAndCheck(changes)
+            print(type(checked))
+            csvFile.extend(checked)
+            for row in checked:
+                txt = ''
+                for i in [1,4,5,7,12]:
+                    txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
+                logWriter(fileLog, '\t\t' + txt)
+        else:
+            logWriter(fileLog, '\t\t' + changes)
+    except:
+        logWriter(fileLog, '\tParsing for resolution failed')
+    try:
+        csvFile.insert(0, attributes)
+        csvSave = csvFile
+        csvWriter(csvSave, csvLocation)
+        logWriter(fileLog, '\tAdding new entries to eHydo_csv.txt')
+    except:
+        logWriter(fileLog, '\tUnable to add new entries to eHydo_csv.txt')
+    logClose(fileLog)
+    print('log closed')
 
+
+'''Function call to initiate program'''
 main()
