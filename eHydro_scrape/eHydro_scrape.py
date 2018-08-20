@@ -227,17 +227,15 @@ def downloadAndCheck(rows):
                 print ('z', end=' ')
                 row.append('BadZip')
         x -= 1
-
     print ('row downloads verified')
     return rows
 
-'''Takes file path of the saved NCEI.txt file and the list 'csvFile'.
-Opens NCEI.txt for reading and populates a list 'txtFile' with it's
-contents. Creates new empty list 'changes' Passes the lists 'csvFile'
-and 'txtFile' to surveyLists. Appends the results to list 'changes'.
-If list 'changes' is empty, returns a list ['No Changes']. If not
-empty, returns the list 'changes' '''
 def csvCompare(rows, csvFile, newSurveysNum):
+    '''Takes list 'rows' and list 'csvFile'.  It proceeds to compare each list 
+    item's contents against each other.  If they match, the relevant list item 
+    is removed from list 'rows'.  If all items are identical, the function 
+    returns a string 'No Changes'. If not empty, returns the list 'changes'
+    '''
     print(len(rows), end = ' ')
     for line in csvFile:
         x = 0
@@ -261,16 +259,17 @@ def csvCompare(rows, csvFile, newSurveysNum):
     else:
         return 'No Changes'
 
-'''String "fileText" is writen to the "txtLocation" save path'''
 def txtWriter(fileText, txtLocation):
+    '''String "fileText" is writen to the "txtLocation" save path'''
     save = open(txtLocation, 'w')
     save.write(fileText)
     save.close()
 
-'''Uses global variable csvLocation to open NCEI_csv.txt for use.
-Populates a list 'csvFile' with it's contents. Returns list and
-closes file'''
 def csvOpen():
+    '''Uses global variable csvLocation to open NCEI_csv.txt for use.
+    Populates a list 'csvFile' with it's contents. Returns list and
+    closes file
+    '''
     fileOpened = open(csvLocation, 'r', newline='\n')
     opened = csv.reader(fileOpened, delimiter = ',')
     csvFile = []
@@ -279,52 +278,52 @@ def csvOpen():
     fileOpened.close()
     return csvFile[1:]
 
-'''Uses global variables txtLocation and csvLocation. Opens file
-at txtLocation for reading and overwrites file at csvLocation for
-writing. Iterates line by line through 'txt' and imediatly writes
-to 'csv'. Closes both opened files.'''
 def csvWriter(csvFile, csvLocation):
+    '''Uses global variables txtLocation and csvLocation. Opens file
+    at txtLocation for reading and overwrites file at csvLocation for
+    writing. Iterates line by line through 'txt' and imediatly writes
+    to 'csv'. Closes both opened files.
+    '''
     csvOpen = open(csvLocation, 'w')
     save = csv.writer(csvOpen, delimiter = ',')
     for row in csvFile:
         save.writerow(row)
     csvOpen.close()
 
-'''Uses global variable logLocation. Opens file at logLocation
-for appending. Writes text stating when the function was called.
-Returns the file object for future writing.'''
 def logOpen():
+    '''Uses global variable logLocation. Opens file at logLocation
+    for appending. Writes text stating when the function was called.
+    Returns the file object for future writing.
+    '''
     timestamp = time()
     fileLog = open(logLocation, 'a')
     message = '\n' + timestamp + ': Program Initiated, Log Opened'
     logWriter(fileLog, message)
     return fileLog
 
-'''Takes a file object 'fileLog' and a string 'message'. Writes
-'messege' to 'fileLog' '''
 def logWriter(fileLog, message):
+    '''Takes a file object 'fileLog' and a string 'message'. Writes
+    'messege' to 'fileLog'
+    '''
     fileLog.write(message + '\n')
 
-'''Takes a file object 'fileLog'. Writes text stating when the
-function was called. Closes the file object upon completion'''
 def logClose(fileLog):
+    '''Takes a file object 'fileLog'. Writes text stating when the
+    function was called. Closes the file object upon completion
+    '''
     timestamp = time()
     message = timestamp +': Program Finished, Log Closed'
     logWriter(fileLog, message)
     fileLog.close()
 
-'''Creates and returns a string 'timestamp' that contains a
-formated current date and time at the time of calling.'''
 def time():
+    '''Creates and returns a string 'timestamp' that contains a
+    formated current date and time at the time of calling.
+    '''
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d %X')
     return timestamp
 
-'''Main function of the program. When called, runs most above functions
-in order to complete it's task. Uses logOpen to ensure steps and changes
-are recorded in file object 'fileLog'. Keeps track of called function
-successes and errors by writing them to the file object 'fileLog' using
-logWriter. Calls logClose to mark completion of the program and close
-file object 'fileLog' '''
+
 def main():
     fileLog = logOpen()
     try:
@@ -341,15 +340,14 @@ def main():
         logWriter(fileLog, '\teHydo_csv.txt unable to be opened')
     try:
         changes = csvCompare(rows, csvFile, newSurveysNum)
-        logWriter(fileLog, '\teHydo_csv.txt changes:')
+        logWriter(fileLog, '\tComparing query results to eHydo_csv.txt')
     except:
-        logWriter(fileLog, '\teHydo_csv.txt unable to be parse changes')
+        logWriter(fileLog, '\tUnable to compare query results to eHydo_csv.txt')
     try:
-        logWriter(fileLog, '\tParsing new entries for resolution')
+        logWriter(fileLog, '\tParsing new entries for resolution:')
         if changes != 'No Changes':
             attributes.append("FULL.xyz?")
             checked = downloadAndCheck(changes)
-            print(type(checked))
             csvFile.extend(checked)
             for row in checked:
                 txt = ''
@@ -364,9 +362,9 @@ def main():
         csvFile.insert(0, attributes)
         csvSave = csvFile
         csvWriter(csvSave, csvLocation)
-        logWriter(fileLog, '\tAdding new entries to eHydo_csv.txt')
+        logWriter(fileLog, '\tAdding results to eHydo_csv.txt')
     except:
-        logWriter(fileLog, '\tUnable to add new entries to eHydo_csv.txt')
+        logWriter(fileLog, '\tUnable to add results to eHydo_csv.txt')
     logClose(fileLog)
     print('log closed')
 
