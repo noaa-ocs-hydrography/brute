@@ -56,9 +56,9 @@ def query():
     # Today (ex. '2018-08-08'), unformatted
     today = datetime.datetime.today()
     # Today - 1 (ex. '2018-08-06'), unformatted
-    yesterday = today - datetime.timedelta(10)
+    yesterday = today - datetime.timedelta(1)
     # Today - 10 (ex. '2018-07-29'), unformatted
-    otherday = today - datetime.timedelta(20)
+    otherday = today - datetime.timedelta(10)
 
     # Prints of the formated versions of the date used by the query
     print (today.strftime('%Y-%m-%d'),
@@ -74,13 +74,8 @@ def query():
              + str(yesterday.strftime('%Y-%m-%d'))
              + '%2000%3A01%3A00%27')
     '''
+    
     # Survey Date Uploaded
-#    where = ('SURVEYDATEUPLOADED%20%3C%3D%20timestamp%20%27'
-#                     + str(today.strftime('%Y-%m-%d'))
-#                     + '%2000%3A01%3A00%27%20AND%20SURVEYDATEUPLOADED%20%3E%3D%20timestamp%20%27'
-#                     + str(yesterday.strftime('%Y-%m-%d'))
-#                     + '%2000%3A01%3A00%27')
-        # Survey Date Uploaded
     where = ('SURVEYDATEUPLOADED%20%3C%3D%20timestamp%20%27'
                      + str(today.strftime('%Y-%m-%d'))
                      + '%2000%3A01%3A00%27%20AND%20SURVEYDATEUPLOADED%20%3E%3D%20timestamp%20%27'
@@ -114,16 +109,12 @@ def query():
 
 def surveyCompile(page, newSurveysNum):
     '''Uses the json object return of the query and the total number of surveys
-    included to compile two lists:
-        1) A list of complete retunred survey data, as provided in the response
-        2) A list of only the download links to the survey data, as provided by
-        the response
-    The function also takes into account that the survey data returns for any
-    date/time are returned as timestamps. The function looks for these fields
-    and converts them to datetime objects and finaly strings.
+    included to compile a list of complete returned survey data, as provided in
+    the response. The function also takes into account that the survey data 
+    returns for any date/time are returned as timestamps. The function looks 
+    for these fields and converts them to datetime objects and finaly strings.
 
-    The function returns the lists of returned survey data and data download
-    links.
+    The function returns the lists of returned survey data as a list 'rows'.
     '''
     x = 0
     rows = []
@@ -156,11 +147,8 @@ def contentSearch(contents, link, saved):
     data resides.
 
     Using the zipfile contents, it parses the files for any file containing the
-    full string '_FULL.xyz'.  If a file name contains this string, it's
-    download link and current local file location are added to a global list of
-    like files
-
-    If a file is found, it returns a Boolean True
+    full string '_FULL.xyz'.  If a file name contains this string, it returns a
+    Boolean True
     '''
     x = 0
     for content in contents:
@@ -172,12 +160,12 @@ def contentSearch(contents, link, saved):
             x = 0
 
 def downloadAndCheck(rows):
-    '''This function takes a list of download links for survey contents and the
-    list of the complete survey data as provided by the query response ('rows').
+    '''This function takes a list of complete survey data as provided by the 
+    query response ('rows').
 
-    For each link provided, it saves the returned data to the computer. All
-    downloaded files are expected to be zip files.  The funtion attempts to
-    open the files as zipfile objects:
+    For each link provided, it saves the returned data localy. All downloaded 
+    files are expected to be zip files.  The funtion attempts to open the files
+    as zipfile objects:
         1) If it succeeds, the function requests a list of included contents
         of the zipfile objects and passes that list, the download link, and
         location of the local download to contentSearch() to determine if the
@@ -185,9 +173,13 @@ def downloadAndCheck(rows):
         2) If it fails, the link, downloaded
         contents, and survey data in 'rows' are immediately removed.
 
-    The function returns the resulting pruned version of the list of the
-    complete survey data as provided by the query response ('rows') only
-    populated by data positive results.
+   Through each of these steps a value is appended to the end of each 'row' or
+   survey data object in list 'rows' to indicate the result of the search for 
+   highest resolution data.  The full range of possible values are:
+       1) Yes; the survey contains a FULL.xyz file
+       2) No; the survey does not contain a FULL.xyz file
+       3) BadURL; the survey URL from query response was bad/yeilded no results
+       4) BadZip; the resulting .zip downloaded was corrupt/unable to be opened
     '''
     x = len(rows)
     for row in rows:
@@ -195,9 +187,10 @@ def downloadAndCheck(rows):
         name = link.split('/')[-1]
         saved = holding + '/' + name
         saved = os.path.normpath(saved)
+        print  (x,  end=' ')
         while True:
             if os.path.exists(saved):
-                print  (x, 'x', end=' ')
+                print ('x', end=' ')
                 break
             else:
                 try:
@@ -262,7 +255,8 @@ def csvCompare(rows, csvFile, newSurveysNum):
 def txtWriter(fileText, txtLocation):
     '''String "fileText" is writen to the "txtLocation" save path'''
     save = open(txtLocation, 'w')
-    save.write(fileText)
+    for row in fileText:
+        save.writelines(row)
     save.close()
 
 def csvOpen():
