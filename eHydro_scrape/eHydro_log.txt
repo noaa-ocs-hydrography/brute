@@ -3456,12 +3456,3 @@
 		
 	Adding results to eHydo_csv.txt
 2018-08-31 10:06:31: Program Finished, Log Closed
-
-2018-08-31 13:21:02: Program Initiated, Log Opened
-	Surveys queried from eHydro
-	eHydo_csv.txt opened for reading
-	Comparing query results to eHydo_csv.txt
-	Parsing new entries for resolution:
-		No Changes
-	Adding results to eHydo_csv.txt
-2018-08-31 13:21:03: Program Finished, Log Closed

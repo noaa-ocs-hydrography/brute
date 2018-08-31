@@ -339,8 +339,8 @@ def main():
         logWriter(fileLog, '\tUnable to compare query results to eHydo_csv.txt')
     try:
         logWriter(fileLog, '\tParsing new entries for resolution:')
+        attributes.append("FULL.xyz?")
         if changes != 'No Changes':
-            attributes.append("FULL.xyz?")
             checked = downloadAndCheck(changes)
             csvFile.extend(checked)
             for row in checked:
