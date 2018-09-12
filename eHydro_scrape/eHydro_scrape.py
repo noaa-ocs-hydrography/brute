@@ -20,6 +20,7 @@ import socket
 progLoc = os.getcwd()
 # regex object for searching zipfile contents
 full = re.compile(r'FULL.xyz', re.IGNORECASE)
+fullalt = re.compile(r'_A.xyz', re.IGNORECASE)
 # location of data items
 txtName = 'eHydro_txt.txt'
 txtLocation = os.path.join(progLoc, txtName)
@@ -154,6 +155,10 @@ def contentSearch(contents, link, saved):
     for content in contents:
         if full.search(content):
             print ('\nviva la resolution', content, end=' ') #link + '\n')
+            x = 1
+            return x
+        elif fullalt.search(content):
+            print ('\nlong live the resolution', content, end=' ') #link + '\n')
             x = 1
             return x
         else:
