@@ -247,7 +247,7 @@ def downloadAndCheck(rows):
                     row.append('BadURL')
                     break
         if os.path.exists(saved):
-            if config['Resolutions']['Override'] == 'no' and agency not in agencies:
+            if config['Resolutions']['Override'] == 'no' and agency in agencies:
                 try:
                     zipped = zipfile.ZipFile(saved)
                     contents = zipped.namelist()
@@ -265,6 +265,9 @@ def downloadAndCheck(rows):
                     os.remove(saved)
                     print ('z', end=' ')
                     row.append('BadZip')
+            elif config['Resolutions']['Override'] == 'yes' and agency in agencies:
+                print ('o', end=' ')
+                row.append('Ovrd')
             else: 
                 print ('o', end=' ')
                 row.append('Ovrd')
