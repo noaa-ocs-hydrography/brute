@@ -119,7 +119,6 @@ def query():
     objIDs = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?&where=' + where + '&outFields=*&returnGeometry=false&returnIdsOnly=true&outSR=&f=json'
     
     # Initial Query execution
-    print (newSurveys)
     surveyNumRequest = requests.get(newSurveys)
     surveyIDsRequest = requests.get(objIDs)
     
@@ -127,7 +126,6 @@ def query():
     surveyNumJSON = surveyNumRequest.json()
     print (surveyNumJSON)
     newSurveysNum = int(surveyNumJSON['count'])
-    print (newSurveysNum)
     
     # Response for survey Object IDs as a json object
     surveyIDsJSON = surveyIDsRequest.json()
@@ -224,7 +222,6 @@ def downloadAndCheck(rows):
     for row in rows:
         link = row[7]
         agency = row[2]
-        print (agency)
         name = link.split('/')[-1]
         saved = holding + '/' + agency + '/' + name
         if os.path.exists(holding + '/' + agency):
@@ -232,7 +229,7 @@ def downloadAndCheck(rows):
         else:
             os.mkdir(holding + '/' + agency)
         saved = os.path.normpath(saved)
-        print  (x,  end=' ')
+        print  (x, agency,  end=' ')
         while True:
             if os.path.exists(saved):
                 print ('x', end=' ')
@@ -247,7 +244,13 @@ def downloadAndCheck(rows):
                     row.append('BadURL')
                     break
         if os.path.exists(saved):
-            if config['Resolutions']['Override'] == 'no' and agency in agencies:
+            if config['Resolutions']['Override'] == 'yes' and agency in agencies:
+                print ('o', end=' ')
+                row.append('Ovrd')
+            elif config['Resolutions']['Override'] == 'yes' and agencies == '':
+                print ('o', end=' ')
+                row.append('Ovrd')
+            else:
                 try:
                     zipped = zipfile.ZipFile(saved)
                     contents = zipped.namelist()
@@ -265,12 +268,6 @@ def downloadAndCheck(rows):
                     os.remove(saved)
                     print ('z', end=' ')
                     row.append('BadZip')
-            elif config['Resolutions']['Override'] == 'yes' and agency in agencies:
-                print ('o', end=' ')
-                row.append('Ovrd')
-            else: 
-                print ('o', end=' ')
-                row.append('Ovrd')
         x -= 1
     print ('row downloads verified')
     return rows
@@ -385,7 +382,7 @@ def main():
         logWriter(fileLog, '\t\tUnable to compare query results to eHydo_csv.txt')
     try:
         logWriter(fileLog, '\tParsing new entries for resolution:')
-        attributes.append("FULL.xyz?")
+        attributes.append("Hi-Res?")
         if changes != 'No Changes':
             checked = downloadAndCheck(changes)
             csvFile.extend(checked)

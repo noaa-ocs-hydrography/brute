@@ -5168,3 +5168,3088 @@
 		
 	Adding results to eHydo_csv.txt
 2018-10-03 17:07:50: Program Finished, Log Closed
+
+2018-10-04 07:00:02: Program Initiated, Log Opened
+	Surveys queried from eHydro
+	eHydo_csv.txt opened for reading
+	Comparing query results to eHydo_csv.txt
+	Parsing new entries for resolution:
+		SURVEYJOBIDPK : RI_18_PAW_20180910_CS_2018_055
+		SDSFEATURENAME : Pawcatuck River, Little Narragansett Bay & Watch Hill Cove, RI and CT
+		SOURCEPROJECTION : Rhode Island
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAE/RI_18_PAW_20180910_CS_2018_055.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : CL_05_TNG_20181001_CS
+		SDSFEATURENAME : TONGUE POINT CROSSING
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_05_TNG_20181001_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : YB_01_YB1_20181001_CS
+		SDSFEATURENAME : YAQUINA BAY AND HARBOR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/YB_01_YB1_20181001_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : YB_02_YB2_20180927_CS
+		SDSFEATURENAME : HARBOR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/YB_02_YB2_20180927_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : UM_SP_P08_20181002_AD_6906_6916
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20181002_AD_6906_6916.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : UM_SP_P04_20181002_BD_7622_7628
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20181002_BD_7622_7628.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_03_COC_20180919_CS_E_5_13_391
+		SDSFEATURENAME : CROSSOVER CHANNEL
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_03_COC_20180919_CS_E_5_13_391.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : BH_01_SCW_20180717_CS_E_9_7_84
+		SDSFEATURENAME : SQUALICUM CREEK WATERWAY
+		SOURCEPROJECTION : Washington North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/BH_01_SCW_20180717_CS_E_9_7_84.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_01_ENT_20180906_CS_E_5_11_391
+		SDSFEATURENAME : BAR, ENTRANCE, PT. CHEHALIS
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_01_ENT_20180906_CS_E_5_11_391.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_01_ENT_20180914_CS_E_5_11_393
+		SDSFEATURENAME : BAR, ENTRANCE, PT. CHEHALIS
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_01_ENT_20180914_CS_E_5_11_393.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_01_ENT_20180912_CS_E_5_11_392
+		SDSFEATURENAME : BAR, ENTRANCE, PT. CHEHALIS
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_01_ENT_20180912_CS_E_5_11_392.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_02_SOR_20180918_CS_E_5_15_137
+		SDSFEATURENAME : SOUTH REACH
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_02_SOR_20180918_CS_E_5_15_137.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180905_BD_E_5_2_784
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180905_BD_E_5_2_784.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180905_BD_E_5_2_783
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180905_BD_E_5_2_783.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180910_BD_E_5_2_785
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180910_BD_E_5_2_785.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : OL_01_OEC_20180205_CS_E_14_5_169
+		SDSFEATURENAME : FEDERAL CHANNEL AND TURNING BASIN
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/OL_01_OEC_20180205_CS_E_14_5_169.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180917_CS_E_5_2_790
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180917_CS_E_5_2_790.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180913_AD_E_5_2_787
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180913_AD_E_5_2_787.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : OL_02_OEB_20180205_CS_E_14_5_170
+		SDSFEATURENAME : EAST BAY ENTRANCE AND ACCESS CHANNEL
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/OL_02_OEB_20180205_CS_E_14_5_170.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : NB_03_NEC_20180828_CS_D_1_10_95
+		SDSFEATURENAME : NEAH BAY ENTRANCE CHANNEL
+		SOURCEPROJECTION : Washington North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/NB_03_NEC_20180828_CS_D_1_10_95.ZIP
+		FULL.xyz? : Ovrd
+		
+	Adding results to eHydo_csv.txt
+2018-10-04 07:01:45: Program Finished, Log Closed
+
+2018-10-04 09:30:09: Program Initiated, Log Opened
+	Surveys queried from eHydro
+	eHydo_csv.txt opened for reading
+	Comparing query results to eHydo_csv.txt
+	Parsing new entries for resolution:
+		No Changes
+	Adding results to eHydo_csv.txt
+2018-10-04 09:30:29: Program Finished, Log Closed
+
+2018-10-04 09:30:51: Program Initiated, Log Opened
+	Surveys queried from eHydro
+	eHydo_csv.txt opened for reading
+	Comparing query results to eHydo_csv.txt
+	Parsing new entries for resolution:
+		No Changes
+	Adding results to eHydo_csv.txt
+2018-10-04 09:30:57: Program Finished, Log Closed
+
+2018-10-04 09:37:47: Program Initiated, Log Opened
+	Surveys queried from eHydro
+	eHydo_csv.txt opened for reading
+	Comparing query results to eHydo_csv.txt
+	Parsing new entries for resolution:
+		No Changes
+	Adding results to eHydo_csv.txt
+2018-10-04 09:37:53: Program Finished, Log Closed
+
+2018-10-04 09:38:40: Program Initiated, Log Opened
+	Surveys queried from eHydro
+	eHydo_csv.txt opened for reading
+	Comparing query results to eHydo_csv.txt
+	Parsing new entries for resolution:
+		SURVEYJOBIDPK : RI_18_PAW_20180910_CS_2018_055
+		SDSFEATURENAME : Pawcatuck River, Little Narragansett Bay & Watch Hill Cove, RI and CT
+		SOURCEPROJECTION : Rhode Island
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAE/RI_18_PAW_20180910_CS_2018_055.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : CL_05_TNG_20181001_CS
+		SDSFEATURENAME : TONGUE POINT CROSSING
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_05_TNG_20181001_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : YB_01_YB1_20181001_CS
+		SDSFEATURENAME : YAQUINA BAY AND HARBOR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/YB_01_YB1_20181001_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : YB_02_YB2_20180927_CS
+		SDSFEATURENAME : HARBOR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/YB_02_YB2_20180927_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : UM_SP_P08_20181002_AD_6906_6916
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20181002_AD_6906_6916.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : UM_SP_P04_20181002_BD_7622_7628
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20181002_BD_7622_7628.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_03_COC_20180919_CS_E_5_13_391
+		SDSFEATURENAME : CROSSOVER CHANNEL
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_03_COC_20180919_CS_E_5_13_391.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : BH_01_SCW_20180717_CS_E_9_7_84
+		SDSFEATURENAME : SQUALICUM CREEK WATERWAY
+		SOURCEPROJECTION : Washington North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/BH_01_SCW_20180717_CS_E_9_7_84.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_01_ENT_20180906_CS_E_5_11_391
+		SDSFEATURENAME : BAR, ENTRANCE, PT. CHEHALIS
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_01_ENT_20180906_CS_E_5_11_391.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_01_ENT_20180914_CS_E_5_11_393
+		SDSFEATURENAME : BAR, ENTRANCE, PT. CHEHALIS
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_01_ENT_20180914_CS_E_5_11_393.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_01_ENT_20180912_CS_E_5_11_392
+		SDSFEATURENAME : BAR, ENTRANCE, PT. CHEHALIS
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_01_ENT_20180912_CS_E_5_11_392.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_02_SOR_20180918_CS_E_5_15_137
+		SDSFEATURENAME : SOUTH REACH
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_02_SOR_20180918_CS_E_5_15_137.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180905_BD_E_5_2_784
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180905_BD_E_5_2_784.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180905_BD_E_5_2_783
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180905_BD_E_5_2_783.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180910_BD_E_5_2_785
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180910_BD_E_5_2_785.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : OL_01_OEC_20180205_CS_E_14_5_169
+		SDSFEATURENAME : FEDERAL CHANNEL AND TURNING BASIN
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/OL_01_OEC_20180205_CS_E_14_5_169.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180917_CS_E_5_2_790
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180917_CS_E_5_2_790.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180913_AD_E_5_2_787
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180913_AD_E_5_2_787.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : OL_02_OEB_20180205_CS_E_14_5_170
+		SDSFEATURENAME : EAST BAY ENTRANCE AND ACCESS CHANNEL
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/OL_02_OEB_20180205_CS_E_14_5_170.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : NB_03_NEC_20180828_CS_D_1_10_95
+		SDSFEATURENAME : NEAH BAY ENTRANCE CHANNEL
+		SOURCEPROJECTION : Washington North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/NB_03_NEC_20180828_CS_D_1_10_95.ZIP
+		FULL.xyz? : Ovrd
+		
+	Adding results to eHydo_csv.txt
+2018-10-04 09:38:45: Program Finished, Log Closed
+
+2018-10-04 09:53:46: Program Initiated, Log Opened
+	Surveys queried from eHydro
+	eHydo_csv.txt opened for reading
+	Comparing query results to eHydo_csv.txt
+	Parsing new entries for resolution:
+	Parsing for resolution failed
+	Adding results to eHydo_csv.txt
+2018-10-04 09:53:52: Program Finished, Log Closed
+
+2018-10-04 10:19:02: Program Initiated, Log Opened
+	Surveys queried from eHydro
+	eHydo_csv.txt opened for reading
+	Comparing query results to eHydo_csv.txt
+	Parsing new entries for resolution:
+		No Changes
+	Adding results to eHydo_csv.txt
+2018-10-04 10:19:09: Program Finished, Log Closed
+
+2018-10-04 10:19:22: Program Initiated, Log Opened
+	Surveys queried from eHydro
+	eHydo_csv.txt opened for reading
+	Comparing query results to eHydo_csv.txt
+	Parsing new entries for resolution:
+		SURVEYJOBIDPK : RI_18_PAW_20180910_CS_2018_055
+		SDSFEATURENAME : Pawcatuck River, Little Narragansett Bay & Watch Hill Cove, RI and CT
+		SOURCEPROJECTION : Rhode Island
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAE/RI_18_PAW_20180910_CS_2018_055.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CL_05_TNG_20181001_CS
+		SDSFEATURENAME : TONGUE POINT CROSSING
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_05_TNG_20181001_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : YB_01_YB1_20181001_CS
+		SDSFEATURENAME : YAQUINA BAY AND HARBOR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/YB_01_YB1_20181001_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : YB_02_YB2_20180927_CS
+		SDSFEATURENAME : HARBOR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/YB_02_YB2_20180927_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : UM_SP_P08_20181002_AD_6906_6916
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20181002_AD_6906_6916.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20181002_BD_7622_7628
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20181002_BD_7622_7628.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GH_03_COC_20180919_CS_E_5_13_391
+		SDSFEATURENAME : CROSSOVER CHANNEL
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_03_COC_20180919_CS_E_5_13_391.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : BH_01_SCW_20180717_CS_E_9_7_84
+		SDSFEATURENAME : SQUALICUM CREEK WATERWAY
+		SOURCEPROJECTION : Washington North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/BH_01_SCW_20180717_CS_E_9_7_84.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GH_01_ENT_20180906_CS_E_5_11_391
+		SDSFEATURENAME : BAR, ENTRANCE, PT. CHEHALIS
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_01_ENT_20180906_CS_E_5_11_391.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GH_01_ENT_20180914_CS_E_5_11_393
+		SDSFEATURENAME : BAR, ENTRANCE, PT. CHEHALIS
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_01_ENT_20180914_CS_E_5_11_393.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GH_01_ENT_20180912_CS_E_5_11_392
+		SDSFEATURENAME : BAR, ENTRANCE, PT. CHEHALIS
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_01_ENT_20180912_CS_E_5_11_392.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GH_02_SOR_20180918_CS_E_5_15_137
+		SDSFEATURENAME : SOUTH REACH
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_02_SOR_20180918_CS_E_5_15_137.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180905_BD_E_5_2_784
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180905_BD_E_5_2_784.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180905_BD_E_5_2_783
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180905_BD_E_5_2_783.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180910_BD_E_5_2_785
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180910_BD_E_5_2_785.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : OL_01_OEC_20180205_CS_E_14_5_169
+		SDSFEATURENAME : FEDERAL CHANNEL AND TURNING BASIN
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/OL_01_OEC_20180205_CS_E_14_5_169.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180917_CS_E_5_2_790
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180917_CS_E_5_2_790.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GH_04_CHR_20180913_AD_E_5_2_787
+		SDSFEATURENAME : INNER GRAYS HARBOR
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/GH_04_CHR_20180913_AD_E_5_2_787.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : OL_02_OEB_20180205_CS_E_14_5_170
+		SDSFEATURENAME : EAST BAY ENTRANCE AND ACCESS CHANNEL
+		SOURCEPROJECTION : Washington South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/OL_02_OEB_20180205_CS_E_14_5_170.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : NB_03_NEC_20180828_CS_D_1_10_95
+		SDSFEATURENAME : NEAH BAY ENTRANCE CHANNEL
+		SOURCEPROJECTION : Washington North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWS/NB_03_NEC_20180828_CS_D_1_10_95.ZIP
+		FULL.xyz? : No
+		
+	Adding results to eHydo_csv.txt
+2018-10-04 10:19:30: Program Finished, Log Closed
+
+2018-10-04 10:20:14: Program Initiated, Log Opened
+	Surveys queried from eHydro
+	eHydo_csv.txt opened for reading
+	Comparing query results to eHydo_csv.txt
+	Parsing new entries for resolution:
+		SURVEYJOBIDPK : AW_06_CHP_20180904_AD_04
+		SDSFEATURENAME : CHARLESTON TO PORT ROYAL
+		SOURCEPROJECTION : South Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAC/AW_06_CHP_20180904_AD_04.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : AW_06_CHP_20180918_AD_23
+		SDSFEATURENAME : CHARLESTON TO PORT ROYAL
+		SOURCEPROJECTION : South Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAC/AW_06_CHP_20180918_AD_23.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : AW_06_CHP_20180919_AD_04
+		SDSFEATURENAME : CHARLESTON TO PORT ROYAL
+		SOURCEPROJECTION : South Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAC/AW_06_CHP_20180919_AD_04.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : PM_5D_SWT_20180918_CS_14_LWD
+		SDSFEATURENAME : PORT_MANSFIELD
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/PM_5D_SWT_20180918_CS_14_LWD.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : PS_16_BIL_20180424_CS
+		SDSFEATURENAME : Billingsport Range 
+		SOURCEPROJECTION : New Jersey
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAP/PS_16_BIL_20180424_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : PM_5C_NWT_20180918_CS_14_LWD
+		SDSFEATURENAME : PORT_MANSFIELD
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/PM_5C_NWT_20180918_CS_14_LWD.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : PM_5B_SET_20180918_CS_14_LWD
+		SDSFEATURENAME : PORT_MANSFIELD
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/PM_5B_SET_20180918_CS_14_LWD.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : PM_08_SPB_20180918_CS_14_LWD
+		SDSFEATURENAME : PORT_MANSFIELD
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/PM_08_SPB_20180918_CS_14_LWD.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : PM_07_TRB_20180918_CS_14_LWD
+		SDSFEATURENAME : PORT_MANSFIELD
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/PM_07_TRB_20180918_CS_14_LWD.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : PM_06_MTB_20180918_CS_14_LWD
+		SDSFEATURENAME : PORT_MANSFIELD
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/PM_06_MTB_20180918_CS_14_LWD.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CL_03_FLV_20180919_CS
+		SDSFEATURENAME : FLAVEL BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_03_FLV_20180919_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CL_16_WLK_20180919_BD
+		SDSFEATURENAME : WALKER ISLAND REACH
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_16_WLK_20180919_BD.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : WR_04_B2M_20180501_CS
+		SDSFEATURENAME : BROADWAY TO MORRISON
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/WR_04_B2M_20180501_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CQ_01_CQ1_20180919_CS
+		SDSFEATURENAME : COQUILLE RIVER
+		SOURCEPROJECTION : Oregon South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CQ_01_CQ1_20180919_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : UM_13_MVR_20180918_CS_52955305_18C
+		SDSFEATURENAME : Upper Mississippi River Pool 13
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/UM_13_MVR_20180918_CS_52955305_18C.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_13_MVR_20180917_CS_54735487_18B
+		SDSFEATURENAME : Upper Mississippi River Pool 13
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/UM_13_MVR_20180917_CS_54735487_18B.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_14_MVR_20180919_CS_50315041_18B
+		SDSFEATURENAME : Upper Mississippi River Pool 14
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/UM_14_MVR_20180919_CS_50315041_18B.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_14_MVR_20180912_CS_50945101_18C
+		SDSFEATURENAME : Upper Mississippi River Pool 14
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/UM_14_MVR_20180912_CS_50945101_18C.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : IL_LA_MVR_20180918_CS_15551570_18B
+		SDSFEATURENAME : IL Waterway La Grange Pool
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/IL_LA_MVR_20180918_CS_15551570_18B.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : IL_LA_MVR_20180918_CS_11351140_18A
+		SDSFEATURENAME : IL Waterway La Grange Pool
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/IL_LA_MVR_20180918_CS_11351140_18A.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : IL_LA_MVR_20180917_CS_11301135_18C
+		SDSFEATURENAME : IL Waterway La Grange Pool
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/IL_LA_MVR_20180917_CS_11301135_18C.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CL_08_BKW_20180920_CS
+		SDSFEATURENAME : BROOKFIELD-WELCH ISLAND
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_08_BKW_20180920_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CL_17_SLG_20180920_CS
+		SDSFEATURENAME : SLAUGHTERS BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_17_SLG_20180920_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CL_18_LDB_20180920_OT
+		SDSFEATURENAME : LOWER DOBELBOWER BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_18_LDB_20180920_OT.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : NH_03_NER_20180731_CS
+		SDSFEATURENAME : ENTRANCE REACH
+		SOURCEPROJECTION : Virginia South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAO/NH_03_NER_20180731_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : WC_50_BFC_20180813_CS
+		SDSFEATURENAME : BRADFORD BAY AND FINNEY CREEK
+		SOURCEPROJECTION : Virginia South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAO/WC_50_BFC_20180813_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : JR_09_RDT_20180828_CS
+		SDSFEATURENAME : RICHMOND DEEPWATER TERMINAL
+		SOURCEPROJECTION : Virginia South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAO/JR_09_RDT_20180828_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : JR_03_GHC_20180823_CS
+		SDSFEATURENAME : GOOSE HILL CHANNEL
+		SOURCEPROJECTION : Virginia South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAO/JR_03_GHC_20180823_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CH_01_CHI_20180905_CS
+		SDSFEATURENAME : CHINCOTEAGUE INLET
+		SOURCEPROJECTION : Virginia South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAO/CH_01_CHI_20180905_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CH_01_CHI_20180905_CS_RECON
+		SDSFEATURENAME : CHINCOTEAGUE INLET
+		SOURCEPROJECTION : Virginia South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAO/CH_01_CHI_20180905_CS_RECON.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : SW_07_SWP_20180921_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 7
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_07_SWP_20180921_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_12_SWP_20180920_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 12
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_12_SWP_20180920_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : BA_01_SBB_20130704_CS
+		SDSFEATURENAME : SANDBRIDGE BEACH NOURISHMENT PROJECT BOROW AREA
+		SOURCEPROJECTION : Virginia South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAO/BA_01_SBB_20130704_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : SW_11_SWP_20180920_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 11
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_11_SWP_20180920_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_10_SWP_20180920_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 10
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_10_SWP_20180920_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_09_SWP_20180920_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 9
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_09_SWP_20180920_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_05_SWP_20180920_CS_PTA
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 5
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_05_SWP_20180920_CS_PTA.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_04_SWP_20180920_CS_PTA
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 4
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_04_SWP_20180920_CS_PTA.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_08_SWP_20180921_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 8
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_08_SWP_20180921_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_06_SWP_20180921_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 6
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_06_SWP_20180921_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_03_SWP_20180920_CS_PTA
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 3
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_03_SWP_20180920_CS_PTA.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : GA_01_ENT_20180906_CS_MLLW_46_CBD_76P000_55P841
+		SDSFEATURENAME : GALVESTON
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/GA_01_ENT_20180906_CS_MLLW_46_CBD_76P000_55P841.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GA_02_ENT_20180906_CS_46_MLLW_55841TO30515
+		SDSFEATURENAME : GALVESTON
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/GA_02_ENT_20180906_CS_46_MLLW_55841TO30515.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GA_03_OBC_20180806_CS_EX_PT_46_MLLW_30000TO23000
+		SDSFEATURENAME : GALVESTON
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/GA_03_OBC_20180806_CS_EX_PT_46_MLLW_30000TO23000.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GA_04_IBC_20180729_AD_46_MLLW
+		SDSFEATURENAME : GALVESTON
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/GA_04_IBC_20180729_AD_46_MLLW.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GA_04_IBC_20180731_AD_PR_46_MLLW_11000TO11400
+		SDSFEATURENAME : GALVESTON
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/GA_04_IBC_20180731_AD_PR_46_MLLW_11000TO11400.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GA_04_IBC_20180806_CS_EX_01_PT_46_MLLW_10000TO4490
+		SDSFEATURENAME : GALVESTON
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/GA_04_IBC_20180806_CS_EX_01_PT_46_MLLW_10000TO4490.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GA_05_BRC_20180806_CS_EX_46_MLLW_4490TO0000
+		SDSFEATURENAME : GALVESTON
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/GA_05_BRC_20180806_CS_EX_46_MLLW_4490TO0000.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GI_10_BSB_20180920_CS_14_MLLW_593P940_614P000
+		SDSFEATURENAME : GULF INTRACOASTAL WATERWAY
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/GI_10_BSB_20180920_CS_14_MLLW_593P940_614P000.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : HS_06_CBB_20180914_AD_02_46_MLLW_63000TO65800
+		SDSFEATURENAME : HOUSTON
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/HS_06_CBB_20180914_AD_02_46_MLLW_63000TO65800.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : HS_11_HTB_20180917_AD_02_37_MLLW_0000TO1432
+		SDSFEATURENAME : HOUSTON
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/HS_11_HTB_20180917_AD_02_37_MLLW_0000TO1432.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : SP_02_OBK_20180917_AD_06_42_MLLW
+		SDSFEATURENAME : SABINE
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/SP_02_OBK_20180917_AD_06_42_MLLW.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TC_01_BRT_20180918_CS_46_MLLW_MLLW_CMB_0000TO36200
+		SDSFEATURENAME : TEXAS_CITY
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/TC_01_BRT_20180918_CS_46_MLLW_MLLW_CMB_0000TO36200.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P06_20180920_AD_7189_7195
+		SDSFEATURENAME : POOL_06_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P06_20180920_AD_7189_7195.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P06_20180920_AD_7189_7195
+		SDSFEATURENAME : POOL_06_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P06_20180920_AD_7189_7195.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180921_AD_7588_7593
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180921_AD_7588_7593.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180921_AD_7588_7593
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180921_AD_7588_7593.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180919_BD_7931_7940
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180919_BD_7931_7940.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180919_BD_7931_7940
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180919_BD_7931_7940.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180919_BD_7924_7931
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180919_BD_7924_7931.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180919_BD_7924_7931
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180919_BD_7924_7931.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180920_BD_6906_6916
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180920_BD_6906_6916.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180920_BD_6906_6916
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180920_BD_6906_6916.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : ME_33_BEL_20180906_CS_2018_053
+		SDSFEATURENAME : Belfast Harbor
+		SOURCEPROJECTION : Maine East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAE/ME_33_BEL_20180906_CS_2018_053.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : RD_01_RDI_20180922_CS
+		SDSFEATURENAME : RUDEE INLET
+		SOURCEPROJECTION : Virginia South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAO/RD_01_RDI_20180922_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : NH_04_N50_20180730_CS
+		SDSFEATURENAME : SEWELLS POINT TO LAMBERT BEND
+		SOURCEPROJECTION : Virginia South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAO/NH_04_N50_20180730_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : SL_04_BIG_20180918_CS
+		SDSFEATURENAME : Bigfoot Slough
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/SL_04_BIG_20180918_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : MN_30_OIE_20180910_CS
+		SDSFEATURENAME : Manteo - Oregon Inlet Bar
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/MN_30_OIE_20180910_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : MN_09_R14_20180831_CS
+		SDSFEATURENAME : Manteo - Range 14
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/MN_09_R14_20180831_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : IN_03_BOG_20180906_AD
+		SDSFEATURENAME : Coastal Inlets - Bogue Inlet Crossing
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/IN_03_BOG_20180906_AD.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : SW_07_SWP_20180925_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 7
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_07_SWP_20180925_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_05_SWP_20180924_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 5
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_05_SWP_20180924_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_04_SWP_20180924_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 4
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_04_SWP_20180924_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_12_SWP_20180925_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 12
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_12_SWP_20180925_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_10_SWP_20180925_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 10
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_10_SWP_20180925_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_09_SWP_20180925_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 9
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_09_SWP_20180925_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_08_SWP_20180925_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 8
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_08_SWP_20180925_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_06_SWP_20180925_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 6
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_06_SWP_20180925_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_11_SWP_20180925_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 11
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_11_SWP_20180925_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : VA_03_1CH_20180911_AD
+		SDSFEATURENAME : Cape Henry
+		SOURCEPROJECTION : Virginia South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAB/VA_03_1CH_20180911_AD.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P5A_20180925_CS_7310_7320
+		SDSFEATURENAME : POOL_05A_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P5A_20180925_CS_7310_7320.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P5A_20180925_CS_7310_7320
+		SDSFEATURENAME : POOL_05A_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P5A_20180925_CS_7310_7320.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180925_AD_7564_7569
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180925_AD_7564_7569.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180925_AD_7564_7569
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180925_AD_7564_7569.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : SW_02_SWP_20180926_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 2
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_02_SWP_20180926_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_05_SWP_20180926_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 5
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_05_SWP_20180926_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_04_SWP_20180926_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 4
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_04_SWP_20180926_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : HS_07_BGB_20180925_CS_EX_41_MLLW_68000_75000
+		SDSFEATURENAME : HOUSTON
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/HS_07_BGB_20180925_CS_EX_41_MLLW_68000_75000.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : NR_2A_TBM_20180314_CS_EX_03_40_MLLW
+		SDSFEATURENAME : SABINE
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/NR_2A_TBM_20180314_CS_EX_03_40_MLLW.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TC_02_TTB_20180926_CS_46_MLLW_000_4286
+		SDSFEATURENAME : TEXAS_CITY
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/TC_02_TTB_20180926_CS_46_MLLW_000_4286.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GA_13_UER_20180924_CS
+		SDSFEATURENAME : UPPER EAST RIVER
+		SOURCEPROJECTION : Georgia East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAS/GA_13_UER_20180924_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : GA_10_BRU_20180925_CS
+		SDSFEATURENAME : BRUNSWICK RIVER
+		SOURCEPROJECTION : Georgia East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAS/GA_10_BRU_20180925_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : GA_11_SBR_20180923_CS
+		SDSFEATURENAME : SOUTH BRUNSWICK RIVER
+		SOURCEPROJECTION : Georgia East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAS/GA_11_SBR_20180923_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CH_03_CHU_20180924_AD_03
+		SDSFEATURENAME : CHARLESTON UPPER HARBOR
+		SOURCEPROJECTION : South Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAC/CH_03_CHU_20180924_AD_03.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CH_06_SYR_20180920_CS
+		SDSFEATURENAME : SHIPYARD RIVER CHANNEL
+		SOURCEPROJECTION : South Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAC/CH_06_SYR_20180920_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : SF_11_D11_20180828_CS_SORTED30
+		SDSFEATURENAME : San Francisco Disposal
+		SOURCEPROJECTION : California III
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESPN/SF_11_D11_20180828_CS_SORTED30.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : SF_10_D10_20180917_CS_SORTED15
+		SDSFEATURENAME : San Francisco Disposal
+		SOURCEPROJECTION : California III
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESPN/SF_10_D10_20180917_CS_SORTED15.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : SF_09_SF9_20180917_CS_SORTED10
+		SDSFEATURENAME : San Francisco Disposal
+		SOURCEPROJECTION : California III
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESPN/SF_09_SF9_20180917_CS_SORTED10.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : SF_23_MLH_20180920_CS_SORTED12
+		SDSFEATURENAME : Moss Landing
+		SOURCEPROJECTION : California IV
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESPN/SF_23_MLH_20180920_CS_SORTED12.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : SF_12_SRR_20180924_CS_SORTED10
+		SDSFEATURENAME : San Rafael River
+		SOURCEPROJECTION : California III
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESPN/SF_12_SRR_20180924_CS_SORTED10.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : SF_12_SAF_20180924_CS_SORTED10
+		SDSFEATURENAME : San Rafael ATF
+		SOURCEPROJECTION : California III
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESPN/SF_12_SAF_20180924_CS_SORTED10.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : ME_28_STO_20180920_CS_2018_056
+		SDSFEATURENAME : Stockton Harbor
+		SOURCEPROJECTION : Maine East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAE/ME_28_STO_20180920_CS_2018_056.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : AP_01_ALP_20180724_CS
+		SDSFEATURENAME : Alpena Harbor
+		SOURCEPROJECTION : Michigan Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/AP_01_ALP_20180724_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : GB_01_GRB_20130930_CS
+		SDSFEATURENAME : Green Bay
+		SOURCEPROJECTION : Wisconsin Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/GB_01_GRB_20130930_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CH_01_CVH_20150902_CS
+		SDSFEATURENAME : Charlevoix Harbor
+		SOURCEPROJECTION : Michigan Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/CH_01_CVH_20150902_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CH_01_CVH_20170913_CS
+		SDSFEATURENAME : Charlevoix Harbor
+		SOURCEPROJECTION : Michigan Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/CH_01_CVH_20170913_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CH_01_CVH_20141022_CS
+		SDSFEATURENAME : Charlevoix Harbor
+		SOURCEPROJECTION : Michigan Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/CH_01_CVH_20141022_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CH_01_CVH_20130719_CS
+		SDSFEATURENAME : Charlevoix Harbor
+		SOURCEPROJECTION : Michigan Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/CH_01_CVH_20130719_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CH_01_CVH_20110515_CS
+		SDSFEATURENAME : Charlevoix Harbor
+		SOURCEPROJECTION : Michigan Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/CH_01_CVH_20110515_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TR_01_DET_20150508_CS
+		SDSFEATURENAME : Trenton Channel
+		SOURCEPROJECTION : Michigan South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/TR_01_DET_20150508_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TR_01_DET_20150507_CS
+		SDSFEATURENAME : Trenton Channel
+		SOURCEPROJECTION : Michigan South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/TR_01_DET_20150507_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TR_01_DET_20150506_CS
+		SDSFEATURENAME : Trenton Channel
+		SOURCEPROJECTION : Michigan South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/TR_01_DET_20150506_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TR_01_DET_20150501_CS
+		SDSFEATURENAME : Trenton Channel
+		SOURCEPROJECTION : Michigan South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/TR_01_DET_20150501_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TR_01_DET_20130730_CS
+		SDSFEATURENAME : Trenton Channel
+		SOURCEPROJECTION : Michigan South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/TR_01_DET_20130730_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TR_01_DET_20111026_CS
+		SDSFEATURENAME : Trenton Channel
+		SOURCEPROJECTION : Michigan South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/TR_01_DET_20111026_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TR_01_DET_20180919_CS
+		SDSFEATURENAME : Trenton Channel
+		SOURCEPROJECTION : Michigan South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/TR_01_DET_20180919_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TR_01_DET_20180815_CS
+		SDSFEATURENAME : Trenton Channel
+		SOURCEPROJECTION : Michigan South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/TR_01_DET_20180815_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TR_01_DET_20180814_CS
+		SDSFEATURENAME : Trenton Channel
+		SOURCEPROJECTION : Michigan South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRE/TR_01_DET_20180814_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : SW_12_SWP_20180927_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 12
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_12_SWP_20180927_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_10_SWP_20180927_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 10
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_10_SWP_20180927_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_09_SWP_20180927_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 9
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_09_SWP_20180927_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_08_SWP_20180927_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 8
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_08_SWP_20180927_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_07_SWP_20180927_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 7
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_07_SWP_20180927_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_11_SWP_20180927_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 11
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_11_SWP_20180927_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_06_SWP_20180927_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 6
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_06_SWP_20180927_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : HS_02_RFB_20180921_CS_EX_46_MLLW_78844_28605
+		SDSFEATURENAME : HOUSTON
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/HS_02_RFB_20180921_CS_EX_46_MLLW_78844_28605.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TC_03_INC_20180926_CS_41_MLLW_000_8814
+		SDSFEATURENAME : TEXAS_CITY
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/TC_03_INC_20180926_CS_41_MLLW_000_8814.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : TC_04_ITB_20180926_CS_41_MLLW_8814_9964
+		SDSFEATURENAME : TEXAS_CITY
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/TC_04_ITB_20180926_CS_41_MLLW_8814_9964.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : PH_04_BYC_20180918_CS
+		SDSFEATURENAME : Bayou Casotte
+		SOURCEPROJECTION : Mississippi East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/PH_04_BYC_20180918_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : PH_05_PUS_20180920_CS
+		SDSFEATURENAME : Pascagoula Upper Sound
+		SOURCEPROJECTION : Mississippi East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/PH_05_PUS_20180920_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : BL_01_BLS_20180920_CS
+		SDSFEATURENAME : Bayou La Batre Sound
+		SOURCEPROJECTION : Alabama West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/BL_01_BLS_20180920_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : BL_02_BLB_20180920_CS
+		SDSFEATURENAME : Bayou La Batre Channel
+		SOURCEPROJECTION : Alabama West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/BL_02_BLB_20180920_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : MH_09_CKC_20180924_CS
+		SDSFEATURENAME : Chickasaw Creek
+		SOURCEPROJECTION : Alabama West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/MH_09_CKC_20180924_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : PH_02_PHI_20180926_CS
+		SDSFEATURENAME : Horn Island Pass
+		SOURCEPROJECTION : Mississippi East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/PH_02_PHI_20180926_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P10_20180925_CS_6440_6450
+		SDSFEATURENAME : POOL_10_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Iowa_North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P10_20180925_CS_6440_6450.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P10_20180925_CS_6425_6435
+		SDSFEATURENAME : POOL_10_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Iowa_North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P10_20180925_CS_6425_6435.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P10_20180925_AD_6359_6364
+		SDSFEATURENAME : POOL_10_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Iowa_North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P10_20180925_AD_6359_6364.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180926_BD_6898_6904
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180926_BD_6898_6904.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180926_BD_6898_6904
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180926_BD_6898_6904.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : SW_05_SWP_20180928_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 5
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_05_SWP_20180928_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_04_SWP_20180928_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 4
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_04_SWP_20180928_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : IC_02_TF1_20180923_CS
+		SDSFEATURENAME : Atlantic Intracoastal Waterway - BFTCFR - Section 2 - Tangent F
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/IC_02_TF1_20180923_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : IC_03_T12_20180924_CS
+		SDSFEATURENAME : Atlantic Intracoastal Waterway - BFTCFR - Section 3 - Tangent 12
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/IC_03_T12_20180924_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : IN_04_NRC_20180922_CS
+		SDSFEATURENAME : Coastal Inlets - New River Inlet Crossing
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/IN_04_NRC_20180922_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : IN_04_NRI_20180922_CS
+		SDSFEATURENAME : Coastal Inlets - New River Inlet
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/IN_04_NRI_20180922_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : IN_05_TCC_20180923_CS
+		SDSFEATURENAME : Coastal Inlets - Topsail Creek Crossing
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/IN_05_TCC_20180923_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : IN_07_MAS_20180924_CS
+		SDSFEATURENAME : Coastal Inlets - Masonboro Inlet Borrow Area
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/IN_07_MAS_20180924_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : MC_03_RGA_20180926_CS
+		SDSFEATURENAME : Morehead City Harbor - Cutoff & Range A
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/MC_03_RGA_20180926_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : MN_01_OIB_20180919_CS
+		SDSFEATURENAME : Manteo - Oregon Inlet West Range 1
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/MN_01_OIB_20180919_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : MN_02_OIW_20180924_CS
+		SDSFEATURENAME : Manteo - Oregon Inlet West Range 2-6
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/MN_02_OIW_20180924_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : MN_02_OIW_20180925_CS
+		SDSFEATURENAME : Manteo - Oregon Inlet West Range 2-6
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/MN_02_OIW_20180925_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : MN_04_O17_20180920_CS
+		SDSFEATURENAME : Manteo - Range 17 extension
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/MN_04_O17_20180920_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : MN_10_ABC_20180906_CS
+		SDSFEATURENAME : Manteo - Wanchese Harbor
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/MN_10_ABC_20180906_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : WH_25_ANC_20180925_CS
+		SDSFEATURENAME : Wilmington Harbor - Anchorage Basin
+		SOURCEPROJECTION : North Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAW/WH_25_ANC_20180925_CS.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CL_15_STL_20180924_CS
+		SDSFEATURENAME : STELLA-FISHER BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_15_STL_20180924_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CL_10_PGT_20180924_CS
+		SDSFEATURENAME : PUGET ISLAND BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_10_PGT_20180924_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : SL_01_SS1_20180924_CS
+		SDSFEATURENAME : SIUSLAW RIVER ENTRANCE
+		SOURCEPROJECTION : Oregon South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/SL_01_SS1_20180924_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CL_16_WLK_20180926_AD
+		SDSFEATURENAME : WALKER ISLAND REACH
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_16_WLK_20180926_AD.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CL_12_WST_20180920_CS
+		SDSFEATURENAME : WESTPORT BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_12_WST_20180920_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : SL_03_SS3_20180925_CS
+		SDSFEATURENAME : SPRUCE POINT BEND
+		SOURCEPROJECTION : Oregon South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/SL_03_SS3_20180925_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CB_02_CB2_20180926_CS
+		SDSFEATURENAME : COOS BAY RANGES
+		SOURCEPROJECTION : Oregon South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CB_02_CB2_20180926_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CL_19_UDB_20180927_CS
+		SDSFEATURENAME : UPPER DOBELBOWER BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_19_UDB_20180927_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CL_14_GUL_20180927_PA_O_52_IWD
+		SDSFEATURENAME : GULL ISLAND BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_14_GUL_20180927_PA_O_52_IWD.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CL_06_MLN_20180926_BD_24_25_25_35
+		SDSFEATURENAME : MILLER SANDS
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_06_MLN_20180926_BD_24_25_25_35.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CL_07_PIL_20180926_BD_24_25_25_35
+		SDSFEATURENAME : PILLAR ROCK RANGES
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_07_PIL_20180926_BD_24_25_25_35.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CP_05_TNG_20180926_PA_O_19_IWD
+		SDSFEATURENAME : TONGUE POINT CROSSING IWD Disposal
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CP_05_TNG_20180926_PA_O_19_IWD.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : CP_06_MLN_20180926_PA_W_24_IWD
+		SDSFEATURENAME : MILLER SANDS IWD Disposal
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CP_06_MLN_20180926_PA_W_24_IWD.ZIP
+		FULL.xyz? : No
+		
+		SURVEYJOBIDPK : CP_07_PIL_20180926_PA_OR_27_05_27_50_IWD
+		SDSFEATURENAME : PILLAR ROCK RANGES IWD Disposal
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CP_07_PIL_20180926_PA_OR_27_05_27_50_IWD.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : TM_04_GBB_20180918_CS
+		SDSFEATURENAME : TILLAMOOK BAY
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/TM_04_GBB_20180918_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : UM_01_UM1_20180920_CS
+		SDSFEATURENAME : UMPQUA RIVER ENTRANCE
+		SOURCEPROJECTION : Oregon South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/UM_01_UM1_20180920_CS.ZIP
+		FULL.xyz? : Yes
+		
+		SURVEYJOBIDPK : SW_09_SWP_20181002_CS_FORUM
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 9
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_09_SWP_20181002_CS_FORUM.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_04_SWP_20181001_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 4
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_04_SWP_20181001_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_05_SWP_20181001_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 5
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_05_SWP_20181001_CS.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_08_SWP_20181002_CS_FORUM
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 8
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_08_SWP_20181002_CS_FORUM.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_13_SWP_20181002_CS_FORUM
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 13
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_13_SWP_20181002_CS_FORUM.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_12_SWP_20181002_CS_FORUM
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 12
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_12_SWP_20181002_CS_FORUM.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_11_SWP_20181002_CS_FORUM
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 11
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_11_SWP_20181002_CS_FORUM.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_10_SWP_20181002_CS_FORUM
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 10
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_10_SWP_20181002_CS_FORUM.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_07_SWP_20181002_CS_FORUM
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 7
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_07_SWP_20181002_CS_FORUM.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_06_SWP_20181002_CS_FORUM
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 6
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_06_SWP_20181002_CS_FORUM.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_05_SWP_20181001_CS_FORUM
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 5
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_05_SWP_20181001_CS_FORUM.ZIP
+		FULL.xyz? : Ovrd
+		
+		SURVEYJOBIDPK : SW_04_SWP_20181001_CS_FORUM
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 4
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_04_SWP_20181001_CS_FORUM.ZIP
+		FULL.xyz? : Ovrd
+		
+	Adding results to eHydo_csv.txt
+2018-10-04 10:31:50: Program Finished, Log Closed
+
+2018-10-04 10:45:33: Program Initiated, Log Opened
+	Surveys queried from eHydro
+	eHydo_csv.txt opened for reading
+	Comparing query results to eHydo_csv.txt
+	Parsing new entries for resolution:
+		SURVEYJOBIDPK : RD_01_RDI_20180905_CS
+		SDSFEATURENAME : RUDEE INLET
+		SOURCEPROJECTION : Virginia South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAO/RD_01_RDI_20180905_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_19941129_CS_1994_349_01
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_19941129_CS_1994_349_01.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_19941129_CS_1994_349_02
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_19941129_CS_1994_349_02.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_19941129_CS_1994_349_FULL_SURVEY_MAP
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_19941129_CS_1994_349_FULL_SURVEY_MAP.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_01
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_01.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_02
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_02.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_03
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_03.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_04
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_04.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_05
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_05.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_06
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_06.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_07
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_07.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_08
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_08.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_09
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_09.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_10
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_10.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_11
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_11.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_12
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_12.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_13
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_13.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_14
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_14.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_15
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_15.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_16
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_16.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_17
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_17.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_18
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_18.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100826_CS_2010_050_19
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100826_CS_2010_050_19.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100827_CS_2010_050_01
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100827_CS_2010_050_01.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100827_CS_2010_050_02
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100827_CS_2010_050_02.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100827_CS_2010_050_03
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100827_CS_2010_050_03.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100827_CS_2010_050_04
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100827_CS_2010_050_04.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100827_CS_2010_050_05
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100827_CS_2010_050_05.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100827_CS_2010_050_06
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100827_CS_2010_050_06.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100827_CS_2010_050_07
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100827_CS_2010_050_07.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100827_CS_2010_050_08
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100827_CS_2010_050_08.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MR_01_MAN_20100827_CS_2010_050_FULL_SURVEY_MAP
+		SDSFEATURENAME : MANATEE RIVER
+		SOURCEPROJECTION : Florida West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAJ/MR_01_MAN_20100827_CS_2010_050_FULL_SURVEY_MAP.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : CD_01_POI_20180808_CS
+		SDSFEATURENAME : Worton Point to South End of Pooles Island
+		SOURCEPROJECTION : Maryland
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAP/CD_01_POI_20180808_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MH_04_MRC_20180829_CS
+		SDSFEATURENAME : Mobile River Channel
+		SOURCEPROJECTION : Alabama West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/MH_04_MRC_20180829_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : WJ_03_WFR_20180828_CS
+		SDSFEATURENAME : Wolf River
+		SOURCEPROJECTION : Mississippi East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/WJ_03_WFR_20180828_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : PA_01_PAC_20180829_CS
+		SDSFEATURENAME : Pass Christian
+		SOURCEPROJECTION : Mississippi East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/PA_01_PAC_20180829_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : WJ_02_JDR_20180828_CS
+		SDSFEATURENAME : Jourdan River
+		SOURCEPROJECTION : Mississippi East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/WJ_02_JDR_20180828_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : WJ_01_BYP_20180828_CS
+		SDSFEATURENAME : Bayou Portage
+		SOURCEPROJECTION : Mississippi East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/WJ_01_BYP_20180828_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : LA_01_CLQ_20180906_CS_47_MLLW
+		SDSFEATURENAME : LA QUINTA
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/LA_01_CLQ_20180906_CS_47_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : LA_02_LTB_20180906_CS_47_MLLW
+		SDSFEATURENAME : LA QUINTA
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/LA_02_LTB_20180906_CS_47_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : LA_03_LEX_20180907_CS_47_MLLW
+		SDSFEATURENAME : LA QUINTA
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/LA_03_LEX_20180907_CS_47_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SL_GTC_20180905_BD
+		SDSFEATURENAME : GRAND_TOWER_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Missouri_East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVS/UM_SL_GTC_20180905_BD.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MS_11_SM3_20180907_CS
+		SDSFEATURENAME : SMITHLAND - SHEET 3
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MS_11_SM3_20180907_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : GI_67_BBW_20180808_CS
+		SDSFEATURENAME : 20 GRAND POINT
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/GI_67_BBW_20180808_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : GI_66_BBW_20180807_CS
+		SDSFEATURENAME : MORGAN CITY DOCKS EAST
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/GI_66_BBW_20180807_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : FB_06_UPR_20180809_CS
+		SDSFEATURENAME : UPPER CHANNEL
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/FB_06_UPR_20180809_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : FB_05_UPR_20180809_CS
+		SDSFEATURENAME : UPPER CHANNEL
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/FB_05_UPR_20180809_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : FB_04_UPR_20180809_CS
+		SDSFEATURENAME : UPPER CHANNEL
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/FB_04_UPR_20180809_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : FB_03_UPR_20180809_CS
+		SDSFEATURENAME : UPPER CHANNEL
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/FB_03_UPR_20180809_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : FB_02_UPR_20180809_CS
+		SDSFEATURENAME : UPPER CHANNEL
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/FB_02_UPR_20180809_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : FB_01_UPR_20180809_CS
+		SDSFEATURENAME : UPPER CHANNEL
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/FB_01_UPR_20180809_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : GI_76_WLO_20180809_CS
+		SDSFEATURENAME : WAX LAKE OUTLET
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/GI_76_WLO_20180809_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : GI_75_WLO_20180809_CS
+		SDSFEATURENAME : WAX LAKE OUTLET
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/GI_75_WLO_20180809_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : GI_69_M99_20180809_CS
+		SDSFEATURENAME : MILE 99 POINT
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/GI_69_M99_20180809_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : LK_04_PAL_20180810_CS
+		SDSFEATURENAME : PORT ALLEN LOCK FOREBAY
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/LK_04_PAL_20180810_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MS_39_WIL_20180813_AD
+		SDSFEATURENAME : WILKERSON POINT
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MS_39_WIL_20180813_AD.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_08_MED_20180810_CS
+		SDSFEATURENAME : MEDORA RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_08_MED_20180810_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : BH_01_DEV_20180813_CS
+		SDSFEATURENAME : BATON ROUGE HARBOR
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/BH_01_DEV_20180813_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_04_RED_20180810_CS
+		SDSFEATURENAME : REDEYE CROSSING
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_04_RED_20180810_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_01_BRF_20180810_CS
+		SDSFEATURENAME : BATON ROUGE FRONT RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_01_BRF_20180810_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_22_SMB_20180815_CS
+		SDSFEATURENAME : SMOKE BEND RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_22_SMB_20180815_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_19_PHP_20180815_CS
+		SDSFEATURENAME : PHILADELPHIA POINT RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_19_PHP_20180815_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_16_ALH_20180815_CS
+		SDSFEATURENAME : ALHAMBRA RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_16_ALH_20180815_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_06_SDP_20180814_CS
+		SDSFEATURENAME : SARDINE POINT RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_06_SDP_20180814_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_01_BRF_20180814_CS
+		SDSFEATURENAME : BATON ROUGE FRONT RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_01_BRF_20180814_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : OR_04_3R2_20180817_AD
+		SDSFEATURENAME : THREE RIVERS 2
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/OR_04_3R2_20180817_AD.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : OR_03_3R1_20180817_AD
+		SDSFEATURENAME : THREE RIVERS 1
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/OR_03_3R1_20180817_AD.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : AS_09_STP_20180816_AD
+		SDSFEATURENAME : STOUTS PASS
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/AS_09_STP_20180816_AD.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : AS_08_STP_20180816_AD
+		SDSFEATURENAME : STOUTS PASS
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/AS_08_STP_20180816_AD.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : AS_10_S2M_20180816_AD
+		SDSFEATURENAME : STOUTS PASS TO MYETTE PT
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/AS_10_S2M_20180816_AD.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : LK_02_IHNX_20180815_CS
+		SDSFEATURENAME : I.H.N.C. LOCK FOREBAY
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/LK_02_IHNX_20180815_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : LK_03_HVYX_20180815_CS
+		SDSFEATURENAME : HARVEY LOCK FOREBAY
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/LK_03_HVYX_20180815_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_48_FRV_20180823_CS
+		SDSFEATURENAME : FAIRVIEW RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_48_FRV_20180823_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_29_RIB_20180821_CS
+		SDSFEATURENAME : RICH BEND RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_29_RIB_20180821_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_13_GOU_20180821_CS
+		SDSFEATURENAME : BAYOU GOULA RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_13_GOU_20180821_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_10_GRA_20180821_CS
+		SDSFEATURENAME : GRANADA RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_10_GRA_20180821_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_08_MED_20180821_CS
+		SDSFEATURENAME : MEDORA RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_08_MED_20180821_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : LK_01_ALGX_20180815_CS
+		SDSFEATURENAME : ALGIERS LOCK FOREBAY
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/LK_01_ALGX_20180815_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : OV_02_BAP_20180814_CS_JETTYEXT
+		SDSFEATURENAME : BAPTSTE COLLETTE, MI. 4.0 TO 7.8
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/OV_02_BAP_20180814_CS_JETTYEXT.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : OV_03_BAP_20180814_CS_JETTYEXT
+		SDSFEATURENAME : BAPTSTE COLLETTE, MI. 7.8 TO 11.0
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/OV_03_BAP_20180814_CS_JETTYEXT.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : CL_16_WLK_20180906_CS
+		SDSFEATURENAME : WALKER ISLAND REACH
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_16_WLK_20180906_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : LF_02_LWR_20180822_CS
+		SDSFEATURENAME : WEST BELLE PASS
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/LF_02_LWR_20180822_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : LF_01_BAR_20180822_CS
+		SDSFEATURENAME : BAR CHANNEL
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/LF_01_BAR_20180822_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : CM_11_CBY_20180905_OT_FINGER_DOCKS
+		SDSFEATURENAME : CATHLAMET BAY
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CM_11_CBY_20180905_OT_FINGER_DOCKS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : LF_03_LWR_20180822_CS
+		SDSFEATURENAME : WEST BELLE PASS
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/LF_03_LWR_20180822_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : YB_01_YB1_20180906_CS
+		SDSFEATURENAME : YAQUINA BAY AND HARBOR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/YB_01_YB1_20180906_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : MP_17_BSO_20180823_CS
+		SDSFEATURENAME : MORGAN CITY TO PORT ALLEN ROUTE
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MP_17_BSO_20180823_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MP_16_BSO_20180823_CS
+		SDSFEATURENAME : MORGAN CITY TO PORT ALLEN ROUTE
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MP_16_BSO_20180823_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : CB_01_CB1_20180907_CS
+		SDSFEATURENAME : COOS BAY ENTRANCE
+		SOURCEPROJECTION : Oregon South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CB_01_CB1_20180907_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : MP_15_BSO_20180823_CS
+		SDSFEATURENAME : MORGAN CITY TO PORT ALLEN ROUTE
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MP_15_BSO_20180823_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_22_SMB_20180829_CS
+		SDSFEATURENAME : SMOKE BEND RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_22_SMB_20180829_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : CL_17_SLG_20180907_CS
+		SDSFEATURENAME : SLAUGHTERS BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_17_SLG_20180907_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : MR_19_PHP_20180829_CS
+		SDSFEATURENAME : PHILADELPHIA POINT RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_19_PHP_20180829_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : CM_09_SKP_20180904_CS
+		SDSFEATURENAME : SKIPANON CHANNEL
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CM_09_SKP_20180904_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : MR_16_ALH_20180829_CS
+		SDSFEATURENAME : ALHAMBRA RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_16_ALH_20180829_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_10_GRA_20180830_CS
+		SDSFEATURENAME : GRANADA RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_10_GRA_20180830_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : CL_20_KLM_20180908_CS
+		SDSFEATURENAME : KALAMA BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_20_KLM_20180908_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : MR_08_MED_20180830_CS
+		SDSFEATURENAME : MEDORA RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_08_MED_20180830_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_06_SDP_20180830_CS
+		SDSFEATURENAME : SARDINE POINT RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_06_SDP_20180830_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : CQ_01_CQ1_20180908_CS
+		SDSFEATURENAME : COQUILLE RIVER
+		SOURCEPROJECTION : Oregon South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CQ_01_CQ1_20180908_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : MR_13_GOU_20180830_CS
+		SDSFEATURENAME : BAYOU GOULA RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_13_GOU_20180830_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MS_10_SM2_20180905_CS
+		SDSFEATURENAME : SMITHLAND - SHEET 2
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MS_10_SM2_20180905_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MS_09_SM1_20180905_CS
+		SDSFEATURENAME : SMITHLAND - SHEET 1
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MS_09_SM1_20180905_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MS_08_FAR_20180906_CS
+		SDSFEATURENAME : FORT ADAMS REACH
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MS_08_FAR_20180906_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MS_07_OLD_20180906_CS
+		SDSFEATURENAME : OLD RIVER CONTROL
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MS_07_OLD_20180906_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_30_BEL_20180906_CS
+		SDSFEATURENAME : BELMONT RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_30_BEL_20180906_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MR_29_RIB_20180906_CS
+		SDSFEATURENAME : RICH BEND RECON
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/MR_29_RIB_20180906_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : MN_SP_MN1_20180907_CS_0005_0015
+		SDSFEATURENAME : POOL_MN1_MINNESOTA_RIVER
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/MN_SP_MN1_20180907_CS_0005_0015.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MN_SP_MN1_20180907_CS_0005_0015
+		SDSFEATURENAME : POOL_MN1_MINNESOTA_RIVER
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/MN_SP_MN1_20180907_CS_0005_0015.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MN_SP_MN1_20180908_AD_0117_0126
+		SDSFEATURENAME : POOL_MN1_MINNESOTA_RIVER
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/MN_SP_MN1_20180908_AD_0117_0126.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MN_SP_MN1_20180908_AD_0117_0126
+		SDSFEATURENAME : POOL_MN1_MINNESOTA_RIVER
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/MN_SP_MN1_20180908_AD_0117_0126.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : CL_11_WAN_20180910_CS
+		SDSFEATURENAME : WAUNA & DRISCOLL RANGES
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_11_WAN_20180910_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : BP_01_FLA_20180907_CS_46_MLLW
+		SDSFEATURENAME : BAYPORT
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/BP_01_FLA_20180907_CS_46_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : BP_02_ENT_20180907_CS_46_MLLW
+		SDSFEATURENAME : BAYPORT
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/BP_02_ENT_20180907_CS_46_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : BP_03_TRB_20180907_CS_46_MLLW
+		SDSFEATURENAME : BAYPORT
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/BP_03_TRB_20180907_CS_46_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : BR_04_JCP_20180713_CS_EX_03_42_MLLW
+		SDSFEATURENAME : BRAZOS ISLAND HARBOR
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/BR_04_JCP_20180713_CS_EX_03_42_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : BR_05_BGI_20180714_CS_EX_03_C_42_MLLW
+		SDSFEATURENAME : BRAZOS ISLAND HARBOR
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/BR_05_BGI_20180714_CS_EX_03_C_42_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : BR_06_GBT_20180714_CS_EX_03_42_MLLW
+		SDSFEATURENAME : BRAZOS ISLAND HARBOR
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/BR_06_GBT_20180714_CS_EX_03_42_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : BR_07_BTE_20180714_CS_EX_03_42_MLLW
+		SDSFEATURENAME : BRAZOS ISLAND HARBOR
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/BR_07_BTE_20180714_CS_EX_03_42_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : BR_08_BTB_20180714_CS_EX_03_42_MLLW
+		SDSFEATURENAME : BRAZOS ISLAND HARBOR
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/BR_08_BTB_20180714_CS_EX_03_42_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : SW_05_SWP_20180910_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 5
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_05_SWP_20180910_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_04_SWP_20180910_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 4
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_04_SWP_20180910_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : CL_13_EUR_20180910_CS
+		SDSFEATURENAME : EUREKA BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_13_EUR_20180910_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : ME_53_CAT_20110810_CS_20
+		SDSFEATURENAME : Cathance River
+		SOURCEPROJECTION : Maine West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAE/ME_53_CAT_20110810_CS_20.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : CL_26_WLW_20180910_CS
+		SDSFEATURENAME : WILLOW BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_26_WLW_20180910_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : SW_06_SWP_20180911_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 6
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_06_SWP_20180911_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_12_SWP_20180911_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 12
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_12_SWP_20180911_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_11_SWP_20180911_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 11
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_11_SWP_20180911_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_10_SWP_20180911_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 10
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_10_SWP_20180911_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_09_SWP_20180911_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 9
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_09_SWP_20180911_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_07_SWP_20180911_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 7
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_07_SWP_20180911_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_08_SWP_20180911_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 8
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_08_SWP_20180911_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : CL_18_LDB_20180911_CS
+		SDSFEATURENAME : LOWER DOBELBOWER BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_18_LDB_20180911_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : UM_SP_P06_20180911_BD_7228_7238
+		SDSFEATURENAME : POOL_06_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P06_20180911_BD_7228_7238.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P06_20180911_BD_7228_7238
+		SDSFEATURENAME : POOL_06_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P06_20180911_BD_7228_7238.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180911_CS_7550_7560
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180911_CS_7550_7560.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180911_CS_7550_7560
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180911_CS_7550_7560.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180910_BD_7585_7595
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180910_BD_7585_7595.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180910_BD_7585_7595
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180910_BD_7585_7595.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : CL_29_VTB_20180911_CS
+		SDSFEATURENAME : VANCOUVER TURNING BASIN
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_29_VTB_20180911_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180910_CS_7620_7630
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180910_CS_7620_7630.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180910_CS_7620_7630
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180910_CS_7620_7630.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : SP_02_OBK_20180905_BD_08_42_MLLW
+		SDSFEATURENAME : SABINE
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/SP_02_OBK_20180905_BD_08_42_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : SP_02_OBK_20180905_BD_09_42_MLLW
+		SDSFEATURENAME : SABINE
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/SP_02_OBK_20180905_BD_09_42_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : SP_02_OBK_20180905_BD_10_42_MLLW
+		SDSFEATURENAME : SABINE
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/SP_02_OBK_20180905_BD_10_42_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : SP_03_OBR_20180905_AD_03_42_MLLW
+		SDSFEATURENAME : SABINE
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/SP_03_OBR_20180905_AD_03_42_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : SP_03_OBR_20180910_AD_04_42_MLLW_RE
+		SDSFEATURENAME : SABINE
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/SP_03_OBR_20180910_AD_04_42_MLLW_RE.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : CL_09_SKM_20180912_CS
+		SDSFEATURENAME : SKAMOKAWA BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_09_SKM_20180912_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : YB_03_YB3_20180910_CS
+		SDSFEATURENAME : THE MUD FLATS
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/YB_03_YB3_20180910_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : ME_37_OWL_20101116_CS_20
+		SDSFEATURENAME : Owls Head Harbor
+		SOURCEPROJECTION : Maine East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAE/ME_37_OWL_20101116_CS_20.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180912_CS_6930_6940
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180912_CS_6930_6940.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180912_CS_6930_6940
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180912_CS_6930_6940.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180912_CS_6920_6930
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180912_CS_6920_6930.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180912_CS_6920_6930
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180912_CS_6920_6930.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180912_CS_6910_6920
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180912_CS_6910_6920.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180912_CS_6910_6920
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180912_CS_6910_6920.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180912_CS_6900_6910
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180912_CS_6900_6910.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180912_CS_6900_6910
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180912_CS_6900_6910.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180912_CS_6890_6900
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180912_CS_6890_6900.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180912_CS_6890_6900
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180912_CS_6890_6900.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180912_CS_6880_6890
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180912_CS_6880_6890.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180912_CS_6880_6890
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180912_CS_6880_6890.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : BR_01_ENT_20180716_CS_EX_04_44_MLLW
+		SDSFEATURENAME : BRAZOS ISLAND HARBOR
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/BR_01_ENT_20180716_CS_EX_04_44_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : BR_02_JEC_20180716_CS_EX_04_44_MLLW
+		SDSFEATURENAME : BRAZOS ISLAND HARBOR
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/BR_02_JEC_20180716_CS_EX_04_44_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : BR_03_CLM_20180912_CS_EX_05_42_MLLW
+		SDSFEATURENAME : BRAZOS ISLAND HARBOR
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/BR_03_CLM_20180912_CS_EX_05_42_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : CL_23_STH_20180912_CS
+		SDSFEATURENAME : ST. HELENS BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_23_STH_20180912_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : CL_24_WAR_20180912_CS
+		SDSFEATURENAME : WARRIOR ROCK BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_24_WAR_20180912_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : CP_09_SKM_20180821_PA_O_34_IWD
+		SDSFEATURENAME : SKAMOKAWA BAR IWD Disposal
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CP_09_SKM_20180821_PA_O_34_IWD.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : GI_16_NBB_20180816_CS_14_MLLW
+		SDSFEATURENAME : GULF INTRACOASTAL WATERWAY
+		SOURCEPROJECTION : Texas South Central
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/GI_16_NBB_20180816_CS_14_MLLW.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : CL_28_VBR_20180912_CS
+		SDSFEATURENAME : LOWER VANCOUVER BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_28_VBR_20180912_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : GA_01_SAV_20180912_CS
+		SDSFEATURENAME : SAVANNAH HARBOR
+		SOURCEPROJECTION : Georgia East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAS/GA_01_SAV_20180912_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : CL_10_PGT_20180913_CS
+		SDSFEATURENAME : PUGET ISLAND BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_10_PGT_20180913_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : CL_25_HEN_20180913_CS
+		SDSFEATURENAME : HENRICI BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_25_HEN_20180913_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : CL_27_MGN_20180913_CS
+		SDSFEATURENAME : MORGAN BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_27_MGN_20180913_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : SW_09_SWP_20180913_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 9
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_09_SWP_20180913_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_05_SWP_20180912_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 5
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_05_SWP_20180912_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_04_SWP_20180912_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 4
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_04_SWP_20180912_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_12_SWP_20180913_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 12
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_12_SWP_20180913_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SL_02_SS2_20180912_CS
+		SDSFEATURENAME : CANNERY HILL REACH
+		SOURCEPROJECTION : Oregon South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/SL_02_SS2_20180912_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : SW_11_SWP_20180913_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 11
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_11_SWP_20180913_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SL_04_SS4_20180913_CS
+		SDSFEATURENAME : FLORENCE
+		SOURCEPROJECTION : Oregon South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/SL_04_SS4_20180913_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : SW_10_SWP_20180913_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 10
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_10_SWP_20180913_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_07_SWP_20180913_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 7
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_07_SWP_20180913_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_06_SWP_20180913_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 6
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_06_SWP_20180913_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_08_SWP_20180913_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 8
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_08_SWP_20180913_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_05_SWP_20180914_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 5
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_05_SWP_20180914_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_04_SWP_20180914_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 4
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_04_SWP_20180914_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : UM_SP_P10_20180914_BD_6179_6192
+		SDSFEATURENAME : POOL_10_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Iowa_North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P10_20180914_BD_6179_6192.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180913_CS_6870_6880
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180913_CS_6870_6880.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180913_CS_6870_6880
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180913_CS_6870_6880.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180913_CS_6860_6870
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180913_CS_6860_6870.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P08_20180913_CS_6860_6870
+		SDSFEATURENAME : POOL_08_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P08_20180913_CS_6860_6870.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180911_CS_7570_7580
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180911_CS_7570_7580.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180911_CS_7570_7580
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180911_CS_7570_7580.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180911_CS_7560_7570
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180911_CS_7560_7570.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180911_CS_7560_7570
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180911_CS_7560_7570.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : CH_03_CHU_20180910_BD_02
+		SDSFEATURENAME : CHARLESTON UPPER HARBOR
+		SOURCEPROJECTION : South Carolina
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAC/CH_03_CHU_20180910_BD_02.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : OH_LD_SMT_20180426_OT_PRS_846_879_SORT
+		SDSFEATURENAME : SMITHLAND_POOL_OHIO_RIVER
+		SOURCEPROJECTION : Kentucky South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRL/OH_LD_SMT_20180426_OT_PRS_846_879_SORT.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : OH_LD_SMT_20180426_OT_PRS_878_918_SORT
+		SDSFEATURENAME : SMITHLAND_POOL_OHIO_RIVER
+		SOURCEPROJECTION : Kentucky South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CELRL/OH_LD_SMT_20180426_OT_PRS_878_918_SORT.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_16_MVR_20180830_CS_46884698_18B
+		SDSFEATURENAME : Upper Mississippi River Pool 16
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/UM_16_MVR_20180830_CS_46884698_18B.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : IL_SR_MVR_20180829_CS_24402444_18A
+		SDSFEATURENAME : IL Waterway Starved Rock Pool
+		SOURCEPROJECTION : Illinois East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/IL_SR_MVR_20180829_CS_24402444_18A.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : IL_PE_MVR_20180828_CS_22702275_18A
+		SDSFEATURENAME : IL Waterway Peoria Pool
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/IL_PE_MVR_20180828_CS_22702275_18A.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : IL_SR_MVR_20180905_CS_24132417_18B
+		SDSFEATURENAME : IL Waterway Starved Rock Pool
+		SOURCEPROJECTION : Illinois East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/IL_SR_MVR_20180905_CS_24132417_18B.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : IL_PE_MVR_20180827_CS_22752285_18B
+		SDSFEATURENAME : IL Waterway Peoria Pool
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/IL_PE_MVR_20180827_CS_22752285_18B.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_16_MVR_20180906_CS_48224830_18B
+		SDSFEATURENAME : Upper Mississippi River Pool 16
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/UM_16_MVR_20180906_CS_48224830_18B.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_14_MVR_20180905_CS_51535168_18A
+		SDSFEATURENAME : Upper Mississippi River Pool 14
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/UM_14_MVR_20180905_CS_51535168_18A.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_14_MVR_20180905_CS_50905100_18B
+		SDSFEATURENAME : Upper Mississippi River Pool 14
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/UM_14_MVR_20180905_CS_50905100_18B.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_14_MVR_20180830_CS_50305046_18A
+		SDSFEATURENAME : Upper Mississippi River Pool 14
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/UM_14_MVR_20180830_CS_50305046_18A.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_13_MVR_20180904_CS_53205326_18A
+		SDSFEATURENAME : Upper Mississippi River Pool 13
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/UM_13_MVR_20180904_CS_53205326_18A.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : IL_MA_MVR_20180821_CS_27072713_18A
+		SDSFEATURENAME : IL Waterway Marseilles Pool
+		SOURCEPROJECTION : Illinois East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/IL_MA_MVR_20180821_CS_27072713_18A.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : IL_LA_MVR_20180913_CS_13701383_18A
+		SDSFEATURENAME : IL Waterway La Grange Pool
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/IL_LA_MVR_20180913_CS_13701383_18A.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : IL_LA_MVR_20180911_CS_08650875_18D
+		SDSFEATURENAME : IL Waterway La Grange Pool
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/IL_LA_MVR_20180911_CS_08650875_18D.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_22_MVR_20180815_CS_30503068_18B
+		SDSFEATURENAME : Upper Mississippi River Pool 22
+		SOURCEPROJECTION : Illinois West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVR/UM_22_MVR_20180815_CS_30503068_18B.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : CM_01_BB1_20180913_BD_AA2_1_17TO1_29
+		SDSFEATURENAME : BAKER BAY WEST CHANNEL
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CM_01_BB1_20180913_BD_AA2_1_17TO1_29.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : CL_07_PIL_20180917_CS
+		SDSFEATURENAME : PILLAR ROCK RANGES
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_07_PIL_20180917_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : CT_11_CRB_20180807_CS_2018_034
+		SDSFEATURENAME : Eight Mile River
+		SOURCEPROJECTION : Connecticut
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENAE/CT_11_CRB_20180807_CS_2018_034.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : UM_SP_P05_20180917_CS_7480_7490
+		SDSFEATURENAME : POOL_05_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P05_20180917_CS_7480_7490.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P05_20180917_CS_7480_7490
+		SDSFEATURENAME : POOL_05_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P05_20180917_CS_7480_7490.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P05_20180917_CS_7470_7480
+		SDSFEATURENAME : POOL_05_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P05_20180917_CS_7470_7480.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P05_20180917_CS_7470_7480
+		SDSFEATURENAME : POOL_05_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P05_20180917_CS_7470_7480.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P05_20180917_CS_7460_7470
+		SDSFEATURENAME : POOL_05_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P05_20180917_CS_7460_7470.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P05_20180917_CS_7460_7470
+		SDSFEATURENAME : POOL_05_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P05_20180917_CS_7460_7470.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180918_BD_7559_7569
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180918_BD_7559_7569.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P04_20180918_BD_7559_7569
+		SDSFEATURENAME : POOL_04_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Minnesota_South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P04_20180918_BD_7559_7569.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : UM_SP_P10_20180918_AD_6153_6157
+		SDSFEATURENAME : POOL_10_UPPER_MISSISSIPPI
+		SOURCEPROJECTION : Iowa_North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVP/UM_SP_P10_20180918_AD_6153_6157.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : SW_04_SWP_20180917_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 4
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_04_SWP_20180917_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_05_SWP_20180917_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 5
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_05_SWP_20180917_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_12_SWP_20180918_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 12
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_12_SWP_20180918_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_11_SWP_20180918_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 11
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_11_SWP_20180918_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_09_SWP_20180918_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 9
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_09_SWP_20180918_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_08_SWP_20180918_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 8
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_08_SWP_20180918_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_07_SWP_20180918_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 7
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_07_SWP_20180918_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_06_SWP_20180918_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 6
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_06_SWP_20180918_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_10_SWP_20180918_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 10
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_10_SWP_20180918_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : CL_21_LMT_20180917_CS
+		SDSFEATURENAME : LOWER MARTIN BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_21_LMT_20180917_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : CM_09_SKP_20180917_CS
+		SDSFEATURENAME : SKIPANON CHANNEL
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CM_09_SKP_20180917_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : CL_06_MLN_20180918_CS
+		SDSFEATURENAME : MILLER SANDS
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_06_MLN_20180918_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : CL_22_UMT_20180918_CS
+		SDSFEATURENAME : UPPER MARTIN BAR
+		SOURCEPROJECTION : Oregon North
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CL_22_UMT_20180918_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : UM_02_UM2_20180917_CS
+		SDSFEATURENAME : SALMON HARBOR REACH
+		SOURCEPROJECTION : Oregon South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/UM_02_UM2_20180917_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : GH_04_GSB_20180829_CS
+		SDSFEATURENAME : Gulfport Small Craft Harbor
+		SOURCEPROJECTION : Mississippi East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/GH_04_GSB_20180829_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : CB_01_CAB_20180827_CS
+		SDSFEATURENAME : Cadet Bayou
+		SOURCEPROJECTION : Mississippi East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/CB_01_CAB_20180827_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : DI_01_DFG_20180912_CS
+		SDSFEATURENAME : Fort Gaines
+		SOURCEPROJECTION : Alabama West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/DI_01_DFG_20180912_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : PH_03_PLS_20180913_CS
+		SDSFEATURENAME : Pascagoula Lower Sound
+		SOURCEPROJECTION : Mississippi East
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/PH_03_PLS_20180913_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : DI_02_DPD_20180912_CS
+		SDSFEATURENAME : Pass Drury
+		SOURCEPROJECTION : Alabama West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/DI_02_DPD_20180912_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : MH_01_MBC_20180911_CS
+		SDSFEATURENAME : Mobile Bar Channel
+		SOURCEPROJECTION : Alabama West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/MH_01_MBC_20180911_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : DI_03_DVC_20180913_CS
+		SDSFEATURENAME : Village Channel
+		SOURCEPROJECTION : Alabama West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/DI_03_DVC_20180913_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : PP_01_PPC_20180917_CS
+		SDSFEATURENAME : Perdido Pass Channel
+		SOURCEPROJECTION : Alabama West
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESAM/PP_01_PPC_20180917_CS.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : PM_5A_NET_20180914_CS_15_LWD
+		SDSFEATURENAME : PORT_MANSFIELD
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/PM_5A_NET_20180914_CS_15_LWD.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : PM_05_STG_20180914_CS_15_LWD
+		SDSFEATURENAME : PORT_MANSFIELD
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/PM_05_STG_20180914_CS_15_LWD.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : PM_04_TTS_20180914_CS_15_LWD
+		SDSFEATURENAME : PORT_MANSFIELD
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/PM_04_TTS_20180914_CS_15_LWD.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : PM_03_OTT_20180914_CS_15_LWD
+		SDSFEATURENAME : PORT_MANSFIELD
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/PM_03_OTT_20180914_CS_15_LWD.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : PM_02_ZTO_20180914_CS_15_LWD
+		SDSFEATURENAME : PORT_MANSFIELD
+		SOURCEPROJECTION : Texas South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CESWG/PM_02_ZTO_20180914_CS_15_LWD.ZIP
+		Hi-Res? : No
+		
+		SURVEYJOBIDPK : CQ_02_BBB_20180918_CS
+		SDSFEATURENAME : BANDON BOAT BASIN
+		SOURCEPROJECTION : Oregon South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CENWP/CQ_02_BBB_20180918_CS.ZIP
+		Hi-Res? : Yes
+		
+		SURVEYJOBIDPK : SW_04_SWP_20180919_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 4
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_04_SWP_20180919_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_05_SWP_20180919_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 5
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_05_SWP_20180919_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_03_SWP_20180919_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 3
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_03_SWP_20180919_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_02_SWP_20180919_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 2
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_02_SWP_20180919_CS.ZIP
+		Hi-Res? : Ovrd
+		
+		SURVEYJOBIDPK : SW_01_SWP_20180919_CS
+		SDSFEATURENAME : SOUTHWEST PASS - SHEET 1
+		SOURCEPROJECTION : Louisiana South
+		SOURCEDATALOCATION : https://ehydro.blob.core.windows.net/ehydro-surveys/CEMVN/SW_01_SWP_20180919_CS.ZIP
+		Hi-Res? : Ovrd
+		
+	Adding results to eHydo_csv.txt
+2018-10-04 11:01:15: Program Finished, Log Closed
