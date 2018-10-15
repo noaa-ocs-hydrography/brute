@@ -26,7 +26,7 @@ fullalt = re.compile(r'_A.xyz', re.IGNORECASE)
 config = configparser.ConfigParser()
 config.read('config.ini')
 txtName = 'eHydro_txt.txt'
-txtLocation = os.path.join(progLoc, txtName)
+txtLocation = os.path.join(progLoc, txtName)   
 csvName = 'eHydro_csv.txt'
 csvLocation = os.path.join(progLoc, csvName)
 logName = 'eHydro_log.txt'
@@ -306,6 +306,9 @@ def csvOpen():
     Populates a list 'csvFile' with it's contents. Returns list and
     closes file
     '''
+    if not os.path.exists(csvLocation):
+        create = open(csvLocation, 'w')
+        create.close()
     fileOpened = open(csvLocation, 'r', newline='\n')
     opened = csv.reader(fileOpened, delimiter = ',')
     csvFile = []
