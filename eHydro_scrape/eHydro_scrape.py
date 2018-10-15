@@ -91,7 +91,7 @@ def query():
                     i += 1
             areas += ')%20'
         else:
-            areas = ('%20AND%20UPPER(SURVEYAGENCY)%20like%20%27%25'
+            areas = ('UPPER(SURVEYAGENCY)%20like%20%27%25'
                      + agencies[0]
                      + '%25%27')
     else:
@@ -124,13 +124,11 @@ def query():
     
     # Response for number of surveys used as a json object
     surveyNumJSON = surveyNumRequest.json()
-    print (surveyNumJSON)
     newSurveysNum = int(surveyNumJSON['count'])
     
     # Response for survey Object IDs as a json object
     surveyIDsJSON = surveyIDsRequest.json()
     surveyIDs = surveyIDsJSON['objectIds']
-    print (surveyIDs, newSurveysNum)
     
     return (surveyIDs, newSurveysNum)
 
