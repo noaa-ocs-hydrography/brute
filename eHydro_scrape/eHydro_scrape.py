@@ -8,12 +8,12 @@ Created on Tue Oct  2 13:44:14 2018
 import os
 import re
 import csv
-import json
-import requests
+#import json
+import socket
 import urllib
 import zipfile
 import datetime
-import socket
+import requests
 import configparser
 
 '''Known global constants'''
@@ -77,7 +77,7 @@ def query():
         
         if len(agencies) > 1:
             i = 0
-            areas += '%20AND%20%20('
+            areas += '('
             while i < len(agencies):
                 if i == 0:
                     areas += ('UPPER(SURVEYAGENCY)%20like%20%27%25'
@@ -99,13 +99,19 @@ def query():
         
     # The main query parameters that will determine the contents of the response    
     # Survey Date Uploaded
-    if config ['Timeframe']['Ignore Date'] == 'no':
+    if config ['Timeframe']['Ignore Date'] == 'no' and areas != '':
         where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
                  + start
                  + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
                  + end
-                 + 'T04%3A00%3A00.000Z%27'
+                 + 'T04%3A00%3A00.000Z%27%20AND%20'
                  + areas)
+    elif config ['Timeframe']['Ignore Date'] == 'no' and areas == '':
+        where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
+                 + start
+                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
+                 + end
+                 + 'T04%3A00%3A00.000Z%27%')
     else:
         if areas != '':    
             where = areas
@@ -124,11 +130,13 @@ def query():
     
     # Response for number of surveys used as a json object
     surveyNumJSON = surveyNumRequest.json()
+    print (surveyNumJSON)
     newSurveysNum = int(surveyNumJSON['count'])
     
     # Response for survey Object IDs as a json object
     surveyIDsJSON = surveyIDsRequest.json()
     surveyIDs = surveyIDsJSON['objectIds']
+    print (surveyIDs, newSurveysNum)
     
     return (surveyIDs, newSurveysNum)
 
@@ -243,11 +251,41 @@ def downloadAndCheck(rows):
                     break
         if os.path.exists(saved):
             if config['Resolutions']['Override'] == 'yes' and agency in agencies:
+                try:
+                    zipped = zipfile.ZipFile(saved)
+                    contents = zipped.namelist()
+                    if contentSearch(contents, link, saved) != True:
+                        print ('n', end=' ')
+                        zipped.close()
+                        row.append('No')
+                    else:
+                        zipped.close()
+                        print ('y', end=' ')
+                        row.append('Yes')
+                except zipfile.BadZipfile:
+                    os.remove(saved)
+                    print ('z', end=' ')
+                    row.append('BadZip')
                 print ('o', end=' ')
-                row.append('Ovrd')
+                row.append('Yes')
             elif config['Resolutions']['Override'] == 'yes' and agencies == '':
+                try:
+                    zipped = zipfile.ZipFile(saved)
+                    contents = zipped.namelist()
+                    if contentSearch(contents, link, saved) != True:
+                        print ('n', end=' ')
+                        zipped.close()
+                        row.append('No')
+                    else:
+                        zipped.close()
+                        print ('y', end=' ')
+                        row.append('Yes')
+                except zipfile.BadZipfile:
+                    os.remove(saved)
+                    print ('z', end=' ')
+                    row.append('BadZip')
                 print ('o', end=' ')
-                row.append('Ovrd')
+                row.append('Yes')
             else:
                 try:
                     zipped = zipfile.ZipFile(saved)
@@ -266,6 +304,7 @@ def downloadAndCheck(rows):
                     os.remove(saved)
                     print ('z', end=' ')
                     row.append('BadZip')
+                row.append('No')
         x -= 1
     print ('row downloads verified')
     return rows
@@ -383,7 +422,8 @@ def main():
         logWriter(fileLog, '\t\tUnable to compare query results to eHydo_csv.txt')
     try:
         logWriter(fileLog, '\tParsing new entries for resolution:')
-        attributes.append("Hi-Res?")
+        attributes.append('Hi-Res?')
+        attributes.append('Override?')
         if changes != 'No Changes':
             checked = downloadAndCheck(changes)
             csvFile.extend(checked)
