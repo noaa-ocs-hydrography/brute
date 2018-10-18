@@ -111,12 +111,14 @@ def query():
                  + start
                  + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
                  + end
-                 + 'T04%3A00%3A00.000Z%27%')
+                 + 'T04%3A00%3A00.000Z%27')
     else:
         if areas != '':    
             where = areas
         else:
             where = '1%3D1'
+            
+    print (where)
     
     # The query for determining how many responses will be returned
     newSurveys = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=' + where + '&outFields=*&returnGeometry=false&returnCountOnly=true&outSR=&f=json'
