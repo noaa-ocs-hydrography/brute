@@ -117,8 +117,6 @@ def query():
             where = areas
         else:
             where = '1%3D1'
-            
-    print (where)
     
     # The query for determining how many responses will be returned
     newSurveys = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=' + where + '&outFields=*&returnGeometry=false&returnCountOnly=true&outSR=&f=json'
@@ -140,7 +138,13 @@ def query():
     surveyIDs = surveyIDsJSON['objectIds']
     print (surveyIDs, newSurveysNum)
     
-    return (surveyIDs, newSurveysNum)
+    if areas == '':
+        dist = 'none'
+    else:
+        dist = areas
+    paramString = '\tParameters:\n\t\tStart Date: ' + start + '\n\t\tEnd Date: ' + end + '\n\t\tDistricts: ' + dist + '\n\t\tQuery Only Districts: ' + config['Agencies']['Only Listed'] + '\n\t\tKeep All Data: ' + config['Resolutions']['Override'] 
+    
+    return (surveyIDs, newSurveysNum, paramString)
 
 def surveyCompile(surveyIDs, newSurveysNum):
     '''Uses the json object return of the query and the total number of surveys
@@ -406,22 +410,22 @@ def time():
 def main():
     fileLog = logOpen()
     try:
-        surveyIDs, newSurveysNum = query()
+        surveyIDs, newSurveysNum, paramString = query()
         rows = surveyCompile(surveyIDs, newSurveysNum)
-        logWriter(fileLog, '\tSurveys queried from eHydro')
+        logWriter(fileLog, '\tSurveys queried from eHydro\n' + paramString)
     except:
         logWriter(fileLog, '\teHydro query failed')
     try:
         csvFile = csvOpen()
         txtWriter(csvFile, txtLocation)
-        logWriter(fileLog, '\teHydo_csv.txt opened for reading')
+        logWriter(fileLog, '\teHydro_csv.txt opened for reading')
     except:
-        logWriter(fileLog, '\teHydo_csv.txt unable to be opened')
+        logWriter(fileLog, '\teHydro_csv.txt unable to be opened')
     try:
-        logWriter(fileLog, '\tComparing query results to eHydo_csv.txt')
+        logWriter(fileLog, '\tComparing query results to eHydro_csv.txt')
         changes = csvCompare(rows, csvFile, newSurveysNum)
     except:
-        logWriter(fileLog, '\t\tUnable to compare query results to eHydo_csv.txt')
+        logWriter(fileLog, '\t\tUnable to compare query results to eHydro_csv.txt')
     try:
         logWriter(fileLog, '\tParsing new entries for resolution:')
         attributes.append('Hi-Res?')
@@ -442,9 +446,9 @@ def main():
         csvFile.insert(0, attributes)
         csvSave = csvFile
         csvWriter(csvSave, csvLocation)
-        logWriter(fileLog, '\tAdding results to eHydo_csv.txt')
+        logWriter(fileLog, '\tAdding results to eHydro_csv.txt')
     except:
-        logWriter(fileLog, '\tUnable to add results to eHydo_csv.txt')
+        logWriter(fileLog, '\tUnable to add results to eHydro_csv.txt')
     logClose(fileLog)
     print('log closed')
 
