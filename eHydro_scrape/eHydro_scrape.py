@@ -196,14 +196,14 @@ def contentSearch(contents, link, saved):
     '''
     x = 0
     for content in contents:
-        if full.search(content):
+        if full.search(content) or fullalt.search(content):
             print ('\nvive le resolution', content, end=' ') #link + '\n')
             x = 1
             return x
-        elif fullalt.search(content):
-            print ('\nlong live the resolution', content, end=' ') #link + '\n')
-            x = 1
-            return x
+#        elif fullalt.search(content):
+#            print ('\nlong live the resolution', content, end=' ') #link + '\n')
+#            x = 1
+#            return x
         else:
             x = 0
 
@@ -247,16 +247,23 @@ def downloadAndCheck(rows):
                 print ('x', end=' ')
                 break
             else:
-                try:
-                    urllib.request.urlretrieve(link, saved)
-                except socket.timeout:
-                    urllib.request.urlretrieve(link, saved)
-                except urllib.error.HTTPError:
+                if link == 'null':
+                    try:
+                        urllib.request.urlretrieve(link, saved)
+                    except socket.timeout:
+                        urllib.request.urlretrieve(link, saved)
+                    except urllib.error.HTTPError or urllib.error.URLError:
+                        print ('e', end=' ')
+                        row.append('No')
+                        row.append('BadURL')
+                        break
+                else:
                     print ('e', end=' ')
+                    row.append('No')
                     row.append('BadURL')
                     break
         if os.path.exists(saved):
-            if config['Resolutions']['Override'] == 'yes' and agency in agencies:
+            if config['Resolutions']['Override'] == 'yes' and (agency in agencies or agencies == ''):
                 try:
                     zipped = zipfile.ZipFile(saved)
                     contents = zipped.namelist()
@@ -274,24 +281,24 @@ def downloadAndCheck(rows):
                     row.append('BadZip')
                 print ('o', end=' ')
                 row.append('Yes')
-            elif config['Resolutions']['Override'] == 'yes' and agencies == '':
-                try:
-                    zipped = zipfile.ZipFile(saved)
-                    contents = zipped.namelist()
-                    if contentSearch(contents, link, saved) != True:
-                        print ('n', end=' ')
-                        zipped.close()
-                        row.append('No')
-                    else:
-                        zipped.close()
-                        print ('y', end=' ')
-                        row.append('Yes')
-                except zipfile.BadZipfile:
-                    os.remove(saved)
-                    print ('z', end=' ')
-                    row.append('BadZip')
-                print ('o', end=' ')
-                row.append('Yes')
+#            elif config['Resolutions']['Override'] == 'yes' and agencies == '':
+#                try:
+#                    zipped = zipfile.ZipFile(saved)
+#                    contents = zipped.namelist()
+#                    if contentSearch(contents, link, saved) != True:
+#                        print ('n', end=' ')
+#                        zipped.close()
+#                        row.append('No')
+#                    else:
+#                        zipped.close()
+#                        print ('y', end=' ')
+#                        row.append('Yes')
+#                except zipfile.BadZipfile:
+#                    os.remove(saved)
+#                    print ('z', end=' ')
+#                    row.append('BadZip')
+#                print ('o', end=' ')
+#                row.append('Yes')
             else:
                 try:
                     zipped = zipfile.ZipFile(saved)
