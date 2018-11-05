@@ -247,7 +247,7 @@ def downloadAndCheck(rows):
                 print ('x', end=' ')
                 break
             else:
-                if link == 'null':
+                if link != 'null':
                     try:
                         urllib.request.urlretrieve(link, saved)
                     except socket.timeout:
