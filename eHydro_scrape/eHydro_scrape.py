@@ -34,7 +34,7 @@ logLocation = os.path.join(progLoc, logName)
 holding = progLoc + '/downloads/'
 # eHydro survey entry attributes
 attributes = [ "OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
-              "SDSFEATURENAME", "SOURCEPROJECTION", "SURVEYDATEUPLOADED",
+              "SDSFEATURENAME", "SOURCEPROJECTION",
               "SOURCEDATALOCATION", "SURVEYDATEEND", "SURVEYDATESTART",
               "SURVEYTYPE", "PROJECTEDAREA"]
 # check to see if the downloaded data folder exists, will create it if not
@@ -48,7 +48,8 @@ def query():
     the json library to make it readable by the program. Returns the json
     responses for number of surveys and surveys in the response.
 
-    It also saves a prettyprinted version of the response as a text file.
+    -REMOVED- It also saves a prettyprinted version of the response as a text 
+    file.
 
     The funtion uses the requests library to retrieve the API's response(s) and
     uses the json library to make them readable by the program.
@@ -100,16 +101,16 @@ def query():
     # The main query parameters that will determine the contents of the response    
     # Survey Date Uploaded
     if config ['Timeframe']['Ignore Date'] == 'no' and areas != '':
-        where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
+        where = ('SURVEYDATEEND%20%3E%3D%20%27'
                  + start
-                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
+                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEEND%20%3C%3D%20%27'
                  + end
                  + 'T04%3A00%3A00.000Z%27%20AND%20'
                  + areas)
     elif config ['Timeframe']['Ignore Date'] == 'no' and areas == '':
-        where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
+        where = ('SURVEYDATEEND%20%3E%3D%20%27'
                  + start
-                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
+                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEEND%20%3C%3D%20%27'
                  + end
                  + 'T04%3A00%3A00.000Z%27')
     else:
@@ -123,6 +124,9 @@ def query():
     
     # The query for returning the object IDs for the given timeframe
     objIDs = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?&where=' + where + '&outFields=*&returnGeometry=false&returnIdsOnly=true&outSR=&f=json'
+    
+#    print (where, newSurveys)
+    
     
     # Initial Query execution
     surveyNumRequest = requests.get(newSurveys)
@@ -142,6 +146,7 @@ def query():
         dist = 'none'
     else:
         dist = areas
+        
     paramString = '\tParameters:\n\t\tStart Date: ' + start + '\n\t\tEnd Date: ' + end + '\n\t\tDistricts: ' + dist + '\n\t\tQuery Only Districts: ' + config['Agencies']['Only Listed'] + '\n\t\tKeep All Data: ' + config['Resolutions']['Override'] 
     
     return (surveyIDs, newSurveysNum, paramString)
@@ -161,15 +166,16 @@ def surveyCompile(surveyIDs, newSurveysNum):
         print (x, end=' ')
         query = ('https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID%20%3D%20'
                  + str(surveyIDs[x]) 
-                 + '&outFields=OBJECTID,SDSFEATURENAME,SURVEYTYPE,CHANNELAREAIDFK,SURVEYDATEUPLOADED,SURVEYAGENCY,SURVEYDATESTART,SURVEYDATEEND,SOURCEDATALOCATION,SOURCEPROJECTION,SURVEYJOBIDPK,PROJECTEDAREA&returnGeometry=false&outSR=&f=json')
+                 + '&outFields=OBJECTID,SDSFEATURENAME,SURVEYTYPE,CHANNELAREAIDFK,SURVEYAGENCY,SURVEYDATESTART,SURVEYDATEEND,SOURCEDATALOCATION,SOURCEPROJECTION,SURVEYJOBIDPK,PROJECTEDAREA&returnGeometry=false&outSR=&f=json')
         response = requests.get(query)
         page = response.json()
         row = []
         for attribute in attributes:
             if page['features'][0]['attributes'][attribute] == None:
                 row.append('null')
-            elif (attribute == "SURVEYDATEUPLOADED"
-                or attribute == "SURVEYDATEEND"
+                #attribute == "SURVEYDATEUPLOADED"
+                #or 
+            elif (attribute == "SURVEYDATEEND" 
                 or attribute == "SURVEYDATESTART"):
                     if page['features'][0]['attributes'][attribute] == None:
                         row.append('null')
@@ -232,7 +238,7 @@ def downloadAndCheck(rows):
     x = len(rows)
     agencies = config['Agencies']['Agencies']
     for row in rows:
-        link = row[7]
+        link = row[6]
         agency = row[2]
         name = link.split('/')[-1]
         saved = holding + '/' + agency + '/' + name
@@ -433,22 +439,22 @@ def main():
         changes = csvCompare(rows, csvFile, newSurveysNum)
     except:
         logWriter(fileLog, '\t\tUnable to compare query results to eHydro_csv.txt')
-    try:
-        logWriter(fileLog, '\tParsing new entries for resolution:')
-        attributes.append('Hi-Res?')
-        attributes.append('Override?')
-        if changes != 'No Changes':
-            checked = downloadAndCheck(changes)
-            csvFile.extend(checked)
-            for row in checked:
-                txt = ''
-                for i in [1,4,5,7,12]:
-                    txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
-                logWriter(fileLog, '\t\t' + txt)
-        else:
-            logWriter(fileLog, '\t\t' + changes)
-    except:
-        logWriter(fileLog, '\tParsing for resolution failed')
+#    try:
+    logWriter(fileLog, '\tParsing new entries for resolution:')
+    attributes.append('Hi-Res?')
+    attributes.append('Override?')
+    if changes != 'No Changes':
+        checked = downloadAndCheck(changes)
+        csvFile.extend(checked)
+        for row in checked:
+            txt = ''
+            for i in [1,4,5,7,12]:
+                txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
+            logWriter(fileLog, '\t\t' + txt)
+    else:
+        logWriter(fileLog, '\t\t' + changes)
+#    except:
+#        logWriter(fileLog, '\tParsing for resolution failed')
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
