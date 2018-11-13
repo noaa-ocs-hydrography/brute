@@ -448,7 +448,7 @@ def main():
         csvFile.extend(checked)
         for row in checked:
             txt = ''
-            for i in [1,4,5,7,12]:
+            for i in [1,4,5,6,11]:
                 txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
             logWriter(fileLog, '\t\t' + txt)
     else:
