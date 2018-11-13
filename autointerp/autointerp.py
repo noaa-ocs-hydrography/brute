@@ -482,9 +482,11 @@ def triangulateSurfaces(bag):
     print ('interpolation', datetime.datetime.now())
     values = scipy.interpolate.LinearNDInterpolator(elev, zvals)
     z = values(elev)
+    
+    print (z)
     print ('done', datetime.datetime.now())
     print (len(elev), len(z))
-    ret = rePrint(elev, z, bag[-1])#, 1000000.0)
+    ret = rePrint(elev, z, bag[-1])
     return ret
 
 def bagSave(bag, new, tifs, res):
@@ -493,13 +495,19 @@ def bagSave(bag, new, tifs, res):
         break
     print ('bagSave') 
     nx, ny = bag[2][0]
-    sx, xy = bag[2][-1]
-    res = float(res)
-    gtran = (nx, res, 0.0, ny, 0.0, -(res))
+    sx, sy = bag[2][-1]
+    reso = float(res)
+    print (nx, ny, sx, sy)
+    gtran = (nx, reso, 0.0, sy, 0.0, -(reso))
     fName = bag[1].split('/')[-1]
     split = fName.split('_')[:2]
-    bagName = '_'.join([x for x in split]) + '_INTERP'
+    if res < 1:
+        res = '50cm'
+    else:
+        res = str(res) + 'm'
+    bagName = '_'.join([x for x in split]) + '_' + res + '_INTERP'
     outputpath = path + '/' + bagName +'.tif'
+    outputpath2 = path + '/' + bagName +'.bag'
     print(outputpath)
     while True:
         if os.path.exists(outputpath):
@@ -507,15 +515,10 @@ def bagSave(bag, new, tifs, res):
         elif not os.path.exists(outputpath):
             break
     write_raster(new, gtran, gd_obj, outputpath)
-#    shutil.copy2(bag[1], outputpath)
-#    bagFile = BAGFile(outputpath)
-#    bagFile.elevation = new
-#    bagFile.values
-#    bagFile.update()
-#    bagFile.close()
-#    with tb.open_file(outputpath, mode = 'w') as bagfile:
-#        bagfile.root.BAG_root.elevation.write(new)
-#    tb.close_file()
+    shutil.copy2(bag[1], outputpath2)
+    with tb.open_file(outputpath2, mode = 'r+') as bagfile:
+        bagfile.root.BAG_root.elevation = new
+    bagfile.close()
     gd_obj = None
     print ('done')
 
