@@ -454,8 +454,8 @@ def rePrint(elev, vals, refb):#, maxVal):
         x.append(a)
         y.append(b)
         
-#    arr = np.nan * np.empty((rows,cols))
-    arr = refb
+    arr = np.nan * np.empty((rows,cols))
+#    arr = refb
 #    arr[y, x] = vals
     z = 0
     for a in range(arr.shape[1]):
@@ -474,19 +474,34 @@ def triangulateSurfaces(bag):
     print ('triangulateSurfaces')
     maxVal = np.amax(bag[-1])
     elev, zvals = tupleGrid(bag[-1], maxVal, vArr=True)
+#    print (zvals)
+#    elez = tupleGrid(bag[-1], maxVal)
     print ('MultiPoint Conversion')
 #    elev = MultiPoint(elev)
     print ('done')
 #    print ('try tri', datetime.datetime.now())
 #    tri = scipy.spatial.Delaunay(elev)
     print ('interpolation', datetime.datetime.now())
-    values = scipy.interpolate.LinearNDInterpolator(elev, zvals)
-    z = values(elev)
-    
-    print (z)
+    x, y = np.arange(bag[-1].shape[1]), np.arange(bag[-1].shape[0])
+    xx, yy = np.meshgrid(x, y)
+    values = scipy.interpolate.griddata(elev, zvals, (xx, yy), method='linear', fill_value=maxVal, rescale=True)
+#    values = scipy.interpolate.barycentric_interpolate(xx, yy, zvals)
+#    values = scipy.interpolate.LinearNDInterpolator(elev, zvals)
+#    print (values)
+#    x = 0
+#    for a in range(values.shape[1]):
+#        for b in range(values.shape[0]):
+#            if values[b,a] != maxVal:
+#                print (x, values[b,a], end=' ')
+#                x+=1
+#            else:
+#                print ('x', end=' ')
+#    z = values(elev)
+#    print (z)
     print ('done', datetime.datetime.now())
-    print (len(elev), len(z))
-    ret = rePrint(elev, z, bag[-1])
+#    print (len(elev), len(z))
+#    ret = rePrint(elev, z, bag[-1])
+    ret = np.flipud(values)
     return ret
 
 def bagSave(bag, new, tifs, res):
@@ -499,6 +514,7 @@ def bagSave(bag, new, tifs, res):
     reso = float(res)
     print (nx, ny, sx, sy)
     gtran = (nx, reso, 0.0, sy, 0.0, -(reso))
+    print (gtran)
     fName = bag[1].split('/')[-1]
     split = fName.split('_')[:2]
     if res < 1:
@@ -514,9 +530,19 @@ def bagSave(bag, new, tifs, res):
             os.remove(outputpath)
         elif not os.path.exists(outputpath):
             break
+        if os.path.exists(outputpath2):
+            os.remove(outputpath2)
+        elif not os.path.exists(outputpath2):
+            break
     write_raster(new, gtran, gd_obj, outputpath)
     shutil.copy2(bag[1], outputpath2)
-    with tb.open_file(outputpath2, mode = 'r+') as bagfile:
+    with tb.open_file(outputpath2, mode = 'a') as bagfile:
+#        bagfile.root.BAG_root.elevation.remove()
+#        atom = tb.UInt8Atom()
+#        shape = new.shape
+#        arr = bagfile.create_carray(bagfile.root.BAG_root, 'elevation', atom, shape)
+#        arr = new
+        
         bagfile.root.BAG_root.elevation = new
     bagfile.close()
     gd_obj = None
