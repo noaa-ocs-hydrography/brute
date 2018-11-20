@@ -23,6 +23,7 @@ import datetime
 import matplotlib
 import numpy as np
 import tables as tb
+import matplotlib.tri as mtri
 import matplotlib.pyplot as plt
 
 from string import ascii_lowercase
@@ -162,7 +163,7 @@ def getBagLyrs(files):
         x += 1
     return bagFiles, names
 
-def write_raster(raster_array, gt, data_obj, outputpath, dtype=gdal.GDT_UInt16,
+def write_raster(raster_array, gt, data_obj, outputpath, dtype=gdal.GDT_UInt32,
                  options=0, color_table=0, nbands=1, nodata=False):
     '''
     Directly From:
@@ -207,7 +208,7 @@ def maxValue(arr):
     return int(nums[index])
     
     
-def tupleGrid(grid, maxVal, zVal=True, vArr=False):
+def tupleGrid(grid, maxVal, zVal=True, vArr=False, asArr=False):
     print ('tupleGrid')
     points = []
     zvals = []
@@ -216,30 +217,52 @@ def tupleGrid(grid, maxVal, zVal=True, vArr=False):
         for y in range(grid.shape[0]):
             if grid[y,x] == maxVal:
                 if grid[y-1,x] != maxVal:
-                    if zVal == True:
-                        if vArr == True:
-                            point = (x, y-1)
-                            val = grid[y-1,x]
-                            zvals.append(val)
+                    if asArr == False:
+                        if zVal == True:
+                            if vArr == True:
+                                point = (x, y-1)
+                                val = grid[y-1,x]
+                                zvals.append(val)
+                            else:
+                                point = (x, y-1, grid[y-1,x])
                         else:
-                            point = (x, y-1, grid[y-1,x])
+                            point = (x, y-1)
+    #                    print ('tail edge', point)
                     else:
-                        point = (x, y-1)
-#                    print ('tail edge', point)
+                        if zVal == True:
+                            if vArr == True:
+                                point = [x, y-1]
+                                val = grid[y-1,x]
+                                zvals.append(val)
+                            else:
+                                point = [x, y-1, grid[y-1,x]]
+                        else:
+                            point = [x, y-1]
                     points.append(point)
                 io = False
                 pass
             else:
                 if io == False:  
-                    if zVal == True:
-                        if vArr == True:
-                            point = (x, y)
-                            val = grid[y,x]
-                            zvals.append(val)
+                    if asArr == False:
+                        if zVal == True:
+                            if vArr == True:
+                                point = (x, y)
+                                val = grid[y,x]
+                                zvals.append(val)
+                            else:
+                                point = (x, y, grid[y,x])
                         else:
-                            point = (x, y, grid[y,x])
+                            point = (x, y)
                     else:
-                        point = (x, y)
+                        if zVal == True:
+                            if vArr == True:
+                                point = [x, y]
+                                val = grid[y,x]
+                                zvals.append(val)
+                            else:
+                                point = [x, y, grid[y,x]]
+                        else:
+                            point = [x, y]
 #                    print ('lead edge', point)
                     io = True
                     points.append(point)
@@ -455,8 +478,6 @@ def rePrint(elev, vals, refb):#, maxVal):
         y.append(b)
         
     arr = np.nan * np.empty((rows,cols))
-#    arr = refb
-#    arr[y, x] = vals
     z = 0
     for a in range(arr.shape[1]):
         for b in range(arr.shape[0]):
@@ -470,39 +491,28 @@ def rePrint(elev, vals, refb):#, maxVal):
     print ('done')
     return arr
 
-def triangulateSurfaces(bag):
+def triangulateSurfaces(bag, tif):
     print ('triangulateSurfaces')
     maxVal = np.amax(bag[-1])
-    elev, zvals = tupleGrid(bag[-1], maxVal, vArr=True)
-#    print (zvals)
-#    elez = tupleGrid(bag[-1], maxVal)
-    print ('MultiPoint Conversion')
-#    elev = MultiPoint(elev)
-    print ('done')
-#    print ('try tri', datetime.datetime.now())
-#    tri = scipy.spatial.Delaunay(elev)
-    print ('interpolation', datetime.datetime.now())
+    points, zvs = tupleGrid(bag[-1], maxVal, vArr=True, asArr=True)
+#    elev = tupleGrid(bag[-1], maxVal, asArr=True)
+    print ('try tri', datetime.datetime.now())
     x, y = np.arange(bag[-1].shape[1]), np.arange(bag[-1].shape[0])
-    xx, yy = np.meshgrid(x, y)
-    values = scipy.interpolate.griddata(elev, zvals, (xx, yy), method='linear', fill_value=maxVal, rescale=True)
-#    values = scipy.interpolate.barycentric_interpolate(xx, yy, zvals)
-#    values = scipy.interpolate.LinearNDInterpolator(elev, zvals)
-#    print (values)
-#    x = 0
-#    for a in range(values.shape[1]):
-#        for b in range(values.shape[0]):
-#            if values[b,a] != maxVal:
-#                print (x, values[b,a], end=' ')
-#                x+=1
-#            else:
-#                print ('x', end=' ')
-#    z = values(elev)
-#    print (z)
+    xi, yi = np.meshgrid(x, y)
+    values = scipy.interpolate.griddata(points, zvs, (xi, yi), method='linear', fill_value=np.nan)
+#    print ('prune', datetime.datetime.now())
+#    tree = scipy.spatial.cKDTree(np.c_[len(x), len(y)])
+#    dist, _ = tree.query(np.c_[xi.ravel(), yi.ravel()], k=1)
+#    dist = dist.reshape(xi.shape)
+#    values[dist > 0.1] = np.nan
+    plt.imshow(values)
+    plt.show()
     print ('done', datetime.datetime.now())
 #    print (len(elev), len(z))
-#    ret = rePrint(elev, z, bag[-1])
-    ret = np.flipud(values)
-    return ret
+#    ret = rePrint(points, values, bag[-1])
+#    ret = np.flipud(values)
+#    ret = 0
+    return values
 
 def bagSave(bag, new, tifs, res):
     for tif in tifs:
@@ -524,6 +534,7 @@ def bagSave(bag, new, tifs, res):
     bagName = '_'.join([x for x in split]) + '_' + res + '_INTERP'
     outputpath = path + '/' + bagName +'.tif'
     outputpath2 = path + '/' + bagName +'.bag'
+    outputpath3 = path + '/' + bagName +'_imsave.png '
     print(outputpath)
     while True:
         if os.path.exists(outputpath):
@@ -534,6 +545,11 @@ def bagSave(bag, new, tifs, res):
             os.remove(outputpath2)
         elif not os.path.exists(outputpath2):
             break
+        if os.path.exists(outputpath2):
+            os.remove(outputpath3)
+        elif not os.path.exists(outputpath3):
+            break
+    plt.imsave(outputpath3, new)
     write_raster(new, gtran, gd_obj, outputpath)
     shutil.copy2(bag[1], outputpath2)
     with tb.open_file(outputpath2, mode = 'a') as bagfile:
@@ -548,7 +564,7 @@ def bagSave(bag, new, tifs, res):
     gd_obj = None
     print ('done')
 
-path = 'C:/Users/Casiano.Koprowski/Desktop/Testing Files/BAGs and SSS Mosaics for Interpolation/H12525'
+path = 'C:/Users/Casiano.Koprowski/Desktop/Testing Files/BAGs and SSS Mosaics for Interpolation/H12963'
 fileList = tifInput(path)
 print (fileList)
 tifFiles, names = getTifElev(fileList)
@@ -564,6 +580,6 @@ bagFiles, names = getBagLyrs(bagList)
 for bag in bagFiles:
     print(bag, '\n')
     res = alignGrids(bag , comboArr)
-    newBag = triangulateSurfaces(bag)
+    newBag = triangulateSurfaces(bag, comboArr)
     bagSave(bag, newBag, tifGrids, res)
 #    break

@@ -35,7 +35,7 @@ holding = progLoc + '/downloads/'
 # eHydro survey entry attributes
 attributes = [ "OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
               "SDSFEATURENAME", "SOURCEPROJECTION",
-              "SOURCEDATALOCATION", "SURVEYDATEEND", "SURVEYDATESTART",
+              "SOURCEDATALOCATION", "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
               "SURVEYTYPE", "PROJECTEDAREA"]
 # check to see if the downloaded data folder exists, will create it if not
 if os.path.exists(holding):
@@ -101,16 +101,16 @@ def query():
     # The main query parameters that will determine the contents of the response    
     # Survey Date Uploaded
     if config ['Timeframe']['Ignore Date'] == 'no' and areas != '':
-        where = ('SURVEYDATEEND%20%3E%3D%20%27'
+        where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
                  + start
-                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEEND%20%3C%3D%20%27'
+                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
                  + end
                  + 'T04%3A00%3A00.000Z%27%20AND%20'
                  + areas)
     elif config ['Timeframe']['Ignore Date'] == 'no' and areas == '':
-        where = ('SURVEYDATEEND%20%3E%3D%20%27'
+        where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
                  + start
-                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEEND%20%3C%3D%20%27'
+                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
                  + end
                  + 'T04%3A00%3A00.000Z%27')
     else:
@@ -166,7 +166,7 @@ def surveyCompile(surveyIDs, newSurveysNum):
         print (x, end=' ')
         query = ('https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID%20%3D%20'
                  + str(surveyIDs[x]) 
-                 + '&outFields=OBJECTID,SDSFEATURENAME,SURVEYTYPE,CHANNELAREAIDFK,SURVEYAGENCY,SURVEYDATESTART,SURVEYDATEEND,SOURCEDATALOCATION,SOURCEPROJECTION,SURVEYJOBIDPK,PROJECTEDAREA&returnGeometry=false&outSR=&f=json')
+                 + '&outFields=OBJECTID,SDSFEATURENAME,SURVEYTYPE,CHANNELAREAIDFK,SURVEYAGENCY,SURVEYDATEUPLOADED,SURVEYDATESTART,SURVEYDATEEND,SOURCEDATALOCATION,SOURCEPROJECTION,SURVEYJOBIDPK,PROJECTEDAREA&returnGeometry=false&outSR=&f=json')
         response = requests.get(query)
         page = response.json()
         row = []
@@ -175,7 +175,8 @@ def surveyCompile(surveyIDs, newSurveysNum):
                 row.append('null')
                 #attribute == "SURVEYDATEUPLOADED"
                 #or 
-            elif (attribute == "SURVEYDATEEND" 
+            elif (attribute == "SURVEYDATEUPLOADED"
+                or attribute == "SURVEYDATEEND" 
                 or attribute == "SURVEYDATESTART"):
                     if page['features'][0]['attributes'][attribute] == None:
                         row.append('null')
@@ -236,6 +237,7 @@ def downloadAndCheck(rows):
        4) BadZip; the resulting .zip downloaded was corrupt/unable to be opened
     '''
     x = len(rows)
+    hr = 0
     agencies = config['Agencies']['Agencies']
     for row in rows:
         link = row[6]
@@ -281,6 +283,7 @@ def downloadAndCheck(rows):
                         zipped.close()
                         print ('y', end=' ')
                         row.append('Yes')
+                        hr += 1
                 except zipfile.BadZipfile:
                     os.remove(saved)
                     print ('z', end=' ')
@@ -319,6 +322,7 @@ def downloadAndCheck(rows):
                         zipped.close()
                         print ('y', end=' ')
                         row.append('Yes')
+                        hr += 1
                 except zipfile.BadZipfile:
                     os.remove(saved)
                     print ('z', end=' ')
@@ -326,7 +330,7 @@ def downloadAndCheck(rows):
                 row.append('No')
         x -= 1
     print ('row downloads verified')
-    return rows
+    return rows, hr
 
 def csvCompare(rows, csvFile, newSurveysNum):
     '''Takes list 'rows' and list 'csvFile'.  It proceeds to compare each list 
@@ -439,22 +443,24 @@ def main():
         changes = csvCompare(rows, csvFile, newSurveysNum)
     except:
         logWriter(fileLog, '\t\tUnable to compare query results to eHydro_csv.txt')
-#    try:
-    logWriter(fileLog, '\tParsing new entries for resolution:')
-    attributes.append('Hi-Res?')
-    attributes.append('Override?')
-    if changes != 'No Changes':
-        checked = downloadAndCheck(changes)
-        csvFile.extend(checked)
-        for row in checked:
-            txt = ''
-            for i in [1,4,5,6,11]:
-                txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
-            logWriter(fileLog, '\t\t' + txt)
-    else:
-        logWriter(fileLog, '\t\t' + changes)
-#    except:
-#        logWriter(fileLog, '\tParsing for resolution failed')
+    try:
+        logWriter(fileLog, '\tParsing new entries for resolution:')
+        attributes.append('Hi-Res?')
+        attributes.append('Override?')
+        if changes != 'No Changes':
+            checked, hiRes = downloadAndCheck(changes)
+            csvFile.extend(checked)
+            if config['Output Log']['Query List'] == 'yes':
+                for row in checked:
+                    txt = ''
+                    for i in [1,4,5,6,12]:
+                        txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
+                    logWriter(fileLog, '\t\t' + txt)
+            logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
+        else:
+            logWriter(fileLog, '\t\t' + changes)
+    except:
+        logWriter(fileLog, '\tParsing for resolution failed')
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
