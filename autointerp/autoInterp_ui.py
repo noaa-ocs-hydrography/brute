@@ -1,0 +1,101 @@
+
+#(Pydro36) R:\Scripts\svn-nbs\scripts\baginterp>python C:\PydroXL\envs\Pydro36\Library\bin\pyside-uic autoInterp.ui > autoInterp_ui.py
+# -*- coding: utf-8 -*-
+
+# Form implementation generated from reading ui file 'autoInterp.ui'
+#
+# Created: Mon Dec  3 12:07:16 2018
+#      by: pyside-uic 0.2.15 running on PySide 1.2.4
+#
+# WARNING! All changes made in this file will be lost!
+
+from PySide import QtCore, QtGui
+
+class Ui_MainWindow(object):
+    def setupUi(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(800, 600)
+        self.centralwidget = QtGui.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.gridLayout = QtGui.QGridLayout(self.centralwidget)
+        self.gridLayout.setObjectName("gridLayout")
+        self.tifLabel = QtGui.QLabel(self.centralwidget)
+        self.tifLabel.setObjectName("tifLabel")
+        self.gridLayout.addWidget(self.tifLabel, 6, 1, 1, 1)
+        self.bagInput = QtGui.QLineEdit(self.centralwidget)
+        self.bagInput.setObjectName("bagInput")
+        self.gridLayout.addWidget(self.bagInput, 2, 1, 1, 1)
+        self.runButton = QtGui.QPushButton(self.centralwidget)
+        self.runButton.setObjectName("runButton")
+        self.gridLayout.addWidget(self.runButton, 9, 3, 1, 1)
+        self.bagBrowse = QtGui.QPushButton(self.centralwidget)
+        self.bagBrowse.setObjectName("bagBrowse")
+        self.gridLayout.addWidget(self.bagBrowse, 2, 3, 1, 1)
+        self.bagLabel = QtGui.QLabel(self.centralwidget)
+        self.bagLabel.setObjectName("bagLabel")
+        self.gridLayout.addWidget(self.bagLabel, 1, 1, 1, 1)
+        self.tifBrowse = QtGui.QPushButton(self.centralwidget)
+        self.tifBrowse.setObjectName("tifBrowse")
+        self.gridLayout.addWidget(self.tifBrowse, 7, 3, 1, 1)
+        self.closeButton = QtGui.QPushButton(self.centralwidget)
+        self.closeButton.setObjectName("closeButton")
+        self.gridLayout.addWidget(self.closeButton, 10, 3, 1, 1)
+        self.progressBar = QtGui.QProgressBar(self.centralwidget)
+        self.progressBar.setProperty("value", 24)
+        self.progressBar.setObjectName("progressBar")
+        self.gridLayout.addWidget(self.progressBar, 10, 1, 1, 1)
+        self.tifInput = QtGui.QLineEdit(self.centralwidget)
+        self.tifInput.setObjectName("tifInput")
+        self.gridLayout.addWidget(self.tifInput, 7, 1, 1, 1)
+        self.tifRemove = QtGui.QPushButton(self.centralwidget)
+        self.tifRemove.setObjectName("tifRemove")
+        self.gridLayout.addWidget(self.tifRemove, 8, 3, 1, 1)
+        self.tifList = QtGui.QListView(self.centralwidget)
+        self.tifList.setObjectName("tifList")
+        self.gridLayout.addWidget(self.tifList, 8, 1, 1, 1)
+        self.title = QtGui.QLabel(self.centralwidget)
+        self.title.setObjectName("title")
+        self.gridLayout.addWidget(self.title, 0, 1, 1, 3)
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.menubar = QtGui.QMenuBar(MainWindow)
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 21))
+        self.menubar.setObjectName("menubar")
+        self.menuFile = QtGui.QMenu(self.menubar)
+        self.menuFile.setObjectName("menuFile")
+        MainWindow.setMenuBar(self.menubar)
+        self.statusbar = QtGui.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        MainWindow.setStatusBar(self.statusbar)
+        self.actionAbout = QtGui.QAction(MainWindow)
+        self.actionAbout.setObjectName("actionAbout")
+        self.actionClose = QtGui.QAction(MainWindow)
+        self.actionClose.setMenuRole(QtGui.QAction.QuitRole)
+        self.actionClose.setObjectName("actionClose")
+        self.menuFile.addSeparator()
+        self.menuFile.addAction(self.actionClose)
+        self.menubar.addAction(self.menuFile.menuAction())
+
+        self.retranslateUi(MainWindow)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        MainWindow.setTabOrder(self.bagInput, self.bagBrowse)
+        MainWindow.setTabOrder(self.bagBrowse, self.tifInput)
+        MainWindow.setTabOrder(self.tifInput, self.tifBrowse)
+        MainWindow.setTabOrder(self.tifBrowse, self.tifList)
+        MainWindow.setTabOrder(self.tifList, self.tifRemove)
+        MainWindow.setTabOrder(self.tifRemove, self.runButton)
+        MainWindow.setTabOrder(self.runButton, self.closeButton)
+
+    def retranslateUi(self, MainWindow):
+        MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "Interpolation Tool - Test Version", None, QtGui.QApplication.UnicodeUTF8))
+        self.tifLabel.setText(QtGui.QApplication.translate("MainWindow", "GeoTIFF File(s):", None, QtGui.QApplication.UnicodeUTF8))
+        self.runButton.setText(QtGui.QApplication.translate("MainWindow", "Run", None, QtGui.QApplication.UnicodeUTF8))
+        self.bagBrowse.setText(QtGui.QApplication.translate("MainWindow", "Browse", None, QtGui.QApplication.UnicodeUTF8))
+        self.bagLabel.setText(QtGui.QApplication.translate("MainWindow", "BAG File:", None, QtGui.QApplication.UnicodeUTF8))
+        self.tifBrowse.setText(QtGui.QApplication.translate("MainWindow", "Browse", None, QtGui.QApplication.UnicodeUTF8))
+        self.closeButton.setText(QtGui.QApplication.translate("MainWindow", "Close", None, QtGui.QApplication.UnicodeUTF8))
+        self.tifRemove.setText(QtGui.QApplication.translate("MainWindow", "Remove", None, QtGui.QApplication.UnicodeUTF8))
+        self.title.setText(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p align=\"center\"><span style=\" font-size:12pt;\">Interpolation Tool - Test Version</span></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.menuFile.setTitle(QtGui.QApplication.translate("MainWindow", "File", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionAbout.setText(QtGui.QApplication.translate("MainWindow", "About", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionClose.setText(QtGui.QApplication.translate("MainWindow", "Close", None, QtGui.QApplication.UnicodeUTF8))
+
