@@ -34,6 +34,7 @@ import tkMessageBox
 from Tkinter import *
 from ttk import *
 
+from lxml import etree
 from string import ascii_lowercase
 from scipy.ndimage.interpolation import zoom
 from osgeo import gdal, ogr, osr, gdalconst
@@ -59,6 +60,22 @@ gdal.UseExceptions()
 progLoc = os.getcwd()
 print (progLoc)
 
+
+ns = {
+    'bag': 'http://www.opennavsurf.org/schema/bag',
+    'gco': 'http://www.isotc211.org/2005/gco',
+    'gmd': 'http://www.isotc211.org/2005/gmd',
+    'gmi': 'http://www.isotc211.org/2005/gmi',
+    'gml': 'http://www.opengis.net/gml/3.2',
+    'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+}
+
+ns2 = {
+    'gml': 'http://www.opengis.net/gml',
+    'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+    'smXML': 'http://metadata.dgiwg.org/smXML',
+}
+
 combo = re.compile(r'COMBINED', re.IGNORECASE)
 interp = re.compile(r'INTERP', re.IGNORECASE)
 
@@ -69,14 +86,14 @@ interp = re.compile(r'INTERP', re.IGNORECASE)
 #    print ('tifInput')
 #    inFiles = []
 #    for root, dirs, files in os.walk(path):
-#        for file in files:
-#            if file.lower().endswith('.tif') or file.lower().endswith('.tiff'):
-#                print (interp.match(file))
-#                print (interp.search(file))
-#                if interp.search(file) != None or combo.search(file) != None:
+#        for fileObj in files:
+#            if fileObj.lower().endswith('.tif') or fileObj.lower().endswith('.tiff'):
+#                print (interp.match(fileObj))
+#                print (interp.search(fileObj))
+#                if interp.search(fileObj) != None or combo.search(fileObj) != None:
 #                    pass
 #                else:
-#                    inFiles.append(root + '/' + file)
+#                    inFiles.append(root + '/' + fileObj)
 #    return inFiles
 
 #def bagInput(path):
@@ -86,12 +103,12 @@ interp = re.compile(r'INTERP', re.IGNORECASE)
 #    print ('bagInput')
 #    inFiles = []
 #    for root, dirs, files in os.walk(path):
-#        for file in files:
-#            if file.lower().endswith('.bag'):
-#                if interp.search(file) != None or combo.search(file) != None:
+#        for fileObj in files:
+#            if fileObj.lower().endswith('.bag'):
+#                if interp.search(fileObj) != None or combo.search(fileObj) != None:
 #                    pass
 #                else:
-#                    inFiles.append(root + '/' + file)
+#                    inFiles.append(root + '/' + fileObj)
 #    return inFiles
 
 def getTifElev(files):
@@ -109,9 +126,9 @@ def getTifElev(files):
     names = []
     maxVal = 0
     y = 0
-    for file in files:
-        print(file)
-        ds = gdal.Open(file)
+    for fileObj in files:
+        print(fileObj)
+        ds = gdal.Open(fileObj)
 #        print (gdal.Info(ds))
 
         ulx, xres, xskew, uly, yskew, yres  = ds.GetGeoTransform()
@@ -129,7 +146,7 @@ def getTifElev(files):
             uly = s
         meta = ([ulx, uly], [lrx, lry])
 
-        fName = os.path.split(file)[-1]
+        fName = os.path.split(fileObj)[-1]
         splits = fName.split('_')
         name = '_'.join([x for x in splits[:2]])
         names.append(name)
@@ -144,12 +161,11 @@ def getTifElev(files):
         print (meta)
         band=None
         ds=None
-        tifFiles.append ([y, file, meta, arr])
+        tifFiles.append ([y, fileObj, meta, arr])
         y += 1
     return tifFiles, names
 
-
-def getBagLyrs(file):
+def getBagLyrs(fileObj):
     '''This function takes a list of BAG filepaths and opens each in order
     to access their values. Returned is a list of bag objects are the order a
     file was found, the path of the file, the file's elevation values, and the
@@ -159,30 +175,55 @@ def getBagLyrs(file):
 #    bagFiles = []
     names = []
     y = 0
-#    for file in files:
-    print (file)
-    bag_0 = BAGFile(file)
-#        print (Meta(bag_0.metadata()))
-    sx,sy =  Meta(bag_0.metadata()).sw
-    nx,ny = Meta(bag_0.metadata()).ne
-    meta = [sx, ny], [nx, sy]
-    print (meta)
-    bag_0.close()
-    fName = os.path.split(file)[-1]
+#    for fileObj in files:
+    print (fileObj)
+#    bag_0 = BAGFile(fileObj)
+##        print (Meta(bag_0.metadata()))
+#    sx,sy =  Meta(bag_0.metadata()).sw
+#    nx,ny = Meta(bag_0.metadata()).ne
+#    meta = [sx, ny], [nx, sy]
+#    print (meta)
+#    bag_0.close()
+    fName = os.path.split(fileObj)[-1]
     splits = fName.split('_')
     name = '_'.join([x for x in splits[:2]])
     names.append(name)
     print (splits)
-    with tb.open_file(file, mode = 'r') as bagfile:
+    with tb.open_file(fileObj, mode = 'r') as bagfile:
+        meta_xml = ''.join(bagfile.root.BAG_root.metadata.read())
+        xml_tree = etree.fromstring(meta_xml)
+        try:
+            ret = xml_tree.xpath('//*/gmd:spatialRepresentationInfo/gmd:MD_Georectified/'
+                                      'gmd:cornerPoints/gml:Point/gml:coordinates',
+                                      namespaces=ns)[0].text.split()
+        except (etree.Error, IndexError) as e:
+            try:
+                ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
+                                          'cornerPoints/gml:Point/gml:coordinates',
+                                          namespaces=ns2)[0].text.split()
+            except (etree.Error, IndexError) as e:
+                logger.warning("unable to read corners SW and NE: %s" % e)
+                return
+
+        try:
+            sw = [float(c) for c in ret[0].split(',')]
+            ne = [float(c) for c in ret[1].split(',')]
+        except (ValueError, IndexError) as e:
+            logger.warning("unable to read corners SW and NE: %s" % e)
+            return
+        print (ret, sw, ne)
+        sx,sy = sw
+        nx,ny = ne
+        meta = [[sx,ny], [nx,sy]]
         elev = np.flipud(bagfile.root.BAG_root.elevation.read())
 #            uncr = np.flipud(bagfile.root.BAG_root.uncertainty.read())
         print (np.amax(elev), np.amin(elev))
 #            print (np.amax(uncr), np.amin(uncr))
 
-        bag = [y, file, meta, elev]
-        print(elev.shape)
+        bag = [y, fileObj, meta, elev]
+        print (bag)
         bagfile.close()
-    return bag, names
+    return bag#, names
 
 def write_raster(raster_array, gt, data_obj, outputpath, dtype=gdal.GDT_UInt32,
                  options=0, color_table=0, nbands=1, nodata=False):
@@ -766,8 +807,6 @@ def bagSave(bag, new, tifs, res, ext, path):
 #class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
 
 def interp(bagPath, tifPath, desPath):
-#    fileList = tifInput(tifPath)
-#    print (fileList)
     tifFiles, names = getTifElev(tifPath)
     if len(tifFiles) > 1:
         tifGrids, extent = alignTifs(tifFiles)
@@ -780,7 +819,7 @@ def interp(bagPath, tifPath, desPath):
     comboTif, name = polyTifVals(tifGrids, desPath, names)
     comboArr = [0, name, extent, comboTif]
 
-    bag, name = getBagLyrs(bagPath)
+    bag = getBagLyrs(bagPath)
     print(bag, '\n')
     res, grids, ext = alignGrids(bag, comboArr)
     combo, vals = comboGrid(grids)
