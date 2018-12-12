@@ -17,15 +17,17 @@ Made in part with code from:
 
 import os
 import re
+import ast
 import sys
-import cv2
 import scipy
 import shutil
 import datetime
 import numpy as np
 import tables as tb
-import matplotlib.pyplot as plt
+import tkinter as tk
+import configparser
 
+from lxml import etree
 from string import ascii_lowercase
 from scipy.ndimage.interpolation import zoom
 from osgeo import gdal, ogr, osr, gdalconst
@@ -48,72 +50,94 @@ logger.addHandler(ch)
 # this allows GDAL to throw Python Exceptions
 gdal.UseExceptions()
 
-os.chdir('R:/Scripts/svn-nbs/scripts/baginterp')
-from autoInterp_ui import Ui_MainWindow
-#os.chdir('R:/Scripts/svn-nbs/scripts/baginterp')
-#qtCreatorFile = 'autoInterp.ui'
-#Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
+progLoc = os.getcwd()
+print (progLoc)
+
+ns = {
+    'bag': 'http://www.opennavsurf.org/schema/bag',
+    'gco': 'http://www.isotc211.org/2005/gco',
+    'gmd': 'http://www.isotc211.org/2005/gmd',
+    'gmi': 'http://www.isotc211.org/2005/gmi',
+    'gml': 'http://www.opengis.net/gml/3.2',
+    'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+}
+
+ns2 = {
+    'gml': 'http://www.opengis.net/gml',
+    'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+    'smXML': 'http://metadata.dgiwg.org/smXML',
+}
 
 combo = re.compile(r'COMBINED', re.IGNORECASE)
 interp = re.compile(r'INTERP', re.IGNORECASE)
 
-def tifInput(path):
-    '''This function takes a file/folder path and identifies and returns a list
-    of all the paths of GeoTiff files found.
-    '''
-    print ('tifInput')
-    inFiles = []
-    for root, dirs, files in os.walk(path):
-        for file in files:
-            if file.lower().endswith('.tif') or file.lower().endswith('.tiff'):
-                print (interp.match(file))
-                print (interp.search(file))
-                if interp.search(file) != None or combo.search(file) != None:
-                    pass
-                else:
-                    inFiles.append(root + '/' + file)
-    return inFiles
+#def tifInput(path):
+#    '''This function takes a file/folder path and identifies and returns a list
+#    of all the paths of GeoTiff files found.
+#    '''
+#    print ('tifInput')
+#    inFiles = []
+#    for root, dirs, files in os.walk(path):
+#        for file in files:
+#            if file.lower().endswith('.tif') or file.lower().endswith('.tiff'):
+#                print (interp.match(file))
+#                print (interp.search(file))
+#                if interp.search(file) != None or combo.search(file) != None:
+#                    pass
+#                else:
+#                    inFiles.append(root + '/' + file)
+#    return inFiles
 
-def bagInput(path):
-    '''This function takes a file/folder path and identifies and returns a list
-    of all the paths of BAG files found.
-    '''
-    print ('bagInput')
-    inFiles = []
-    for root, dirs, files in os.walk(path):
-        for file in files:
-            if file.lower().endswith('.bag'):
-                if interp.search(file) != None or combo.search(file) != None:
-                    pass
-                else:
-                    inFiles.append(root + '/' + file)
-    return inFiles
+#def bagInput(path):
+#    '''This function takes a file/folder path and identifies and returns a list
+#    of all the paths of BAG files found.
+#    '''
+#    print ('bagInput')
+#    inFiles = []
+#    for root, dirs, files in os.walk(path):
+#        for file in files:
+#            if file.lower().endswith('.bag'):
+#                if interp.search(file) != None or combo.search(file) != None:
+#                    pass
+#                else:
+#                    inFiles.append(root + '/' + file)
+#    return inFiles
 
-def getTifElev(files):   
+def getTifElev(files):
     '''This function takes a list of GeoTiff filepaths and opens each in order
     to access their values. Returned as a list of tif objects are the order a
-    file was found, the path of the file, and the file's values as 
+    file was found, the path of the file, and the file's values as
     [x, file, arr] and a list of file names
-    
+
     Upper Left Corner and Lower Right Corner Bounds Directly from:
-    "How to get raster corner..." on on GIS Stack Exchange [Answer by 'James' 
+    "How to get raster corner..." on on GIS Stack Exchange [Answer by 'James'
     (https://gis.stackexchange.com/a/201320)]
     '''
     print ('getTifElev')
     tifFiles = []
     names = []
     maxVal = 0
-    x = 0
+    y = 0
     for file in files:
         print(file)
         ds = gdal.Open(file)
 #        print (gdal.Info(ds))
-        
+
         ulx, xres, xskew, uly, yskew, yres  = ds.GetGeoTransform()
         lrx = ulx + (ds.RasterXSize * xres)
         lry = uly + (ds.RasterYSize * yres)
+        print (ulx, lrx)
+        print (uly, lry)
+        if lrx<ulx:
+            s = ulx
+            ulx = lrx
+            lrx = s
+        if uly<lry:
+            s = lry
+            lry = uly
+            uly = s
         meta = ([ulx, uly], [lrx, lry])
-        
+
         fName = os.path.split(file)[-1]
         splits = fName.split('_')
         name = '_'.join([x for x in splits[:2]])
@@ -128,55 +152,85 @@ def getTifElev(files):
         print (np.amax(arr), np.amin(arr))
         print (meta)
         band=None
-        ds=None  
-        tifFiles.append ([x, file, meta, arr])
-        x += 1
+        ds=None
+        tifFiles.append ([y, file, meta, arr])
+        y += 1
     return tifFiles, names
 
 
-def getBagLyrs(files):
+def getBagLyrs(fileObj):
     '''This function takes a list of BAG filepaths and opens each in order
     to access their values. Returned is a list of bag objects are the order a
-    file was found, the path of the file, the file's elevation values, and the 
+    file was found, the path of the file, the file's elevation values, and the
     file's uncertainty values as [x, file, elev, uncr] and a list of file names
     '''
     print ('getBagLyrs')
-    bagFiles = []
+#    bagFiles = []
     names = []
-    x = 0
-    for file in files:
-        print (file)
-        bag_0 = BAGFile(file)   
-#        print (Meta(bag_0.metadata()))
-        meta = Meta(bag_0.metadata()).sw, Meta(bag_0.metadata()).ne
-        print (meta)
-        bag_0.close()
-        fName = os.path.split(file)[-1]
-        splits = fName.split('_')
-        name = '_'.join([x for x in splits[:2]])
-        names.append(name)
-        print (splits)
-        with tb.open_file(file, mode = 'r') as bagfile:
-            elev = np.flipud(bagfile.root.BAG_root.elevation.read())
+    y = 0
+#    for fileObj in files:
+    print (fileObj)
+    fName = os.path.split(fileObj)[-1]
+    splits = fName.split('_')
+    name = '_'.join([x for x in splits[:2]])
+    names.append(name)
+    print (splits)
+    with tb.open_file(fileObj, mode = 'r') as bagfile:
+        meta_xml = ''.join(bagfile.root.BAG_root.metadata.read())
+        xml_tree = etree.fromstring(meta_xml)
+        try:
+            ret = xml_tree.xpath('//*/gmd:spatialRepresentationInfo/gmd:MD_Georectified/'
+                                      'gmd:cornerPoints/gml:Point/gml:coordinates',
+                                      namespaces=ns)[0].text.split()
+        except (etree.Error, IndexError) as e:
+            try:
+                ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
+                                          'cornerPoints/gml:Point/gml:coordinates',
+                                          namespaces=ns2)[0].text.split()
+            except (etree.Error, IndexError) as e:
+                logger.warning("unable to read corners SW and NE: %s" % e)
+                return
+
+        try:
+            sw = [float(c) for c in ret[0].split(',')]
+            ne = [float(c) for c in ret[1].split(',')]
+        except (ValueError, IndexError) as e:
+            logger.warning("unable to read corners SW and NE: %s" % e)
+            return
+        print (ret, sw, ne)
+        sx,sy = sw
+        nx,ny = ne
+        meta = [[sx,ny], [nx,sy]]
+        elev = np.flipud(bagfile.root.BAG_root.elevation.read())
 #            uncr = np.flipud(bagfile.root.BAG_root.uncertainty.read())
-            print (np.amax(elev), np.amin(elev))
+        print (np.amax(elev), np.amin(elev))
 #            print (np.amax(uncr), np.amin(uncr))
 
-            bagFiles.append([x, file, meta, elev])
-            print(elev.shape)
-            bagfile.close()
-        x += 1
-    return bagFiles, names
+        bag = [y, fileObj, meta, elev]
+        print (bag)
+        bagfile.close()
+    return bag
+
+def getShpRast(file):
+    print ('getShpRast')
+    file = ogr.Open(file)
+    shape = file.GetLayer()
+    fnum = shape.GetFeatureCount()
+    x = np.arrange(fnum)
+    polys = []
+    for n, x in enumerate(np.arange(fnum)):
+        polys.append(shape.GetFeature(n))
+    print (polys)
 
 def write_raster(raster_array, gt, data_obj, outputpath, dtype=gdal.GDT_UInt32,
                  options=0, color_table=0, nbands=1, nodata=False):
     '''
     Directly From:
-    "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon' 
+    "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
     (https://gis.stackexchange.com/a/278965)]
     '''
     print('write_raster')
-    
+
     height, width = raster_array.shape
 
     # Prepare destination file
@@ -202,7 +256,7 @@ def write_raster(raster_array, gt, data_obj, outputpath, dtype=gdal.GDT_UInt32,
     srs.ImportFromWkt(wkt)
     dest.SetProjection(srs.ExportToWkt())
 
-    # Close output raster dataset 
+    # Close output raster dataset
     dest = None
 
 def maxValue(arr):
@@ -211,8 +265,8 @@ def maxValue(arr):
     index = np.where(counts==np.amax(counts))
     print (index, nums[index])
     return int(nums[index])
-    
-    
+
+
 def tupleGrid(grid, maxVal):
     print ('tupleGrid')
     points = []
@@ -234,10 +288,10 @@ def tupleGrid(grid, maxVal):
                 else:
                     pass
             else:
-                if io == False: 
+                if io == False:
                     val = grid[y,x]
                     point = [x, y, val]
-                    
+
                     if a == 0:
                         print (point, val)
                         a += 1
@@ -248,15 +302,10 @@ def tupleGrid(grid, maxVal):
 
 def tupleGrid2(grid, maxVal):
     print ('tupleGrid2')
-    edge_horizont = scipy.ndimage.sobel(grid, 0)
-    edge_vertical = scipy.ndimage.sobel(grid, 1)
-    magnitude = np.hypot(edge_horizont, edge_vertical)
-#    print (magnitude, maxValue(magnitude))
-#    magnitude = np.where(0<magnitude<.5)
-#    print (magnitude, maxValue(magnitude))
-#    points = np.take(grid, magnitude)
-    
-#    return [magnitude, points]
+    grid = np.nan_to_num(grid)
+    x, y = grid.shape[0], grid.shape[1]
+
+    print (grid)
     return [[],[]]
 
 def concatGrid(grids, maxVal, shape):
@@ -280,21 +329,21 @@ def concatGrid2(grids, maxVal, shape):
     print ('concatGrid2')
     print ('tpts', datetime.datetime.now())
     tpts = tupleGrid2(grids[0], maxVal)
-    tcom = np.concatenate([tpts])
-    print (tcom.shape, tcom)
+#    tcom = np.concatenate([tpts])
+    print (tpts.shape, tpts)
     print ('bpts', datetime.datetime.now())
     bpts = tupleGrid2(grids[1], maxVal)
-    bcom = np.concatenate([bpts])
-    print (bcom.shape, bcom)
+#    bcom = np.concatenate([bpts])
+    print (bpts.shape, bpts)
     print ('done', datetime.datetime.now())
-    comb = np.concatenate([tcom, bcom])
+    comb = np.concatenate([tpts, bpts])
     comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
     grid = np.hsplit(comb, [2, 4])
     grid = grid[0]
     vals = grid[1].squeeze()
     print (grid, vals)
     return grid, vals
-         
+
 def alignTifs(tifs):
     print ('alignTifs')
     x = 0
@@ -304,8 +353,6 @@ def alignTifs(tifs):
     sxd, nyd = 0, 0
     nxd, syd = 0, 0
     for tif in tifs:
-        maxVal = maxValue(tif[-1])
-        print (maxVal)
         bounds = tif[-2]
         ul = bounds[0]
         lr = bounds[-1]
@@ -365,6 +412,10 @@ def alignTifs(tifs):
             maxVal = maxValue(tif[-1])
             sizedTif = tif[:-1]
             print (tif)
+            bndx, bndy = tif[2][0]
+            nwx, nwy = nw
+            print (bndx, bndy)
+            print (nwx, nwy)
             arr = tif[-1]
             bef = arr.shape
             x, y = arr.shape
@@ -386,9 +437,14 @@ def alignTifs(tifs):
                 add = np.full((exp, y), maxVal)
                 arr = np.vstack([arr, add])
             print (bef, arr.shape)
-            if arr.shape != bef:
-                arr = np.roll(arr, int(sxd), axis=0)
-                arr = np.roll(arr, int(nyd), axis=1)
+            if nwx != bndx:
+                rollx = bndx - nwx
+                print (rollx)
+                arr = np.roll(arr, int(rollx), axis=1)
+            if nwy != bndy:
+                rolly = nwy - bndy
+                print (rolly)
+                arr = np.roll(arr, int(rolly), axis=0)
             sizedTif.append(arr)
             sizedTifs.append(sizedTif)
 #            sizedTifs.append(arr)
@@ -403,9 +459,9 @@ def alignTifs(tifs):
 def polyTifVals(tifs, path, names):
     '''
     Heavy Influence From:
-    "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon' 
+    "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
     (https://gis.stackexchange.com/a/278965)]
-    
+
     This function takes an input of tif
     '''
     print ('polyTifVals')
@@ -438,7 +494,7 @@ def polyTifVals(tifs, path, names):
                 tifList.append([tif[0], tif[-1]])
                 print ('yup')
     tifDict = dict(tifList)
-    for i, tif in tifDict.items(): 
+    for i, tif in tifDict.items():
         gd_obj = gdal.Open(tifs[i][1])
         array = np.expand_dims(tif,2)
         if i == 0:
@@ -452,9 +508,9 @@ def polyTifVals(tifs, path, names):
         meanTiff = (meanTiff < maxVal).astype(np.int)
     else:
         meanTiff = (meanTiff > maxVal).astype(np.int)
-          
+
     outputpath = path + '/' + names[0] + '_COMBINEDPOLY.tif'
-    
+
     print(outputpath)
     while True:
         if os.path.exists(outputpath):
@@ -463,14 +519,15 @@ def polyTifVals(tifs, path, names):
             break
     write_raster(meanTiff, gd_obj.GetGeoTransform(), gd_obj, outputpath)
     gd_obj = None
-    
+
 #    pointTiff = tupleGrid(meanTiff, 0)
-    
+
     print ('done?')
     return meanTiff, outputpath
 
 def alignGrids(bag, tif):
     print ('alignGrids')
+    print (bag[-1])
     maxVal = maxValue(bag[-1])
     maxTif = maxValue(tif[-1])
     tu, tl = tif[-2]
@@ -482,7 +539,7 @@ def alignGrids(bag, tif):
         tifRes = 1
         print (tifRes)
     else:
-        tifRes = np.mean([tex/tx, tey/ty])
+        tifRes = np.round(np.mean([tex/tx, tey/ty]))
         print(tifRes)
     splits = bag[1].split('/')[-1]
     splits = splits.split('_')[2]
@@ -498,67 +555,83 @@ def alignGrids(bag, tif):
     print (bagRes, zres)
     tmax = 0
     bmax = maxValue(bag[-1])
-    
+
+    print (tif[-1])
     print ('zoom', datetime.datetime.now())
     newarr = zoom(tif[-1], zoom=[zres, zres], order=3, prefilter=False)
     newarr = newarr.astype('float64')
-    
+
     newarr[newarr > 0] = np.nan
     newarr[newarr < 1] = maxVal
-    
+
+    print (newarr)
+
     print ('zoomed', datetime.datetime.now())
-    maxTif = maxValue(newarr)
+#    maxTif = maxValue(newarr)
 
     print (tif[-1].shape, newarr.shape)
 
     tif.pop()
+    print (tif)
     tif.append(newarr)
-    
-    nw, se = [0,0], [0,0]
-    rows, cols = 0, 0
-    sxd, nyd = 0, 0
-    nxd, syd = 0, 0
+    print (tif, tif[-1].shape)
+
     bSx, bSy = bag[-1].shape
+    tSx, tSy = tif[-1].shape
     bagBounds = bag[2]
     tifBounds = tif[2]
+    print (tifBounds)
     bulx, buly = bagBounds[0]
     blrx, blry = bagBounds[-1]
     tulx, tuly = tifBounds[0]
     tlrx, tlry = tifBounds[-1]
     dulx, duly, dlrx, dlry = 0, 0, 0, 0
     if bulx != tulx:
-        dulx = bulx - tulx
+        dulx = tulx - bulx
+        print (bulx, tulx, dulx)
     if buly != tuly:
-        print (buly, tuly)
         duly = buly - tuly
+        print (buly, tuly, duly)
     if blrx != tlrx:
         dlrx = blrx - tlrx
+        print (blrx, tlrx, dlrx)
     if blry != tlry:
-        dlry = blry - tlry
+        dlry = tlry - blry
+        print (blry, tlry, dlry)
     newarr2 = tif[-1]
-    tSx, tSy = tif[-1].shape
+    print (newarr2.shape)
+    expx, expy = 0, 0
     if newarr2.shape != bag[-1].shape:
+        print (bSx - tSx, bSy - tSy)
         if tSx < bSx:
-            exp = bSx - tSx
-            add = np.full((np.abs(exp), np.abs(tSy)), maxVal)
+            expx = np.abs(bSx - tSx)
+            print (expx)
+            add = np.full((expx, tSy), maxVal)
             newarr2 = np.vstack([newarr2, add])
             tSx, tSy = newarr2.shape
         if tSy < bSy:
-            exp = bSy - tSy
-            add = np.full((np.abs(tSx), np.abs(exp)), maxVal)
+            expy = np.abs(bSy - tSy)
+            print (expy)
+            add = np.full((tSx, expy), maxVal)
             newarr2 = np.column_stack([newarr2, add])
-    print (dulx, duly)
+    rollx = dulx*zres
+    rolly = duly*zres
+    print (dulx, rollx, duly, rolly)
     if dulx != 0:
-        tif[-1] = np.roll(newarr2, int(dulx), axis=0)
-    if duly != 0:
-        tif[-1] = np.roll(newarr2, int(duly), axis=1)
+        print('x')
+        newarr2 = np.roll(newarr2, int(rollx), axis=1)
+    if dlry != 0:
+        print('y')
+        newarr2 = np.roll(newarr2, int(rolly), axis=0)
     newarr2 = newarr2[0:bSx,0:bSy]
     print (newarr.shape, newarr2.shape, (bSx, bSy))
     tif.pop()
+    print (tif)
     tif.append(newarr2)
-    
+    print (tif, tif[-1].shape)
+
     grids = [tif, bag]
-    
+
     return bagRes, grids, bagBounds
 
 def comboGrid(grids):
@@ -580,7 +653,7 @@ def comboGrid2(grids):
         arrs.append(grid[-1])
     combo, vals = concatGrid2(arrs, maxVal, shape)
     return combo, vals
-    
+
 
 def rePrint(bag, interp, poly, maxVal):
     print ('rePrint', datetime.datetime.now())
@@ -616,12 +689,12 @@ def rePrint2(bag, interp, poly, maxVal):
     return interp
 
 def triangulateSurfaces(grids, combo, vals):
-    print ('triangulateSurfaces') 
+    print ('triangulateSurfaces')
     bagObj = grids[-1]
     bag = bagObj[-1]
     tifObj = grids[0]
     poly = tifObj[-1]
-    maxVal = maxValue(bag)   
+    maxVal = maxValue(bag)
     print ('try tri', datetime.datetime.now())
     x, y = np.arange(bag.shape[1]), np.arange(bag.shape[0])
     xi, yi = np.meshgrid(x, y)
@@ -629,7 +702,6 @@ def triangulateSurfaces(grids, combo, vals):
     print ('done', datetime.datetime.now())
     maxVal = maxValue(values)
     print (values)
-    ret = 0
     values = np.asarray(values, dtype='float64')
     values[np.isnan(values)]=maxVal
     print (values.shape, poly.shape)
@@ -637,12 +709,12 @@ def triangulateSurfaces(grids, combo, vals):
     return grid
 
 def triangulateSurfaces2(grids, combo, vals):
-    print ('triangulateSurfaces2') 
+    print ('triangulateSurfaces2')
     bagObj = grids[-1]
     bag = bagObj[-1]
     tifObj = grids[0]
     poly = tifObj[-1]
-    maxVal = maxValue(bag)   
+    maxVal = maxValue(bag)
     print ('try tri', datetime.datetime.now())
     x, y = np.arange(bag.shape[1]), np.arange(bag.shape[0])
     xi, yi = np.meshgrid(x, y)
@@ -657,13 +729,7 @@ def triangulateSurfaces2(grids, combo, vals):
     grid = rePrint2(bag,values,poly,maxVal)
     return grid
 
-def bagSplice(bag, combo):
-    bagObj = bag[-1]
-    tifObj = combo[-1]
-    bags, combos = [], []
-    return
-
-def bagSave(bag, new, tifs, res, ext):
+def bagSave(bag, new, tifs, res, ext, path):
     for tif in tifs:
         gd_obj = gdal.Open(tif[1])
         break
@@ -673,9 +739,10 @@ def bagSave(bag, new, tifs, res, ext):
     sx, sy = ext[-1]
     reso = float(res)
     print (nx, ny, sx, sy)
-    gtran = (nx, reso, 0.0, sy, 0.0, -(reso))
+    gtran = (nx, reso, 0.0, ny, 0.0, -(reso))
     print (gtran)
-    fName = bag[1].split('/')[-1]
+    fName = bag[1].split('\\')[-1]
+    print (fName)
     split = fName.split('_')[:2]
     if res < 1:
         res = '50cm'
@@ -694,7 +761,7 @@ def bagSave(bag, new, tifs, res, ext):
             os.remove(outputpath2)
         elif not os.path.exists(outputpath2):
             break
-    write_raster(new, gtran, gd_obj, outputpath, dtype=gdal.GDT_Float64, nodata=1000000.0)
+    write_raster(new, gtran, gd_obj, outputpath, dtype=gdal.GDT_Float64, nodata=0)
     shutil.copy2(bag[1], outputpath2)
     with tb.open_file(outputpath2, mode = 'a') as bagfile:
         new = np.flipud(new)
@@ -704,28 +771,114 @@ def bagSave(bag, new, tifs, res, ext):
     gd_obj = None
     print ('done')
 
-path = 'C:/Users/Casiano.Koprowski/Desktop/Testing Files/BAGs and SSS Mosaics for Interpolation/H12600'
-fileList = tifInput(path)
-print (fileList)
-tifFiles, names = getTifElev(fileList)
-tifGrids, extent = alignTifs(tifFiles)
-for tif in tifGrids:
-    print(tif, '\n')
-comboTif, name = polyTifVals(tifGrids, path, names)
-comboArr = [0, name, extent, comboTif]
+#path = 'C:/Users/Casiano.Koprowski/Desktop/Testing Files/BAGs and SSS Mosaics for Interpolation/H12963'
+##H12963'
+#fileList = tifInput(path)
+#print (fileList)
+#tifFiles, names = getTifElev(fileList)
+#if len(tifFiles) > 1:
+#    tifGrids, extent = alignTifs(tifFiles)
+#    for tif in tifGrids:
+#        print(tif, '\n')
+#else:
+#    tifGrids = tifFiles
+#    print (tifGrids)
+#    extent = tifGrids[0][2]
+#comboTif, name = polyTifVals(tifGrids, path, names)
+#comboArr = [0, name, extent, comboTif]
+#
+#bagList = bagInput(path)
+#print (bagList)
+#bagFiles, names = getBagLyrs(bagList)
+#for bag in bagFiles:
+#    print(bag, '\n')
+#    res, grids, ext = alignGrids(bag, comboArr)
+#    combo, vals = comboGrid(grids)
+##    break
+#    tifObj = grids[0]
+#    poly = tifObj[-1]
+#    print (combo.shape, poly.shape)
+#    newBag = triangulateSurfaces2(grids, combo, vals)
+#    bagSave(bag, newBag, tifGrids, res, ext)
+#    break
 
-bagList = bagInput(path)
-print (bagList)
-bagFiles, names = getBagLyrs(bagList)
-for bag in bagFiles:
-    print(bag, '\n')    
+#class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
+
+def interp(bagPath, tifPath, desPath):
+#    fileList = tifInput(tifPath)
+#    print (fileList)
+    tifFiles, names = getTifElev(tifPath)
+    if len(tifFiles) > 1:
+        tifGrids, extent = alignTifs(tifFiles)
+        for tif in tifGrids:
+            print(tif, '\n')
+    else:
+        tifGrids = tifFiles
+        print (tifGrids)
+        extent = tifGrids[0][2]
+    comboTif, name = polyTifVals(tifGrids, desPath, names)
+    comboArr = [0, name, extent, comboTif]
+
+    bag = getBagLyrs(bagPath)
+    print(bag, '\n')
     res, grids, ext = alignGrids(bag, comboArr)
     combo, vals = comboGrid(grids)
-#    break
     tifObj = grids[0]
     poly = tifObj[-1]
     print (combo.shape, poly.shape)
     newBag = triangulateSurfaces2(grids, combo, vals)
-    bagSave(bag, newBag, tifGrids, res, ext)
-    break
+    bagSave(bag, newBag, tifGrids, res, ext, desPath)
+    return True
+    
+def main():
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    print (config.sections())
+    if config['BAG Input']['Input'] != '':
+        bagPath = os.path.normpath(config['BAG Input']['Input'])
+    if config['GeoTIFF Input']['Input'] != '':
+        if ',' in config['GeoTIFF Input']['Input']:
+            tifPath = config['GeoTIFF Input']['Input'].split(', ')
+            if len(tifPath) == 0:
+                tifPath = config['GeoTIFF Input']['Input'].split(',')
+            x = len(tifPath)
+            y = np.arange(x)
+            for x, t in enumerate(y):
+                tifPath[x] = os.path.normpath(tifPath[x])
+        else:
+            tifPath = config['GeoTIFF Input']['Input']
+    if config['Destination Input']['Destination'] != '':
+        desPath = os.path.normpath(config['Destination Input']['Destination'])
+    else:
+        folder = os.path.split(bagPath)[0]
+        desPath = folder
+    interp(bagPath, tifPath, desPath)
 
+if __name__ == "__main__":
+   main()
+
+
+#class Application(tk.Frame):
+#    def __init__(self, master=None):
+#        super().__init__(master)
+#        self.master = master
+#        self.pack()
+#        self.create_widgets()
+#
+#    def create_widgets(self):
+#        self.hi_there = tk.Button(self)
+#        self.hi_there["text"] = "Hello World\n(click me)"
+#        self.hi_there["command"] = self.say_hi
+#        self.hi_there.pack(side="top")
+#
+#        self.quit = tk.Button(self, text="QUIT", fg="red",
+#                              command=self.master.destroy)
+#        self.quit.pack(side="bottom")
+#
+#    def say_hi(self):
+#        print("hi there, everyone!")
+#
+#root = tk.Tk()
+#app = Application(master=root)
+#app.mainloop()
+    
