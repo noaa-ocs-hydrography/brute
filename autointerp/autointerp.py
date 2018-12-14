@@ -834,9 +834,9 @@ def interp(bagPath, tifPath, desPath):
     bagSave(bag, newBag, tifGrids, res, ext, desPath)
     return True
 
-class Form(wxTest.Form):
+class Form(autointerp_ui.Form):
     def __init__(self, parent):
-        wxTest.Form.__init__(self, parent)
+        autointerp_ui.Form.__init__(self, parent)
         self.insInd = 0
         self.list_tif.InsertColumn(0, 'Files', width=200)
         self.list_tif.InsertColumn(1, 'Path', width=500)
@@ -870,9 +870,9 @@ class Form(wxTest.Form):
         interp(bagPath, tifPath, desPath)
 #            x = Done()
             
-class Done(wxTest.Done):
+class Done(autointerp_ui.Done):
     def __init__(self, parent):
-        wxTest.Done.__init__(self, parent)
+        autointerp_ui.Done.__init__(self, parent)
         
         
         
