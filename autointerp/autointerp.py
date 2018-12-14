@@ -17,6 +17,7 @@ Made in part with code from:
 
 import os
 import re
+import wx
 import ast
 import sys
 import scipy
@@ -24,7 +25,6 @@ import shutil
 import datetime
 import numpy as np
 import tables as tb
-import tkinter as tk
 import configparser
 
 from lxml import etree
@@ -32,20 +32,7 @@ from string import ascii_lowercase
 from scipy.ndimage.interpolation import zoom
 from osgeo import gdal, ogr, osr, gdalconst
 
-from hyo.bag import BAGFile
-from hyo.bag import BAGError
-from hyo.bag.helper import Helper
-from hyo.bag.meta import Meta
-
-import logging
-
-logger = logging.getLogger()
-logger.setLevel(logging.NOTSET)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)  # change to WARNING to reduce verbosity, DEBUG for high verbosity
-ch_formatter = logging.Formatter('%(levelname)-9s %(name)s.%(funcName)s:%(lineno)d > %(message)s')
-ch.setFormatter(ch_formatter)
-logger.addHandler(ch)
+import autointerp_ui
 
 # this allows GDAL to throw Python Exceptions
 gdal.UseExceptions()
@@ -176,8 +163,25 @@ def getBagLyrs(fileObj):
     names.append(name)
     print (splits)
     with tb.open_file(fileObj, mode = 'r') as bagfile:
-        meta_xml = ''.join(bagfile.root.BAG_root.metadata.read())
-        xml_tree = etree.fromstring(meta_xml)
+        meta_read = [str(x, 'utf-8', 'ignore') for x in bagfile.root.BAG_root.metadata.read()]
+#        print (meta_read)
+        meta_xml = ''.join(meta_read)
+#        print (meta_xml)
+        encodeVal = 0
+        for x in meta_xml:
+            if meta_xml[encodeVal] == '>':
+                meta_xml = meta_xml[encodeVal:]
+                break
+            else:
+                encodeVal += 1    
+        startVal = 0
+        for x in meta_xml:
+            if meta_xml[startVal] == '<':
+                meta_xml = meta_xml[startVal:]
+                break
+            else:
+                startVal += 1
+        xml_tree = etree.XML(meta_xml)
         try:
             ret = xml_tree.xpath('//*/gmd:spatialRepresentationInfo/gmd:MD_Georectified/'
                                       'gmd:cornerPoints/gml:Point/gml:coordinates',
@@ -829,56 +833,50 @@ def interp(bagPath, tifPath, desPath):
     newBag = triangulateSurfaces2(grids, combo, vals)
     bagSave(bag, newBag, tifGrids, res, ext, desPath)
     return True
-    
-def main():
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    print (config.sections())
-    if config['BAG Input']['Input'] != '':
-        bagPath = os.path.normpath(config['BAG Input']['Input'])
-    if config['GeoTIFF Input']['Input'] != '':
-        if ',' in config['GeoTIFF Input']['Input']:
-            tifPath = config['GeoTIFF Input']['Input'].split(', ')
-            if len(tifPath) == 0:
-                tifPath = config['GeoTIFF Input']['Input'].split(',')
-            x = len(tifPath)
-            y = np.arange(x)
-            for x, t in enumerate(y):
-                tifPath[x] = os.path.normpath(tifPath[x])
-        else:
-            tifPath = config['GeoTIFF Input']['Input']
-    if config['Destination Input']['Destination'] != '':
-        desPath = os.path.normpath(config['Destination Input']['Destination'])
-    else:
-        folder = os.path.split(bagPath)[0]
-        desPath = folder
-    interp(bagPath, tifPath, desPath)
 
-if __name__ == "__main__":
-   main()
-
-
-#class Application(tk.Frame):
-#    def __init__(self, master=None):
-#        super().__init__(master)
-#        self.master = master
-#        self.pack()
-#        self.create_widgets()
-#
-#    def create_widgets(self):
-#        self.hi_there = tk.Button(self)
-#        self.hi_there["text"] = "Hello World\n(click me)"
-#        self.hi_there["command"] = self.say_hi
-#        self.hi_there.pack(side="top")
-#
-#        self.quit = tk.Button(self, text="QUIT", fg="red",
-#                              command=self.master.destroy)
-#        self.quit.pack(side="bottom")
-#
-#    def say_hi(self):
-#        print("hi there, everyone!")
-#
-#root = tk.Tk()
-#app = Application(master=root)
-#app.mainloop()
-    
+class Form(wxTest.Form):
+    def __init__(self, parent):
+        wxTest.Form.__init__(self, parent)
+        self.insInd = 0
+        self.list_tif.InsertColumn(0, 'Files', width=200)
+        self.list_tif.InsertColumn(1, 'Path', width=500)
+        
+    def programQuit(self, event):
+        self.Close()
+        
+    def itemInsert(self, event):
+        print (self.picker_tif.GetPath())
+        tif = self.picker_tif.GetPath()
+        name = os.path.split(self.picker_tif.GetPath())
+        self.list_tif.InsertItem(self.insInd, name[1])
+        self.list_tif.SetItem(self.insInd, 1, tif)
+        self.insInd += 1
+        
+    def itemRemove(self, event):
+        selected = self.list_tif.SelectedItemCount
+        for x in range(0, selected):
+            sel = self.list_tif.GetFirstSelected()
+            self.list_tif.DeleteItem(sel)
+            
+    def programProg(self, event):
+        bagPath = self.picker_bag.GetPath()
+        tifs = self.list_tif.GetItemCount()
+        print (tifs)
+        tifPath = []
+        for x in range(0, tifs):
+            tifPath.append(self.list_tif.GetItemText(x, col=1))
+        print (tifPath)
+        desPath = self.picker_des.GetPath()
+        interp(bagPath, tifPath, desPath)
+#            x = Done()
+            
+class Done(wxTest.Done):
+    def __init__(self, parent):
+        wxTest.Done.__init__(self, parent)
+        
+        
+        
+app = wx.App()
+frame = Form(None)
+frame.Show()
+app.MainLoop()
