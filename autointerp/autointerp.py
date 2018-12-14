@@ -5,13 +5,14 @@ Created on Thu Oct 11 16:52:49 2018
 @author: Casiano.Koprowski
 
 Made in part with code from:
-    - Extract Bag Outlines on Pydro by Dayong.Shen
-    - QC Tools 2: Flier Finder on Pydro by HydrOffice
-    - QC Tools 2: Bag Metadata Editor on Pydro by HydrOffice
+    - hyo.bag Library Pydro by HydrOffice
     - "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon' 
         (https://gis.stackexchange.com/a/278965)]
     - "How to get raster corner..." on on GIS Stack Exchange [Answer by 'James' 
         (https://gis.stackexchange.com/a/201320)]
+    
+Icon from https://www.ngdc.noaa.gov/mgg/image/2minrelief.html 
+    via https://commons.wikimedia.org/wiki/File:Atlantic_bathymetry.jpg
 """
 #from __future__ import absolute_import, division, print_function
 
@@ -20,17 +21,19 @@ import re
 import wx
 import ast
 import sys
+import cv2
 import scipy
 import shutil
 import datetime
 import numpy as np
 import tables as tb
-import configparser
 
 from lxml import etree
 from string import ascii_lowercase
 from scipy.ndimage.interpolation import zoom
+from scipy.spatial import cKDTree
 from osgeo import gdal, ogr, osr, gdalconst
+import matplotlib.pyplot as plt
 
 import autointerp_ui
 
@@ -58,43 +61,11 @@ ns2 = {
 combo = re.compile(r'COMBINED', re.IGNORECASE)
 interp = re.compile(r'INTERP', re.IGNORECASE)
 
-#def tifInput(path):
-#    '''This function takes a file/folder path and identifies and returns a list
-#    of all the paths of GeoTiff files found.
-#    '''
-#    print ('tifInput')
-#    inFiles = []
-#    for root, dirs, files in os.walk(path):
-#        for file in files:
-#            if file.lower().endswith('.tif') or file.lower().endswith('.tiff'):
-#                print (interp.match(file))
-#                print (interp.search(file))
-#                if interp.search(file) != None or combo.search(file) != None:
-#                    pass
-#                else:
-#                    inFiles.append(root + '/' + file)
-#    return inFiles
-
-#def bagInput(path):
-#    '''This function takes a file/folder path and identifies and returns a list
-#    of all the paths of BAG files found.
-#    '''
-#    print ('bagInput')
-#    inFiles = []
-#    for root, dirs, files in os.walk(path):
-#        for file in files:
-#            if file.lower().endswith('.bag'):
-#                if interp.search(file) != None or combo.search(file) != None:
-#                    pass
-#                else:
-#                    inFiles.append(root + '/' + file)
-#    return inFiles
-
 def getTifElev(files):
     '''This function takes a list of GeoTiff filepaths and opens each in order
     to access their values. Returned as a list of tif objects are the order a
     file was found, the path of the file, and the file's values as
-    [x, file, arr] and a list of file names
+    [x, file, extent, arr] and a list of file names
 
     Upper Left Corner and Lower Right Corner Bounds Directly from:
     "How to get raster corner..." on on GIS Stack Exchange [Answer by 'James'
@@ -108,8 +79,7 @@ def getTifElev(files):
     for file in files:
         print(file)
         ds = gdal.Open(file)
-#        print (gdal.Info(ds))
-
+        
         ulx, xres, xskew, uly, yskew, yres  = ds.GetGeoTransform()
         lrx = ulx + (ds.RasterXSize * xres)
         lry = uly + (ds.RasterYSize * yres)
@@ -149,13 +119,13 @@ def getBagLyrs(fileObj):
     '''This function takes a list of BAG filepaths and opens each in order
     to access their values. Returned is a list of bag objects are the order a
     file was found, the path of the file, the file's elevation values, and the
-    file's uncertainty values as [x, file, elev, uncr] and a list of file names
+    file's uncertainty values as [x, file, extent, elev] and a list of file 
+    names
     '''
     print ('getBagLyrs')
 #    bagFiles = []
     names = []
     y = 0
-#    for fileObj in files:
     print (fileObj)
     fName = os.path.split(fileObj)[-1]
     splits = fName.split('_')
@@ -192,14 +162,14 @@ def getBagLyrs(fileObj):
                                           'cornerPoints/gml:Point/gml:coordinates',
                                           namespaces=ns2)[0].text.split()
             except (etree.Error, IndexError) as e:
-                logger.warning("unable to read corners SW and NE: %s" % e)
+                print("unable to read corners SW and NE: %s" % e)
                 return
 
         try:
             sw = [float(c) for c in ret[0].split(',')]
             ne = [float(c) for c in ret[1].split(',')]
         except (ValueError, IndexError) as e:
-            logger.warning("unable to read corners SW and NE: %s" % e)
+            print("unable to read corners SW and NE: %s" % e)
             return
         print (ret, sw, ne)
         sx,sy = sw
@@ -209,7 +179,6 @@ def getBagLyrs(fileObj):
 #            uncr = np.flipud(bagfile.root.BAG_root.uncertainty.read())
         print (np.amax(elev), np.amin(elev))
 #            print (np.amax(uncr), np.amin(uncr))
-
         bag = [y, fileObj, meta, elev]
         print (bag)
         bagfile.close()
@@ -228,8 +197,7 @@ def getShpRast(file):
 
 def write_raster(raster_array, gt, data_obj, outputpath, dtype=gdal.GDT_UInt32,
                  options=0, color_table=0, nbands=1, nodata=False):
-    '''
-    Directly From:
+    '''Directly From:
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
     (https://gis.stackexchange.com/a/278965)]
     '''
@@ -264,6 +232,11 @@ def write_raster(raster_array, gt, data_obj, outputpath, dtype=gdal.GDT_UInt32,
     dest = None
 
 def maxValue(arr):
+    '''Takes an input array and finds the most used value in the array, this 
+    value is used by the program to assume the array's nodata value
+    
+    returns the most used value in the array as an integer
+    '''
     print ('maxValue')
     nums, counts = np.unique(arr, return_counts =True)
     index = np.where(counts==np.amax(counts))
@@ -272,6 +245,18 @@ def maxValue(arr):
 
 
 def tupleGrid(grid, maxVal):
+    '''Takes an input matrix and an assumed nodata value. The function iterates 
+    through the matrix and compiles a list of 'edge' points [[x, y, z], ...] where 
+        1) the current value is not a nodata value and previous value was a 
+        nodata value
+            - sets bool(io) True, indicating that the next value to compare 
+            against should be a nodata value
+        2) the current value is a nodata value and the previous value was not 
+        a nodata value
+            - sets bool(io) False, indicating that the next value to compare
+            against should not be a nodata value
+    returns a list of the points found
+    '''
     print ('tupleGrid')
     points = []
 #    zvals = []
@@ -307,12 +292,22 @@ def tupleGrid(grid, maxVal):
 def tupleGrid2(grid, maxVal):
     print ('tupleGrid2')
     grid = np.nan_to_num(grid)
-    x, y = grid.shape[0], grid.shape[1]
 
-    print (grid)
     return [[],[]]
 
 def concatGrid(grids, maxVal, shape):
+    '''Takes an input of an array of grid objects and the assumed nodata value
+    Passes the assumed nodata value and the arrays held within each of the 
+    listed grid objects to tupleGrid(grid, maxVal) for a return of an array of
+    edge points for each grid [[x, y, z], ...]
+    
+    Takes the results of both tupleGrid calls and combines them into a single 
+    array of edge points.  Then uses .view().sort() to sort the combined 
+    products [[x, y, z], ...] based on ascending x, then column y.  
+    
+    The results of the sorted point array are then split into a list of points 
+    [[x, y], ...] and values [[z], ...] and returned
+    '''
     print ('concatGrid')
     print ('tpts', datetime.datetime.now())
 #    print (grids[0])
@@ -321,7 +316,7 @@ def concatGrid(grids, maxVal, shape):
     bpts = tupleGrid(grids[1], maxVal)
     print ('done', datetime.datetime.now())
     comb = np.concatenate([tpts, bpts])
-    comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0) #<-- returns None
+    comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
     print (comb)
     grid = np.hsplit(comb, [2, 4])
     vals = grid[1].squeeze()
@@ -349,6 +344,25 @@ def concatGrid2(grids, maxVal, shape):
     return grid, vals
 
 def alignTifs(tifs):
+    '''Takes an input of an array of tiff objects. The goal of this function 
+    is to fit the provided tifs to the largest combined area of the inputs.
+    
+    Steps:
+        1) Find NW and SE corners of the first input array and the number of
+        rows and columns in the input
+        2) Find NW and SE corners of subsiquent input arrays and record 
+        differences as the NW differences (nxd, nyd) SE differences (sxd, syd)
+            - also modify the original NW and/or SE corner values if applicable
+            - also modify the original number or rows and columns if applicable
+        3) Resize the area of each input array to the new total combined size
+        of all input arrays based on the stored number of rows and columns
+        4) Reposition the data within each input array to maintain original 
+        geographic placement based on the difference of the input 
+        array's original NW corner and the recorded 'largest' NW boundry of the
+        combined input areas
+        5) return tiff objects with the newly resized/repositioned tifs and the 
+        new NW and SE extents of the new combined area
+    '''
     print ('alignTifs')
     x = 0
 #    maxVal = 0
@@ -461,12 +475,24 @@ def alignTifs(tifs):
         return tifs, ext
 
 def polyTifVals(tifs, path, names):
-    '''
-    Heavy Influence From:
+    '''Heavy Influence From:
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
     (https://gis.stackexchange.com/a/278965)]
 
-    This function takes an input of tif
+    This function takes an array input of tif objects, a destination path (for 
+    ouput saving), and a list the names of the input tif objects.
+    
+    Takes the arrays of each tif object and combines them along the z axis of 
+    each:
+        [[za,zb],[za,zb],[za,zb],
+         [za,zb],[za,zb],[za,zb],
+         [za,zb],[za,zb],[za,zb]]
+    Then takes the mean of the values along the z axis. The reslult is then 
+    modified to a binary raster by making all values that are not the nodata
+    value 1 and the values that are nodata 0.
+    
+    This binary raster is saved at the input path and also returned with the 
+    new full path for the output
     '''
     print ('polyTifVals')
     letters = []
@@ -684,9 +710,7 @@ def rePrint2(bag, interp, poly, maxVal):
     tpoly = np.nan_to_num(poly)
     tpoly = (tpoly < maxVal).astype(np.int)
     bpoly = (bag < maxVal).astype(np.int)
-    ipoly = (interp <maxVal).astype(np.int)
     cpoly = np.logical_or(bpoly, tpoly)
-    rpoly = np.logical_not(bpoly)
     dpoly = np.logical_xor(bpoly, cpoly)
     interp = np.where(dpoly, interp, bag)
     print ('done', datetime.datetime.now())
@@ -702,7 +726,8 @@ def triangulateSurfaces(grids, combo, vals):
     print ('try tri', datetime.datetime.now())
     x, y = np.arange(bag.shape[1]), np.arange(bag.shape[0])
     xi, yi = np.meshgrid(x, y)
-    values = scipy.interpolate.griddata(combo, vals, (xi, yi), method='linear', fill_value=maxVal)
+    values = scipy.interpolate.griddata(combo, vals, (xi, yi), 
+                                        method='linear', fill_value=maxVal)
     print ('done', datetime.datetime.now())
     maxVal = maxValue(values)
     print (values)
@@ -722,11 +747,11 @@ def triangulateSurfaces2(grids, combo, vals):
     print ('try tri', datetime.datetime.now())
     x, y = np.arange(bag.shape[1]), np.arange(bag.shape[0])
     xi, yi = np.meshgrid(x, y)
-    values = scipy.interpolate.griddata(combo, vals, (xi, yi), method='linear', fill_value=maxVal)
+    values = scipy.interpolate.griddata(combo, vals, (xi, yi), 
+                                        method='linear', fill_value=maxVal)
     print ('done', datetime.datetime.now())
     maxVal = maxValue(values)
     print (values)
-    ret = 0
     values = np.asarray(values, dtype='float64')
     values[np.isnan(values)]=maxVal
     print (values.shape, poly.shape)
@@ -765,7 +790,8 @@ def bagSave(bag, new, tifs, res, ext, path):
             os.remove(outputpath2)
         elif not os.path.exists(outputpath2):
             break
-    write_raster(new, gtran, gd_obj, outputpath, dtype=gdal.GDT_Float64, nodata=0)
+    write_raster(new, gtran, gd_obj, outputpath, 
+                 dtype=gdal.GDT_Float64, nodata=0)
     shutil.copy2(bag[1], outputpath2)
     with tb.open_file(outputpath2, mode = 'a') as bagfile:
         new = np.flipud(new)
@@ -775,42 +801,7 @@ def bagSave(bag, new, tifs, res, ext, path):
     gd_obj = None
     print ('done')
 
-#path = 'C:/Users/Casiano.Koprowski/Desktop/Testing Files/BAGs and SSS Mosaics for Interpolation/H12963'
-##H12963'
-#fileList = tifInput(path)
-#print (fileList)
-#tifFiles, names = getTifElev(fileList)
-#if len(tifFiles) > 1:
-#    tifGrids, extent = alignTifs(tifFiles)
-#    for tif in tifGrids:
-#        print(tif, '\n')
-#else:
-#    tifGrids = tifFiles
-#    print (tifGrids)
-#    extent = tifGrids[0][2]
-#comboTif, name = polyTifVals(tifGrids, path, names)
-#comboArr = [0, name, extent, comboTif]
-#
-#bagList = bagInput(path)
-#print (bagList)
-#bagFiles, names = getBagLyrs(bagList)
-#for bag in bagFiles:
-#    print(bag, '\n')
-#    res, grids, ext = alignGrids(bag, comboArr)
-#    combo, vals = comboGrid(grids)
-##    break
-#    tifObj = grids[0]
-#    poly = tifObj[-1]
-#    print (combo.shape, poly.shape)
-#    newBag = triangulateSurfaces2(grids, combo, vals)
-#    bagSave(bag, newBag, tifGrids, res, ext)
-#    break
-
-#class MainWindow(QtGui.QMainWindow, Ui_MainWindow):
-
 def interp(bagPath, tifPath, desPath):
-#    fileList = tifInput(tifPath)
-#    print (fileList)
     tifFiles, names = getTifElev(tifPath)
     if len(tifFiles) > 1:
         tifGrids, extent = alignTifs(tifFiles)
@@ -835,16 +826,27 @@ def interp(bagPath, tifPath, desPath):
     return True
 
 class Form(autointerp_ui.Form):
+    '''Load ui and: define tif storage columns, overwrite ui defined fucntions 
+    with desired function behaviour
+    '''
     def __init__(self, parent):
         autointerp_ui.Form.__init__(self, parent)
         self.insInd = 0
-        self.list_tif.InsertColumn(0, 'Files', width=200)
+        #Instantiation of 'GeoTIFF File List' box Columns:
+        self.list_tif.InsertColumn(0, 'File', width=200)
         self.list_tif.InsertColumn(1, 'Path', width=500)
         
     def programQuit(self, event):
+        '''Closes GUI, ends program.
+        Maps to Cancel button, File->Quit, and CTRL+Q
+        '''
         self.Close()
         
     def itemInsert(self, event):
+        '''Adds files selected from the 'Add GeoTIFF File' to the 'GeoTIFF File
+        List' box. 'File' holds the name of the file and 'Path' holds the 
+        complete file path
+        '''
         print (self.picker_tif.GetPath())
         tif = self.picker_tif.GetPath()
         name = os.path.split(self.picker_tif.GetPath())
@@ -853,12 +855,17 @@ class Form(autointerp_ui.Form):
         self.insInd += 1
         
     def itemRemove(self, event):
+        '''Removes selected files from the 'GeoTIFF File List' box when the 
+        'Remove' button is clicked'''
         selected = self.list_tif.SelectedItemCount
         for x in range(0, selected):
             sel = self.list_tif.GetFirstSelected()
             self.list_tif.DeleteItem(sel)
             
     def programProg(self, event):
+        '''Collects the GUI field values for use in running the tools main
+        function 'interp(bagPath, tifPath, desPath)'
+        '''
         bagPath = self.picker_bag.GetPath()
         tifs = self.list_tif.GetItemCount()
         print (tifs)
@@ -867,7 +874,8 @@ class Form(autointerp_ui.Form):
             tifPath.append(self.list_tif.GetItemText(x, col=1))
         print (tifPath)
         desPath = self.picker_des.GetPath()
-        interp(bagPath, tifPath, desPath)
+        if interp(bagPath, tifPath, desPath) == True:
+            self.programQuit
 #            x = Done()
             
 class Done(autointerp_ui.Done):
@@ -875,8 +883,10 @@ class Done(autointerp_ui.Done):
         autointerp_ui.Done.__init__(self, parent)
         
         
-        
 app = wx.App()
 frame = Form(None)
+icon = wx.Icon()
+icon.CopyFromBitmap(wx.Bitmap("autointerp.ico", wx.BITMAP_TYPE_ANY))
+frame.SetIcon(icon)
 frame.Show()
 app.MainLoop()
