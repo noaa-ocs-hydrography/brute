@@ -849,10 +849,12 @@ class Form(autointerp_ui.Form):
         '''
         print (self.picker_tif.GetPath())
         tif = self.picker_tif.GetPath()
-        name = os.path.split(self.picker_tif.GetPath())
-        self.list_tif.InsertItem(self.insInd, name[1])
-        self.list_tif.SetItem(self.insInd, 1, tif)
-        self.insInd += 1
+        self.gettifList()
+        if tif not in self.tifList:  
+            name = os.path.split(self.picker_tif.GetPath())
+            self.list_tif.InsertItem(self.insInd, name[1])
+            self.list_tif.SetItem(self.insInd, 1, tif)
+            self.insInd += 1
         
     def itemRemove(self, event):
         '''Removes selected files from the 'GeoTIFF File List' box when the 
@@ -861,22 +863,26 @@ class Form(autointerp_ui.Form):
         for x in range(0, selected):
             sel = self.list_tif.GetFirstSelected()
             self.list_tif.DeleteItem(sel)
+            if self.insInd > 0:
+                self.insInd -= 1
+        self.gettifList()
             
     def programProg(self, event):
         '''Collects the GUI field values for use in running the tools main
         function 'interp(bagPath, tifPath, desPath)'
         '''
         bagPath = self.picker_bag.GetPath()
-        tifs = self.list_tif.GetItemCount()
-        print (tifs)
-        tifPath = []
-        for x in range(0, tifs):
-            tifPath.append(self.list_tif.GetItemText(x, col=1))
-        print (tifPath)
+        self.gettifList()
+        tifPath = self.tifList
         desPath = self.picker_des.GetPath()
-        if interp(bagPath, tifPath, desPath) == True:
-            self.programQuit
-#            x = Done()
+        interp(bagPath, tifPath, desPath)
+            
+    def gettifList(self):
+        tifCount = self.list_tif.GetItemCount()
+        self.tifList = []
+        for x in range(0, tifCount):
+            self.tifList.append(self.list_tif.GetItemText(x, col=1))
+        print (self.tifList)
             
 class Done(autointerp_ui.Done):
     def __init__(self, parent):
