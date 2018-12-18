@@ -176,10 +176,10 @@ def getBagLyrs(fileObj):
         nx,ny = ne
         meta = [[sx,ny], [nx,sy]]
         elev = np.flipud(bagfile.root.BAG_root.elevation.read())
-#            uncr = np.flipud(bagfile.root.BAG_root.uncertainty.read())
+        uncr = np.flipud(bagfile.root.BAG_root.uncertainty.read())
         print (np.amax(elev), np.amin(elev))
-#            print (np.amax(uncr), np.amin(uncr))
-        bag = [y, fileObj, meta, elev]
+        print (np.amax(uncr), np.amin(uncr))
+        bag = [y, fileObj, meta, uncr, elev]
         print (bag)
         bagfile.close()
     return bag
@@ -244,7 +244,7 @@ def maxValue(arr):
     return int(nums[index])
 
 
-def tupleGrid(grid, maxVal):
+def tupleGrid(grid, maxVal, add='no'):
     '''Takes an input matrix and an assumed nodata value. The function iterates 
     through the matrix and compiles a list of 'edge' points [[x, y, z], ...] where 
         1) the current value is not a nodata value and previous value was a 
@@ -258,36 +258,71 @@ def tupleGrid(grid, maxVal):
     returns a list of the points found
     '''
     print ('tupleGrid')
-    points = []
-#    zvals = []
-    a = 0
-    for x in range(grid.shape[1]):
-        io = False
-        for y in range(grid.shape[0]):
-            if grid[y,x] == maxVal:
-                if grid[y-1,x] != maxVal:
-                    val = grid[y-1,x]
-                    point = [x, y-1, val]
-                    if a == 1:
-                        print (point, val)
-                        a += 1
-#                    zvals.append(val)
-                    points.append(point)
-                    io = False
+    print (add, type(add))
+    if add == 'no':
+        points = []
+        a = 0
+        for x in range(grid.shape[1]):
+            io = False
+            for y in range(grid.shape[0]):
+                if grid[y,x] == maxVal:
+                    if grid[y-1,x] != maxVal:
+                        val = grid[y-1,x]
+                        point = [x, y-1, val]
+                        if a == 1:
+                            print (point, val)
+                            a += 1
+                        points.append(point)
+                        io = False
+                    else:
+                        pass
                 else:
-                    pass
-            else:
-                if io == False:
-                    val = grid[y,x]
-                    point = [x, y, val]
-
-                    if a == 0:
-                        print (point, val)
-                        a += 1
-#                    zvals.append(val)
-                    points.append(point)
-                    io = True
-    return points#, zvals
+                    if io == False:
+                        val = grid[y,x]
+                        point = [x, y, val]
+    
+                        if a == 0:
+                            print (point, val)
+                            a += 1
+                        points.append(point)
+                        io = True
+        return points
+    else:
+        points = []
+        points2 = []
+        a = 0
+        for x in range(grid.shape[1]):
+            io = False
+            for y in range(grid.shape[0]):
+                if grid[y,x] == maxVal:
+                    if grid[y-1,x] != maxVal:
+                        val = grid[y-1,x]
+                        val2 = add[y-1,x]
+                        point = [x, y-1, val]
+                        point2 = [x, y-1, val2]
+                        if a == 1:
+                            print (point, val)
+                            print (point2, val2)
+                            a += 1
+                        points.append(point)
+                        points2.append(point2)
+                        io = False
+                    else:
+                        pass
+                else:
+                    if io == False:
+                        val = grid[y,x]
+                        val2 = add[y,x]
+                        point = [x, y, val]
+                        point2 = [x, y, val2]
+                        if a == 0:
+                            print (point, val)
+                            print (point2, val2)
+                            a += 1
+                        points.append(point)
+                        points2.append(point2)
+                        io = True
+        return points, points2
 
 def tupleGrid2(grid, maxVal):
     print ('tupleGrid2')
@@ -313,8 +348,9 @@ def concatGrid(grids, maxVal, shape):
 #    print (grids[0])
     tpts = tupleGrid(grids[0], maxVal)
     print ('bpts', datetime.datetime.now())
-    bpts = tupleGrid(grids[1], maxVal)
+    bpts, upts = tupleGrid(grids[1], maxVal, add=grids[2])
     print ('done', datetime.datetime.now())
+    print ('combo1', datetime.datetime.now())
     comb = np.concatenate([tpts, bpts])
     comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
     print (comb)
@@ -322,7 +358,15 @@ def concatGrid(grids, maxVal, shape):
     vals = grid[1].squeeze()
     grid = grid[0]
     print (grid, vals)
-    return grid, vals
+    print ('combo2', datetime.datetime.now())
+    comb2 = np.concatenate([tpts, upts])
+    comb2.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
+    print (comb2)
+    grid2 = np.hsplit(comb2, [2, 4])
+    vals2 = grid2[1].squeeze()
+    grid2 = grid2[0]
+    print (grid2, vals2)
+    return grid, vals, vals2
 
 def concatGrid2(grids, maxVal, shape):
     print ('concatGrid2')
@@ -335,6 +379,7 @@ def concatGrid2(grids, maxVal, shape):
 #    bcom = np.concatenate([bpts])
     print (bpts.shape, bpts)
     print ('done', datetime.datetime.now())
+    
     comb = np.concatenate([tpts, bpts])
     comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
     grid = np.hsplit(comb, [2, 4])
@@ -571,6 +616,7 @@ def alignGrids(bag, tif):
     else:
         tifRes = np.round(np.mean([tex/tx, tey/ty]))
         print(tifRes)
+#    tifRes = 1
     splits = bag[1].split('/')[-1]
     splits = splits.split('_')[2]
     print (splits)
@@ -587,16 +633,19 @@ def alignGrids(bag, tif):
     bmax = maxValue(bag[-1])
 
     print (tif[-1])
-    print ('zoom', datetime.datetime.now())
-    newarr = zoom(tif[-1], zoom=[zres, zres], order=3, prefilter=False)
-    newarr = newarr.astype('float64')
+    if zres == 1:
+        newarr = tif[-1]
+    else:
+        print ('zoom', datetime.datetime.now())
+        newarr = zoom(tif[-1], zoom=[zres, zres], order=3, prefilter=False)        
+        print ('zoomed', datetime.datetime.now())
 
+    newarr = newarr.astype('float64')
     newarr[newarr > 0] = np.nan
-    newarr[newarr < 1] = maxVal
+    newarr[newarr < 1] = float(maxVal)
 
     print (newarr)
 
-    print ('zoomed', datetime.datetime.now())
 #    maxTif = maxValue(newarr)
 
     print (tif[-1].shape, newarr.shape)
@@ -668,11 +717,12 @@ def comboGrid(grids):
     print ('comboGrid')
     maxVal = maxValue(grids[1][-1])
     shape = grids[1][-1].shape
-    arrs = []
-    for grid in grids:
-        arrs.append(grid[-1])
-    combo, vals = concatGrid(arrs, maxVal, shape)
-    return combo, vals
+    tif = grids[0][-1]
+    bag = grids[1][-1]
+    uncr = grids[1][-2]
+    arrs = [tif, bag, uncr]
+    combo, vals, uval = concatGrid(arrs, maxVal, shape)
+    return combo, vals, uval
 
 def comboGrid2(grids):
     print ('comboGrid2')
@@ -704,7 +754,7 @@ def rePrint(bag, interp, poly, maxVal):
     print ('done', datetime.datetime.now())
     return bag
 
-def rePrint2(bag, interp, poly, maxVal):
+def rePrint2(bag, interp, poly, maxVal, uncr, uval):
     print ('rePrint', datetime.datetime.now())
     rows, cols = bag.shape
     tpoly = np.nan_to_num(poly)
@@ -712,14 +762,18 @@ def rePrint2(bag, interp, poly, maxVal):
     bpoly = (bag < maxVal).astype(np.int)
     cpoly = np.logical_or(bpoly, tpoly)
     dpoly = np.logical_xor(bpoly, cpoly)
-    interp = np.where(dpoly, interp, bag)
+    nbag = np.where(dpoly, interp, bag)
+    nunc = np.where(dpoly, uval, uncr)
+    nunc[dpoly>0] += .1
+    nunc[nunc>maxVal] = maxVal
     print ('done', datetime.datetime.now())
-    return interp
+    return nbag, nunc
 
 def triangulateSurfaces(grids, combo, vals):
     print ('triangulateSurfaces')
     bagObj = grids[-1]
     bag = bagObj[-1]
+    uncr = bagObj[-2]
     tifObj = grids[0]
     poly = tifObj[-1]
     maxVal = maxValue(bag)
@@ -737,28 +791,35 @@ def triangulateSurfaces(grids, combo, vals):
     grid = rePrint(bag,values,poly,maxVal)
     return grid
 
-def triangulateSurfaces2(grids, combo, vals):
+def triangulateSurfaces2(grids, combo, vals, uval):
     print ('triangulateSurfaces2')
     bagObj = grids[-1]
     bag = bagObj[-1]
+    uncr = bagObj[-2]
     tifObj = grids[0]
     poly = tifObj[-1]
     maxVal = maxValue(bag)
-    print ('try tri', datetime.datetime.now())
     x, y = np.arange(bag.shape[1]), np.arange(bag.shape[0])
     xi, yi = np.meshgrid(x, y)
+    print ('try tri', datetime.datetime.now())
     values = scipy.interpolate.griddata(combo, vals, (xi, yi), 
                                         method='linear', fill_value=maxVal)
     print ('done', datetime.datetime.now())
-    maxVal = maxValue(values)
-    print (values)
+    print ('try uncr', datetime.datetime.now())
+    values2 = scipy.interpolate.griddata(combo, uval, (xi, yi), 
+                                        method='linear', fill_value=maxVal)
+    print ('done', datetime.datetime.now())
+#    maxVal = maxValue(values)
+#    print (values)
     values = np.asarray(values, dtype='float64')
     values[np.isnan(values)]=maxVal
     print (values.shape, poly.shape)
-    grid = rePrint2(bag,values,poly,maxVal)
-    return grid
+    values2 = np.asarray(values2, dtype='float64')
+    values2[np.isnan(values2)]=maxVal
+    grid, uncr = rePrint2(bag,values,poly,maxVal,uncr,values2)
+    return grid, uncr
 
-def bagSave(bag, new, tifs, res, ext, path):
+def bagSave(bag, new, tifs, res, ext, path, new2):
     for tif in tifs:
         gd_obj = gdal.Open(tif[1])
         break
@@ -796,12 +857,15 @@ def bagSave(bag, new, tifs, res, ext, path):
     with tb.open_file(outputpath2, mode = 'a') as bagfile:
         new = np.flipud(new)
         bagfile.root.BAG_root.elevation[:,:] = new
+        new2 = np.flipud(new2) 
+        bagfile.root.BAG_root.uncertainty[:,:] = new2
         bagfile.flush()
     bagfile.close()
     gd_obj = None
     print ('done')
 
 def interp(bagPath, tifPath, desPath):
+    print ('start', datetime.datetime.now())
     tifFiles, names = getTifElev(tifPath)
     if len(tifFiles) > 1:
         tifGrids, extent = alignTifs(tifFiles)
@@ -817,12 +881,13 @@ def interp(bagPath, tifPath, desPath):
     bag = getBagLyrs(bagPath)
     print(bag, '\n')
     res, grids, ext = alignGrids(bag, comboArr)
-    combo, vals = comboGrid(grids)
+    combo, vals, uval = comboGrid(grids)
     tifObj = grids[0]
     poly = tifObj[-1]
     print (combo.shape, poly.shape)
-    newBag = triangulateSurfaces2(grids, combo, vals)
-    bagSave(bag, newBag, tifGrids, res, ext, desPath)
+    newBag, newUncr = triangulateSurfaces2(grids, combo, vals, uval)
+    bagSave(bag, newBag, tifGrids, res, ext, desPath, newUncr)
+    print ('done', datetime.datetime.now())
     return True
 
 class Form(autointerp_ui.Form):
