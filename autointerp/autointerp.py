@@ -767,7 +767,7 @@ def rePrint2(bag, interp, poly, maxVal, uncr, uval):
     nunc[dpoly>0] += .1
     nunc[nunc>maxVal] = maxVal
     print ('done', datetime.datetime.now())
-    return nbag, nunc
+    return nbag, nunc, dpoly
 
 def triangulateSurfaces(grids, combo, vals):
     print ('triangulateSurfaces')
@@ -816,10 +816,10 @@ def triangulateSurfaces2(grids, combo, vals, uval):
     print (values.shape, poly.shape)
     values2 = np.asarray(values2, dtype='float64')
     values2[np.isnan(values2)]=maxVal
-    grid, uncr = rePrint2(bag,values,poly,maxVal,uncr,values2)
-    return grid, uncr
+    grid, uncr, dpoly = rePrint2(bag,values,poly,maxVal,uncr,values2)
+    return grid, uncr, dpoly
 
-def bagSave(bag, new, tifs, res, ext, path, new2):
+def bagSave(bag, new, tifs, res, ext, path, newu, dpoly):
     for tif in tifs:
         gd_obj = gdal.Open(tif[1])
         break
@@ -851,21 +851,22 @@ def bagSave(bag, new, tifs, res, ext, path, new2):
             os.remove(outputpath2)
         elif not os.path.exists(outputpath2):
             break
-    write_raster(new, gtran, gd_obj, outputpath, 
+    write_raster(dpoly, gtran, gd_obj, outputpath, 
                  dtype=gdal.GDT_Float64, nodata=0)
     shutil.copy2(bag[1], outputpath2)
     with tb.open_file(outputpath2, mode = 'a') as bagfile:
         new = np.flipud(new)
         bagfile.root.BAG_root.elevation[:,:] = new
-        new2 = np.flipud(new2) 
-        bagfile.root.BAG_root.uncertainty[:,:] = new2
+        newu = np.flipud(newu) 
+        bagfile.root.BAG_root.uncertainty[:,:] = newu
         bagfile.flush()
     bagfile.close()
     gd_obj = None
     print ('done')
 
 def interp(bagPath, tifPath, desPath):
-    print ('start', datetime.datetime.now())
+    start = datetime.datetime.now()
+    print ('start', start)
     tifFiles, names = getTifElev(tifPath)
     if len(tifFiles) > 1:
         tifGrids, extent = alignTifs(tifFiles)
@@ -885,9 +886,11 @@ def interp(bagPath, tifPath, desPath):
     tifObj = grids[0]
     poly = tifObj[-1]
     print (combo.shape, poly.shape)
-    newBag, newUncr = triangulateSurfaces2(grids, combo, vals, uval)
-    bagSave(bag, newBag, tifGrids, res, ext, desPath, newUncr)
-    print ('done', datetime.datetime.now())
+    newBag, newUncr, dpoly = triangulateSurfaces2(grids, combo, vals, uval)
+    bagSave(bag, newBag, tifGrids, res, ext, desPath, newUncr, dpoly)
+    done = datetime.datetime.now()
+    delta = done - start
+    print ('done', done, '\ntook', delta)
     return True
 
 class Form(autointerp_ui.Form):
