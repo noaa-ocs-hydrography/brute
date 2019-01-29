@@ -256,6 +256,11 @@ def tupleGrid(grid, maxVal, add='no'):
             - sets bool(io) False, indicating that the next value to compare
             against should not be a nodata value
     returns a list of the points found
+    
+        TODO: figure out a supported way to differentiate from a add input of
+        None or input array.  Numpy gives a warning against using typewise
+        or elementwise comparasons (ex. if add == None [type]
+                                     or if add == 'no' [element])
     '''
     print ('tupleGrid')
     print (add, type(add))
@@ -325,8 +330,27 @@ def tupleGrid(grid, maxVal, add='no'):
         return points, points2
 
 def tupleGrid2(grid, maxVal):
+    ''' Goal of tupleGrid2:
+            - Determine better or more efficient way to handle 'edge' detection
+            for the data.
+        Why this is hard:
+            - Most out of the box edge detectors either interpolate the edges
+            for a better look or arrive at the same result due to a more general
+            algorithm.
+                - This causes the lines of the edges to cross into areas of no-
+                data accross the grids
+                -This is not desireable because the goal of the algorithm is to
+                locate all data that sits on the edge of no-data boundries as a
+                form of data reduction during triangulaiton/interpolation.
+                    - To populate no-data values into these functions is not 
+                    only undesireable but also detrimental to the expected 
+                    result
+        Current solution:
+            - Continue using original 'edge' detection method and limit the size
+            of input files in order to prevent program memory overload
+    '''
     print ('tupleGrid2')
-    grid = np.nan_to_num(grid)
+#    grid = np.nan_to_num(grid)
 
     return [[],[]]
 
@@ -370,23 +394,24 @@ def concatGrid(grids, maxVal, shape):
 
 def concatGrid2(grids, maxVal, shape):
     print ('concatGrid2')
-    print ('tpts', datetime.datetime.now())
-    tpts = tupleGrid2(grids[0], maxVal)
-#    tcom = np.concatenate([tpts])
-    print (tpts.shape, tpts)
-    print ('bpts', datetime.datetime.now())
-    bpts = tupleGrid2(grids[1], maxVal)
-#    bcom = np.concatenate([bpts])
-    print (bpts.shape, bpts)
-    print ('done', datetime.datetime.now())
     
-    comb = np.concatenate([tpts, bpts])
-    comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
-    grid = np.hsplit(comb, [2, 4])
-    grid = grid[0]
-    vals = grid[1].squeeze()
-    print (grid, vals)
-    return grid, vals
+#    print ('tpts', datetime.datetime.now())
+#    tpts = tupleGrid2(grids[0], maxVal)
+##    tcom = np.concatenate([tpts])
+#    print (tpts.shape, tpts)
+#    print ('bpts', datetime.datetime.now())
+#    bpts = tupleGrid2(grids[1], maxVal)
+##    bcom = np.concatenate([bpts])
+#    print (bpts.shape, bpts)
+#    print ('done', datetime.datetime.now())
+#    
+#    comb = np.concatenate([tpts, bpts])
+#    comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
+#    grid = np.hsplit(comb, [2, 4])
+#    grid = grid[0]
+#    vals = grid[1].squeeze()
+#    print (grid, vals)
+#    return grid, vals
 
 def alignTifs(tifs):
     '''Takes an input of an array of tiff objects. The goal of this function 
@@ -763,9 +788,9 @@ def rePrint2(bag, interp, poly, maxVal, uncr, uval):
     cpoly = np.logical_or(bpoly, tpoly)
     dpoly = np.logical_xor(bpoly, cpoly)
     nbag = np.where(dpoly, interp, bag)
-    nunc = np.where(dpoly, uval, uncr)
-    nunc[dpoly>0] += .1
-    nunc[nunc>maxVal] = maxVal
+    tunc = np.where(dpoly, uval, (uncr*.02)+1)
+#    nunc = (.02 * nunc[dpoly>0]) + 1
+    nunc = np.where(dpoly, tunc, uncr)
     print ('done', datetime.datetime.now())
     return nbag, nunc, dpoly
 
@@ -943,6 +968,8 @@ class Form(autointerp_ui.Form):
         self.gettifList()
         tifPath = self.tifList
         desPath = self.picker_des.GetPath()
+        if desPath == '':
+            desPath = os.path.split(bagPath)[0]
         interp(bagPath, tifPath, desPath)
             
     def gettifList(self):

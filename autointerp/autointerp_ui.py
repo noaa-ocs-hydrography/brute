@@ -50,7 +50,7 @@ class Form ( wx.Frame ):
 		self.label_bag = wx.StaticText( self, wx.ID_ANY, u"BAG File:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.label_bag.Wrap( -1 )
 
-		opts_form.Add( self.label_bag, 0, wx.ALL|wx.ALIGN_RIGHT, 5 )
+		opts_form.Add( self.label_bag, 0, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 5 )
 
 		self.picker_bag = wx.FilePickerCtrl( self, wx.ID_ANY, wx.EmptyString, u"Select a file", u"BAG Files (*.bag)|*.bag", wx.DefaultPosition, wx.DefaultSize, wx.FLP_DEFAULT_STYLE )
 		opts_form.Add( self.picker_bag, 1, wx.ALL|wx.EXPAND, 5 )
@@ -58,7 +58,7 @@ class Form ( wx.Frame ):
 		self.label_tif = wx.StaticText( self, wx.ID_ANY, u"Add GeoTIFF File:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.label_tif.Wrap( -1 )
 
-		opts_form.Add( self.label_tif, 0, wx.ALL|wx.ALIGN_RIGHT, 5 )
+		opts_form.Add( self.label_tif, 0, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 5 )
 
 		self.picker_tif = wx.FilePickerCtrl( self, wx.ID_ANY, wx.EmptyString, u"Select a file", u"GeoTIFF Files (*.tiff; *tif)|*.tiff; *.tif", wx.DefaultPosition, wx.DefaultSize, wx.FLP_DEFAULT_STYLE )
 		opts_form.Add( self.picker_tif, 1, wx.ALL|wx.EXPAND, 5 )
@@ -82,7 +82,7 @@ class Form ( wx.Frame ):
 		self.label_des = wx.StaticText( self, wx.ID_ANY, u"Destination (Optional):", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.label_des.Wrap( -1 )
 
-		opts_form.Add( self.label_des, 0, wx.ALL|wx.ALIGN_RIGHT, 5 )
+		opts_form.Add( self.label_des, 0, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 5 )
 
 		self.picker_des = wx.DirPickerCtrl( self, wx.ID_ANY, wx.EmptyString, u"Select a folder", wx.DefaultPosition, wx.DefaultSize, wx.DIRP_DEFAULT_STYLE )
 		opts_form.Add( self.picker_des, 1, wx.ALL|wx.EXPAND, 5 )
