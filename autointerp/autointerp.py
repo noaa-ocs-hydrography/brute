@@ -58,6 +58,11 @@ ns2 = {
     'smXML': 'http://metadata.dgiwg.org/smXML',
 }
 
+catZones = {
+        'A1':[.01,.5],
+        'A2/B':[.02,1],
+        'C':[.05,2]}
+
 combo = re.compile(r'COMBINED', re.IGNORECASE)
 interp = re.compile(r'INTERP', re.IGNORECASE)
 
@@ -372,7 +377,7 @@ def concatGrid(grids, maxVal, shape):
 #    print (grids[0])
     tpts = tupleGrid(grids[0], maxVal)
     print ('bpts', datetime.datetime.now())
-    bpts, upts = tupleGrid(grids[1], maxVal, add=grids[2])
+    bpts = tupleGrid(grids[1], maxVal)#, add=grids[2])
     print ('done', datetime.datetime.now())
     print ('combo1', datetime.datetime.now())
     comb = np.concatenate([tpts, bpts])
@@ -382,36 +387,15 @@ def concatGrid(grids, maxVal, shape):
     vals = grid[1].squeeze()
     grid = grid[0]
     print (grid, vals)
-    print ('combo2', datetime.datetime.now())
-    comb2 = np.concatenate([tpts, upts])
-    comb2.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
-    print (comb2)
-    grid2 = np.hsplit(comb2, [2, 4])
-    vals2 = grid2[1].squeeze()
-    grid2 = grid2[0]
-    print (grid2, vals2)
-    return grid, vals, vals2
-
-def concatGrid2(grids, maxVal, shape):
-    print ('concatGrid2')
-    
-#    print ('tpts', datetime.datetime.now())
-#    tpts = tupleGrid2(grids[0], maxVal)
-##    tcom = np.concatenate([tpts])
-#    print (tpts.shape, tpts)
-#    print ('bpts', datetime.datetime.now())
-#    bpts = tupleGrid2(grids[1], maxVal)
-##    bcom = np.concatenate([bpts])
-#    print (bpts.shape, bpts)
-#    print ('done', datetime.datetime.now())
-#    
-#    comb = np.concatenate([tpts, bpts])
-#    comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
-#    grid = np.hsplit(comb, [2, 4])
-#    grid = grid[0]
-#    vals = grid[1].squeeze()
-#    print (grid, vals)
-#    return grid, vals
+#    print ('combo2', datetime.datetime.now())
+#    comb2 = np.concatenate([tpts, upts])
+#    comb2.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
+#    print (comb2)
+#    grid2 = np.hsplit(comb2, [2, 4])
+#    vals2 = grid2[1].squeeze()
+#    grid2 = grid2[0]
+#    print (grid2, vals2)
+    return grid, vals#, vals2
 
 def alignTifs(tifs):
     '''Takes an input of an array of tiff objects. The goal of this function 
@@ -744,24 +728,25 @@ def comboGrid(grids):
     shape = grids[1][-1].shape
     tif = grids[0][-1]
     bag = grids[1][-1]
-    uncr = grids[1][-2]
-    arrs = [tif, bag, uncr]
-    combo, vals, uval = concatGrid(arrs, maxVal, shape)
-    return combo, vals, uval
-
-def comboGrid2(grids):
-    print ('comboGrid2')
-    maxVal = maxValue(grids[1][-1])
-    shape = grids[1][-1].shape
-    arrs = []
-    for grid in grids:
-        arrs.append(grid[-1])
-    combo, vals = concatGrid2(arrs, maxVal, shape)
+#    uncr = grids[1][-2]
+    arrs = [tif, bag]#, uncr]
+    combo, vals = concatGrid(arrs, maxVal, shape)
     return combo, vals
 
-def rePrint(bag, interp, poly, maxVal, uncr):#, uval):
+#def comboGrid2(grids):
+#    print ('comboGrid2')
+#    maxVal = maxValue(grids[1][-1])
+#    shape = grids[1][-1].shape
+#    arrs = []
+#    for grid in grids:
+#        arrs.append(grid[-1])
+#    combo, vals = concatGrid2(arrs, maxVal, shape)
+#    return combo, vals
+
+def rePrint(bag, interp, poly, maxVal, uncr, uval):
     print ('rePrint', datetime.datetime.now())
     perVal = maxVal*.02
+    m, b = uval
     print (maxVal, perVal)
     rows, cols = bag.shape
     tpoly = np.nan_to_num(poly)
@@ -770,7 +755,7 @@ def rePrint(bag, interp, poly, maxVal, uncr):#, uval):
     cpoly = np.logical_or(bpoly, tpoly)
     dpoly = np.logical_xor(bpoly, cpoly)
     nbag = np.where(dpoly, interp, bag)
-    nunc = np.where(dpoly, (interp*.02)+1, uncr)
+    nunc = np.where(dpoly, (interp*m)+b, uncr)
     nunc[nunc>perVal] = maxVal
     print ('done', datetime.datetime.now())
     return nbag, nunc, dpoly
@@ -800,7 +785,7 @@ def triangulateSurfaces(grids, combo, vals, uval):
     print (values.shape, poly.shape)
 #    values2 = np.asarray(values2, dtype='float64')
 #    values2[np.isnan(values2)]=maxVal
-    grid, uncr, dpoly = rePrint(bag,values,poly,maxVal,uncr)#,values2)
+    grid, uncr, dpoly = rePrint(bag,values,poly,maxVal,uncr,uval)
     return grid, uncr, dpoly
 
 def bagSave(bag, new, tifs, res, ext, path, newu, dpoly):
@@ -848,7 +833,7 @@ def bagSave(bag, new, tifs, res, ext, path, newu, dpoly):
     gd_obj = None
     print ('done')
 
-def interp(bagPath, tifPath, desPath):
+def interp(bagPath, tifPath, desPath, catzoc):
     start = datetime.datetime.now()
     print ('start', start)
     tifFiles, names = getTifElev(tifPath)
@@ -866,10 +851,12 @@ def interp(bagPath, tifPath, desPath):
     bag = getBagLyrs(bagPath)
     print(bag, '\n')
     res, grids, ext = alignGrids(bag, comboArr)
-    combo, vals, uval = comboGrid(grids)
+    combo, vals = comboGrid(grids)
     tifObj = grids[0]
     poly = tifObj[-1]
     print (combo.shape, poly.shape)
+    uval = catZones.get(catzoc)
+#    print (uval)
     newBag, newUncr, dpoly = triangulateSurfaces(grids, combo, vals, uval)
     bagSave(bag, newBag, tifGrids, res, ext, desPath, newUncr, dpoly)
     done = datetime.datetime.now()
@@ -929,7 +916,8 @@ class Form(autointerp_ui.Form):
         desPath = self.picker_des.GetPath()
         if desPath == '':
             desPath = os.path.split(bagPath)[0]
-        interp(bagPath, tifPath, desPath)
+        catzoc = self.choice_catzoc.GetString(self.choice_catzoc.GetCurrentSelection())
+        interp(bagPath, tifPath, desPath, catzoc)
             
     def gettifList(self):
         tifCount = self.list_tif.GetItemCount()

@@ -17,9 +17,9 @@ import wx.xrc
 class Form ( wx.Frame ):
 
 	def __init__( self, parent ):
-		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Interpolation Tool", pos = wx.DefaultPosition, size = wx.Size( 500,450 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Interpolation Tool", pos = wx.DefaultPosition, size = wx.Size( 500,500 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
 
-		self.SetSizeHints( wx.Size( 500,450 ), wx.DefaultSize )
+		self.SetSizeHints( wx.Size( 500,500 ), wx.DefaultSize )
 		self.SetBackgroundColour( wx.SystemSettings.GetColour( wx.SYS_COLOUR_WINDOW ) )
 
 		self.bar_menu = wx.MenuBar( 0 )
@@ -78,6 +78,16 @@ class Form ( wx.Frame ):
 
 
 		opts_form.Add( opts_tifs, 1, wx.EXPAND, 5 )
+
+		self.label_catzoc = wx.StaticText( self, wx.ID_ANY, u"Interpolated CATZOC:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.label_catzoc.Wrap( -1 )
+
+		opts_form.Add( self.label_catzoc, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT, 5 )
+
+		choice_catzocChoices = [ u"A2/B", u"C", u"A1" ]
+		self.choice_catzoc = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, choice_catzocChoices, 0 )
+		self.choice_catzoc.SetSelection( 0 )
+		opts_form.Add( self.choice_catzoc, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5 )
 
 		self.label_des = wx.StaticText( self, wx.ID_ANY, u"Destination (Optional):", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.label_des.Wrap( -1 )
