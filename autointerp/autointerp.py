@@ -759,28 +759,10 @@ def comboGrid2(grids):
     combo, vals = concatGrid2(arrs, maxVal, shape)
     return combo, vals
 
-
-def rePrint(bag, interp, poly, maxVal):
+def rePrint(bag, interp, poly, maxVal, uncr):#, uval):
     print ('rePrint', datetime.datetime.now())
-    rows, cols = bag.shape
-    arr = np.nan * np.empty((rows,cols))
-    z = 0
-    print (maxValue(poly))
-    for a in range(bag.shape[1]):
-        for b in range(bag.shape[0]):
-            g = bag[b,a]
-            i = interp[b,a]
-            p = poly[b,a]
-            if g != maxVal:
-                bag[b,a] = g
-            elif p != maxVal:
-                if g == maxVal or i != np.nan:
-                    bag[b,a] = i
-    print ('done', datetime.datetime.now())
-    return bag
-
-def rePrint2(bag, interp, poly, maxVal, uncr, uval):
-    print ('rePrint', datetime.datetime.now())
+    perVal = maxVal*.02
+    print (maxVal, perVal)
     rows, cols = bag.shape
     tpoly = np.nan_to_num(poly)
     tpoly = (tpoly < maxVal).astype(np.int)
@@ -788,13 +770,12 @@ def rePrint2(bag, interp, poly, maxVal, uncr, uval):
     cpoly = np.logical_or(bpoly, tpoly)
     dpoly = np.logical_xor(bpoly, cpoly)
     nbag = np.where(dpoly, interp, bag)
-    tunc = np.where(dpoly, uval, (uncr*.02)+1)
-#    nunc = (.02 * nunc[dpoly>0]) + 1
-    nunc = np.where(dpoly, tunc, uncr)
+    nunc = np.where(dpoly, (interp*.02)+1, uncr)
+    nunc[nunc>perVal] = maxVal
     print ('done', datetime.datetime.now())
     return nbag, nunc, dpoly
 
-def triangulateSurfaces(grids, combo, vals):
+def triangulateSurfaces(grids, combo, vals, uval):
     print ('triangulateSurfaces')
     bagObj = grids[-1]
     bag = bagObj[-1]
@@ -802,46 +783,24 @@ def triangulateSurfaces(grids, combo, vals):
     tifObj = grids[0]
     poly = tifObj[-1]
     maxVal = maxValue(bag)
-    print ('try tri', datetime.datetime.now())
-    x, y = np.arange(bag.shape[1]), np.arange(bag.shape[0])
-    xi, yi = np.meshgrid(x, y)
-    values = scipy.interpolate.griddata(combo, vals, (xi, yi), 
-                                        method='linear', fill_value=maxVal)
-    print ('done', datetime.datetime.now())
-    maxVal = maxValue(values)
-    print (values)
-    values = np.asarray(values, dtype='float64')
-    values[np.isnan(values)]=maxVal
-    print (values.shape, poly.shape)
-    grid = rePrint(bag,values,poly,maxVal)
-    return grid
-
-def triangulateSurfaces2(grids, combo, vals, uval):
-    print ('triangulateSurfaces2')
-    bagObj = grids[-1]
-    bag = bagObj[-1]
-    uncr = bagObj[-2]
-    tifObj = grids[0]
-    poly = tifObj[-1]
-    maxVal = maxValue(bag)
     x, y = np.arange(bag.shape[1]), np.arange(bag.shape[0])
     xi, yi = np.meshgrid(x, y)
     print ('try tri', datetime.datetime.now())
     values = scipy.interpolate.griddata(combo, vals, (xi, yi), 
                                         method='linear', fill_value=maxVal)
     print ('done', datetime.datetime.now())
-    print ('try uncr', datetime.datetime.now())
-    values2 = scipy.interpolate.griddata(combo, uval, (xi, yi), 
-                                        method='linear', fill_value=maxVal)
-    print ('done', datetime.datetime.now())
+#    print ('try uncr', datetime.datetime.now())
+#    values2 = scipy.interpolate.griddata(combo, uval, (xi, yi), 
+#                                        method='linear', fill_value=maxVal)
+#    print ('done', datetime.datetime.now())
 #    maxVal = maxValue(values)
 #    print (values)
     values = np.asarray(values, dtype='float64')
     values[np.isnan(values)]=maxVal
     print (values.shape, poly.shape)
-    values2 = np.asarray(values2, dtype='float64')
-    values2[np.isnan(values2)]=maxVal
-    grid, uncr, dpoly = rePrint2(bag,values,poly,maxVal,uncr,values2)
+#    values2 = np.asarray(values2, dtype='float64')
+#    values2[np.isnan(values2)]=maxVal
+    grid, uncr, dpoly = rePrint(bag,values,poly,maxVal,uncr)#,values2)
     return grid, uncr, dpoly
 
 def bagSave(bag, new, tifs, res, ext, path, newu, dpoly):
@@ -911,7 +870,7 @@ def interp(bagPath, tifPath, desPath):
     tifObj = grids[0]
     poly = tifObj[-1]
     print (combo.shape, poly.shape)
-    newBag, newUncr, dpoly = triangulateSurfaces2(grids, combo, vals, uval)
+    newBag, newUncr, dpoly = triangulateSurfaces(grids, combo, vals, uval)
     bagSave(bag, newBag, tifGrids, res, ext, desPath, newUncr, dpoly)
     done = datetime.datetime.now()
     delta = done - start
