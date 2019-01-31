@@ -743,7 +743,7 @@ def comboGrid(grids):
 #    combo, vals = concatGrid2(arrs, maxVal, shape)
 #    return combo, vals
 
-def rePrint(bag, interp, poly, maxVal, uncr, uval):
+def rePrint(bag, interp, poly, maxVal, uncr, uval, ioVal):
     print ('rePrint', datetime.datetime.now())
     perVal = maxVal*.02
     m, b = uval
@@ -754,13 +754,17 @@ def rePrint(bag, interp, poly, maxVal, uncr, uval):
     bpoly = (bag < maxVal).astype(np.int)
     cpoly = np.logical_or(bpoly, tpoly)
     dpoly = np.logical_xor(bpoly, cpoly)
-    nbag = np.where(dpoly, interp, bag)
-    nunc = np.where(dpoly, (interp*m)+b, uncr)
+    if ioVal == False:
+        nbag = np.where(dpoly, interp, bag)
+        nunc = np.where(dpoly, (interp*m)+b, uncr)
+    elif ioVal == True:
+        nbag = np.where(dpoly, interp, maxVal)
+        nunc = np.where(dpoly, (interp*m)+b, maxVal)
     nunc[nunc>perVal] = maxVal
     print ('done', datetime.datetime.now())
     return nbag, nunc, dpoly
 
-def triangulateSurfaces(grids, combo, vals, uval):
+def triangulateSurfaces(grids, combo, vals, uval, ioVal):
     print ('triangulateSurfaces')
     bagObj = grids[-1]
     bag = bagObj[-1]
@@ -785,7 +789,7 @@ def triangulateSurfaces(grids, combo, vals, uval):
     print (values.shape, poly.shape)
 #    values2 = np.asarray(values2, dtype='float64')
 #    values2[np.isnan(values2)]=maxVal
-    grid, uncr, dpoly = rePrint(bag,values,poly,maxVal,uncr,uval)
+    grid, uncr, dpoly = rePrint(bag,values,poly,maxVal,uncr,uval, ioVal)
     return grid, uncr, dpoly
 
 def bagSave(bag, new, tifs, res, ext, path, newu, dpoly):
@@ -833,7 +837,7 @@ def bagSave(bag, new, tifs, res, ext, path, newu, dpoly):
     gd_obj = None
     print ('done')
 
-def interp(bagPath, tifPath, desPath, catzoc):
+def interp(bagPath, tifPath, desPath, catzoc, ioVal):
     start = datetime.datetime.now()
     print ('start', start)
     tifFiles, names = getTifElev(tifPath)
@@ -857,7 +861,7 @@ def interp(bagPath, tifPath, desPath, catzoc):
     print (combo.shape, poly.shape)
     uval = catZones.get(catzoc)
 #    print (uval)
-    newBag, newUncr, dpoly = triangulateSurfaces(grids, combo, vals, uval)
+    newBag, newUncr, dpoly = triangulateSurfaces(grids, combo, vals, uval, ioVal)
     bagSave(bag, newBag, tifGrids, res, ext, desPath, newUncr, dpoly)
     done = datetime.datetime.now()
     delta = done - start
@@ -917,7 +921,8 @@ class Form(autointerp_ui.Form):
         if desPath == '':
             desPath = os.path.split(bagPath)[0]
         catzoc = self.choice_catzoc.GetString(self.choice_catzoc.GetCurrentSelection())
-        interp(bagPath, tifPath, desPath, catzoc)
+        ioOut = self.radio_data.GetSelection()
+        interp(bagPath, tifPath, desPath, catzoc, ioOut)
             
     def gettifList(self):
         tifCount = self.list_tif.GetItemCount()

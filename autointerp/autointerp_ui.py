@@ -17,7 +17,7 @@ import wx.xrc
 class Form ( wx.Frame ):
 
 	def __init__( self, parent ):
-		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Interpolation Tool", pos = wx.DefaultPosition, size = wx.Size( 500,500 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Interpolation Tool", pos = wx.DefaultPosition, size = wx.Size( 500,550 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
 
 		self.SetSizeHints( wx.Size( 500,500 ), wx.DefaultSize )
 		self.SetBackgroundColour( wx.SystemSettings.GetColour( wx.SYS_COLOUR_WINDOW ) )
@@ -79,6 +79,14 @@ class Form ( wx.Frame ):
 
 		opts_form.Add( opts_tifs, 1, wx.EXPAND, 5 )
 
+		self.label_des = wx.StaticText( self, wx.ID_ANY, u"Destination (Optional):", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.label_des.Wrap( -1 )
+
+		opts_form.Add( self.label_des, 0, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 5 )
+
+		self.picker_des = wx.DirPickerCtrl( self, wx.ID_ANY, wx.EmptyString, u"Select a folder", wx.DefaultPosition, wx.DefaultSize, wx.DIRP_DEFAULT_STYLE )
+		opts_form.Add( self.picker_des, 1, wx.ALL|wx.EXPAND, 5 )
+
 		self.label_catzoc = wx.StaticText( self, wx.ID_ANY, u"Interpolated CATZOC:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.label_catzoc.Wrap( -1 )
 
@@ -89,16 +97,13 @@ class Form ( wx.Frame ):
 		self.choice_catzoc.SetSelection( 0 )
 		opts_form.Add( self.choice_catzoc, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5 )
 
-		self.label_des = wx.StaticText( self, wx.ID_ANY, u"Destination (Optional):", wx.DefaultPosition, wx.DefaultSize, 0 )
-		self.label_des.Wrap( -1 )
-
-		opts_form.Add( self.label_des, 0, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 5 )
-
-		self.picker_des = wx.DirPickerCtrl( self, wx.ID_ANY, wx.EmptyString, u"Select a folder", wx.DefaultPosition, wx.DefaultSize, wx.DIRP_DEFAULT_STYLE )
-		opts_form.Add( self.picker_des, 1, wx.ALL|wx.EXPAND, 5 )
-
 
 		container_form.Add( opts_form, 1, wx.EXPAND|wx.FIXED_MINSIZE, 5 )
+
+		radio_dataChoices = [ u"All Data", u"Interpolated Only" ]
+		self.radio_data = wx.RadioBox( self, wx.ID_ANY, u"Output Data", wx.DefaultPosition, wx.DefaultSize, radio_dataChoices, 2, wx.RA_SPECIFY_COLS )
+		self.radio_data.SetSelection( 0 )
+		container_form.Add( self.radio_data, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 5 )
 
 		opts_prog = wx.StdDialogButtonSizer()
 		self.opts_progOK = wx.Button( self, wx.ID_OK )
