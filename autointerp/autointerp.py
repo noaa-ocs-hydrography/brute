@@ -745,8 +745,8 @@ def comboGrid(grids):
 
 def rePrint(bag, interp, poly, maxVal, uncr, uval, ioVal):
     print ('rePrint', datetime.datetime.now())
-    perVal = maxVal*.02
     m, b = uval
+    perVal = maxVal*m
     print (maxVal, perVal)
     rows, cols = bag.shape
     tpoly = np.nan_to_num(poly)
