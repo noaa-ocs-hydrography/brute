@@ -125,8 +125,7 @@ def query():
     # The query for returning the object IDs for the given timeframe
     objIDs = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?&where=' + where + '&outFields=*&returnGeometry=false&returnIdsOnly=true&outSR=&f=json'
     
-#    print (where, newSurveys)
-    
+    print (objIDs, newSurveys)
     
     # Initial Query execution
     surveyNumRequest = requests.get(newSurveys)
@@ -170,24 +169,26 @@ def surveyCompile(surveyIDs, newSurveysNum):
         response = requests.get(query)
         page = response.json()
         row = []
-        for attribute in attributes:
-            if page['features'][0]['attributes'][attribute] == None:
-                row.append('null')
-                #attribute == "SURVEYDATEUPLOADED"
-                #or 
-            elif (attribute == "SURVEYDATEUPLOADED"
-                or attribute == "SURVEYDATEEND" 
-                or attribute == "SURVEYDATESTART"):
-                    if page['features'][0]['attributes'][attribute] == None:
-                        row.append('null')
-                    else:
-                        date = (page['features'][0]['attributes'][attribute])
-                        date = datetime.datetime.utcfromtimestamp(date/1000)
-                        row.append(str(date.strftime('%Y-%m-%d')))
-            else:
-                row.append(str(page['features'][0]['attributes'][attribute]))
-        rows.append(row)
-        x += 1
+        try:
+            for attribute in attributes:
+                if page['features'][0]['attributes'][attribute] == None:
+                    row.append('null')
+                elif (attribute == "SURVEYDATEUPLOADED"
+                    or attribute == "SURVEYDATEEND" 
+                    or attribute == "SURVEYDATESTART"):
+                        if page['features'][0]['attributes'][attribute] == None:
+                            row.append('null')
+                        else:
+                            date = (page['features'][0]['attributes'][attribute])
+                            date = datetime.datetime.utcfromtimestamp(date/1000)
+                            row.append(str(date.strftime('%Y-%m-%d')))
+                else:
+                    row.append(str(page['features'][0]['attributes'][attribute]))
+            rows.append(row)
+            x += 1
+        except KeyError as e:
+            print (e, page)
+            break
     print (len(rows))
     print ('rows complete')
     return rows
@@ -207,10 +208,6 @@ def contentSearch(contents, link, saved):
             print ('\nvive le resolution', content, end=' ') #link + '\n')
             x = 1
             return x
-#        elif fullalt.search(content):
-#            print ('\nlong live the resolution', content, end=' ') #link + '\n')
-#            x = 1
-#            return x
         else:
             x = 0
 
@@ -255,13 +252,18 @@ def downloadAndCheck(rows):
                 print ('x', end=' ')
                 break
             else:
-                if link != 'null':
+                if link != 'null' or link != 'Not in cloud':
                     try:
                         urllib.request.urlretrieve(link, saved)
                     except socket.timeout:
                         urllib.request.urlretrieve(link, saved)
-                    except urllib.error.HTTPError or urllib.error.URLError:
-                        print ('e', end=' ')
+                    except urllib.error.HTTPError as e:
+                        print ('e \n' + link, end=' ')
+                        row.append('No')
+                        row.append('BadURL')
+                        break
+                    except urllib.error.URLError as e:
+                        print ('e \n' + link, end=' ')
                         row.append('No')
                         row.append('BadURL')
                         break
@@ -290,24 +292,6 @@ def downloadAndCheck(rows):
                     row.append('BadZip')
                 print ('o', end=' ')
                 row.append('Yes')
-#            elif config['Resolutions']['Override'] == 'yes' and agencies == '':
-#                try:
-#                    zipped = zipfile.ZipFile(saved)
-#                    contents = zipped.namelist()
-#                    if contentSearch(contents, link, saved) != True:
-#                        print ('n', end=' ')
-#                        zipped.close()
-#                        row.append('No')
-#                    else:
-#                        zipped.close()
-#                        print ('y', end=' ')
-#                        row.append('Yes')
-#                except zipfile.BadZipfile:
-#                    os.remove(saved)
-#                    print ('z', end=' ')
-#                    row.append('BadZip')
-#                print ('o', end=' ')
-#                row.append('Yes')
             else:
                 try:
                     zipped = zipfile.ZipFile(saved)
@@ -423,6 +407,12 @@ def time():
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d %X')
     return timestamp
 
+def fileTime():
+    '''Creates and returns a string 'timestamp' that contains a
+    formated current date at the time of calling.
+    '''
+    timestamp = datetime.datetime.now().strftime('%Y%m%d')
+    return timestamp
 
 def main():
     fileLog = logOpen()
@@ -443,24 +433,24 @@ def main():
         changes = csvCompare(rows, csvFile, newSurveysNum)
     except:
         logWriter(fileLog, '\t\tUnable to compare query results to eHydro_csv.txt')
-    try:
-        logWriter(fileLog, '\tParsing new entries for resolution:')
-        attributes.append('Hi-Res?')
-        attributes.append('Override?')
-        if changes != 'No Changes':
-            checked, hiRes = downloadAndCheck(changes)
-            csvFile.extend(checked)
-            if config['Output Log']['Query List'] == 'yes':
-                for row in checked:
-                    txt = ''
-                    for i in [1,4,5,6,12]:
-                        txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
-                    logWriter(fileLog, '\t\t' + txt)
-            logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
-        else:
-            logWriter(fileLog, '\t\t' + changes)
-    except:
-        logWriter(fileLog, '\tParsing for resolution failed')
+#    try:
+    logWriter(fileLog, '\tParsing new entries for resolution:')
+    attributes.append('Hi-Res?')
+    attributes.append('Override?')
+    if changes != 'No Changes':
+        checked, hiRes = downloadAndCheck(changes)
+        csvFile.extend(checked)
+        if config['Output Log']['Query List'] == 'yes':
+            for row in checked:
+                txt = ''
+                for i in [1,4,5,6,12]:
+                    txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
+                logWriter(fileLog, '\t\t' + txt)
+        logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
+    else:
+        logWriter(fileLog, '\t\t' + changes)
+#    except:
+#        logWriter(fileLog, '\tParsing for resolution failed')
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
