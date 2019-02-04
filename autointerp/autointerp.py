@@ -626,7 +626,8 @@ def alignGrids(bag, tif):
         tifRes = np.round(np.mean([tex/tx, tey/ty]))
         print(tifRes)
 #    tifRes = 1
-    splits = bag[1].split('/')[-1]
+    splits = os.path.split(bag[1])[-1]
+    print (splits)
     splits = splits.split('_')[2]
     print (splits)
     bagRes = re.split('(\d+)',splits)[-2:]
