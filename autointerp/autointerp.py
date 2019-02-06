@@ -180,6 +180,7 @@ def getBagLyrs(fileObj):
         sx,sy = sw
         nx,ny = ne
         meta = [[sx,ny], [nx,sy]]
+        print (bagfile.walk_groups)
         elev = np.flipud(bagfile.root.BAG_root.elevation.read())
         uncr = np.flipud(bagfile.root.BAG_root.uncertainty.read())
         print (np.amax(elev), np.amin(elev))
@@ -793,7 +794,7 @@ def triangulateSurfaces(grids, combo, vals, uval, ioVal):
     grid, uncr, dpoly = rePrint(bag,values,poly,maxVal,uncr,uval, ioVal)
     return grid, uncr, dpoly
 
-def bagSave(bag, new, tifs, res, ext, path, newu, dpoly):
+def bagSave(bag, new, tifs, res, ext, path, newu, dpoly, ioVal):
     for tif in tifs:
         gd_obj = gdal.Open(tif[1])
         break
@@ -812,7 +813,10 @@ def bagSave(bag, new, tifs, res, ext, path, newu, dpoly):
         res = '50cm'
     else:
         res = str(res) + 'm'
-    bagName = '_'.join([x for x in split]) + '_' + res + '_INTERP'
+    if ioVal == 1:
+        bagName = '_'.join([x for x in split]) + '_' + res + '_INTERP_ONLY'
+    else:
+        bagName = '_'.join([x for x in split]) + '_' + res + '_INTERP_FULL'
     outputpath = path + '/' + bagName +'.tif'
     outputpath2 = path + '/' + bagName +'.bag'
     print(outputpath)
@@ -833,6 +837,9 @@ def bagSave(bag, new, tifs, res, ext, path, newu, dpoly):
         bagfile.root.BAG_root.elevation[:,:] = new
         newu = np.flipud(newu) 
         bagfile.root.BAG_root.uncertainty[:,:] = newu
+        '''
+        TODO: designated sounding clear
+        '''
         bagfile.flush()
     bagfile.close()
     gd_obj = None
@@ -852,6 +859,7 @@ def interp(bagPath, tifPath, desPath, catzoc, ioVal):
         extent = tifGrids[0][2]
     comboTif, name = polyTifVals(tifGrids, desPath, names)
     comboArr = [0, name, extent, comboTif]
+    print (comboArr)
 
     bag = getBagLyrs(bagPath)
     print(bag, '\n')
@@ -863,7 +871,7 @@ def interp(bagPath, tifPath, desPath, catzoc, ioVal):
     uval = catZones.get(catzoc)
 #    print (uval)
     newBag, newUncr, dpoly = triangulateSurfaces(grids, combo, vals, uval, ioVal)
-    bagSave(bag, newBag, tifGrids, res, ext, desPath, newUncr, dpoly)
+    bagSave(bag, newBag, tifGrids, res, ext, desPath, newUncr, dpoly, ioVal)
     done = datetime.datetime.now()
     delta = done - start
     print ('done', done, '\ntook', delta)
