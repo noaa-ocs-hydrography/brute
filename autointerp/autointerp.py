@@ -837,9 +837,8 @@ def bagSave(bag, new, tifs, res, ext, path, newu, dpoly, ioVal):
         bagfile.root.BAG_root.elevation[:,:] = new
         newu = np.flipud(newu) 
         bagfile.root.BAG_root.uncertainty[:,:] = newu
-        '''
-        TODO: designated sounding clear
-        '''
+        if ioVal == 1:
+            bagfile.root.BAG_root.tracking_list.remove_rows(0,bagfile.root.BAG_root.tracking_list.nrows)
         bagfile.flush()
     bagfile.close()
     gd_obj = None
@@ -859,7 +858,7 @@ def interp(bagPath, tifPath, desPath, catzoc, ioVal):
         extent = tifGrids[0][2]
     comboTif, name = polyTifVals(tifGrids, desPath, names)
     comboArr = [0, name, extent, comboTif]
-    print (comboArr)
+#    print ('done')
 
     bag = getBagLyrs(bagPath)
     print(bag, '\n')
