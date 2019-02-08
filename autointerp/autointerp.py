@@ -84,8 +84,8 @@ def getTifElev(files):
     for file in files:
         print(file)
         ds = gdal.Open(file)
-        
         ulx, xres, xskew, uly, yskew, yres  = ds.GetGeoTransform()
+        print (xres, yres)
         lrx = ulx + (ds.RasterXSize * xres)
         lry = uly + (ds.RasterYSize * yres)
         print (ulx, lrx)
@@ -432,7 +432,6 @@ def alignTifs(tifs):
         if x == 0:
             nw = ul
             se = lr
-            rows, cols = tif[-1].shape
             print (nw, se)
             x += 1
         else:
@@ -441,72 +440,64 @@ def alignTifs(tifs):
             nwx, nwy = nw
             scx, scy = se
             if ulx <= nwx:
-                nxd = ulx - nwx
+                nxd = nwx - ulx
                 nwx = ulx
             elif ulx >= nwx:
                 nxd = ulx - nwx
-                nwx = ulx
+#                nwx = nwx
             if uly >= nwy:
                 nyd = uly - nwy
                 nwy = uly
             elif uly <= nwy:
-                nyd = uly - nwy
-                nwy = uly
+                nyd = nwy - uly
+#                nwy = nwy
             if lrx >= scx:
                 sxd = lrx - scx
                 scx = lrx
             elif lrx <= scx:
                 sxd = scx - lrx
-                scx = lrx
+#                scx = scx
             if lry <= scy:
                 syd = lry - scy
                 scy = lry
             elif lry >= scy:
-                syd = lry - scy
-                scy = lry
-            r, c = tif[-1].shape[0], tif[-1].shape[1]
-            print (rows, cols)
-            print (r, c)
-            if rows <= r:
-                rows = r
-            if cols <= c:
-                cols = c
+                syd = scy - lry
+#                scy = scy
             print (nxd, nyd, sxd, syd)
             print (sxd, nyd)
             nw = [nwx, nwy]
             se = [scx, scy]
+            cols, rows = int(np.round(nwy - scy)), int(np.round(scx - nwx))
             print('cols: ' , nwy - scy, '\nrows: ', scx - nwx)
     print (nw, se)
     sizedTifs = []
     print ('resize?')
-    if sxd != 0 or nyd != 0:
+    if nxd != 0 or nyd != 0 or sxd != 0 or syd != 0:
         print ('yes', datetime.datetime.now())
+        ref = np.full((cols, rows), 0)
+        print (ref.shape)
         for tif in tifs:
             maxVal = maxValue(tif[-1])
             sizedTif = tif[:-1]
             print (tif)
             bndx, bndy = tif[2][0]
             nwx, nwy = nw
-            print (bndx, bndy)
-            print (nwx, nwy)
+            print ('old:', bndx, bndy)
+            print ('new', nwx, nwy)
             arr = tif[-1]
             bef = arr.shape
             x, y = arr.shape
             print (x, rows)
             print (y, cols)
             if y != cols:
-                exp = cols - y
+                exp = int(abs(rows - y))
                 print (exp)
-#                for a in range(exp):
-#                    arr = np.column_stack([arr, [maxVal] * x])
                 add = np.full((x, exp), maxVal)
                 arr = np.column_stack([arr, add])
                 x, y = arr.shape
             if x != rows:
-                exp = rows - x
+                exp = int(abs(cols - x))
                 print (exp)
-#                for a in range(exp):
-#                    arr = np.vstack([arr, [maxVal] * y])
                 add = np.full((exp, y), maxVal)
                 arr = np.vstack([arr, add])
             print (bef, arr.shape)
@@ -522,6 +513,7 @@ def alignTifs(tifs):
             sizedTifs.append(sizedTif)
 #            sizedTifs.append(arr)
         ext = [nw, se]
+        print (ext)
         print ('done', datetime.datetime.now())
         return sizedTifs, ext
     else:
@@ -529,7 +521,7 @@ def alignTifs(tifs):
         ext = [nw, se]
         return tifs, ext
 
-def polyTifVals(tifs, path, names):
+def polyTifVals(tifs, path, names, extent):
     '''Heavy Influence From:
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
     (https://gis.stackexchange.com/a/278965)]
@@ -568,7 +560,7 @@ def polyTifVals(tifs, path, names):
                 maxRes[0] = rows
             if cols >= maxRes[1]:
                 maxRes[1] = cols
-            print (maxRes)
+            print ('original', maxRes)
             tifList.append([tif[0], tif[-1]])
             x += 1
         elif x != 0:
@@ -602,7 +594,10 @@ def polyTifVals(tifs, path, names):
             os.remove(outputpath)
         elif not os.path.exists(outputpath):
             break
-    write_raster(meanTiff, gd_obj.GetGeoTransform(), gd_obj, outputpath)
+    nx, ny = extent[0]
+    reso = 1
+    gtran = (nx, reso, 0.0, ny, 0.0, -(reso))
+    write_raster(meanTiff, gtran, gd_obj, outputpath)
     gd_obj = None
 
 #    pointTiff = tupleGrid(meanTiff, 0)
@@ -611,6 +606,8 @@ def polyTifVals(tifs, path, names):
     return meanTiff, outputpath
 
 def alignGrids(bag, tif):
+    '''
+    '''
     print ('alignGrids')
     print (bag[-1])
     maxVal = maxValue(bag[-1])
@@ -725,6 +722,8 @@ def alignGrids(bag, tif):
     return bagRes, grids, bagBounds
 
 def comboGrid(grids):
+    '''
+    '''
     print ('comboGrid')
     maxVal = maxValue(grids[1][-1])
     shape = grids[1][-1].shape
@@ -746,6 +745,8 @@ def comboGrid(grids):
 #    return combo, vals
 
 def rePrint(bag, interp, poly, maxVal, uncr, uval, ioVal):
+    '''
+    '''
     print ('rePrint', datetime.datetime.now())
     m, b = uval
     perVal = maxVal*m
@@ -767,6 +768,8 @@ def rePrint(bag, interp, poly, maxVal, uncr, uval, ioVal):
     return nbag, nunc, dpoly
 
 def triangulateSurfaces(grids, combo, vals, uval, ioVal):
+    '''
+    '''
     print ('triangulateSurfaces')
     bagObj = grids[-1]
     bag = bagObj[-1]
@@ -795,6 +798,8 @@ def triangulateSurfaces(grids, combo, vals, uval, ioVal):
     return grid, uncr, dpoly
 
 def bagSave(bag, new, tifs, res, ext, path, newu, dpoly, ioVal):
+    '''
+    '''
     for tif in tifs:
         gd_obj = gdal.Open(tif[1])
         break
@@ -845,6 +850,8 @@ def bagSave(bag, new, tifs, res, ext, path, newu, dpoly, ioVal):
     print ('done')
 
 def interp(bagPath, tifPath, desPath, catzoc, ioVal):
+    '''
+    '''
     start = datetime.datetime.now()
     print ('start', start)
     tifFiles, names = getTifElev(tifPath)
@@ -856,9 +863,9 @@ def interp(bagPath, tifPath, desPath, catzoc, ioVal):
         tifGrids = tifFiles
         print (tifGrids)
         extent = tifGrids[0][2]
-    comboTif, name = polyTifVals(tifGrids, desPath, names)
+    comboTif, name = polyTifVals(tifGrids, desPath, names, extent)
     comboArr = [0, name, extent, comboTif]
-#    print ('done')
+    print ('\ndone with tif section\n')
 
     bag = getBagLyrs(bagPath)
     print(bag, '\n')
@@ -873,8 +880,9 @@ def interp(bagPath, tifPath, desPath, catzoc, ioVal):
     bagSave(bag, newBag, tifGrids, res, ext, desPath, newUncr, dpoly, ioVal)
     done = datetime.datetime.now()
     delta = done - start
-    print ('done', done, '\ntook', delta)
-    return True
+    msg = 'Done! Took: ' + str(delta)
+    print (msg)
+    return msg
 
 class Form(autointerp_ui.Form):
     '''Load ui and: define tif storage columns, overwrite ui defined fucntions 
@@ -919,7 +927,7 @@ class Form(autointerp_ui.Form):
         self.gettifList()
             
     def programProg(self, event):
-        '''Collects the GUI field values for use in running the tools main
+        '''Collects the GUI field values for use in running the main
         function 'interp(bagPath, tifPath, desPath)'
         '''
         bagPath = self.picker_bag.GetPath()
@@ -930,7 +938,8 @@ class Form(autointerp_ui.Form):
             desPath = os.path.split(bagPath)[0]
         catzoc = self.choice_catzoc.GetString(self.choice_catzoc.GetCurrentSelection())
         ioOut = self.radio_data.GetSelection()
-        interp(bagPath, tifPath, desPath, catzoc, ioOut)
+        returned = interp(bagPath, tifPath, desPath, catzoc, ioOut)
+        self.bar_status.SetStatusText(returned)
             
     def gettifList(self):
         tifCount = self.list_tif.GetItemCount()

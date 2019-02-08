@@ -268,7 +268,7 @@ def downloadAndCheck(rows):
                         row.append('BadURL')
                         break
                 else:
-                    print ('e', end=' ')
+                    print ('e \n' + link, end=' ')
                     row.append('No')
                     row.append('BadURL')
                     break
