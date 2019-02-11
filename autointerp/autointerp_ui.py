@@ -44,6 +44,7 @@ class Form ( wx.Frame ):
 		opts_form = wx.FlexGridSizer( 0, 2, 0, 0 )
 		opts_form.AddGrowableCol( 1 )
 		opts_form.AddGrowableRow( 2 )
+		opts_form.AddGrowableRow( 4 )
 		opts_form.SetFlexibleDirection( wx.BOTH )
 		opts_form.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_SPECIFIED )
 
@@ -87,8 +88,8 @@ class Form ( wx.Frame ):
 		self.picker_des = wx.DirPickerCtrl( self, wx.ID_ANY, wx.EmptyString, u"Select a folder", wx.DefaultPosition, wx.DefaultSize, wx.DIRP_DEFAULT_STYLE )
 		opts_form.Add( self.picker_des, 1, wx.ALL|wx.EXPAND, 5 )
 
-		self.label_catzoc = wx.StaticText( self, wx.ID_ANY, u"Interpolated CATZOC:", wx.DefaultPosition, wx.DefaultSize, 0 )
-		self.label_catzoc.Wrap( -1 )
+		self.label_catzoc = wx.StaticText( self, wx.ID_ANY, u"Interpolated Uncertainty CATZOC Score:", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+		self.label_catzoc.Wrap( 150 )
 
 		opts_form.Add( self.label_catzoc, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT, 5 )
 

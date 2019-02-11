@@ -71,6 +71,7 @@ def query():
         end = config['Timeframe']['End Date']
     else:
         end = strToday
+    print ('\nStart:', start, '\nEnd:', end)
     if (config['Agencies']['Only Listed'] == 'yes' 
         and config['Agencies']['Agencies'] != ''):
         areas = ''
