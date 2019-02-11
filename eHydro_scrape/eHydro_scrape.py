@@ -433,24 +433,24 @@ def main():
         changes = csvCompare(rows, csvFile, newSurveysNum)
     except:
         logWriter(fileLog, '\t\tUnable to compare query results to eHydro_csv.txt')
-#    try:
-    logWriter(fileLog, '\tParsing new entries for resolution:')
-    attributes.append('Hi-Res?')
-    attributes.append('Override?')
-    if changes != 'No Changes':
-        checked, hiRes = downloadAndCheck(changes)
-        csvFile.extend(checked)
-        if config['Output Log']['Query List'] == 'yes':
-            for row in checked:
-                txt = ''
-                for i in [1,4,5,6,12]:
-                    txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
-                logWriter(fileLog, '\t\t' + txt)
-        logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
-    else:
-        logWriter(fileLog, '\t\t' + changes)
-#    except:
-#        logWriter(fileLog, '\tParsing for resolution failed')
+    try:
+        logWriter(fileLog, '\tParsing new entries for resolution:')
+        attributes.append('Hi-Res?')
+        attributes.append('Override?')
+        if changes != 'No Changes':
+            checked, hiRes = downloadAndCheck(changes)
+            csvFile.extend(checked)
+            if config['Output Log']['Query List'] == 'yes':
+                for row in checked:
+                    txt = ''
+                    for i in [1,4,5,6,12]:
+                        txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
+                    logWriter(fileLog, '\t\t' + txt)
+            logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
+        else:
+            logWriter(fileLog, '\t\t' + changes)
+    except:
+        logWriter(fileLog, '\tParsing for resolution failed')
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
