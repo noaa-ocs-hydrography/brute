@@ -611,7 +611,6 @@ def alignGrids(bag, tif):
     print ('alignGrids')
     print (bag[-1])
     maxVal = maxValue(bag[-1])
-    maxTif = maxValue(tif[-1])
     tu, tl = tif[-2]
     tx, ty = tif[-1].shape
     tex, tey = tu[1] - tl[1], tl[0] - tu[0]
@@ -637,8 +636,6 @@ def alignGrids(bag, tif):
         bagRes = int(bagRes[0])
         zres = tifRes/bagRes
     print (bagRes, zres)
-    tmax = 0
-    bmax = maxValue(bag[-1])
 
     print (tif[-1])
     if zres == 1:
