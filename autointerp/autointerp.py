@@ -757,6 +757,8 @@ def rePrint(bag, interp, poly, maxVal, uncr, uval, ioVal):
     bpoly = (bag < maxVal).astype(np.int)
     cpoly = np.logical_or(bpoly, tpoly)
     dpoly = np.logical_xor(bpoly, cpoly)
+#    interp = np.where(dpoly, interp, np.nan)
+#    interp = scipy.ndimage.gaussian_filter(interp, sigma=3 ,mode='constant', cval=maxVal)
     if ioVal == False:
         nbag = np.where(dpoly, interp, bag)
         nunc = np.where(dpoly, (interp*m)+b, uncr)
