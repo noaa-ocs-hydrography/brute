@@ -19,21 +19,17 @@ Icon from https://www.ngdc.noaa.gov/mgg/image/2minrelief.html
 import os
 import re
 import wx
-import ast
-import sys
-import cv2
 import scipy
 import shutil
 import datetime
 import numpy as np
 import tables as tb
+import astropy.convolution as apc
 
 from lxml import etree
 from string import ascii_lowercase
 from scipy.ndimage.interpolation import zoom
-from scipy.spatial import cKDTree
 from osgeo import gdal, ogr, osr, gdalconst
-import matplotlib.pyplot as plt
 
 import autointerp_ui
 
@@ -375,10 +371,9 @@ def concatGrid(grids, maxVal, shape):
     '''
     print ('concatGrid')
     print ('tpts', datetime.datetime.now())
-#    print (grids[0])
     tpts = tupleGrid(grids[0], maxVal)
     print ('bpts', datetime.datetime.now())
-    bpts = tupleGrid(grids[1], maxVal)#, add=grids[2])
+    bpts = tupleGrid(grids[1], maxVal)
     print ('done', datetime.datetime.now())
     print ('combo1', datetime.datetime.now())
     comb = np.concatenate([tpts, bpts])
@@ -388,15 +383,7 @@ def concatGrid(grids, maxVal, shape):
     vals = grid[1].squeeze()
     grid = grid[0]
     print (grid, vals)
-#    print ('combo2', datetime.datetime.now())
-#    comb2 = np.concatenate([tpts, upts])
-#    comb2.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
-#    print (comb2)
-#    grid2 = np.hsplit(comb2, [2, 4])
-#    vals2 = grid2[1].squeeze()
-#    grid2 = grid2[0]
-#    print (grid2, vals2)
-    return grid, vals#, vals2
+    return grid, vals
 
 def alignTifs(tifs):
     '''Takes an input of an array of tiff objects. The goal of this function 
@@ -611,7 +598,6 @@ def alignGrids(bag, tif):
     print ('alignGrids')
     print (bag[-1])
     maxVal = maxValue(bag[-1])
-    maxTif = maxValue(tif[-1])
     tu, tl = tif[-2]
     tx, ty = tif[-1].shape
     tex, tey = tu[1] - tl[1], tl[0] - tu[0]
@@ -637,8 +623,6 @@ def alignGrids(bag, tif):
         bagRes = int(bagRes[0])
         zres = tifRes/bagRes
     print (bagRes, zres)
-    tmax = 0
-    bmax = maxValue(bag[-1])
 
     print (tif[-1])
     if zres == 1:
@@ -757,15 +741,18 @@ def rePrint(bag, interp, poly, maxVal, uncr, uval, ioVal):
     bpoly = (bag < maxVal).astype(np.int)
     cpoly = np.logical_or(bpoly, tpoly)
     dpoly = np.logical_xor(bpoly, cpoly)
-#    interp = np.where(dpoly, interp, np.nan)
-#    interp = scipy.ndimage.gaussian_filter(interp, sigma=3 ,mode='constant', cval=maxVal)
+    interp[interp>0] = np.nan
+    kernel = apc.Gaussian2DKernel(3)
+    interp = apc.convolve(interp,kernel)
+    interp[np.isnan(interp)]=maxVal
     if ioVal == False:
         nbag = np.where(dpoly, interp, bag)
         nunc = np.where(dpoly, (interp*m)+b, uncr)
     elif ioVal == True:
         nbag = np.where(dpoly, interp, maxVal)
         nunc = np.where(dpoly, (interp*m)+b, maxVal)
-    nunc[nunc>perVal] = maxVal
+    nunc[nunc>0] = maxVal
+    nbag[nbag>0] = maxVal
     print ('done', datetime.datetime.now())
     return nbag, nunc, dpoly
 
@@ -785,17 +772,9 @@ def triangulateSurfaces(grids, combo, vals, uval, ioVal):
     values = scipy.interpolate.griddata(combo, vals, (xi, yi), 
                                         method='linear', fill_value=maxVal)
     print ('done', datetime.datetime.now())
-#    print ('try uncr', datetime.datetime.now())
-#    values2 = scipy.interpolate.griddata(combo, uval, (xi, yi), 
-#                                        method='linear', fill_value=maxVal)
-#    print ('done', datetime.datetime.now())
-#    maxVal = maxValue(values)
-#    print (values)
     values = np.asarray(values, dtype='float64')
     values[np.isnan(values)]=maxVal
     print (values.shape, poly.shape)
-#    values2 = np.asarray(values2, dtype='float64')
-#    values2[np.isnan(values2)]=maxVal
     grid, uncr, dpoly = rePrint(bag,values,poly,maxVal,uncr,uval, ioVal)
     return grid, uncr, dpoly
 
@@ -881,6 +860,7 @@ def interp(bagPath, tifPath, desPath, catzoc, ioVal):
     newBag, newUncr, dpoly = triangulateSurfaces(grids, combo, vals, uval, ioVal)
     bagSave(bag, newBag, tifGrids, res, ext, desPath, newUncr, dpoly, ioVal)
     done = datetime.datetime.now()
+    print ('acually done', done)
     delta = done - start
     msg = 'Done! Took: ' + str(delta)
     print (msg)
