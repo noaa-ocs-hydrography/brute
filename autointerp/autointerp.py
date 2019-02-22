@@ -375,7 +375,7 @@ def concatGrid(grids, maxVal, shape):
     print ('bpts', datetime.datetime.now())
     bpts = tupleGrid(grids[1], maxVal)
     print ('done', datetime.datetime.now())
-    print ('combo1', datetime.datetime.now())
+#    print ('combo1', datetime.datetime.now())
     comb = np.concatenate([tpts, bpts])
     comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
     print (comb)
@@ -733,6 +733,7 @@ def rePrint(bag, interp, poly, maxVal, uncr, uval, ioVal):
     '''
     print ('rePrint', datetime.datetime.now())
     m, b = uval
+    print (m, b)
     perVal = maxVal*m
     print (maxVal, perVal)
     rows, cols = bag.shape
@@ -741,17 +742,20 @@ def rePrint(bag, interp, poly, maxVal, uncr, uval, ioVal):
     bpoly = (bag < maxVal).astype(np.int)
     cpoly = np.logical_or(bpoly, tpoly)
     dpoly = np.logical_xor(bpoly, cpoly)
+    ibag = np.where(dpoly, interp, bag)
+    npoly = (ibag < maxVal).astype(np.int)
+    fpoly = np.logical_and(dpoly, npoly)
     interp[interp>0] = np.nan
     kernel = apc.Gaussian2DKernel(3)
+    print ('convolving')
     interp = apc.convolve(interp,kernel)
     interp[np.isnan(interp)]=maxVal
     if ioVal == False:
-        nbag = np.where(dpoly, interp, bag)
-        nunc = np.where(dpoly, (interp*m)+b, uncr)
+        nbag = np.where(fpoly, interp, bag)
+        nunc = np.where(fpoly, (interp*m)+b, uncr)
     elif ioVal == True:
-        nbag = np.where(dpoly, interp, maxVal)
-        nunc = np.where(dpoly, (interp*m)+b, maxVal)
-    nunc[nunc>0] = maxVal
+        nbag = np.where(fpoly, interp, maxVal)
+        nunc = np.where(fpoly, (interp*m)+b, maxVal)
     nbag[nbag>0] = maxVal
     print ('done', datetime.datetime.now())
     return nbag, nunc, dpoly
