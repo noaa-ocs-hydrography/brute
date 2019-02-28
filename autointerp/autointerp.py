@@ -754,13 +754,13 @@ def rePrint(bag, interp, poly, maxVal, uncr, uval, ioVal):
     print ('convolving')
     interp = apc.convolve(interp,kernel)
     interp[np.isnan(interp)]=maxVal
+    interp[interp>0]=maxVal
     if ioVal == False:
         nbag = np.where(fpoly, interp, bag)
         nunc = np.where(fpoly, (interp*m)+b, uncr)
     elif ioVal == True:
         nbag = np.where(fpoly, interp, maxVal)
         nunc = np.where(fpoly, (interp*m)+b, maxVal)
-    nbag[nbag>0] = maxVal
     print ('done', datetime.datetime.now())
     return nbag, nunc, dpoly
 
