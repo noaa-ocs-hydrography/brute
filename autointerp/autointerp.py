@@ -62,6 +62,10 @@ catZones = {
 combo = re.compile(r'COMBINED', re.IGNORECASE)
 interp = re.compile(r'INTERP', re.IGNORECASE)
 
+#stamp = datetime.datetime.now()
+#name = progLoc + '/' + stamp
+#opened = open(name, 'w')
+
 def getTifElev(files):
     '''This function takes a list of GeoTiff filepaths and opens each in order
     to access their values. Returned as a list of tif objects are the order a
@@ -597,7 +601,7 @@ def alignGrids(bag, tif):
     '''
     print ('alignGrids')
     print (bag[-1])
-    maxVal = maxValue(bag[-1])
+    maxVal = 1000000.0
     tu, tl = tif[-2]
     tx, ty = tif[-1].shape
     tex, tey = tu[1] - tl[1], tl[0] - tu[0]
@@ -709,7 +713,7 @@ def comboGrid(grids):
     '''
     '''
     print ('comboGrid')
-    maxVal = maxValue(grids[1][-1])
+    maxVal = 1000000.0
     shape = grids[1][-1].shape
     tif = grids[0][-1]
     bag = grids[1][-1]
@@ -769,7 +773,7 @@ def triangulateSurfaces(grids, combo, vals, uval, ioVal):
     uncr = bagObj[-2]
     tifObj = grids[0]
     poly = tifObj[-1]
-    maxVal = maxValue(bag)
+    maxVal = 1000000.0
     x, y = np.arange(bag.shape[1]), np.arange(bag.shape[0])
     xi, yi = np.meshgrid(x, y)
     print ('try tri', datetime.datetime.now())
