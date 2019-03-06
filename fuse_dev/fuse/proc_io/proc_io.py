@@ -10,6 +10,7 @@ import sys, os
 import pickle
 import subprocess
 import numpy as np
+import tables as tb
 from osgeo import gdal
 gdal.UseExceptions()
 
@@ -32,6 +33,8 @@ class proc_io:
         """
         if self._in_data_type =='gdal':
             data, metadata = self._convert_gdal(dataset)
+        elif self._in_data_type =='bag':
+            data, metadata = self._read_bag(dataset)
         else:
             raise ValueError('input data type unknown: ' + 
                              str(self._in_data_type))
@@ -50,6 +53,24 @@ class proc_io:
         """
         meta = {}
         # get the logisitics for converting the gdal dataset to csar
+        gt = dataset.GetGeoTransform()
+        meta['resx'] = gt[1]
+        meta['resy'] = gt[5]
+        meta['originx'] = gt[0]
+        meta['originy'] = gt[3]
+        meta['dimx'] = dataset.RasterXSize
+        meta['dimy'] = dataset.RasterYSize
+        meta['crs'] = dataset.GetProjection()
+        rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
+        meta['nodata'] = rb.GetNoDataValue()
+        # get the gdal data raster
+        data = dataset.ReadAsArray()
+        return data, meta
+    
+    def _read_bag(self, dataset):
+        meta = {}
+        # get the logisitics for converting the bag dataset to csar
+#        drv = ogr.GetDriverByName('BAG')
         gt = dataset.GetGeoTransform()
         meta['resx'] = gt[1]
         meta['resy'] = gt[5]
