@@ -8,7 +8,6 @@ Created on Tue Oct  2 13:44:14 2018
 import os
 import re
 import csv
-#import json
 import socket
 import urllib
 import zipfile
@@ -34,8 +33,8 @@ logLocation = os.path.join(progLoc, logName)
 holding = progLoc + '/downloads/'
 # eHydro survey entry attributes
 attributes = [ "OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
-              "SDSFEATURENAME", "SOURCEPROJECTION",
-              "SOURCEDATALOCATION", "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
+              "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION", 
+              "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
               "SURVEYTYPE", "PROJECTEDAREA"]
 # check to see if the downloaded data folder exists, will create it if not
 if os.path.exists(holding):
@@ -253,23 +252,23 @@ def downloadAndCheck(rows):
                 print ('x', end=' ')
                 break
             else:
-                if link != 'null' or link != 'Not in cloud':
+                if link != 'null' and link != 'Not in cloud':
                     try:
                         urllib.request.urlretrieve(link, saved)
                     except socket.timeout:
                         urllib.request.urlretrieve(link, saved)
                     except urllib.error.HTTPError as e:
-                        print ('e \n' + link, end=' ')
+                        print ('e \n' + link)
                         row.append('No')
                         row.append('BadURL')
                         break
                     except urllib.error.URLError as e:
-                        print ('e \n' + link, end=' ')
+                        print ('e \n' + link)
                         row.append('No')
                         row.append('BadURL')
                         break
                 else:
-                    print ('e \n' + link, end=' ')
+                    print ('e \n' + link)
                     row.append('No')
                     row.append('BadURL')
                     break
@@ -314,7 +313,7 @@ def downloadAndCheck(rows):
                     row.append('BadZip')
                 row.append('No')
         x -= 1
-    print ('row downloads verified')
+    print ('\nrow downloads verified')
     return rows, hr
 
 def csvCompare(rows, csvFile, newSurveysNum):
