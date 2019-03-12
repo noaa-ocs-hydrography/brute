@@ -169,8 +169,8 @@ def surveyCompile(surveyIDs, newSurveysNum):
         response = requests.get(query)
         page = response.json()
         row = []
-        try:
-            for attribute in attributes:
+        for attribute in attributes:
+            try:
                 if page['features'][0]['attributes'][attribute] == None:
                     row.append('null')
                 elif (attribute == "SURVEYDATEUPLOADED"
@@ -184,11 +184,11 @@ def surveyCompile(surveyIDs, newSurveysNum):
                             row.append(str(date.strftime('%Y-%m-%d')))
                 else:
                     row.append(str(page['features'][0]['attributes'][attribute]))
-            rows.append(row)
-            x += 1
-        except KeyError as e:
-            print (e, page)
-            break
+            except KeyError as e:
+                print (e, page)
+                row.append('error')
+        rows.append(row)
+        x += 1
     print (len(rows))
     print ('rows complete')
     return rows
