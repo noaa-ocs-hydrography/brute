@@ -59,7 +59,37 @@ def _is_header2(line, version = None):
             #print(X)
             return True
 
-##pattern ='[\d][][][][][][\d\]
+def _is_xyz_line_data(line, version = None):
+    if version == None:
+        v=0
+    if version == 'CEMVN':
+        pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
+        if _re.match(pattern_coordinates, line) is not None:
+            return True
+        else:
+            return False
+        
+def _start_xyz(infilename, version = None):
+    if version == None:
+        v=0
+        first_instance = ''
+        return first_instance
+        
+    if version == 'CEMVN':
+        first_instance = ''
+        numberofrows = []
+        pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
+        with open(infilename, 'r') as infile:
+            for (index1, line) in enumerate (infile):
+                if _re.match(pattern_coordinates, line) is not None:
+                    numberofrows.append(index1)
+                #first_instance = _re.match(pattern_coordinates, textblock, _re.MULTILINE)
+            first_instance = numberofrows[0]
+            return first_instance
+        return first_instance
+        #infile.readlines()
+        #matched = [line for line in textblock if pattern1 in line]
+        #index1 = textblock.index(matched[0])
 
 def _parse_note(line):
     """
