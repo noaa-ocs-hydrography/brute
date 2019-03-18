@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Edited by Juliet Kinney
-extract_ehydro_meta.py
+extract_ehydro_meta_class_CEMNV.py
 
 Created on Wed Aug  8 10:11:36 2018
 
@@ -36,8 +36,52 @@ import eHydro_parsing as eH_p#extract_ehydro_meta_CEMVN_testparse1.py#prior vers
 import meta2csv as m2c#from BDB.BDB51.preprocessing import meta2csv as m2c
 import csv as _csv
 import meta_review_base as E_M_C#import Extract_Meta_Class as E_M_C
-
+import numpy as _np
 ##-----------------------------------------------------------------------------
+
+class read_raw_cemvn:
+    
+    def read_metadata(self, infilename, inputehydrocsv):
+        """
+        Read all available meta data.
+        """
+        version='CEMVN'
+        self.version = version
+        return self.retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)
+    
+    def read_bathymetry_dat(self, infilename):
+        """
+        Read the bathymetry.
+        """
+        # get the dat file for CEMVN
+        stub, ext = _os.path.splitext(infilename)
+        bathyfilename = stub + '.dat'
+        xyz = _np.loadtxt(bathyfilename, delimiter = ' ')
+        return xyz
+    
+    def read_bathymetry(self, infilename):
+        version='CEMVN'
+        self.version = version
+        #xyz1 = []
+        first_instance = eH_p._start_xyz(infilename, version = None)
+        if first_instance is not '':    
+            xyz = _np.loadtext(infilename, delimeter = ',', skiprows = first_instance)
+        else:
+            xyz = _np.loadtext(infilename, delimeter = ',')
+        return xyz
+        #    for line in infile.readlines():
+        #        if line == '\n':
+        #            continue
+        #        elif eH_p._is_xyz_data(line, version):
+        #            xyz1.append(line)
+        #        else:
+        #            break
+        #xyz = _np.asarray(xyz1)
+        
+        
+
+       
+    
 def parse_ehydro_directory(inpath):
     """
     Parse a directory of USACE xyz files from eHydro and return a list of the
@@ -100,11 +144,12 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
     one_file, v = E_M_C.use_extract_meta(f)#E_M_C.use_extract_meta(test_file_path)
     #since we know its ehydro:
     xmlfilename = one_file.get_xml()
-    if os.path.isfile(xmlfilename):        
-        try:
-            e_xml_s57dict = p_usace_xml.extract_s57_dict(xmlfilename)
-        except:
-            print('is this expected path followed?')
+    if os.path.isfile(xmlfilename):
+        ###may be useful to add in, right now needs more work for S57 matching      
+        ##try:
+        ##    e_xml_s57dict = p_usace_xml.extract_s57_dict(xmlfilename)
+        ##except:
+        ##    print('is this expected path followed?')
         with open(xmlfilename, 'r') as xml_file:
             xml_txt = xml_file.read()
         xmlbasename = os.path.basename(xmlfilename)
@@ -171,11 +216,11 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
     #need to fix mapping logic to input to BDB table for xml_meta,
     #most attributes aren't needed at this time. But we can pull them.
     #m2c.write_meta2csv([merged_meta],metafile1)
-    m2c.write_meta2csv([merge2],metafile1)
+    ###m2c.write_meta2csv([merge2],metafile1)
     #m2c.write_meta2csv_full_tab([merged_meta],metafile)#Trying to trouble shoot.
     #write_to_csv([merged_meta],metafile)
     #save pandas dataframe export here
-    nn.to_csv(path_or_buf=(df_export_to_csv), encoding='UTF-8', sep ='\t')
+    ###nn.to_csv(path_or_buf=(df_export_to_csv), encoding='UTF-8', sep ='\t')
     #nn.to_csv(path_or_buf=r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt', encoding='UTF-8', sep ='\t')
     return merged_meta, nn
 
