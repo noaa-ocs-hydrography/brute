@@ -35,7 +35,7 @@ import eHydro_parsing as eH_p#extract_ehydro_meta_CEMVN_testparse1.py#prior vers
 
 import meta2csv as m2c#from BDB.BDB51.preprocessing import meta2csv as m2c
 import csv as _csv
-import meta_review_base as E_M_C#import Extract_Meta_Class as E_M_C
+import Extract_Meta_Class as E_M_C#import meta_review_base as E_M_C#
 import numpy as _np
 ##-----------------------------------------------------------------------------
 
