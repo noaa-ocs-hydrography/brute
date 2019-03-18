@@ -14,6 +14,7 @@ a general sense, and also for specific S57 needs.
 
 """
 import re
+import xml as xml
 from xml.etree import ElementTree as et 
 import logging as log
 from os import path
@@ -89,6 +90,8 @@ class XML_Meta(object):
         self.filename = filename
         self.xml_tree = et.fromstring(meta_xml)
         self.ns = parse_namespace(meta_xml)
+        self.xml_txt = meta_xml
+        
 
         if len(version) > 0:
             self.version = float(version)
@@ -121,6 +124,10 @@ class XML_Meta(object):
         version_USACE_FGDC = {'USACE_FGDC'}
         if self.ns == version_1:
             return 1.0
+        elif self.xml_txt.startswith('<?xml version="1.0" encoding="ISO-8859-1"?>\n'):
+            print('ISO-8859-1 xml version')
+            #xml_version = 'ISO-8859-1'
+            return 'ISO-8859-1'
         elif self.xml_tree.tag == 'metadata':
             print(version_USACE_FGDC)#:
             return 'USACE_FGDC'
@@ -160,6 +167,17 @@ class XML_Meta(object):
                     #it is not looking for specific structure
                 #except:
                     #print('unexpected issue with assumed USACE FGDC format parsing')
+        elif version == 'ISO-8859-1':
+            self.source = {}
+            try:
+               my_etree_dict = self.convert_xml_to_dict() 
+               if my_etree_dict['metstdv']:
+                   Metadataformat = my_etree_dict['metstdv']
+                   print(Metadataformat)
+                   self.metadataformat = Metadataformat
+            except:
+                print('unexpected issue with assumed USACE ISO 88591 FGDC format parsing')
+
                         
         elif version =='HSMDB':
             self.source = {}
@@ -341,6 +359,40 @@ class XML_Meta(object):
         self.my_etree_dict1 = my_etree_dict1
         return my_etree_dict1
     
+    def convert_xml_to_dict_ISO_FGDC(self):
+        """
+        This version exports out  entries into a dictionary using the dictionary
+        xml_path_to_baseattribute
+        defined below for USACE FGDC data
+        The method may be modified if needed.
+        
+        my_etree_dict1={}
+
+        for key in xml_path_to_baseattribute:
+            my_etree_dict1[xml_path_to_baseattribute[key]] = self.xml_tree.findall('./' + key[8:])[0].text
+        self.my_etree_dict1 = my_etree_dict1
+        """           
+        my_etree_dict1={}
+        len_root_name_to_remove = len(self.xml_tree.tag)   
+        vertdatum = {'metadata/spref/vertdef/altsys/altdatum':'altdatum'}
+        for key in vertdatum:#iso_xml_path_to_baseattribute:
+            #if isinstance(self.xml_tree.findall('./'+ key[len_root_name_to_remove:]), list) == True: #check if list
+            #    my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = self.xml_tree.findall('./'+ key[len_root_name_to_remove:][0])
+            #else:
+            my_etree_dict1[vertdatum[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text
+            my_etree_dict1['script: from_vert_key'] = my_etree_dict1[vertdatum[key]]
+            #zz = self.xml_tree.find('./'+ key[len_root_name_to_remove:]
+            #if type(zz) == xml.etree.ElementTree.Element
+            #    print('true')                
+            # my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text
+            #my_etree_dict1[iso_xml_path_to_baseattribute[key]] = self.xml_tree.findall('./' + key[len_root_name_to_remove:])[0].text
+            #my_etree_dict1[xml_path_to_baseattribute[key]] = self.xml_tree.findall('./' + key[8:])[0].text
+            #editing path to add ./ and then remove root name ('metadata'), the first 8 characters.
+            #my_etree_dict1[xml_path_to_baseattribute[key]] = xml_data.xml_tree.findall('./' + key[8:])[0].text
+            #pathlist = key.split('/')
+        self.my_etree_dict1 = my_etree_dict1
+        return my_etree_dict1
+    
     def find_Instruments(self):
         """
         This method just takes out the Survey Instruments into a dictionary, 
@@ -469,6 +521,21 @@ class XML_Meta(object):
                 m={}
             meta_all_fields = {**meta_xml, **meta, **m}
         return meta_all_fields
+    
+    def _extract_meta_USACE_ISO(self):
+        if self.version == 'ISO-8859-1':
+            meta_xml = self.convert_xml_to_dict_ISO_FGDC()#convert_xml_to_dict2()
+            #meta = parsing_xml_ISO_FGDC_attributes_s57(meta_xml)
+            meta={}
+            try:
+                m = convert_meta_to_input(meta)
+            except:
+                print('still debugging')
+                m={}
+            meta_all_fields = {**meta_xml, **meta, **m}
+        return meta_all_fields
+
+
             
     def _read_file_name(self):
         """ 
@@ -759,6 +826,17 @@ def parse_namespace(meta_str):
                 #site = xsi_info.split('"')[1]
                 #namespace[name] = site
     return namespace
+
+#------------------------------------------------------------------------------
+def check_firstline(meta_xml):
+    xml_version = ''
+    if meta_xml.startswith('<?xml version="1.0" encoding="ISO-8859-1"?>\n'):
+        print('ISO-8859-1 xml version')
+        xml_version = 'ISO-8859-1'
+        #return 'ISO-8859-1'
+    return xml_version
+       
+
 #------------------------------------------------------------------------------
 xml_path_to_baseattribute = {
         'metadata/idinfo/citation/citeinfo/origin':'origin',
@@ -861,7 +939,58 @@ xml_path_to_baseattribute = {
         'metadata/metainfo/metstdn':'metstdn',
         'metadata/metainfo/metstdv':'metstdv'}
 
-
+#------------------------------------------------------------------------------
+iso_xml_path_to_baseattribute = {
+		'metadata/idinfo/citation/citeinfo/origin':'origin',
+		'metadata/idinfo/citation/citeinfo/pubdate':'pubdate',
+		'metadata/idinfo/citation/citeinfo/title':'title',
+		'metadata/idinfo/descript/abstract':'abstract',
+		'metadata/idinfo/descript/purpose':'purpose',
+		'metadata/idinfo/timeperd/timeinfo/sngdate/caldate':'caldate',
+		'metadata/idinfo/timeperd/timeinfo/current':'current',
+		'metadata/idinfo/status/progress':'progress',
+		'metadata/idinfo/status/update':'update',
+		'metadata/idinfo/spdom/bounding/westbc':'westbc',
+		'metadata/idinfo/spdom/bounding/eastbc':'eastbc',
+		'metadata/idinfo/spdom/bounding/northbc':'northbc',
+		'metadata/idinfo/spdom/bounding/southbc':'southbc',
+		'metadata/idinfo/keywords/themekt':'themekt',
+		'metadata/idinfo/accconst':'accconst',
+		'metadata/idinfo/useconst':'useconst',
+		'metadata/idinfo/ptcontac/cntinfo/cntperp/cntper':'cntper',
+		'metadata/idinfo/ptcontac/cntinfo/cntperp/cntorg':'cntorg',
+		'metadata/idinfo/ptcontac/cntinfo/cntaddr/addrtype':'addrtype',
+		'metadata/idinfo/ptcontac/cntinfo/cntaddr/address':'address',
+		'metadata/idinfo/ptcontac/cntinfo/cntaddr/city':'city',
+		'metadata/idinfo/ptcontac/cntinfo/cntaddr/state':'state',
+		'metadata/idinfo/ptcontac/cntinfo/cntaddr/postal':'postal',
+		'metadata/idinfo/ptcontac/cntinfo/cntvoice':'cntvoice',
+		'metadata/spref/horizsys/planar/gridsys/gridsysn':'gridsysn',
+		'metadata/spref/horizsys/planar/planci/plance':'plance',
+		'metadata/spref/horizsys/planar/planci/absres':'absres',
+		'metadata/spref/horizsys/planar/planci/ordres':'ordres',
+		'metadata/spref/vertdef/altsys/altdatum':'altdatum',
+		'metadata/spref/vertdef/altsys/altres':'altres',
+		'metadata/spref/vertdef/altsys/altunits':'altunits',
+		'metadata/spref/vertdef/altsys/altenc':'altenc',
+		'metadata/spref/vertdef/depthsys/depthdn':'depthdn',
+		'metadata/spref/vertdef/depthsys/depthres':'depthres',
+		'metadata/spref/vertdef/depthsys/depthdu':'depthdu',
+		'metadata/spref/vertdef/depthsys/depthem':'depthem',
+		'metadata/metainfo/metd':'metd',
+		'metadata/metainfo/metc/cntinfo/cntperp/cntper':'cntper',
+		'metadata/metainfo/metc/cntinfo/cntperp/cntorg':'cntorg',
+		'metadata/metainfo/metc/cntinfo/cntaddr/addrtype':'addrtype',
+		'metadata/metainfo/metc/cntinfo/cntaddr/address':'address',
+		'metadata/metainfo/metc/cntinfo/cntaddr/city':'city',
+		'metadata/metainfo/metc/cntinfo/cntaddr/state':'state',
+		'metadata/metainfo/metc/cntinfo/cntaddr/postal':'postal',
+		'metadata/metainfo/metc/cntinfo/cntvoice':'cntvoice',
+		'metadata/metainfo/metstdn':'metstdn',
+		'metadata/metainfo/metstdv':'metstdv',
+		'metadata/ellips':'ellips',
+		'metadata/#text':'#text',
+        }
 #------------------------------------------------------------------------------
 
 xmlbasename_to_index1 = {
