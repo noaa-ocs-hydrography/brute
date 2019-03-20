@@ -135,7 +135,17 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
     #g1.sort()
     f = filename
     basename = os.path.basename(basename)
-    basename = basename.strip('.xyz')
+    ex_string1 = '*_A.xyz'
+    ex_string2 = '*_FULL.xyz'
+    ex_string3 = '*_FULL.XYZ'
+    ex_string4 = '*_A.XYZ'
+    basename = os.path.basename(basename)
+    basename = S_f_d.return_surveyid(basename, ex_string1)
+    basename = S_f_d.return_surveyid(basename, ex_string2)
+    basename = S_f_d.return_surveyid(basename, ex_string3)
+    basename = S_f_d.return_surveyid(basename, ex_string4)
+    basename = basename.rstrip('.XYZ')  
+    basename = basename.rstrip('.xyz')
     meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'ehydro_csv')
     #metadata = ehydro_table.pull_df_by_dict_key(ehydro_df, thisdictionary, basename, searchvalue = None, meta=None, version = None)#other option version = 'casiano_ehydro_csv'
     #ehydro_table.pull_df_by_dict_key(thisdataframe, thisdictionary, basename, searchvalue = None, meta=None, version = None)
@@ -156,6 +166,8 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
         xml_data = p_usace_xml.XML_Meta(xml_txt, filename = xmlbasename)
         if xml_data.version == 'USACE_FGDC':
             meta_xml = xml_data._extract_meta_CEMVN()
+        elif xml_data.version == 'ISO-8859-1':
+                meta_xml = xml_data._extract_meta_USACE_ISO()
         else:
             meta_xml = xml_data.convert_xml_to_dict2()#some_meta = xml_data.convert_xml_to_dict()
     #relates to Bathy Class get_metadata
@@ -238,10 +250,19 @@ def retrieve_meta_for_Ehydro_out_df(g1, inputehydrocsv, metafile1, df_export_to_
     nm = pd.DataFrame()
     nnn = pd.DataFrame()
     g1.sort()
+    ex_string1 = '*_A.xyz'
+    ex_string2 = '*_FULL.xyz'
+    ex_string3 = '*_FULL.XYZ'
+    ex_string4 = '*_A.XYZ'
     for basename in g1:
         f = basename
         basename = os.path.basename(basename)
-        basename = basename.strip('.xyz')
+        basename = S_f_d.return_surveyid(basename, ex_string1)
+        basename = S_f_d.return_surveyid(basename, ex_string2)
+        basename = S_f_d.return_surveyid(basename, ex_string3)
+        basename = S_f_d.return_surveyid(basename, ex_string4)
+        basename = basename.rstrip('.xyz')
+        basename = basename.rstrip('.XYZ') 
         meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'ehydro_csv')
         #metadata = ehydro_table.pull_df_by_dict_key(ehydro_df, thisdictionary, basename, searchvalue = None, meta=None, version = None)#other option version = 'casiano_ehydro_csv'
         #ehydro_table.pull_df_by_dict_key(thisdataframe, thisdictionary, basename, searchvalue = None, meta=None, version = None)
@@ -329,7 +350,7 @@ def retrieve_meta_for_Ehydro_out_df(g1, inputehydrocsv, metafile1, df_export_to_
     #nn.to_csv(path_or_buf=r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt', encoding='UTF-8', sep ='\t')
     return merged_meta, nn
 
-def retrieve_meta_for_Ehydro(highresfolder, ehydrofolder, inputehydrocsv, metafile1, metafile, df_export_to_csv):#will change default to 'None' eventually, (highresfolder, ehydrofolder, inputehydrocsv, district = 'CEMVN', metafile1, metafile, df_export_to_csv):
+def retrieve_meta_for_Ehydro(highresfolder, ehydrofolder, inputehydrocsv, metafile1, metafile, df_export_to_csv):
     g1 = ehydro_subset_only_ifnotfull_restoo(highresfolder, ehydrofolder)
     ehydro_df = trycsv(inputehydrocsv)#bring in csv from ehydro website
     #ehydro_df = Rcsv.trycsv(inputehydrocsv)#folders?
@@ -337,23 +358,41 @@ def retrieve_meta_for_Ehydro(highresfolder, ehydrofolder, inputehydrocsv, metafi
     merged_meta = {}
     merge2 = {}
     #merged_meta_rows = {}    
-    ehydro_table = Extract_Table(ehydro_df,filename=inputehydrocsv)
+    ehydro_table = e_meta.Extract_Table(ehydro_df,filename=inputehydrocsv)
     nn = pd.DataFrame()
     nm = pd.DataFrame()
     nnn = pd.DataFrame()
     g1.sort()
+    ex_string1 = '*_A.xyz'
+    ex_string2 = '*_FULL.xyz'
+    ex_string3 = '*_FULL.XYZ'
+    ex_string4 = '*_A.XYZ'
     for basename in g1:
         f = basename
         basename = os.path.basename(basename)
-        basename = basename.strip('.xyz')
+        basename = S_f_d.return_surveyid(basename, ex_string1)
+        basename = S_f_d.return_surveyid(basename, ex_string2)
+        basename = S_f_d.return_surveyid(basename, ex_string3)
+        basename = S_f_d.return_surveyid(basename, ex_string4)
+        basename = basename.rstrip('.xyz')
+        basename = basename.rstrip('.XYZ')        
         meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'ehydro_csv')
         #metadata = ehydro_table.pull_df_by_dict_key(ehydro_df, thisdictionary, basename, searchvalue = None, meta=None, version = None)#other option version = 'casiano_ehydro_csv'
         #ehydro_table.pull_df_by_dict_key(thisdataframe, thisdictionary, basename, searchvalue = None, meta=None, version = None)
-        e_t = Extract_Txt(f)
+        e_t = e_meta.Extract_Txt(f)
         # xml pull here.
         one_file, v = E_M_C.use_extract_meta(f)#E_M_C.use_extract_meta(test_file_path)
         #since we know its ehydro:
-        xmlfilename = one_file.get_xml()
+        if '_A.xyz' in f:
+            xmlfilename = one_file.get_xml_xt('_A.xyz')
+        elif '_FULL.xyz' in f:
+            xmlfilename = one_file.get_xml_xt('_FULL.xyz')
+        elif '_FULL.XYZ' in f:
+            xmlfilename = one_file.get_xml_xt('_FULL.XYZ')
+        elif '_A.XYZ' in f:
+            xmlfilename = one_file.get_xml_xt('_A.XYZ')
+        else:
+            xmlfilename = one_file.get_xml()
         if os.path.isfile(xmlfilename):        
             try:
                 e_xml_s57dict = p_usace_xml.extract_s57_dict(xmlfilename)
@@ -365,6 +404,8 @@ def retrieve_meta_for_Ehydro(highresfolder, ehydrofolder, inputehydrocsv, metafi
             xml_data = p_usace_xml.XML_Meta(xml_txt, filename = xmlbasename)
             if xml_data.version == 'USACE_FGDC':
                 meta_xml = xml_data._extract_meta_CEMVN()
+            elif xml_data.version == 'ISO-8859-1':
+                meta_xml = xml_data._extract_meta_USACE_ISO()
             else:
                 meta_xml = xml_data.convert_xml_to_dict2()#some_meta = xml_data.convert_xml_to_dict()
         #relates to Bathy Class get_metadata
@@ -429,8 +470,8 @@ def retrieve_meta_for_Ehydro(highresfolder, ehydrofolder, inputehydrocsv, metafi
         #m2c.write_meta2csv_full_tab([merged_meta],metafile)#Trying to trouble shoot.
         #write_to_csv([merged_meta],metafile)
     #save pandas dataframe export here
-    ##nn.to_csv(path_or_buf=(df_export_to_csv), encoding='UTF-8', sep ='\t')
-    nn.to_csv(path_or_buf=r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt', encoding='UTF-8', sep ='\t')
+    nn.to_csv(path_or_buf=(df_export_to_csv), encoding='UTF-8', sep ='\t')
+    #nn.to_csv(path_or_buf=r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt', encoding='UTF-8', sep ='\t')
     return merged_meta, nn
 
       
@@ -582,6 +623,7 @@ class Extract_Table:
             #'script: from_fips': 'FIPS',
             'script: agency':'SURVEYAGENCY',
             'script: start_date':'SURVEYDATESTART',
+            'from_filenamebase':'SURVEYJOBIDPK',
             #'script: Hi-Res':'Hi-Res?',
             }
 ###---------------------------------------------------------------------------- 
