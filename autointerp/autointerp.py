@@ -84,6 +84,7 @@ def getTifElev(files):
     for file in files:
         print(file)
         ds = gdal.Open(file)
+        print(ds.GetProjection())
         ulx, xres, xskew, uly, yskew, yres  = ds.GetGeoTransform()
         print (xres, yres)
         lrx = ulx + (ds.RasterXSize * xres)
@@ -915,11 +916,10 @@ class Form(autointerp_ui.Form):
             if self.insInd > 0:
                 self.insInd -= 1
         self.gettifList()
-            
-    def programProg(self, event):
-        '''Collects the GUI field values for use in running the main
-        function 'interp(bagPath, tifPath, desPath)'
-        '''
+        
+    def main(self):
+        self.bar_status.SetStatusText('')
+        self.progressBar.Pulse()
         bagPath = self.picker_bag.GetPath()
         self.gettifList()
         tifPath = self.tifList
@@ -930,6 +930,15 @@ class Form(autointerp_ui.Form):
         ioOut = self.radio_data.GetSelection()
         returned = interp(bagPath, tifPath, desPath, catzoc, ioOut)
         self.bar_status.SetStatusText(returned)
+        self.progressBar.SetValue(0)
+            
+    def programProg(self, event):
+        '''Collects the GUI field values for use in running the main
+        function 'interp(bagPath, tifPath, desPath)'
+        '''
+        import threading
+        th = threading.Thread(target=self.main)
+        th.start()
             
     def gettifList(self):
         tifCount = self.list_tif.GetItemCount()
