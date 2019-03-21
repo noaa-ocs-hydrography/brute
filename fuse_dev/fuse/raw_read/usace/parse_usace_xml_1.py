@@ -577,12 +577,12 @@ class XML_Meta(object):
             tm_date = None
             try:
                 parsed_date = parser.parse(text_date)
-                tm_date = parsed_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+                tm_date = parsed_date.strftime('%Y%m%d')#('%Y-%m-%dT%H:%M:%SZ')
             except Exception:
                 log.warning("unable to handle the date string: %s" % text_date)
         elif self.version=='HSMDB':
             date1 =  parser.parse(self.source['SORDAT'])
-            tm_date = date1.strftime('%Y%m%d')
+            tm_date = date1.strftime('%Y%m%d')#('%Y-%m-%dT%H:%M:%SZ')
         if tm_date is None:
             self.data['SORDAT'] = text_date
         else:
@@ -652,7 +652,7 @@ class XML_Meta(object):
             tms_date = None
             try:
                 parsed_date = parser.parse(text_start_date)
-                tms_date = parsed_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+                tms_date = parsed_date.strftime('%Y%m%d')#('%Y-%m-%dT%H:%M:%SZ')
             except Exception:
                 log.warning("unable to handle the survey start string: %s" % text_start_date)
     
@@ -683,7 +683,7 @@ class XML_Meta(object):
             tme_date = None
             try:
                 parsed_date = parser.parse(text_end_date)
-                tme_date = parsed_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+                tme_date = parsed_date.strftime('%Y%m%d')#('%Y-%m-%dT%H:%M:%SZ')
             except Exception:
                 log.warning("unable to handle the survey end string: %s" % text_end_date)
     

@@ -19,6 +19,11 @@ from datetime import datetime as _datetime
 import re as _re
 import pickle as _pickle
 from xml.etree.ElementTree import parse as _parse
+try:
+    import dateutil.parser as dateparser
+except:
+    pass
+
 #from BDB.BDB51.preprocessing.fips2wkt import fips2wkt as _fips2wkt
 
 _ussft2m = 0.30480060960121924 # US survey feet to meters
@@ -47,7 +52,7 @@ class read_raw_cemvn:
         """
         version='CEMVN'
         self.version = version
-        return self.retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)
+        return retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)
     
     def read_bathymetry_dat(self, infilename):
         """
@@ -57,6 +62,7 @@ class read_raw_cemvn:
         stub, ext = _os.path.splitext(infilename)
         bathyfilename = stub + '.dat'
         xyz = _np.loadtxt(bathyfilename, delimiter = ' ')
+        self.xyz
         return xyz
     
     def read_bathymetry(self, infilename):
@@ -78,9 +84,19 @@ class read_raw_cemvn:
         #            break
         #xyz = _np.asarray(xyz1)
         
+    def read_pass_meta_tocsv(self, infilename, inputehydrocsv, outputfilename = None):
+        if outputfilename == None:
+            outputfilename = 'ehydro_meta_dict_to_csv_v1.txt'
+            #print("using default in active directory 'ehydro_meta_dict_to_csv_v1.txt'")
+            merged_meta, dataframe_nn = self.read_metadata(self, infilename, inputehydrocsv)
+            self.meta_dict = merged_meta
+        m2c.write_meta2csv_CEMVN(self.meta_dict, outputfilename)
         
-
-       
+    def passdict_tocsv(self, merged_meta, outputfilename = None):
+        if outputfilename == None:
+            outputfilename = 'ehydro_meta_dict_to_csv_v2.txt'
+            #print("using default in active directory 'ehydro_meta_dict_to_csv_v1.txt'")
+        m2c.write_meta2csv_CEMVN(merged_meta, outputfilename)               
     
 def parse_ehydro_directory(inpath):
     """
@@ -134,7 +150,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
     nnn = pd.DataFrame()
     #g1.sort()
     f = filename
-    basename = os.path.basename(basename)
+    basename = os.path.basename(f)
     ex_string1 = '*_A.xyz'
     ex_string2 = '*_FULL.xyz'
     ex_string3 = '*_FULL.XYZ'
@@ -227,6 +243,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
     #merged_meta = {**e_xml_s57dict, **meta_from_ehydro, **meta}
     #need to fix mapping logic to input to BDB table for xml_meta,
     #most attributes aren't needed at this time. But we can pull them.
+    ###m2c.write_meta2csv([merged_meta],meta1csv)
     #m2c.write_meta2csv([merged_meta],metafile1)
     ###m2c.write_meta2csv([merge2],metafile1)
     #m2c.write_meta2csv_full_tab([merged_meta],metafile)#Trying to trouble shoot.
@@ -558,6 +575,11 @@ class Extract_Table:
                 if v == 1 or 2:
                     for sourceprojectionstr in subsetDataFrame['SOURCEPROJECTION']:
                         meta['script: from_fips'] = eH_p.convert_tofips( eH_p.SOURCEPROJECTION_dict ,sourceprojectionstr)#SOURCEPROJECTION
+            meta['script: start_date'] = self.convert_datefrmt(meta['script: start_date'])
+            meta['script: end_date'] = self.convert_datefrmt(meta['script: end_date'])
+            """
+            converting date string to format for S-57/ MQUAL YYYYMMDD
+            """
             if thisdictionary2:
                 for thesekeys in thisdictionary2:
                     hold_meta2[thesekeys]=subsetDataFrame[thisdictionary2[thesekeys]]
@@ -567,7 +589,10 @@ class Extract_Table:
         return meta, hold_meta2
 
 
-
+    def convert_datefrmt(self, date1):
+        parsed_date = dateparser.parse(date1)
+        ymd_date = parsed_date.strftime('%Y%m%d')#('%Y-%m-%dT%H:%M:%SZ')
+        return ymd_date
     
 #    def link_ehydro_table(ehydro_pre_download_table, metadata):        
 #        #dreg_dicts, dreg_d=D_info.DREGi(input1)
