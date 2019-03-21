@@ -14,7 +14,11 @@ import caris.coverage as cc
 def write_csar(dataset, m):
     """
     Convert a gdal dataset into a csar.
+    http://www.teledynecaris.com/en/support/caris-python-api/5-1/coverage/raster/intro.html#creating-a-raster
     """
+    print ('write_csar')
+    dataset = np.array(dataset)
+    print (m, dataset, dataset.shape)
     z_dir = cc.Direction.HEIGHT
     if m['z_up']:
         z_dir = cc.Direction.DEPTH
@@ -25,17 +29,23 @@ def write_csar(dataset, m):
                      units = 'm',
                      category = cc.Category.SCALAR,
                      level_policy = cc.LevelPolicy.BICUBIC)
-    res = [m['resx'], m['resy']]
-    origin = [m['originx'], m['originy']]
-    dim = [m['dimx'], m['dimy']]
+    resolution = [m['resy'], m['resx']]
+    origin = [m['originx'],m['originy']]
+    dimensions = [m['dimx'], m['dimy']]
+
+    crs = m['crs']
+    
     bands = [band_info]
-    raster = cc.create_raster(m['outfilename'], m['crs'], origin, res, dim, bands)
-    # put in the no data value
-    idx = np.nonzero(dataset == m['nodata'])
-    dataset[idx] = raster.band_info['Elevation'].ndv
-    # write the data into the csar container
+    raster = cc.create_raster(m['outfilename'], crs, origin,
+                           resolution, dimensions,
+                           bands)
+    
+    idx = (dataset < m['nodata']).astype(np.int)
+#    idx = np.nonzero(dataset == m['nodata'])
+    dataset = np.where(idx, dataset, raster.band_info['Elevation'].ndv)
+#    # write the data into the csar container
     band_dtype = raster.band_info['Elevation'].numpy_dtype
-    area = ((0,0),(dim[0],dim[1]))
+    area = ((0,0),(dimensions[0],dimensions[1]))
     raster.write("Elevation", area, dataset.astype(band_dtype))
     raster = None
     
@@ -69,7 +79,7 @@ def main():
     # check to make sure the file exists
     data = np.load(sys.argv[1])
     # check to make sure the metadata file exists
-    with open(sys.argv[2]) as metafile:
+    with open(sys.argv[2], 'rb') as metafile:
         metadata = pickle.load(metafile)
     # read the metadata into variables and send to the write method
     check_metadata(metadata)

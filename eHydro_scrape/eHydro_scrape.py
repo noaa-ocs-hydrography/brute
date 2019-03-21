@@ -103,16 +103,16 @@ def query():
     if config ['Timeframe']['Ignore Date'] == 'no' and areas != '':
         where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
                  + start
-                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
+                 + 'T00%3A01%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
                  + end
-                 + 'T04%3A00%3A00.000Z%27%20AND%20'
+                 + 'T11%3A59%3A00.000Z%27%20AND%20'
                  + areas)
     elif config ['Timeframe']['Ignore Date'] == 'no' and areas == '':
         where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
                  + start
-                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
+                 + 'T00%3A01%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
                  + end
-                 + 'T04%3A00%3A00.000Z%27')
+                 + 'T11%3A59%3A00.000Z%27')
     else:
         if areas != '':    
             where = areas
