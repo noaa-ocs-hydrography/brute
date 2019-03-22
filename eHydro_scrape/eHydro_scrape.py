@@ -380,7 +380,7 @@ def logOpen():
     '''
     timestamp = time()
     fileLog = open(logLocation, 'a')
-    message = '\n' + timestamp + ': Program Initiated, Log Opened'
+    message = '\n' + timestamp + ' - Program Initiated, Log Opened'
     logWriter(fileLog, message)
     return fileLog
 
@@ -396,7 +396,7 @@ def logClose(fileLog):
     function was called. Closes the file object upon completion
     '''
     timestamp = time()
-    message = timestamp +': Program Finished, Log Closed'
+    message = timestamp +' - Program Finished, Log Closed'
     logWriter(fileLog, message)
     fileLog.close()
 
