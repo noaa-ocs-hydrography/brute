@@ -52,7 +52,9 @@ class read_raw_cemvn:
         """
         version='CEMVN'
         self.version = version
-        return retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)
+        #
+        #Version_Info = use_extract_meta_CEMVN(self)
+        return self.retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)#return retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)
     
     def read_bathymetry_dat(self, infilename):
         """
@@ -243,7 +245,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
     #merged_meta = {**e_xml_s57dict, **meta_from_ehydro, **meta}
     #need to fix mapping logic to input to BDB table for xml_meta,
     #most attributes aren't needed at this time. But we can pull them.
-    ###m2c.write_meta2csv([merged_meta],meta1csv)
+    ###m2c.write_meta2csv([merged_meta],meta1csv)#testing out to a different file
     #m2c.write_meta2csv([merged_meta],metafile1)
     ###m2c.write_meta2csv([merge2],metafile1)
     #m2c.write_meta2csv_full_tab([merged_meta],metafile)#Trying to trouble shoot.
@@ -299,6 +301,8 @@ def retrieve_meta_for_Ehydro_out_df(g1, inputehydrocsv, metafile1, df_export_to_
             xml_data = p_usace_xml.XML_Meta(xml_txt, filename = xmlbasename)
             if xml_data.version == 'USACE_FGDC':
                 meta_xml = xml_data._extract_meta_CEMVN()
+            elif xml_data.version == 'ISO-8859-1':
+                meta_xml = xml_data._extract_meta_USACE_ISO()
             else:
                 meta_xml = xml_data.convert_xml_to_dict2()#some_meta = xml_data.convert_xml_to_dict()
         #relates to Bathy Class get_metadata
@@ -575,11 +579,14 @@ class Extract_Table:
                 if v == 1 or 2:
                     for sourceprojectionstr in subsetDataFrame['SOURCEPROJECTION']:
                         meta['script: from_fips'] = eH_p.convert_tofips( eH_p.SOURCEPROJECTION_dict ,sourceprojectionstr)#SOURCEPROJECTION
-            meta['script: start_date'] = self.convert_datefrmt(meta['script: start_date'])
-            meta['script: end_date'] = self.convert_datefrmt(meta['script: end_date'])
+            if 'script: start_date' in meta:
+                meta['script: start_date'] = self.convert_datefrmt(meta['script: start_date'])
+            if 'script: end_date'in meta:
+                meta['script: end_date'] = self.convert_datefrmt(meta['script: end_date'])
             """
             converting date string to format for S-57/ MQUAL YYYYMMDD
             """
+
             if thisdictionary2:
                 for thesekeys in thisdictionary2:
                     hold_meta2[thesekeys]=subsetDataFrame[thisdictionary2[thesekeys]]
@@ -587,7 +594,6 @@ class Extract_Table:
                     holding values extended values/ or names for values option in a dictionary
                     """
         return meta, hold_meta2
-
 
     def convert_datefrmt(self, date1):
         parsed_date = dateparser.parse(date1)
