@@ -31,16 +31,21 @@ csvLocation = os.path.join(progLoc, csvName)
 logName = 'eHydro_log.txt'
 logLocation = os.path.join(progLoc, logName)
 holding = progLoc + '/downloads/'
+logging = progLoc + '/logs/'
+running = progLoc + '/runs/'
 # eHydro survey entry attributes
 attributes = [ "OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
               "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION", 
               "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
               "SURVEYTYPE", "PROJECTEDAREA"]
 # check to see if the downloaded data folder exists, will create it if not
-if os.path.exists(holding):
-    pass
-else:
+if not os.path.exists(holding):
     os.mkdir(holding)
+if not os.path.exists(logging):
+    os.mkdir(logging)
+if not os.path.exists(running):
+    os.mkdir(running)
+    
     
 def query():
     '''Holds the Queries for the eHydro REST API, asks for responses, and uses
@@ -103,16 +108,16 @@ def query():
     if config ['Timeframe']['Ignore Date'] == 'no' and areas != '':
         where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
                  + start
-                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
+                 + 'T00%3A01%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
                  + end
-                 + 'T04%3A00%3A00.000Z%27%20AND%20'
+                 + 'T11%3A59%3A00.000Z%27%20AND%20'
                  + areas)
     elif config ['Timeframe']['Ignore Date'] == 'no' and areas == '':
         where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
                  + start
-                 + 'T04%3A00%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
+                 + 'T00%3A01%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
                  + end
-                 + 'T04%3A00%3A00.000Z%27')
+                 + 'T11%3A59%3A00.000Z%27')
     else:
         if areas != '':    
             where = areas
@@ -373,16 +378,32 @@ def csvWriter(csvFile, csvLocation):
         save.writerow(row)
     csvOpen.close()
 
-def logOpen():
+def logOpen(logType):
     '''Uses global variable logLocation. Opens file at logLocation
     for appending. Writes text stating when the function was called.
     Returns the file object for future writing.
     '''
     timestamp = time()
-    fileLog = open(logLocation, 'a')
-    message = '\n' + timestamp + ': Program Initiated, Log Opened'
-    logWriter(fileLog, message)
-    return fileLog
+    if logType == 'False':
+        fileLog = open(logLocation, 'a')
+        message = '\n' + timestamp + ' - Program Initiated, Log Opened'
+        logWriter(fileLog, message)
+        return fileLog
+    elif logType == 'True':
+        x = 0
+        datestamp = date()
+        while True:
+            name = datestamp +'_' + str(x) + '_' + logName
+            logPath = logging + name
+            print (logPath)
+            if os.path.exists(logPath):
+                x += 1
+            else:
+                break
+        fileLog = open(logPath, 'w')
+        message = '\n' + timestamp + ' - Program Initiated, Log Opened'
+        logWriter(fileLog, message)
+        return fileLog
 
 def logWriter(fileLog, message):
     '''Takes a file object 'fileLog' and a string 'message'. Writes
@@ -396,7 +417,7 @@ def logClose(fileLog):
     function was called. Closes the file object upon completion
     '''
     timestamp = time()
-    message = timestamp +': Program Finished, Log Closed'
+    message = timestamp +' - Program Finished, Log Closed'
     logWriter(fileLog, message)
     fileLog.close()
 
@@ -407,6 +428,10 @@ def time():
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d %X')
     return timestamp
 
+def date():
+    datestamp = datetime.datetime.now().strftime('%Y-%m-%d')
+    return datestamp
+
 def fileTime():
     '''Creates and returns a string 'timestamp' that contains a
     formated current date at the time of calling.
@@ -415,7 +440,9 @@ def fileTime():
     return timestamp
 
 def main():
-    fileLog = logOpen()
+    runType = config['Data Checking']['Override']
+    logType = config['Output Log']['Log Type']
+    fileLog = logOpen(logType)
     try:
         surveyIDs, newSurveysNum, paramString = query()
         rows = surveyCompile(surveyIDs, newSurveysNum)
@@ -428,11 +455,14 @@ def main():
         logWriter(fileLog, '\teHydro_csv.txt opened for reading')
     except:
         logWriter(fileLog, '\teHydro_csv.txt unable to be opened')
-    try:
-        logWriter(fileLog, '\tComparing query results to eHydro_csv.txt')
-        changes = csvCompare(rows, csvFile, newSurveysNum)
-    except:
-        logWriter(fileLog, '\t\tUnable to compare query results to eHydro_csv.txt')
+    if runType != 'yes':
+        try:
+            logWriter(fileLog, '\tComparing query results to eHydro_csv.txt')
+            changes = csvCompare(rows, csvFile, newSurveysNum)
+        except:
+            logWriter(fileLog, '\t\tUnable to compare query results to eHydro_csv.txt')
+    elif runType == 'yes':
+        changes = rows
     try:
         logWriter(fileLog, '\tParsing new entries for resolution:')
         attributes.append('Hi-Res?')
@@ -454,7 +484,21 @@ def main():
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
-        csvWriter(csvSave, csvLocation)
+        if runType != 'yes':
+            csvWriter(csvSave, csvLocation)
+        elif runType == 'yes':
+            x = 0
+            datestamp = date()
+            while True:
+                name = running + csvName
+                name = datestamp +'_' + str(x) + '_' + csvName
+                csvPath = running + name
+                print (csvPath)
+                if os.path.exists(csvPath):
+                    x += 1
+                else:
+                    break
+            csvWriter(csvSave, csvPath)
         logWriter(fileLog, '\tAdding results to eHydro_csv.txt')
     except:
         logWriter(fileLog, '\tUnable to add results to eHydro_csv.txt')

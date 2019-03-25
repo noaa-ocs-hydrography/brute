@@ -10,10 +10,20 @@ import sys, os
 import pickle
 import subprocess
 import numpy as np
-import tables as tb
 from osgeo import gdal
 gdal.UseExceptions()
 
+def maxValue(arr):
+    '''Takes an input array and finds the most used value in the array, this 
+    value is used by the program to assume the array's nodata value
+    
+    returns the most used value in the array as an integer
+    '''
+    print ('maxValue')
+    nums, counts = np.unique(arr, return_counts =True)
+    index = np.where(counts==np.amax(counts))
+    print (index, nums[index])
+    return int(nums[index])
 
 class proc_io:
     """
@@ -41,7 +51,7 @@ class proc_io:
         metadata['outfilename'] = outfilename
         metadata['z_up'] = z_up
         if self._out_data_type == 'csar':
-            self._write_csar(dataset, metadata)
+            self._write_csar(data, metadata)
         else:
             raise ValueError('writer type unknown: ' + 
                              str(self._out_data_type))
@@ -54,38 +64,24 @@ class proc_io:
         meta = {}
         # get the logisitics for converting the gdal dataset to csar
         gt = dataset.GetGeoTransform()
+        print (gt)
         meta['resx'] = gt[1]
         meta['resy'] = gt[5]
         meta['originx'] = gt[0]
         meta['originy'] = gt[3]
         meta['dimx'] = dataset.RasterXSize
         meta['dimy'] = dataset.RasterYSize
+        print (meta)
         meta['crs'] = dataset.GetProjection()
         rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
-        meta['nodata'] = rb.GetNoDataValue()
+#        meta['nodata'] = rb.GetNoDataValue()
         # get the gdal data raster
-        data = dataset.ReadAsArray()
-        return data, meta
-    
-    def _read_bag(self, dataset):
-        meta = {}
-        # get the logisitics for converting the bag dataset to csar
-#        drv = ogr.GetDriverByName('BAG')
-        gt = dataset.GetGeoTransform()
-        meta['resx'] = gt[1]
-        meta['resy'] = gt[5]
-        meta['originx'] = gt[0]
-        meta['originy'] = gt[3]
-        meta['dimx'] = dataset.RasterXSize
-        meta['dimy'] = dataset.RasterYSize
-        meta['crs'] = dataset.GetProjection()
-        rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
-        meta['nodata'] = rb.GetNoDataValue()
-        # get the gdal data raster
-        data = dataset.ReadAsArray()
+        data = np.flipud(rb.ReadAsArray())
+        maxVal = maxValue(data)
+        meta['nodata'] = maxVal
         return data, meta
             
-    def _write_csar(self, dataset, metadata):
+    def _write_csar(self, data, metadata):
         """
         Convert the provided numpy array into a csar file using the provided
         metadata.
@@ -94,8 +90,12 @@ class proc_io:
         wrapper around the csar writer.
         """
         # save the provided dataset and metadata to a file
-        datafilename = os.path.join(self._work_dir, 'rasterdata')
-        np.save(datafilename, dataset)
+        if os.path.exists(self._work_dir):
+            pass
+        else:
+            os.mkdir(self._work_dir)
+        datafilename = os.path.join(self._work_dir, 'rasterdata.npy')
+        np.save(datafilename, data)
         metafilename = os.path.join(self._work_dir, 'metadata')
         with open(metafilename, 'wb') as metafile:
             pickle.dump(metadata, metafile)
@@ -105,7 +105,7 @@ class proc_io:
         activate_file = _retrieve_activate_batch()
 
         if os.path.exists(write_csar):
-            args = ["cmd.exe", "/C", "set pythonpath=", "&&",  # run shell (/K: leave open (debugging), /C close the shell)
+            args = ["cmd.exe", "/K", "set pythonpath=", "&&",  # run shell (/K: leave open (debugging), /C close the shell)
                     activate_file, "NBS35", "&&",  # activate the Caris 3.5 virtual environment
                     'python', write_csar,  # call the script
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path

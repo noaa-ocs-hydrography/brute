@@ -17,9 +17,9 @@ import wx.xrc
 class Form ( wx.Frame ):
 
 	def __init__( self, parent ):
-		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Interpolation Tool", pos = wx.DefaultPosition, size = wx.Size( 500,550 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Interpolation Tool", pos = wx.DefaultPosition, size = wx.Size( 500,625 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
 
-		self.SetSizeHints( wx.Size( 500,500 ), wx.DefaultSize )
+		self.SetSizeHints( wx.Size( 500,625 ), wx.DefaultSize )
 		self.SetBackgroundColour( wx.SystemSettings.GetColour( wx.SYS_COLOUR_WINDOW ) )
 
 		self.bar_menu = wx.MenuBar( 0 )
@@ -98,6 +98,14 @@ class Form ( wx.Frame ):
 		self.choice_catzoc.SetSelection( 0 )
 		opts_form.Add( self.choice_catzoc, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5 )
 
+		self.label_depth = wx.StaticText( self, wx.ID_ANY, u"Depth Threshold for Interpolated Data:", wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_RIGHT )
+		self.label_depth.Wrap( 150 )
+
+		opts_form.Add( self.label_depth, 0, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 5 )
+
+		self.picker_depth = wx.SpinCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.SP_ARROW_KEYS, 0, 100, 0 )
+		opts_form.Add( self.picker_depth, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5 )
+
 
 		container_form.Add( opts_form, 1, wx.EXPAND|wx.FIXED_MINSIZE, 5 )
 
@@ -114,6 +122,10 @@ class Form ( wx.Frame ):
 		opts_prog.Realize();
 
 		container_form.Add( opts_prog, 0, wx.BOTTOM|wx.EXPAND|wx.TOP, 5 )
+
+		self.progressBar = wx.Gauge( self, wx.ID_ANY, 100, wx.DefaultPosition, wx.DefaultSize, wx.GA_HORIZONTAL )
+		self.progressBar.SetValue( 0 )
+		container_form.Add( self.progressBar, 0, wx.ALL|wx.EXPAND, 5 )
 
 
 		self.SetSizer( container_form )
