@@ -149,7 +149,7 @@ def query():
     if areas == '':
         dist = 'none'
     else:
-        dist = areas
+        dist = config['Agencies']['Agencies']
         
     paramString = '\tParameters:\n\t\tStart Date: ' + start + '\n\t\tEnd Date: ' + end + '\n\t\tDistricts: ' + dist + '\n\t\tQuery Only Districts: ' + config['Agencies']['Only Listed'] + '\n\t\tKeep All Data: ' + config['Resolutions']['Override'] 
     
