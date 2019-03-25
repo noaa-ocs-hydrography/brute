@@ -19,6 +19,11 @@ from datetime import datetime as _datetime
 import re as _re
 import pickle as _pickle
 from xml.etree.ElementTree import parse as _parse
+try:
+    import dateutil.parser as dateparser
+except:
+    pass
+
 #from BDB.BDB51.preprocessing.fips2wkt import fips2wkt as _fips2wkt
 
 _ussft2m = 0.30480060960121924 # US survey feet to meters
@@ -47,7 +52,9 @@ class read_raw_cemvn:
         """
         version='CEMVN'
         self.version = version
-        return self.retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)
+        #
+        #Version_Info = use_extract_meta_CEMVN(self)
+        return self.retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)#return retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)
     
     def read_bathymetry_dat(self, infilename):
         """
@@ -57,6 +64,7 @@ class read_raw_cemvn:
         stub, ext = _os.path.splitext(infilename)
         bathyfilename = stub + '.dat'
         xyz = _np.loadtxt(bathyfilename, delimiter = ' ')
+        self.xyz
         return xyz
     
     def read_bathymetry(self, infilename):
@@ -78,9 +86,19 @@ class read_raw_cemvn:
         #            break
         #xyz = _np.asarray(xyz1)
         
+    def read_pass_meta_tocsv(self, infilename, inputehydrocsv, outputfilename = None):
+        if outputfilename == None:
+            outputfilename = 'ehydro_meta_dict_to_csv_v1.txt'
+            #print("using default in active directory 'ehydro_meta_dict_to_csv_v1.txt'")
+            merged_meta, dataframe_nn = self.read_metadata(self, infilename, inputehydrocsv)
+            self.meta_dict = merged_meta
+        m2c.write_meta2csv_CEMVN(self.meta_dict, outputfilename)
         
-
-       
+    def passdict_tocsv(self, merged_meta, outputfilename = None):
+        if outputfilename == None:
+            outputfilename = 'ehydro_meta_dict_to_csv_v2.txt'
+            #print("using default in active directory 'ehydro_meta_dict_to_csv_v1.txt'")
+        m2c.write_meta2csv_CEMVN(merged_meta, outputfilename)               
     
 def parse_ehydro_directory(inpath):
     """
@@ -134,7 +152,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
     nnn = pd.DataFrame()
     #g1.sort()
     f = filename
-    basename = os.path.basename(basename)
+    basename = os.path.basename(f)
     ex_string1 = '*_A.xyz'
     ex_string2 = '*_FULL.xyz'
     ex_string3 = '*_FULL.XYZ'
@@ -146,7 +164,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
     basename = S_f_d.return_surveyid(basename, ex_string4)
     basename = basename.rstrip('.XYZ')  
     basename = basename.rstrip('.xyz')
-    meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'ehydro_csv')
+    meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'casiano_ehydro_csv')#'ehydro_csv')
     #metadata = ehydro_table.pull_df_by_dict_key(ehydro_df, thisdictionary, basename, searchvalue = None, meta=None, version = None)#other option version = 'casiano_ehydro_csv'
     #ehydro_table.pull_df_by_dict_key(thisdataframe, thisdictionary, basename, searchvalue = None, meta=None, version = None)
     e_t = Extract_Txt(f)
@@ -170,6 +188,17 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
                 meta_xml = xml_data._extract_meta_USACE_ISO()
         else:
             meta_xml = xml_data.convert_xml_to_dict2()#some_meta = xml_data.convert_xml_to_dict()
+    else:
+        meta_xml = {}
+        #Default values for USACE
+        ##Assume U.S. Survey Feet Horizontal Units
+        #meta_xml['from_horiz_units'] = ' U.S. Survey Feet.'
+        ##Assume Single beam/ CAT B coverage m['TECSOU']= '1'#'single beam'
+        #meta_xml['f_dict'] = '1'
+        #meta_xml['f_lstd'] = '1'
+        #meta_xml['f_size'] = '9999'
+        #meta_xml['flbath'] = '1'
+        #meta_xml['flcvrg'] = '1' #where '1' = 'NO'
     #relates to Bathy Class get_metadata
         
     meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CEMVN', default_meta = '')#parse_ehydro_xyz(infilename, meta_source = 'xyz', version='CEMVN', default_meta = '')#eH_p.parse_ehydro_xyz(f)
@@ -227,6 +256,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
     #merged_meta = {**e_xml_s57dict, **meta_from_ehydro, **meta}
     #need to fix mapping logic to input to BDB table for xml_meta,
     #most attributes aren't needed at this time. But we can pull them.
+    ###m2c.write_meta2csv([merged_meta],meta1csv)#testing out to a different file
     #m2c.write_meta2csv([merged_meta],metafile1)
     ###m2c.write_meta2csv([merge2],metafile1)
     #m2c.write_meta2csv_full_tab([merged_meta],metafile)#Trying to trouble shoot.
@@ -263,7 +293,7 @@ def retrieve_meta_for_Ehydro_out_df(g1, inputehydrocsv, metafile1, df_export_to_
         basename = S_f_d.return_surveyid(basename, ex_string4)
         basename = basename.rstrip('.xyz')
         basename = basename.rstrip('.XYZ') 
-        meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'ehydro_csv')
+        meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'casiano_ehydro_csv') # 'ehydro_csv')
         #metadata = ehydro_table.pull_df_by_dict_key(ehydro_df, thisdictionary, basename, searchvalue = None, meta=None, version = None)#other option version = 'casiano_ehydro_csv'
         #ehydro_table.pull_df_by_dict_key(thisdataframe, thisdictionary, basename, searchvalue = None, meta=None, version = None)
         e_t = Extract_Txt(f)
@@ -282,8 +312,21 @@ def retrieve_meta_for_Ehydro_out_df(g1, inputehydrocsv, metafile1, df_export_to_
             xml_data = p_usace_xml.XML_Meta(xml_txt, filename = xmlbasename)
             if xml_data.version == 'USACE_FGDC':
                 meta_xml = xml_data._extract_meta_CEMVN()
+            elif xml_data.version == 'ISO-8859-1':
+                meta_xml = xml_data._extract_meta_USACE_ISO()
             else:
                 meta_xml = xml_data.convert_xml_to_dict2()#some_meta = xml_data.convert_xml_to_dict()
+        else:
+            meta_xml = {}
+            #Default values for USACE
+            ##Assume U.S. Survey Feet Horizontal Units
+            #meta_xml['from_horiz_units'] = ' U.S. Survey Feet.'
+            ##Assume Single beam/ CAT B coverage m['TECSOU']= '1'#'single beam'
+            #meta_xml['f_dict'] = '1'
+            #meta_xml['f_lstd'] = '1'
+            #meta_xml['f_size'] = '9999'
+            #meta_xml['flbath'] = '1'
+            #meta_xml['flcvrg'] = '1' #where '1' = 'NO'
         #relates to Bathy Class get_metadata
             
         meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CEMVN', default_meta = '')#parse_ehydro_xyz(infilename, meta_source = 'xyz', version='CEMVN', default_meta = '')#eH_p.parse_ehydro_xyz(f)
@@ -376,7 +419,7 @@ def retrieve_meta_for_Ehydro(highresfolder, ehydrofolder, inputehydrocsv, metafi
         basename = S_f_d.return_surveyid(basename, ex_string4)
         basename = basename.rstrip('.xyz')
         basename = basename.rstrip('.XYZ')        
-        meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'ehydro_csv')
+        meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'casiano_ehydro_csv')#'ehydro_csv')
         #metadata = ehydro_table.pull_df_by_dict_key(ehydro_df, thisdictionary, basename, searchvalue = None, meta=None, version = None)#other option version = 'casiano_ehydro_csv'
         #ehydro_table.pull_df_by_dict_key(thisdataframe, thisdictionary, basename, searchvalue = None, meta=None, version = None)
         e_t = e_meta.Extract_Txt(f)
@@ -408,6 +451,17 @@ def retrieve_meta_for_Ehydro(highresfolder, ehydrofolder, inputehydrocsv, metafi
                 meta_xml = xml_data._extract_meta_USACE_ISO()
             else:
                 meta_xml = xml_data.convert_xml_to_dict2()#some_meta = xml_data.convert_xml_to_dict()
+        else:
+            meta_xml = {}
+            #Default values for USACE
+            ##Assume U.S. Survey Feet Horizontal Units
+            #meta_xml['from_horiz_units'] = ' U.S. Survey Feet.'
+            ##Assume Single beam/ CAT B coverage m['TECSOU']= '1'#'single beam'
+            #meta_xml['f_dict'] = '1'
+            #meta_xml['f_lstd'] = '1'
+            #meta_xml['f_size'] = '9999'
+            #meta_xml['flbath'] = '1'
+            #meta_xml['flcvrg'] = '1' #where '1' = 'NO'
         #relates to Bathy Class get_metadata
             
         meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CEMVN', default_meta = '')#parse_ehydro_xyz(infilename, meta_source = 'xyz', version='CEMVN', default_meta = '')#eH_p.parse_ehydro_xyz(f)
@@ -558,6 +612,14 @@ class Extract_Table:
                 if v == 1 or 2:
                     for sourceprojectionstr in subsetDataFrame['SOURCEPROJECTION']:
                         meta['script: from_fips'] = eH_p.convert_tofips( eH_p.SOURCEPROJECTION_dict ,sourceprojectionstr)#SOURCEPROJECTION
+            if 'script: start_date' in meta:
+                meta['script: start_date'] = self.convert_datefrmt(meta['script: start_date'])
+            if 'script: end_date'in meta:
+                meta['script: end_date'] = self.convert_datefrmt(meta['script: end_date'])
+            """
+            converting date string to format for S-57/ MQUAL YYYYMMDD
+            """
+
             if thisdictionary2:
                 for thesekeys in thisdictionary2:
                     hold_meta2[thesekeys]=subsetDataFrame[thisdictionary2[thesekeys]]
@@ -566,8 +628,10 @@ class Extract_Table:
                     """
         return meta, hold_meta2
 
-
-
+    def convert_datefrmt(self, date1):
+        parsed_date = dateparser.parse(date1)
+        ymd_date = parsed_date.strftime('%Y%m%d')#('%Y-%m-%dT%H:%M:%SZ')
+        return ymd_date
     
 #    def link_ehydro_table(ehydro_pre_download_table, metadata):        
 #        #dreg_dicts, dreg_d=D_info.DREGi(input1)
