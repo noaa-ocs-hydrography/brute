@@ -164,7 +164,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
     basename = S_f_d.return_surveyid(basename, ex_string4)
     basename = basename.rstrip('.XYZ')  
     basename = basename.rstrip('.xyz')
-    meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'ehydro_csv')
+    meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'casiano_ehydro_csv')#'ehydro_csv')
     #metadata = ehydro_table.pull_df_by_dict_key(ehydro_df, thisdictionary, basename, searchvalue = None, meta=None, version = None)#other option version = 'casiano_ehydro_csv'
     #ehydro_table.pull_df_by_dict_key(thisdataframe, thisdictionary, basename, searchvalue = None, meta=None, version = None)
     e_t = Extract_Txt(f)
@@ -188,6 +188,17 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
                 meta_xml = xml_data._extract_meta_USACE_ISO()
         else:
             meta_xml = xml_data.convert_xml_to_dict2()#some_meta = xml_data.convert_xml_to_dict()
+    else:
+        meta_xml = {}
+        #Default values for USACE
+        ##Assume U.S. Survey Feet Horizontal Units
+        #meta_xml['from_horiz_units'] = ' U.S. Survey Feet.'
+        ##Assume Single beam/ CAT B coverage m['TECSOU']= '1'#'single beam'
+        #meta_xml['f_dict'] = '1'
+        #meta_xml['f_lstd'] = '1'
+        #meta_xml['f_size'] = '9999'
+        #meta_xml['flbath'] = '1'
+        #meta_xml['flcvrg'] = '1' #where '1' = 'NO'
     #relates to Bathy Class get_metadata
         
     meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CEMVN', default_meta = '')#parse_ehydro_xyz(infilename, meta_source = 'xyz', version='CEMVN', default_meta = '')#eH_p.parse_ehydro_xyz(f)
@@ -282,7 +293,7 @@ def retrieve_meta_for_Ehydro_out_df(g1, inputehydrocsv, metafile1, df_export_to_
         basename = S_f_d.return_surveyid(basename, ex_string4)
         basename = basename.rstrip('.xyz')
         basename = basename.rstrip('.XYZ') 
-        meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'ehydro_csv')
+        meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'casiano_ehydro_csv') # 'ehydro_csv')
         #metadata = ehydro_table.pull_df_by_dict_key(ehydro_df, thisdictionary, basename, searchvalue = None, meta=None, version = None)#other option version = 'casiano_ehydro_csv'
         #ehydro_table.pull_df_by_dict_key(thisdataframe, thisdictionary, basename, searchvalue = None, meta=None, version = None)
         e_t = Extract_Txt(f)
@@ -305,6 +316,17 @@ def retrieve_meta_for_Ehydro_out_df(g1, inputehydrocsv, metafile1, df_export_to_
                 meta_xml = xml_data._extract_meta_USACE_ISO()
             else:
                 meta_xml = xml_data.convert_xml_to_dict2()#some_meta = xml_data.convert_xml_to_dict()
+        else:
+            meta_xml = {}
+            #Default values for USACE
+            ##Assume U.S. Survey Feet Horizontal Units
+            #meta_xml['from_horiz_units'] = ' U.S. Survey Feet.'
+            ##Assume Single beam/ CAT B coverage m['TECSOU']= '1'#'single beam'
+            #meta_xml['f_dict'] = '1'
+            #meta_xml['f_lstd'] = '1'
+            #meta_xml['f_size'] = '9999'
+            #meta_xml['flbath'] = '1'
+            #meta_xml['flcvrg'] = '1' #where '1' = 'NO'
         #relates to Bathy Class get_metadata
             
         meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CEMVN', default_meta = '')#parse_ehydro_xyz(infilename, meta_source = 'xyz', version='CEMVN', default_meta = '')#eH_p.parse_ehydro_xyz(f)
@@ -397,7 +419,7 @@ def retrieve_meta_for_Ehydro(highresfolder, ehydrofolder, inputehydrocsv, metafi
         basename = S_f_d.return_surveyid(basename, ex_string4)
         basename = basename.rstrip('.xyz')
         basename = basename.rstrip('.XYZ')        
-        meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'ehydro_csv')
+        meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'casiano_ehydro_csv')#'ehydro_csv')
         #metadata = ehydro_table.pull_df_by_dict_key(ehydro_df, thisdictionary, basename, searchvalue = None, meta=None, version = None)#other option version = 'casiano_ehydro_csv'
         #ehydro_table.pull_df_by_dict_key(thisdataframe, thisdictionary, basename, searchvalue = None, meta=None, version = None)
         e_t = e_meta.Extract_Txt(f)
@@ -429,6 +451,17 @@ def retrieve_meta_for_Ehydro(highresfolder, ehydrofolder, inputehydrocsv, metafi
                 meta_xml = xml_data._extract_meta_USACE_ISO()
             else:
                 meta_xml = xml_data.convert_xml_to_dict2()#some_meta = xml_data.convert_xml_to_dict()
+        else:
+            meta_xml = {}
+            #Default values for USACE
+            ##Assume U.S. Survey Feet Horizontal Units
+            #meta_xml['from_horiz_units'] = ' U.S. Survey Feet.'
+            ##Assume Single beam/ CAT B coverage m['TECSOU']= '1'#'single beam'
+            #meta_xml['f_dict'] = '1'
+            #meta_xml['f_lstd'] = '1'
+            #meta_xml['f_size'] = '9999'
+            #meta_xml['flbath'] = '1'
+            #meta_xml['flcvrg'] = '1' #where '1' = 'NO'
         #relates to Bathy Class get_metadata
             
         meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CEMVN', default_meta = '')#parse_ehydro_xyz(infilename, meta_source = 'xyz', version='CEMVN', default_meta = '')#eH_p.parse_ehydro_xyz(f)
