@@ -31,14 +31,14 @@ def write_csar(dataset, m):
                      level_policy = cc.LevelPolicy.BICUBIC)
     resolution = [m['resy'], m['resx']]
     origin = [m['originx'],m['originy']]
+#    origin = [0,0]
     dimensions = [m['dimx'], m['dimy']]
 
     crs = m['crs']
+    name = m['outfilename']
     
     bands = [band_info]
-    raster = cc.create_raster(m['outfilename'], crs, origin,
-                           resolution, dimensions,
-                           bands)
+    raster = cc.create_raster(name, crs, origin, resolution, dimensions, bands)
     
     idx = (dataset < m['nodata']).astype(np.int)
 #    idx = np.nonzero(dataset == m['nodata'])
