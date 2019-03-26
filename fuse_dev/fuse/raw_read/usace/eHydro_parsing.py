@@ -168,11 +168,15 @@ def _parse_survey_condition(line):
     
 def _parse_LWRP_(line):
     name = line.split('LWRP==')[-1]
+    name = name.split('LWRP=')[-1]
     name = name.strip('\n')
+    name = name.strip('\t')
+    name = name.rstrip(' ')
     if name == 'N/A':
         metadata = {'LWRP' : ''}
-        #pass
-    elif name =="":
+    elif name == 'NA':
+        metadata = {'LWRP' : ''}
+    elif name == 'N/A0':
         metadata = {'LWRP' : ''}
     else:
         metadata = {'LWRP' : name}
@@ -180,7 +184,7 @@ def _parse_LWRP_(line):
         metadata = {'script: from_vert_key' : 'LWRP'}
         print('Data in LWRP')
     return metadata 
-
+#
 def _parse_sea_condition(line):
     name = line.split('SEA_CONDITION==')[-1]
     name = name.strip('\n')
