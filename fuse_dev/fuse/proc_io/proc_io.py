@@ -66,9 +66,9 @@ class proc_io:
         gt = dataset.GetGeoTransform()
         print (gt)
         meta['resx'] = gt[1]
-        meta['resy'] = gt[5]
+        meta['resy'] = gt[1]
         meta['originx'] = gt[0]
-        meta['originy'] = gt[3]
+        meta['originy'] = gt[3] - dataset.RasterYSize
         meta['dimx'] = dataset.RasterXSize
         meta['dimy'] = dataset.RasterYSize
         print (meta)
