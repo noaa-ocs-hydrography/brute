@@ -351,7 +351,11 @@ class XML_Meta(object):
         my_etree_dict1={}
         len_root_name_to_remove = len(self.xml_tree.tag)        
         for key in xml_path_to_baseattribute:
-            my_etree_dict1[xml_path_to_baseattribute[key]] = self.xml_tree.findall('./' + key[len_root_name_to_remove:])[0].text
+            if self.xml_tree.findall('./' + key[len_root_name_to_remove:]):
+                if self.xml_tree.findall('./'+ key[len_root_name_to_remove:]) is None:
+                     my_etree_dict1[xml_path_to_baseattribute[key]] = ''
+                elif len(self.xml_tree.findall('./' + key[len_root_name_to_remove:]))>0:
+                    my_etree_dict1[xml_path_to_baseattribute[key]] = self.xml_tree.findall('./' + key[len_root_name_to_remove:])[0].text
             #my_etree_dict1[xml_path_to_baseattribute[key]] = self.xml_tree.findall('./' + key[8:])[0].text
             #editing path to add ./ and then remove root name ('metadata'), the first 8 characters.
             #my_etree_dict1[xml_path_to_baseattribute[key]] = xml_data.xml_tree.findall('./' + key[8:])[0].text
@@ -375,13 +379,35 @@ class XML_Meta(object):
         my_etree_dict1={}
         len_root_name_to_remove = len(self.xml_tree.tag)   
         vertdatum = {'metadata/spref/vertdef/altsys/altdatum':'altdatum'}
+        for key in iso_xml_path_to_baseattribute :
+            for key in iso_xml_path_to_baseattribute:
+                if self.xml_tree.findall('./'+ key[len_root_name_to_remove:]):
+                    if self.xml_tree.findall('./'+ key[len_root_name_to_remove:]) is None:
+                        my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = ''
+                    elif isinstance(self.xml_tree.findall('./'+ key[len_root_name_to_remove:]), list) == True: #check if list
+                        #print('is list')
+                        if len(self.xml_tree.find('./'+ key[len_root_name_to_remove:]))>0:            
+                            my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:])[0].text
+                        else:
+                            my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text                
+                else:
+                    my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = ''
         for key in vertdatum:#iso_xml_path_to_baseattribute:
             #if isinstance(self.xml_tree.findall('./'+ key[len_root_name_to_remove:]), list) == True: #check if list
             #    my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = self.xml_tree.findall('./'+ key[len_root_name_to_remove:][0])
             #else:
-            my_etree_dict1[vertdatum[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text
-            my_etree_dict1['script: from_vert_key'] = my_etree_dict1[vertdatum[key]]
-            #zz = self.xml_tree.find('./'+ key[len_root_name_to_remove:]
+            if self.xml_tree.findall('./'+ key[len_root_name_to_remove:]):
+                if isinstance(self.xml_tree.findall('./'+ key[len_root_name_to_remove:]), list) == True: #check if list                                    
+                    if len(self.xml_tree.find('./'+ key[len_root_name_to_remove:]))>0:
+                        if self.xml_tree.find('./'+ key[len_root_name_to_remove:]) is None:
+                             my_etree_dict1['script: from_vert_key'] = ''
+                             #Checks for NoneType object ('None')
+                        else:
+                            my_etree_dict1[vertdatum[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text
+                            my_etree_dict1['script: from_vert_key'] = my_etree_dict1[vertdatum[key]]
+            else:
+                my_etree_dict1['script: from_vert_key'] = ''
+                #zz = self.xml_tree.find('./'+ key[len_root_name_to_remove:]
             #if type(zz) == xml.etree.ElementTree.Element
             #    print('true')                
             # my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text
@@ -937,7 +963,20 @@ xml_path_to_baseattribute = {
         'metadata/metainfo/metc/cntinfo/cntfax':'cntfax',
         'metadata/metainfo/metc/cntinfo/cntemail':'cntemail',
         'metadata/metainfo/metstdn':'metstdn',
-        'metadata/metainfo/metstdv':'metstdv'}
+        'metadata/metainfo/metstdv':'metstdv',
+        'metadata/idinfo/citation/citeinfo/pubtime':'pubtime',
+        'metadata/idinfo/keywords/theme':'theme',
+        'metadata/idinfo/ptcontac':'ptcontac',
+        'metadata/spref/horizsys/planar/mapproj/mapprojn':'mapprojn',
+        'metadata/spref/horizsys/planar/mapproj/transmer/sfctrmer':'sfctrmer',
+        'metadata/spref/horizsys/planar/mapproj/transmer/longcm':'longcm',
+        'metadata/spref/horizsys/planar/mapproj/transmer/latprjo':'latprjo',
+        'metadata/spref/horizsys/planar/mapproj/transmer/feast':'feast',
+        'metadata/spref/horizsys/planar/mapproj/transmer/fnorth':'fnorth',
+        'metadata/metainfo/metc/cntinfo/cntorgp/cntorg':'cntorg',
+        'metadata/metainfo/metc/cntinfo/cntorgp/cntper':'cntper',
+        'metadata/metainfo/mettc':'mettc',
+        }
 
 #------------------------------------------------------------------------------
 iso_xml_path_to_baseattribute = {
@@ -989,8 +1028,8 @@ iso_xml_path_to_baseattribute = {
 		'metadata/metainfo/metstdn':'metstdn',
 		'metadata/metainfo/metstdv':'metstdv',
 		'metadata/ellips':'ellips',
-		'metadata/#text':'#text',
         }
+#		'metadata/#text':'#text',
 #------------------------------------------------------------------------------
 
 xmlbasename_to_index1 = {
@@ -1092,7 +1131,20 @@ xmlbasename_to_index1 = {
         'cntfax':'95',
         'cntemail':'96',
         'metstdn':'97',
-        'metstdv':'98'}
+        'metstdv':'98',
+        'pubtime':'101',
+        'theme':'102',
+        'ptcontac':'103',
+        'mapprojn':'104',
+        'sfctrmer':'105',
+        'longcm':'106',
+        'latprjo':'107',
+        'feast':'108',
+        'fnorth':'109',
+        'cntorg':'110',
+        'cntper':'111',
+        'mettc':'112',
+        }
 
 #------------------------------------------------------------------------------
 xml_path_to_index1 ={
@@ -1194,7 +1246,20 @@ xml_path_to_index1 ={
         'metadata/metainfo/metc/cntinfo/cntfax':'95',
         'metadata/metainfo/metc/cntinfo/cntemail':'96',
         'metadata/metainfo/metstdn':'97',
-        'metadata/metainfo/metstdv':'98'}
+        'metadata/metainfo/metstdv':'98',#adding ones also found in Mobile District
+        'metadata/idinfo/citation/citeinfo/pubtime':'101',
+        'metadata/idinfo/keywords/theme':'102',
+        'metadata/idinfo/ptcontac':'103',
+        'metadata/spref/horizsys/planar/mapproj/mapprojn':'104',
+        'metadata/spref/horizsys/planar/mapproj/transmer/sfctrmer':'105',
+        'metadata/spref/horizsys/planar/mapproj/transmer/longcm':'106',
+        'metadata/spref/horizsys/planar/mapproj/transmer/latprjo':'107',
+        'metadata/spref/horizsys/planar/mapproj/transmer/feast':'108',
+        'metadata/spref/horizsys/planar/mapproj/transmer/fnorth':'109',
+        'metadata/metainfo/metc/cntinfo/cntorgp/cntorg':'110',
+        'metadata/metainfo/metc/cntinfo/cntorgp/cntper':'111',
+        'metadata/metainfo/mettc':'112',
+        }
 #------------------------------------------------------------------------------
 
 def parsing_xml_FGDC_attributes_s57(meta_xml):
@@ -1278,7 +1343,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                    m['flbath'] = '1'
                    m['flcvrg'] = '1' #where '1' = 'NO'
                 else:
-                   m['TECSOU']= ''#'multi beam'
+                   m['TECSOU']= ''#'multi beam'/'single beam' etc.
                    m['f_dict'] = ''
                    m['f_lstd'] = ''
                    m['f_size'] = ''
@@ -1300,6 +1365,10 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 m['Vertical Datum Description']= name
                 if name.find('Soundings are shown in feet and indicate depths below Mean Lower Low Water') >= 0:
                     m['VERTDAT'] = 'MLLW'
+                elif name.find('Soundings are shown in feet and are referenced to Mean Lower Low Water') >= 0:#CESAM
+                    m['VERTDAT'] = 'MLLW'
+                elif name.find('Values are based on the National Geodetic Vertical Datum (NGVD) of 1929') >=0:#CESAM
+                    m['VERTDAT'] = 'NGVD29'
                 elif abstract.find('LWRP') >= 0:
                     m['VERTDAT'] = 'LWRP'
                 elif abstract.find('Low Water Reference Plane 2007 (LWRP07)') >= 0:
@@ -1330,6 +1399,8 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 m['flcvrg'] = '' #where '1' = 'NO'
             if abstract.find('Vertical Datum:') >= 0:
                 if abstract.find('Soundings are shown in feet and indicate depths below Mean Lower Low Water') >= 0:
+                    m['VERTDAT'] = 'MLLW'
+                elif name.find('Soundings are shown in feet and are referenced to Mean Lower Low Water') >= 0:#CESAM
                     m['VERTDAT'] = 'MLLW'                    
                 elif abstract.find('LWRP') >= 0:
                     m['VERTDAT'] = 'LWRP'
@@ -1338,6 +1409,8 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 elif abstract.find('MLG') >= 0:
                     m['VERTDAT'] = 'MLG'
                     print(abstract)
+                elif name.find('Values are based on the National Geodetic Vertical Datum (NGVD) of 1929') >=0:#CESAM
+                    m['VERTDAT'] = 'NGVD29'
                 elif abstract.find('depths below National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
                     m['VERTDAT'] = 'NGVD29'
                     print(abstract)
