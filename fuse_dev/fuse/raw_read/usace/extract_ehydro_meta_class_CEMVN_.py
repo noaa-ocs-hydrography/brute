@@ -106,13 +106,13 @@ class read_raw_cemvn:
             #print("using default in active directory 'ehydro_meta_dict_to_csv_v1.txt'")
             merged_meta, dataframe_nn = self.read_metadata(self, infilename, inputehydrocsv)
             self.meta_dict = merged_meta
-        m2c.write_meta2csv_CEMVN(self.meta_dict, outputfilename)
+        m2c.write_meta2csv_CEMVN([self.meta_dict], outputfilename)
         
     def passdict_tocsv(self, merged_meta, outputfilename = None):
         if outputfilename == None:
             outputfilename = 'ehydro_meta_dict_to_csv_v2.txt'
             #print("using default in active directory 'ehydro_meta_dict_to_csv_v1.txt'")
-        m2c.write_meta2csv_CEMVN(merged_meta, outputfilename)               
+        m2c.write_meta2csv_CEMVN([merged_meta], outputfilename)               
     
 def parse_ehydro_directory(inpath):
     """
