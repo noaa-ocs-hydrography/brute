@@ -5,11 +5,7 @@ extract_ehydro_meta_class_CEMNV.py
 
 Created on Wed Aug  8 10:11:36 2018
 
-@author: grice
 
-Parse the eHydro xyz header using the NY region's files as an example.  The
-metadata is returned as a dictionary with keys that match the meta2csv naming
-convention where required.
 """
 __version__ = 'eHydro_meta2csv 0.0.1'
 
@@ -24,32 +20,15 @@ try:
 except:
     pass
 
-#from BDB.BDB51.preprocessing.fips2wkt import fips2wkt as _fips2wkt
-
 _ussft2m = 0.30480060960121924 # US survey feet to meters
 
 import pandas as pd
 ##-----------------------------------------------------------------------------
-"""
-new modules
-"""
 import eHydro_parsing as eH_p#extract_ehydro_meta_CEMVN_testparse1.py#prior version moved to
-#from scripts.E_Hydro_DREG_AOI.DREG_info import DREG_info as D_info#brings in dictionaries
-
-#import DREG_info as D_info#brings in dictionaries
-
-import meta2csv as m2c#from BDB.BDB51.preprocessing import meta2csv as m2c
 import csv as _csv
-#import Extract_Meta_Class as E_M_C#import meta_review_base as E_M_C#
 import get_xml_name as E_M_C
 import numpy as _np
-try:
-    import READING_EXCEL_HydroTest as Rcsv#use if not in correct path
-    from READING_EXCEL_HydroTest import trycsv as trycsv#use if not in correct path
-except:    
-    def trycsv(inputehydrocsv ):
-        ehydro_df = pd.read_csv(inputehydrocsv)
-        return ehydro_df
+  
 try:
     import parse_usace_xml_1 as p_usace_xml
 except:
@@ -91,29 +70,8 @@ class read_raw_cemvn:
         else:
             xyz = _np.loadtext(infilename, delimeter = ',')
         return xyz
-        #    for line in infile.readlines():
-        #        if line == '\n':
-        #            continue
-        #        elif eH_p._is_xyz_data(line, version):
-        #            xyz1.append(line)
-        #        else:
-        #            break
-        #xyz = _np.asarray(xyz1)
         
-    def read_pass_meta_tocsv(self, infilename, inputehydrocsv, outputfilename = None):
-        if outputfilename == None:
-            outputfilename = 'ehydro_meta_dict_to_csv_v1.txt'
-            #print("using default in active directory 'ehydro_meta_dict_to_csv_v1.txt'")
-            merged_meta, dataframe_nn = self.read_metadata(self, infilename, inputehydrocsv)
-            self.meta_dict = merged_meta
-        m2c.write_meta2csv_CEMVN([self.meta_dict], outputfilename)
-        
-    def passdict_tocsv(self, merged_meta, outputfilename = None):
-        if outputfilename == None:
-            outputfilename = 'ehydro_meta_dict_to_csv_v2.txt'
-            #print("using default in active directory 'ehydro_meta_dict_to_csv_v1.txt'")
-        m2c.write_meta2csv_CEMVN([merged_meta], outputfilename)               
-    
+
 def parse_ehydro_directory(inpath):
     """
     Parse a directory of USACE xyz files from eHydro and return a list of the
@@ -128,30 +86,14 @@ def parse_ehydro_directory(inpath):
         metalist.append(meta)
     return metalist
 
-#
-#class extract_xml_meta(filename):
-#    def __init__(self,filename):
-#        self.filename = filename
-#        #methods for xml extraction and attribute mapping
-#        
-##class dates(datestring):
-#    
-##class xyz_header(text_object):
-#    
-#
-#class extract_meta(filename):
-#    def __init__(self,filename):
-#        self.filename = filename
-#        #self.district=
-#        #self.meta_source
-#        #self.version
-#        #self.default_meta
+def trycsv(inputehydrocsv ):
+    ehydro_df = pd.read_csv(inputehydrocsv)
+    return ehydro_df
 
 def getsubset(highresfolder, ehydrofolder):
     g1 = ehydro_subset_only_ifnotfull_restoo(highresfolder, ehydrofolder)
     return g1
     
-
 def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
 
     ehydro_df = trycsv(inputehydrocsv)#bring in csv from ehydro website
@@ -179,19 +121,12 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
     basename = basename.rstrip('.XYZ')  
     basename = basename.rstrip('.xyz')
     meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'casiano_ehydro_csv')#'ehydro_csv')
-    #metadata = ehydro_table.pull_df_by_dict_key(ehydro_df, thisdictionary, basename, searchvalue = None, meta=None, version = None)#other option version = 'casiano_ehydro_csv'
-    #ehydro_table.pull_df_by_dict_key(thisdataframe, thisdictionary, basename, searchvalue = None, meta=None, version = None)
     e_t = Extract_Txt(f)
     # xml pull here.
-    one_file, v = E_M_C.use_extract_meta_CEMVN(f)##E_M_C.use_extract_meta(f)#E_M_C.use_extract_meta(test_file_path)
+    one_file, v = E_M_C.use_extract_meta_CEMVN(f)##E_M_C.use_extract_meta(f)#
     #since we know its ehydro:
     xmlfilename = one_file.get_xml()
     if os.path.isfile(xmlfilename):
-        ###may be useful to add in, right now needs more work for S57 matching      
-        ##try:
-        ##    e_xml_s57dict = p_usace_xml.extract_s57_dict(xmlfilename)
-        ##except:
-        ##    print('is this expected path followed?')
         with open(xmlfilename, 'r') as xml_file:
             xml_txt = xml_file.read()
         xmlbasename = os.path.basename(xmlfilename)
@@ -212,9 +147,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
         #meta_xml['f_lstd'] = '1'
         #meta_xml['f_size'] = '9999'
         #meta_xml['flbath'] = '1'
-        #meta_xml['flcvrg'] = '1' #where '1' = 'NO'
-    #relates to Bathy Class get_metadata
-        
+        #meta_xml['flcvrg'] = '1' #where '1' = 'NO'  
     meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CEMVN', default_meta = '')#parse_ehydro_xyz(infilename, meta_source = 'xyz', version='CEMVN', default_meta = '')#eH_p.parse_ehydro_xyz(f)
     #NEED to see which version can come in #e_xml = Extract_Xml(preloadeddata, version = '', filename = '')
     #NEED to see how to reconcile different possible inputs in QA process.
@@ -238,11 +171,6 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
                     combined_row[key] = meta[key] + ' , ' + meta_xml[key]
             else:
                 subset_no_overlap[key] = meta[key]
-        #if key in meta_xml:
-        #    if list_keys_empty not in meta_xml:
-        #        combined_row[key] = meta[key] + ' , ' + meta_xml[key]
-        #longer way to say same as above
-   #nn_df.to_csv(path_or_buf=r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\df2.txt', encoding='UTF-8', sep ='\t')         
     mydict = meta_xml
     for i0, key1 in enumerate(mydict):#for key1 in mydict:
         key_fromdict=key1
@@ -251,8 +179,6 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
             nn.loc[f, key_fromdict] = combined_row[key_fromdict]#[row, column]
         else:
             nn.loc[f, key_fromdict] = mydict[key_fromdict]#[row, column]
-        #print(type(mydict[key_fromdict]))
-        #nm.loc[i0,key_fromdict] = key_fromdict
     for i0, key1 in enumerate(subset_no_overlap):
         key_fromdict=key1
         nn.loc[f, key_fromdict] = subset_row[key_fromdict]
@@ -262,287 +188,8 @@ def retrieve_meta_for_Ehydro_out_onefile(filename, inputehydrocsv):
     
     merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row }   #merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row }       
     merged_meta = { **meta, **meta_from_ehydro,**meta_xml }
-    #THIS METHOD FOR MERGING DICTIONARIES IS FOR Python 3.5  plus based on PEP 448
-    # https://treyhunner.com/2018/10/asterisks-in-python-what-they-are-and-how-to-use-them/ 
-    #see for more informatio`n
-    #merged_dictonary = {**default_values, **override_if_duplicatekeys}# 
+    return merged_meta, nn
     
-    #merged_meta = {**e_xml_s57dict, **meta_from_ehydro, **meta}
-    #need to fix mapping logic to input to BDB table for xml_meta,
-    #most attributes aren't needed at this time. But we can pull them.
-    ###m2c.write_meta2csv([merged_meta],meta1csv)#testing out to a different file
-    #m2c.write_meta2csv([merged_meta],metafile1)
-    ###m2c.write_meta2csv([merge2],metafile1)
-    #m2c.write_meta2csv_full_tab([merged_meta],metafile)#Trying to trouble shoot.
-    #write_to_csv([merged_meta],metafile)
-    #save pandas dataframe export here
-    ###nn.to_csv(path_or_buf=(df_export_to_csv), encoding='UTF-8', sep ='\t')
-    #nn.to_csv(path_or_buf=r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt', encoding='UTF-8', sep ='\t')
-    return merged_meta, nn
-
-
-def retrieve_meta_for_Ehydro_out_df(g1, inputehydrocsv, metafile1, df_export_to_csv):
-
-    ehydro_df = trycsv(inputehydrocsv)#bring in csv from ehydro website
-    #ehydro_df = Rcsv.trycsv(inputehydrocsv)#folders?
-    #next if pull the subset of the table in the dataframe related to the list of files passed to it.
-    merged_meta = {}
-    merge2 = {}
-    #merged_meta_rows = {}    
-    ehydro_table = Extract_Table(ehydro_df,filename=inputehydrocsv)
-    nn = pd.DataFrame()
-    nm = pd.DataFrame()
-    nnn = pd.DataFrame()
-    g1.sort()
-    ex_string1 = '*_A.xyz'
-    ex_string2 = '*_FULL.xyz'
-    ex_string3 = '*_FULL.XYZ'
-    ex_string4 = '*_A.XYZ'
-    for basename in g1:
-        f = basename
-        basename = os.path.basename(basename)
-        basename = S_f_d.return_surveyid(basename, ex_string1)
-        basename = S_f_d.return_surveyid(basename, ex_string2)
-        basename = S_f_d.return_surveyid(basename, ex_string3)
-        basename = S_f_d.return_surveyid(basename, ex_string4)
-        basename = basename.rstrip('.xyz')
-        basename = basename.rstrip('.XYZ') 
-        meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'casiano_ehydro_csv') # 'ehydro_csv')
-        #metadata = ehydro_table.pull_df_by_dict_key(ehydro_df, thisdictionary, basename, searchvalue = None, meta=None, version = None)#other option version = 'casiano_ehydro_csv'
-        #ehydro_table.pull_df_by_dict_key(thisdataframe, thisdictionary, basename, searchvalue = None, meta=None, version = None)
-        e_t = Extract_Txt(f)
-        # xml pull here.
-        one_file, v = E_M_C.use_extract_meta(f)#E_M_C.use_extract_meta(test_file_path)
-        #since we know its ehydro:
-        xmlfilename = one_file.get_xml()
-        if os.path.isfile(xmlfilename):        
-            try:
-                e_xml_s57dict = p_usace_xml.extract_s57_dict(xmlfilename)
-            except:
-                print('is this expected path followed?')
-            with open(xmlfilename, 'r') as xml_file:
-                xml_txt = xml_file.read()
-            xmlbasename = os.path.basename(xmlfilename)
-            xml_data = p_usace_xml.XML_Meta(xml_txt, filename = xmlbasename)
-            if xml_data.version == 'USACE_FGDC':
-                meta_xml = xml_data._extract_meta_CEMVN()
-            elif xml_data.version == 'ISO-8859-1':
-                meta_xml = xml_data._extract_meta_USACE_ISO()
-            else:
-                meta_xml = xml_data.convert_xml_to_dict2()#some_meta = xml_data.convert_xml_to_dict()
-        else:
-            meta_xml = {}
-            #Default values for USACE
-            ##Assume U.S. Survey Feet Horizontal Units
-            #meta_xml['from_horiz_units'] = ' U.S. Survey Feet.'
-            ##Assume Single beam/ CAT B coverage m['TECSOU']= '1'#'single beam'
-            #meta_xml['f_dict'] = '1'
-            #meta_xml['f_lstd'] = '1'
-            #meta_xml['f_size'] = '9999'
-            #meta_xml['flbath'] = '1'
-            #meta_xml['flcvrg'] = '1' #where '1' = 'NO'
-        #relates to Bathy Class get_metadata
-            
-        meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CEMVN', default_meta = '')#parse_ehydro_xyz(infilename, meta_source = 'xyz', version='CEMVN', default_meta = '')#eH_p.parse_ehydro_xyz(f)
-        #NEED to see which version can come in #e_xml = Extract_Xml(preloadeddata, version = '', filename = '')
-        #NEED to see how to reconcile different possible inputs in QA process.
-        list_keys_empty =[]
-        combined_row = {}
-        subset_row = {}
-        subset_no_overlap = {}
-        for key in meta:
-            if meta[key] == 'unknown' or  meta[key] == '':
-                list_keys_empty.append(key)
-            else:
-                subset_row[key] = meta[key]
-                #non blank columns only
-                if key in meta_xml:
-                    if meta[key] == meta_xml[key]:
-                        combined_row[key] = meta[key]
-                        """
-                        only make list within cell if values from different sources are different
-                        """
-                    else:
-                        combined_row[key] = meta[key] + ' , ' + meta_xml[key]
-                else:
-                    subset_no_overlap[key] = meta[key]
-            #if key in meta_xml:
-            #    if list_keys_empty not in meta_xml:
-            #        combined_row[key] = meta[key] + ' , ' + meta_xml[key]
-            #longer way to say same as above
-       #nn_df.to_csv(path_or_buf=r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\df2.txt', encoding='UTF-8', sep ='\t')         
-        mydict = meta_xml
-        for i0, key1 in enumerate(mydict):#for key1 in mydict:
-            key_fromdict=key1
-            #use common numberic index i0
-            if key_fromdict in combined_row:
-                nn.loc[f, key_fromdict] = combined_row[key_fromdict]#[row, column]
-            else:
-                nn.loc[f, key_fromdict] = mydict[key_fromdict]#[row, column]
-            #print(type(mydict[key_fromdict]))
-            #nm.loc[i0,key_fromdict] = key_fromdict
-        for i0, key1 in enumerate(subset_no_overlap):
-            key_fromdict=key1
-            nn.loc[f, key_fromdict] = subset_row[key_fromdict]
-        for i0, key1 in enumerate(meta_from_ehydro):
-            key_fromdict=key1
-            nn.loc[f, key_fromdict] = meta_from_ehydro[key_fromdict]
-        
-        merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row }   #merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row }       
-        merged_meta = { **meta, **meta_from_ehydro,**meta_xml }
-        #THIS METHOD FOR MERGING DICTIONARIES IS FOR Python 3.5  plus based on PEP 448
-        # https://treyhunner.com/2018/10/asterisks-in-python-what-they-are-and-how-to-use-them/ 
-        #see for more informatio`n
-        #merged_dictonary = {**default_values, **override_if_duplicatekeys}# 
-        
-        #merged_meta = {**e_xml_s57dict, **meta_from_ehydro, **meta}
-        #need to fix mapping logic to input to BDB table for xml_meta,
-        #most attributes aren't needed at this time. But we can pull them.
-        #m2c.write_meta2csv([merged_meta],metafile1)
-        m2c.write_meta2csv([merge2],metafile1)
-        #m2c.write_meta2csv_full_tab([merged_meta],metafile)#Trying to trouble shoot.
-        #write_to_csv([merged_meta],metafile)
-    #save pandas dataframe export here
-    nn.to_csv(path_or_buf=(df_export_to_csv), encoding='UTF-8', sep ='\t')
-    #nn.to_csv(path_or_buf=r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt', encoding='UTF-8', sep ='\t')
-    return merged_meta, nn
-
-def retrieve_meta_for_Ehydro(highresfolder, ehydrofolder, inputehydrocsv, metafile1, metafile, df_export_to_csv):
-    g1 = ehydro_subset_only_ifnotfull_restoo(highresfolder, ehydrofolder)
-    ehydro_df = trycsv(inputehydrocsv)#bring in csv from ehydro website
-    #ehydro_df = Rcsv.trycsv(inputehydrocsv)#folders?
-    #next if pull the subset of the table in the dataframe related to the list of files passed to it.
-    merged_meta = {}
-    merge2 = {}
-    #merged_meta_rows = {}    
-    ehydro_table = e_meta.Extract_Table(ehydro_df,filename=inputehydrocsv)
-    nn = pd.DataFrame()
-    nm = pd.DataFrame()
-    nnn = pd.DataFrame()
-    g1.sort()
-    ex_string1 = '*_A.xyz'
-    ex_string2 = '*_FULL.xyz'
-    ex_string3 = '*_FULL.XYZ'
-    ex_string4 = '*_A.XYZ'
-    for basename in g1:
-        f = basename
-        basename = os.path.basename(basename)
-        basename = S_f_d.return_surveyid(basename, ex_string1)
-        basename = S_f_d.return_surveyid(basename, ex_string2)
-        basename = S_f_d.return_surveyid(basename, ex_string3)
-        basename = S_f_d.return_surveyid(basename, ex_string4)
-        basename = basename.rstrip('.xyz')
-        basename = basename.rstrip('.XYZ')        
-        meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'casiano_ehydro_csv')#'ehydro_csv')
-        #metadata = ehydro_table.pull_df_by_dict_key(ehydro_df, thisdictionary, basename, searchvalue = None, meta=None, version = None)#other option version = 'casiano_ehydro_csv'
-        #ehydro_table.pull_df_by_dict_key(thisdataframe, thisdictionary, basename, searchvalue = None, meta=None, version = None)
-        e_t = e_meta.Extract_Txt(f)
-        # xml pull here.
-        one_file, v = E_M_C.use_extract_meta(f)#E_M_C.use_extract_meta(test_file_path)
-        #since we know its ehydro:
-        if '_A.xyz' in f:
-            xmlfilename = one_file.get_xml_xt('_A.xyz')
-        elif '_FULL.xyz' in f:
-            xmlfilename = one_file.get_xml_xt('_FULL.xyz')
-        elif '_FULL.XYZ' in f:
-            xmlfilename = one_file.get_xml_xt('_FULL.XYZ')
-        elif '_A.XYZ' in f:
-            xmlfilename = one_file.get_xml_xt('_A.XYZ')
-        else:
-            xmlfilename = one_file.get_xml()
-        if os.path.isfile(xmlfilename):        
-            try:
-                e_xml_s57dict = p_usace_xml.extract_s57_dict(xmlfilename)
-            except:
-                print('is this expected path followed?')
-            with open(xmlfilename, 'r') as xml_file:
-                xml_txt = xml_file.read()
-            xmlbasename = os.path.basename(xmlfilename)
-            xml_data = p_usace_xml.XML_Meta(xml_txt, filename = xmlbasename)
-            if xml_data.version == 'USACE_FGDC':
-                meta_xml = xml_data._extract_meta_CEMVN()
-            elif xml_data.version == 'ISO-8859-1':
-                meta_xml = xml_data._extract_meta_USACE_ISO()
-            else:
-                meta_xml = xml_data.convert_xml_to_dict2()#some_meta = xml_data.convert_xml_to_dict()
-        else:
-            meta_xml = {}
-            #Default values for USACE
-            ##Assume U.S. Survey Feet Horizontal Units
-            #meta_xml['from_horiz_units'] = ' U.S. Survey Feet.'
-            ##Assume Single beam/ CAT B coverage m['TECSOU']= '1'#'single beam'
-            #meta_xml['f_dict'] = '1'
-            #meta_xml['f_lstd'] = '1'
-            #meta_xml['f_size'] = '9999'
-            #meta_xml['flbath'] = '1'
-            #meta_xml['flcvrg'] = '1' #where '1' = 'NO'
-        #relates to Bathy Class get_metadata
-            
-        meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CEMVN', default_meta = '')#parse_ehydro_xyz(infilename, meta_source = 'xyz', version='CEMVN', default_meta = '')#eH_p.parse_ehydro_xyz(f)
-        #NEED to see which version can come in #e_xml = Extract_Xml(preloadeddata, version = '', filename = '')
-        #NEED to see how to reconcile different possible inputs in QA process.
-        list_keys_empty =[]
-        combined_row = {}
-        subset_row = {}
-        subset_no_overlap = {}
-        for key in meta:
-            if meta[key] == 'unknown' or  meta[key] == '':
-                list_keys_empty.append(key)
-            else:
-                subset_row[key] = meta[key]
-                #non blank columns only
-                if key in meta_xml:
-                    if meta[key] == meta_xml[key]:
-                        combined_row[key] = meta[key]
-                        """
-                        only make list within cell if values from different sources are different
-                        """
-                    else:
-                        combined_row[key] = meta[key] + ' , ' + meta_xml[key]
-                else:
-                    subset_no_overlap[key] = meta[key]
-            #if key in meta_xml:
-            #    if list_keys_empty not in meta_xml:
-            #        combined_row[key] = meta[key] + ' , ' + meta_xml[key]
-            #longer way to say same as above
-       #nn_df.to_csv(path_or_buf=r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\df2.txt', encoding='UTF-8', sep ='\t')         
-        mydict = meta_xml
-        for i0, key1 in enumerate(mydict):#for key1 in mydict:
-            key_fromdict=key1
-            #use common numberic index i0
-            if key_fromdict in combined_row:
-                nn.loc[f, key_fromdict] = combined_row[key_fromdict]#[row, column]
-            else:
-                nn.loc[f, key_fromdict] = mydict[key_fromdict]#[row, column]
-            #print(type(mydict[key_fromdict]))
-            #nm.loc[i0,key_fromdict] = key_fromdict
-        for i0, key1 in enumerate(subset_no_overlap):
-            key_fromdict=key1
-            nn.loc[f, key_fromdict] = subset_row[key_fromdict]
-        for i0, key1 in enumerate(meta_from_ehydro):
-            key_fromdict=key1
-            nn.loc[f, key_fromdict] = meta_from_ehydro[key_fromdict]
-        
-        merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row }   #merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row }       
-        merged_meta = { **meta, **meta_from_ehydro,**meta_xml }
-        #THIS METHOD FOR MERGING DICTIONARIES IS FOR Python 3.5  plus based on PEP 448
-        # https://treyhunner.com/2018/10/asterisks-in-python-what-they-are-and-how-to-use-them/ 
-        #see for more informatio`n
-        #merged_dictonary = {**default_values, **override_if_duplicatekeys}# 
-        
-        #merged_meta = {**e_xml_s57dict, **meta_from_ehydro, **meta}
-        #need to fix mapping logic to input to BDB table for xml_meta,
-        #most attributes aren't needed at this time. But we can pull them.
-        #m2c.write_meta2csv([merged_meta],metafile1)
-        m2c.write_meta2csv([merge2],metafile1)
-        #m2c.write_meta2csv_full_tab([merged_meta],metafile)#Trying to trouble shoot.
-        #write_to_csv([merged_meta],metafile)
-    #save pandas dataframe export here
-    nn.to_csv(path_or_buf=(df_export_to_csv), encoding='UTF-8', sep ='\t')
-    #nn.to_csv(path_or_buf=r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt', encoding='UTF-8', sep ='\t')
-    return merged_meta, nn
-
-      
 class Extract_Table:
     """
     metadata={}
@@ -645,17 +292,7 @@ class Extract_Table:
     def convert_datefrmt(self, date1):
         parsed_date = dateparser.parse(date1)
         ymd_date = parsed_date.strftime('%Y%m%d')#('%Y-%m-%dT%H:%M:%SZ')
-        return ymd_date
-    
-#    def link_ehydro_table(ehydro_pre_download_table, metadata):        
-#        #dreg_dicts, dreg_d=D_info.DREGi(input1)
-#        metadata['SUREND'] = ehydro_pre_download_table.SURVEYDATEEND
-#        SUREND = ehydro_pre_download_table.SURVEYDATEEND
-#        #SURSTA= ehydro_pre_download_table.SURVEYDATESTART
-#        SOURCEPROJECTION = ehydro_pre_download_table.SOURCEPROJECTION
-#        #FIPS = convert_tofips(SOURCEPROJECTION)
-#        #'Survey Type': 'SURVEYTYPE'
-#        return SUREND, metadata
+        return ymd_date    
     
     e_hydro_crosstable_dict ={}
     e_hydro_crosstable_dict = {
@@ -794,7 +431,6 @@ class Extract_Txt(object):
                     'subprojid' : splitname[2],
                     'start_date' : splitname[3],
                     }
-            #'statuscode' : splitname[4],
             if len(splitname) >4:
                 meta['statuscode']=splitname[4]
                 if len(splitname) > 5:
@@ -876,9 +512,6 @@ class Extract_Txt(object):
                 #    metalist.append(_parse_Ranges(line))
             # bring all the dictionaries together
             meta = {}
-        #completed over 400 files successfully:
-        #got got on     meta = {**meta, **m}
-        #TypeError: 'NoneType' object is not a mapping
         try:
             for m in metalist:
                 meta = {**meta, **m}
@@ -925,68 +558,5 @@ class Extract_Xml(object):
         xml_meta = eH_p._parse_xml(infilename)
         text_meta = eH_p._parse_xml_text(infilename)
         meta_out = {**xml_meta, **text_meta}
-        return meta_out
-    
-    def _parse_xml(self, infilename):
-        """
-        Parse the xml portion of the xml file
-        """
-        xml_meta = {}
-        tree = _parse(infilename)
-        root = tree.getroot()
-        val = root.findtext('.//altdatum')
-        if val is not None:
-            xml_meta['from_vert_key'] = val
-        val = root.findtext('.//altunits')
-        if val is not None:
-            xml_meta['from_vert_units'] = val
-        val = root.findtext('.//abstract')
-        if val is not None:
-            vals = val.split(' ')
-            for n,v in enumerate(vals):
-                if v == 'dates':
-                    break
-            date_str = vals[n+1]
-            start, end = date_str.split(',')
-            xml_meta['start_date'] = start.replace('-','')
-            xml_meta['end_date'] = end.replace('-','')
-        return xml_meta
-            
-    def _parse_xml_text(self, infilename):
-        """
-        Pase the text portion of the xml file
-        """
-        txt_meta = {}
-        txt_keys = {'Implied_Vertical_Accuracy' : 'from_vert_unc',
-                    'Implied_Horizontal_Accuracy' : 'from_horiz_unc',
-                    'Horizontal_Zone' : 'from_horiz_datum',
-                    'Units' : 'from_horiz_units'}
-        keys = txt_keys.keys()
-        with open(infilename,'r') as metafile:
-            for line in metafile:
-                for key in keys:
-                    if line.startswith(key):
-                        meta_key = txt_keys[key]
-                        txt_meta[meta_key] = line
-        for key in txt_meta:
-            if key == 'from_vert_acc' or key == 'from_horiz_acc':
-                line = txt_meta[key]
-                val = line.split()[-2]
-                txt_meta[key] = val
-            elif key == 'from_horiz_datum':
-                line = txt_meta[key]
-                val = line.split(':')[-1]
-                val = val.lstrip(' ')
-                val = val.rstrip('\n')
-                txt_meta[key] = val
-                fips = _re.search('\d\d\d\d', val)
-            elif key == 'from_horiz_units':
-                line = txt_meta[key]
-                val = line.split(':')[-1]
-                val = val.lstrip(' ')
-                val = val.rstrip('\n')
-                txt_meta[key] = val
-        if fips is not None:
-            txt_meta['fips'] = int(fips.group())
-        return txt_meta
+        return meta_out    
 ##-----------------------------------------------------------------------------        
