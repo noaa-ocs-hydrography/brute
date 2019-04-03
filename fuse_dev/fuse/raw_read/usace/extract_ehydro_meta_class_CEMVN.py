@@ -1,0 +1,572 @@
+# -*- coding: utf-8 -*-
+"""
+Edited by Juliet Kinney
+extract_ehydro_meta_class_CEMNV.py
+
+This script takes as an input the filename and path of an USACE e-Hydro .xyz 
+text file and pull the metadata from the xyz header and file name.
+Additionally, it passes the matching .xml file and utilizes 
+the parse_usace_xml script to pull out the relevant metadata if it
+is either FGDC or ISO FGDC USACE metadata format.
+
+updated April 2, 2019
+
+"""
+__version__ = 'FUSE'
+import os as os
+import pickle as _pickle
+
+_ussft2m = 0.30480060960121924 # US survey feet to meters
+
+import pandas as pd
+import numpy as _np 
+try:
+    import parse_usace_xml as p_usace_xml
+except:
+    print('check if the extract_xml classes have been merged yet see extract_ehydro_meta_class_CEMVN.py')    
+##-----------------------------------------------------------------------------
+
+class read_raw_cemvn:
+    
+    def read_metadata(self, infilename):
+        """
+        Read all available meta data.
+        """
+        version='CEMVN'
+        self.version = version
+        #Version_Info = use_extract_meta_CEMVN(self)
+        return retrieve_meta_for_Ehydro_out_onefile(infilename)#return retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)
+    
+    def read_bathymetry_dat(self, infilename):
+        """
+        Read the bathymetry from the .dat file. The dat file is less precise,
+        but had no header and is in a standardized format
+        """
+        # get the dat file for CEMVN
+        stub, ext = os.path.splitext(infilename)
+        bathyfilename = stub + '.dat'
+        xyz = _np.loadtxt(bathyfilename, delimiter = ' ')
+        self.xyz
+        return xyz
+    
+    def read_bathymetry(self, infilename):
+        """
+        Read the bathymetry from the xyz files, this tells it to not include
+        the header when reading the file
+        
+        Note: The high resolution multibeam files are available as .xyz on E-Hydro
+        """
+        version='CEMVN'
+        self.version = version
+        first_instance = _start_xyz(infilename, version = None)
+        if first_instance != '':    
+            xyz = _np.loadtext(infilename, delimeter = ',', skiprows = first_instance)
+        else:
+            xyz = _np.loadtext(infilename, delimeter = ',')
+        return xyz        
+  
+#------------------------------------------------------------------------------
+def return_surveyid(filenamepath, ex_string):    
+    basename = os.path.basename(filenamepath)
+    surveybasename = basename.rstrip(ex_string)
+    return surveybasename    
+#------------------------------------------------------------------------------
+
+def retrieve_meta_for_Ehydro_out_onefile(filename):
+    #next if pull the subset of the table in the dataframe related to the list of files passed to it.
+    merged_meta = {}
+    merge2 = {}      
+    nn = pd.DataFrame()
+    f = filename
+    basename = os.path.basename(f)
+    ex_string1 = '*_A.xyz'
+    ex_string2 = '*_FULL.xyz'
+    ex_string3 = '*_FULL.XYZ'
+    ex_string4 = '*_A.XYZ'
+    basename = os.path.basename(basename)
+    basename = return_surveyid(basename, ex_string1)
+    basename = return_surveyid(basename, ex_string2)
+    basename = return_surveyid(basename, ex_string3)
+    basename = return_surveyid(basename, ex_string4)
+    basename = basename.rstrip('.XYZ')  
+    basename = basename.rstrip('.xyz')    
+    #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
+    meta_from_ehydro={}
+    #Need something different
+    ###ehydro_table = Extract_Table(ehydro_df,filename=inputehydrocsv)
+    ###meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'casiano_ehydro_csv')#'ehydro_csv')    
+    e_t = Extract_Txt(f)
+    # xml pull here.
+    #since we know its ehydro:
+    xmlfilename = get_xml(f)
+    if os.path.isfile(xmlfilename):
+        with open(xmlfilename, 'r') as xml_file:
+            xml_txt = xml_file.read()
+        xmlbasename = os.path.basename(xmlfilename)
+        xml_data = p_usace_xml.XML_Meta(xml_txt, filename = xmlbasename)
+        if xml_data.version == 'USACE_FGDC':
+            meta_xml = xml_data._extract_meta_CEMVN()
+        elif xml_data.version == 'ISO-8859-1':
+                meta_xml = xml_data._extract_meta_USACE_ISO()                
+        else:
+            meta_xml = xml_data.convert_xml_to_dict2()
+    else:
+        meta_xml = {}
+    meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CEMVN', default_meta = '')#
+    list_keys_empty =[]
+    combined_row = {}
+    subset_row = {}
+    subset_no_overlap = {}
+    for key in meta:
+        if meta[key] == 'unknown' or  meta[key] == '':
+            list_keys_empty.append(key)
+        else:
+            subset_row[key] = meta[key]
+            #non blank columns only
+            if key in meta_xml:
+                if meta[key] == meta_xml[key]:
+                    combined_row[key] = meta[key]
+                    """
+                    only make list within cell if values from different sources are different
+                    """
+                else:
+                    combined_row[key] = meta[key] + ' , ' + meta_xml[key]
+            else:
+                subset_no_overlap[key] = meta[key]
+    mydict = meta_xml
+    for i0, key1 in enumerate(mydict):#for key1 in mydict:
+        key_fromdict=key1
+        #use common numeric index i0
+        if key_fromdict in combined_row:
+            nn.loc[f, key_fromdict] = combined_row[key_fromdict]#[row, column]
+        else:
+            nn.loc[f, key_fromdict] = mydict[key_fromdict]#[row, column]
+    for i0, key1 in enumerate(subset_no_overlap):
+        key_fromdict=key1
+        nn.loc[f, key_fromdict] = subset_row[key_fromdict]
+    for i0, key1 in enumerate(meta_from_ehydro):
+        key_fromdict=key1
+        nn.loc[f, key_fromdict] = meta_from_ehydro[key_fromdict]
+    merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row } 
+    merged_meta = { **meta, **meta_from_ehydro,**meta_xml }
+    return merged_meta, nn
+    
+###---------------------------------------------------------------------------- 
+class Extract_Txt(object):
+    
+    """
+    Extract both information from the filename as well as from the text file's header
+    """
+    def __init__(self, preloadeddata, version = '', filename = ''):
+        self.filename = preloadeddata
+        if filename != "" or None:
+            self.filename_1 = filename
+            self.errorfile = os.path.dirname(filename) + 'TEST_extract_ehdyro_meta_class_CEMVN_ErrorFile1.txt'
+        else:
+            self.errorfile = os.path.dirname(filename) + 'Default_extract_ehdyro_meta_class_CEMVN_error.txt'       
+
+    def parse_ehydro_xyz(self, infilename, meta_source = 'xyz', version= 'CEMVN', default_meta = ''):#need to change version to None
+        """
+        'CEMVN'
+        """
+        """
+        Parse an USACE eHydro file for the available meta data.
+        
+        Default metadata (values predetermined for the file but not in the file)
+        can be stored at the location defined by 'default_meta' as a pickled
+        dicitonary.  If no path is provided the dictionary in the same folder as
+        the data but in the file 'default.pkl' will be used.  If this file does
+        not exist no default metadata will be loaded.  If the same keyword for
+        the metadata exists both in the file metadata and in the default location,
+        the file metadata will take precidence.
+        """
+        name_meta = self.parse_ehydro_filename(infilename)
+        if meta_source == 'xyz':
+            file_meta = self.parse_xyz_header(infilename, version)
+        #elif meta_source == 'xml':
+        #    file_meta = parse_ehydro_xml(infilename)
+        default_meta = self.load_default_metadata(infilename, default_meta)
+        merged_meta = {**default_meta, **name_meta, **file_meta}
+        if 'from_horiz_unc' in merged_meta:
+            if merged_meta['from_horiz_units'] == 'US Survey Foot':
+                val = _ussft2m * float(merged_meta['from_horiz_unc'])
+                merged_meta['horiz_uncert'] = val
+        if 'from_vert_unc' in merged_meta:
+            if merged_meta['from_vert_units'] == 'US Survey Foot':
+                val = _ussft2m * float(merged_meta['from_vert_unc'])
+                merged_meta['vert_uncert_fixed'] = val
+                merged_meta['vert_uncert_vari'] = 0
+        sorind = (name_meta['projid'] + '_' + 
+                  name_meta['uniqueid'] + '_' + 
+                  name_meta['subprojid'] + '_' + 
+                  name_meta['start_date'] + '_' + 
+                  name_meta['statuscode'])
+        merged_meta['source_indicator'] = 'US,US,graph,' + sorind
+        merged_meta['script_version'] = __version__
+        return merged_meta
+
+    def parse_ehydro_filename(self, infilename):
+        """
+        Parse the provided infilename for the channel project code, unique id,
+        subproject code, survey acquistion start date, the survey code, and
+        optional field and return a dictionary of these fields.  The dictionary
+        contains the following keys:
+            projid : the project id code
+            uniqueid : the unique identifier, and can represent items such as
+                        separate projects, map scale, or CWIS code.
+            subprojid : the subproject within the channel project
+            startdate : the start date of acquisition
+            statuscode : survey description code, such as for a condition survey
+            optional : this is the contents of the condition field
+            from_path : this is named to match other scripts downstream
+            from_filename : this is also named to match other file downstream
+        """
+        base = os.path.basename(infilename)
+        name, ext = os.path.splitext(base)
+        splitname = name.split('_')        
+        if len(splitname) >= 4:
+            meta = {
+                    'from_path' : infilename,
+                    'from_filename' : base,
+                    'projid' : splitname[0],
+                    'uniqueid' : splitname[1],
+                    'subprojid' : splitname[2],
+                    'start_date' : splitname[3],
+                    }
+            if len(splitname) >4:
+                meta['statuscode']=splitname[4]
+                if len(splitname) > 5:
+                    option = splitname[5]
+                    if len(splitname) > 6:
+                        for n in range(6, len(splitname)):
+                            option = option + '_' + splitname[n]
+                    meta['optional'] = option
+            else:
+                meta['statuscode']=''               
+        else:
+            print(name + ' appears to have a nonstandard naming convention.')
+        return meta
+    
+    def parse_xyz_header(self, infilename, version=None):
+        """
+        Parse the xyz file header for meta data and return a dictionary.  The
+        key words used to search are
+            NOTES
+            PROJECT_NAME
+            SURVEY_NAME
+            DATES_OF_SURVEY
+        """
+        header = []
+        metalist = []
+        more_metalist = []
+        # get the header
+        if version == 'CEMVN':
+            with open(infilename, 'r') as infile:
+                for line in infile.readlines():
+                    if line == '\n':
+                        continue
+                    elif _is_header2(line):
+                        header.append(line)
+                    else:
+                        break
+            # search the header for lines starting with the key words
+            for line in header:
+                if line.startswith('NOTES'):
+                    metalist.append(_parse_note(line))
+                elif line.startswith('PROJECT_NAME'):#not expecting
+                    metalist.append(_parse_projectname(line))
+                elif line.startswith('SURVEY_NAME'):#not expecting
+                    metalist.append(_parse_surveyname(line))
+                elif line.startswith('DATES_OF_SURVEY'):#not expecting
+                    metalist.append(_parse_surveydates(line))
+                elif line.startswith('SOUNDING_FREQUENCY'):
+                    metalist.append(_parse_sounding_frequency(line))
+                elif line.startswith('SURVEY_TYPE'):
+                    metalist.append(_parse_survey_type(line))
+                elif line.startswith('SURVEY_CREW'):
+                    metalist.append(_parse_survey_crew(line))
+                elif line.startswith('SEA_CONDITION'):
+                    metalist.append(_parse_sea_condition(line))
+                elif line.startswith('VESSEL_NAME'):
+                    metalist.append(_parse_vessel_name(line))
+                elif line.startswith('LWRP'):
+                    metalist.append(_parse_LWRP_(line))
+                elif line.startswith('Gage_Reading'):
+                    metalist.append(_parse_Gage_Reading(line, allcap1 = 1))
+                elif line.startswith('GAGE_READING'):
+                    metalist.append(_parse_Gage_Reading(line,allcap1 = 2))
+                elif line.startswith('SOUND VELOCITY'):
+                    metalist.append(_parse_sound_velocity(line))    
+                elif _is_RTK(line, version='CEMVN'):
+                    more_metalist.append(line)
+                    metadata['RTK']='YES'
+                    metalist.append(metadata['RTK'])
+                    if _is_RTK_Tide(line, version = 'CEMVN'):
+                        metadata['RTK TIDES']='YES'
+                        metalist.append(metadata['RTK TIDES'])
+                else:
+                    more_metalist.append(line)#usually gage offets from MLG and NGVD/NAVD**, tides or river water levels
+                    #plus gage name
+                    #may include DRAFT, VELOCITY (sound velocity), Index within lines as well                       
+                #elif line.startswith('Ranges'):
+                #    metalist.append(_parse_Ranges(line))
+            # bring all the dictionaries together
+            meta = {}
+        try:
+            for m in metalist:
+                meta = {**meta, **m}
+            return meta
+        except:
+            meta = {}
+            errorfile = self.errorfile 
+            with open(errorfile,'a') as metafail:
+                metafail.write(infilename + '\n')
+            return meta
+        
+    def load_default_metadata(self, infilename, default_meta):
+        """
+        Given the file name for data and a default metadata file (containing a
+        picked dictionary), look for the default file.  If that files does not
+        exist, look for a file named 'default.pkl' in the same directory as the
+        provided file name.
+        """
+        if len(default_meta) == 0:
+            path, infile = os.path.split(infilename)
+            default_meta = os.path.join(path,'default.pkl')
+        if os.path.exists(default_meta):
+            with open(default_meta, 'rb') as metafile:
+                meta = _pickle.load(metafile)
+        else:
+            meta = {}
+        return meta
+##-----------------------------------------------------------------------------
+def get_xml(filename):
+    basef = filename.rstrip('.xyz')
+    basef = basef.rstrip('.XYZ')
+    xml_name = basef + '.xml'
+    return xml_name            
+
+def get_xml_xt(filename, extension):
+    basef = filename.rstrip(extension)
+    xml_name = basef + '.xml'
+    return xml_name          
+##-----------------------------------------------------------------------------        
+
+def _start_xyz(infilename, version = None):
+    if version == None:
+        v=0
+        first_instance = ''
+        return first_instance
+        
+    if version == 'CEMVN':
+        first_instance = ''
+        numberofrows = []
+        pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
+        with open(infilename, 'r') as infile:
+            for (index1, line) in enumerate (infile):
+                if _re.match(pattern_coordinates, line) is not None:
+                    numberofrows.append(index1)
+            first_instance = numberofrows[0]
+            return first_instance
+        return first_instance
+    
+def _is_header2(line, version = None):
+    if version == None:
+        v=0
+    if version == 'CEMVN':
+        pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
+        if _re.match(pattern_coordinates, line) is not None:
+            return False
+        else:
+            return True
+    elif version == '':
+        pattern = '[a-zA-Z]'
+        if _re.search(pattern, line) is None:
+            return False
+        else:
+            return True
+    else:
+        pattern ='[^0-9]'#anything except 0-9
+        if _re.match(pattern, line) is None:#does the string start with this pattern?
+            return False
+        else:
+            return True
+        
+def _parse_projectname(line):
+    """
+    Parse the project name line.
+    """
+    name = line.split('=')[-1]
+    name = name.strip('\n')
+    metadata = {'projectname' : name}
+    return metadata
+
+def _parse_note(line):
+    """
+    Parse the notes line.
+    """
+    metadata = {}
+    # find the horizontal datum information.
+    zone_idx = line.find('ZONE')
+    zone_len = line[zone_idx:].find('.')
+    horiz_datum = line[zone_idx:zone_idx + zone_len]
+    if len(horiz_datum) > 0:
+        fips = horiz_datum.split()[1]
+        fips = fips.rstrip(',')
+        metadata['from_fips'] = fips
+        metadata['from_wkt'] = _fips2wkt(fips)
+        horiz_units = horiz_datum.split(',')[1]
+        if horiz_units.lstrip(' ') == 'US SURVEY FEET':
+            metadata['from_horiz_units'] = 'US Survey Foot'
+        else:
+            metadata['from_horiz_units'] = horiz_units.lstrip(' ')
+        metadata['from_horiz_datum'] = horiz_datum
+    else:
+        metadata['from_wkt'] = 'unknown'
+        metadata['from_horiz_units'] = 'unknown'
+        metadata['from_horiz_datum'] = 'unknown'
+    # find the vertical datum information
+    if line.find('MEAN LOWER LOW WATER') > 0:
+        metadata['from_vert_key'] = 'MLLW'
+    elif line.find('MLLW') > 0:
+        metadata['from_vert_key'] = 'MLLW'
+    elif line.find('MEAN LOW WATER') > 0:
+        metadata['from_vert_key'] = 'MLW'
+    else:
+        metadata['vert_key'] = 'unknown'
+    vert_units_tags = ['NAVD88','NAVD1988','NAVD 1988']
+    for tag in vert_units_tags:
+        vert_units_end = line.find(tag) 
+        if vert_units_end >= 0:
+            vert_units_end += len(tag)
+            break
+        else:
+            vert_units_end = 0
+    vert_units_start = vert_units_end - line[vert_units_end::-1].find('>krb<')
+    vert_units = line[vert_units_start+1:vert_units_end]
+    metadata['from_vert_datum'] = vert_units
+    if vert_units.find('FEET') > 0:
+        metadata['from_vert_units'] = 'US Survey Foot'
+    else:
+        metadata['from_vert_units'] = 'unknown'
+    return metadata
+
+def _parse_surveyname(line):
+    """
+    Parse the survey name line.
+    """
+    name = line.split('=')[-1]
+    name = name.strip('\n')
+    metadata = {'surveyname' : name}
+    return metadata
+
+def _parse_surveydates(line):
+    """
+    Parse the project dates line.
+    """
+    metadata = {}
+    datestr = line.split('=')[-1]
+    datestr = datestr.strip('\n')
+    if datestr.find('-') > 0:
+        delim = '-'
+    else:
+        delim = ' to '
+    dateout = datestr.split(delim)
+    metadata['start_date'] = _xyztext2date(dateout[0])
+    if len(dateout) == 1: 
+        metadata['end_date'] = 'unknown'
+    elif len(dateout) == 2:
+        metadata['end_date'] = _xyztext2date(dateout[1])
+    else:
+        print('ambiguous date found!')
+    return metadata
+
+def _parse_sounding_frequency(line, version = None):
+    if version == None:
+        v = 0
+    if version == 'CEMVN':
+        v = 1 
+    name = line.split('SOUNDING_FREQUENCY==')[-1].strip('\n')
+    metadata = {'sounding_frequency' : name}
+    return metadata
+  
+def _parse_survey_type(line):
+    name = line.split('SURVEY_TYPE==')[-1]
+    name = name.strip('\n')
+    metadata = {'text: survey_type' : name}
+    return metadata
+            
+def _parse_survey_crew(line):
+    name = line.split('SURVEY_CREW==')[-1]
+    name = name.strip('\n')
+    metadata = {'survey_crew' : name}
+    return metadata 
+        
+def _parse_sea_condition(line):
+    name = line.split('SEA_CONDITION==')[-1]
+    name = name.strip('\n')
+    metadata = {'sea_condition' : name}
+    return metadata
+
+def _parse_vessel_name(line):
+    name = line.split('SEA_CONDITION==')[-1]
+    name = name.strip('\n')
+    metadata = {'survey_condition' : name}
+    return metadata
+
+def _parse_LWRP_(line):
+    name = line.split('LWRP==')[-1]
+    name = name.split('LWRP=')[-1]
+    name = name.strip('\n')
+    name = name.strip('\t')
+    name = name.rstrip(' ')
+    if name == 'N/A':
+        metadata = {'LWRP' : ''}
+    elif name == 'NA':
+        metadata = {'LWRP' : ''}
+    elif name == 'N/A0':
+        metadata = {'LWRP' : ''}
+    else:
+        metadata = {'LWRP' : name}
+        metadata = {'script: from_vert_datum':name}
+        metadata = {'script: from_vert_key' : 'LWRP'}
+        print('Data in LWRP')
+    return metadata
+
+def _parse_Gage_Reading(line, allcap1):
+    if allcap1 == 1:
+        name = line.split('GAGE_READING==')[-1]
+        name = name.strip('\n')
+        metadata = {'GAGE_READING' : name}
+    if allcap1 == 2:
+        name = line.split('Gage_Reading==')[-1]
+        name = name.strip('\n')
+        metadata = {'GAGE_READING' : name}
+    return metadata  
+
+def _parse_sound_velocity(line):
+    name = line.split('SOUND VELOCITY')[-1]
+    name = name.strip('\n')
+    metadata = {'sound_velocity' : name}
+
+def _is_RTK(line, version = None):
+    if version == None:
+        v=0
+    if version == 'CEMVN':
+        pattern_coordinates = '[RTK]'#at least six digits# should be seven then . plus two digits
+        if _re.findall(pattern_coordinates, line) is not None:
+            return False
+        else:
+            return True
+        
+def _is_RTK_Tide(line, version = None):
+    if version == None:
+        v=0
+    if version == 'CEMVN':
+        if _re.findall('[VRS RTK TIDES]', line) is not None:
+            return False
+        else:
+            return True
+##-----------------------------------------------------------------------------
+
+        
