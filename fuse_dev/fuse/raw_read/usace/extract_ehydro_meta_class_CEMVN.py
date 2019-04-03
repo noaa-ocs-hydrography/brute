@@ -15,6 +15,7 @@ updated April 2, 2019
 __version__ = 'FUSE'
 import os as os
 import pickle as _pickle
+import re as _re
 
 _ussft2m = 0.30480060960121924 # US survey feet to meters
 
@@ -31,6 +32,7 @@ class read_raw_cemvn:
     def read_metadata(self, infilename):
         """
         Read all available meta data.
+        returns dictionary
         """
         version='CEMVN'
         self.version = version
@@ -58,7 +60,7 @@ class read_raw_cemvn:
         """
         version='CEMVN'
         self.version = version
-        first_instance = _start_xyz(infilename, version = None)
+        first_instance = _start_xyz(infilename)
         if first_instance != '':    
             xyz = _np.loadtext(infilename, delimeter = ',', skiprows = first_instance)
         else:
@@ -66,13 +68,23 @@ class read_raw_cemvn:
         return xyz        
   
 #------------------------------------------------------------------------------
-def return_surveyid(filenamepath, ex_string):    
+def return_surveyid(filenamepath, ex_string):
+    """
+    strip end of filename off
+    surveybasename =return_surveyid(filenamepath, ex_string)
+    """    
     basename = os.path.basename(filenamepath)
     surveybasename = basename.rstrip(ex_string)
     return surveybasename    
 #------------------------------------------------------------------------------
 
 def retrieve_meta_for_Ehydro_out_onefile(filename):
+    """
+    retrieve metadata for USACE E-Hydro files
+    function returns metadata dictionary
+    
+    input is filename of .xyz file with path 
+    """
     #next if pull the subset of the table in the dataframe related to the list of files passed to it.
     merged_meta = {}
     merge2 = {}      
@@ -92,12 +104,8 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     basename = basename.rstrip('.xyz')    
     #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro={}
-    #Need something different
-    ###ehydro_table = Extract_Table(ehydro_df,filename=inputehydrocsv)
-    ###meta_from_ehydro, hold_meta2 = ehydro_table.pull_df_by_dict_key_c(basename, searchvalue = None, meta=None, hold_meta2 = None, version = 'casiano_ehydro_csv')#'ehydro_csv')    
     e_t = Extract_Txt(f)
     # xml pull here.
-    #since we know its ehydro:
     xmlfilename = get_xml(f)
     if os.path.isfile(xmlfilename):
         with open(xmlfilename, 'r') as xml_file:
@@ -297,11 +305,11 @@ class Extract_Txt(object):
                     metalist.append(_parse_Gage_Reading(line,allcap1 = 2))
                 elif line.startswith('SOUND VELOCITY'):
                     metalist.append(_parse_sound_velocity(line))    
-                elif _is_RTK(line, version='CEMVN'):
+                elif _is_RTK(line):
                     more_metalist.append(line)
                     metadata['RTK']='YES'
                     metalist.append(metadata['RTK'])
-                    if _is_RTK_Tide(line, version = 'CEMVN'):
+                    if _is_RTK_Tide(line):
                         metadata['RTK TIDES']='YES'
                         metalist.append(metadata['RTK TIDES'])
                 else:
@@ -341,38 +349,42 @@ class Extract_Txt(object):
         return meta
 ##-----------------------------------------------------------------------------
 def get_xml(filename):
+    """
+    input USACE .xyz/.XYZ filename and return .xml
+    xmlname = get_xml(filename)
+    """
     basef = filename.rstrip('.xyz')
     basef = basef.rstrip('.XYZ')
     xml_name = basef + '.xml'
     return xml_name            
 
 def get_xml_xt(filename, extension):
+    """
+    input USACE text filename and ending to chop to get to basename
+    output will be the .xml file name
+    (_A.xyz for instance or _FULL.XYZ are examples of extensions)
+    xmlname = get_xml_xt(filename, extension)
+    """
     basef = filename.rstrip(extension)
     xml_name = basef + '.xml'
     return xml_name          
 ##-----------------------------------------------------------------------------        
 
-def _start_xyz(infilename, version = None):
-    if version == None:
-        v=0
-        first_instance = ''
+def _start_xyz(infilename):
+    first_instance = ''
+    numberofrows = []
+    pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
+    with open(infilename, 'r') as infile:
+        for (index1, line) in enumerate (infile):
+            if _re.match(pattern_coordinates, line) is not None:
+                numberofrows.append(index1)
+        first_instance = numberofrows[0]
         return first_instance
-        
-    if version == 'CEMVN':
-        first_instance = ''
-        numberofrows = []
-        pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
-        with open(infilename, 'r') as infile:
-            for (index1, line) in enumerate (infile):
-                if _re.match(pattern_coordinates, line) is not None:
-                    numberofrows.append(index1)
-            first_instance = numberofrows[0]
-            return first_instance
-        return first_instance
+    return first_instance
     
 def _is_header2(line, version = None):
     if version == None:
-        v=0
+        version = ''
     if version == 'CEMVN':
         pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
         if _re.match(pattern_coordinates, line) is not None:
@@ -481,37 +493,48 @@ def _parse_surveydates(line):
         print('ambiguous date found!')
     return metadata
 
-def _parse_sounding_frequency(line, version = None):
-    if version == None:
-        v = 0
-    if version == 'CEMVN':
-        v = 1 
+def _parse_sounding_frequency(line):
+    """
+    parse sounding frequency. 
+    Note: LOW & HIGH are usually settings for the 
+    single beam in New Orleans
+    400kHz seems to be their multibeam.
+    """
     name = line.split('SOUNDING_FREQUENCY==')[-1].strip('\n')
     metadata = {'sounding_frequency' : name}
     return metadata
   
 def _parse_survey_type(line):
+    """
+    returns survey type
+    """
     name = line.split('SURVEY_TYPE==')[-1]
     name = name.strip('\n')
     metadata = {'text: survey_type' : name}
     return metadata
             
 def _parse_survey_crew(line):
+    """
+    returns survey crew
+    """
     name = line.split('SURVEY_CREW==')[-1]
     name = name.strip('\n')
     metadata = {'survey_crew' : name}
     return metadata 
         
 def _parse_sea_condition(line):
+    """
+    sea conditions
+    """
     name = line.split('SEA_CONDITION==')[-1]
     name = name.strip('\n')
     metadata = {'sea_condition' : name}
     return metadata
 
 def _parse_vessel_name(line):
-    name = line.split('SEA_CONDITION==')[-1]
+    name = line.split('VESSEL_NAME==')[-1]
     name = name.strip('\n')
-    metadata = {'survey_condition' : name}
+    metadata = {'vessel_name' : name}
     return metadata
 
 def _parse_LWRP_(line):
@@ -549,24 +572,17 @@ def _parse_sound_velocity(line):
     name = name.strip('\n')
     metadata = {'sound_velocity' : name}
 
-def _is_RTK(line, version = None):
-    if version == None:
-        v=0
-    if version == 'CEMVN':
-        pattern_coordinates = '[RTK]'#at least six digits# should be seven then . plus two digits
-        if _re.findall(pattern_coordinates, line) is not None:
-            return False
-        else:
-            return True
+def _is_RTK(line):
+    pattern_coordinates = '[RTK]'#at least six digits# should be seven then . plus two digits
+    if _re.findall(pattern_coordinates, line) is not None:
+        return False
+    else:
+        return True
         
-def _is_RTK_Tide(line, version = None):
-    if version == None:
-        v=0
-    if version == 'CEMVN':
-        if _re.findall('[VRS RTK TIDES]', line) is not None:
-            return False
-        else:
-            return True
+def _is_RTK_Tide(line):
+    if _re.findall('[VRS RTK TIDES]', line) is not None:
+        return False
+    else:
+        return True
 ##-----------------------------------------------------------------------------
-
         

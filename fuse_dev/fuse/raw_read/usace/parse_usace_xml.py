@@ -7,6 +7,9 @@ specifically to extract the metadata for building a bathymetric database,
 this collection of method attempt to both serve extraction of the meta data in
 a general sense, and also for specific S57 needs.
 
+J Kinney 
+update April 3, 2019
+
 """
 import re
 from xml.etree import ElementTree as et 
@@ -105,7 +108,6 @@ class XML_Meta(object):
                     'gts': 'http://www.isotc211.org/2005/gts',
                     'gsr': 'http://www.isotc211.org/2005/gsr',
                     }
-        version_HSMDB = {'HSMDB'}
         version_USACE_FGDC = {'USACE_FGDC'}
         if self.ns == version_1:
             return 1.0
@@ -117,14 +119,6 @@ class XML_Meta(object):
             print(version_USACE_FGDC)#:
             return 'USACE_FGDC'
             print('FGDC format not ISO, USACE example')
-        elif self.xml_tree.tag == 'HSMDB':
-            """
-            need to add if loop to check that its source is E-Hydro
-            self.source needs to be defined above first
-            """
-            print(version_HSMDB)#:
-            return 'HSMDB'
-            print('FGDC format not ISO, HSMDB example')
         else:
             return -1.0
             print('We do not have a template for this verion yet!')
@@ -154,20 +148,7 @@ class XML_Meta(object):
                    print(Metadataformat)
                    self.metadataformat = Metadataformat
             except:
-                print('unexpected issue with assumed USACE ISO 88591 FGDC format parsing')                        
-        elif version =='HSMDB':
-            self.source = {}
-            try:
-                my_etree_dict= self.convert_xml_to_dict()
-                self.source['SORDAT'] = my_etree_dict['SURVEY__DATE_SURVEY_END']
-                self.source['SUREND'] = my_etree_dict['SURVEY__DATE_SURVEY_END']
-                self.source['SURSTA'] = my_etree_dict['SURVEY__DATE_SURVEY_BEGIN']
-                self.source['DATUM'] =  my_etree_dict['SURVEY__VERTICAL_DATUM']
-                self.source['survey'] = my_etree_dict['SURVEY__NUMBER']
-                self.source['planam'] = my_etree_dict['PROJECT__PROJECT_NUMBER']
-                my_etree_dict['SURVEY_INSTRUMENT__TYPE']
-            except:
-                print('unexpected issue with HSMDB format parsing')     
+                print('unexpected issue with assumed USACE ISO 88591 FGDC format parsing')                          
         else:           
             version = float(self.version)            
             if version == 1.0:
@@ -343,15 +324,6 @@ class XML_Meta(object):
                 self._read_planam()
             if 'sensor' in self.source:
                 self._read_sensor_desc()
-        elif self.version == 'HSMDB':
-            for key in self.source.keys():
-                self.data[key]=self.source[key]
-            self.convert_dateformat_HSMDB()    
-            """
-            #converts format of SORDAT, SUREND & SURSTA
-            YYYYMMDD
-            populates self.data[]
-            """
             
     def get_s57_dict(self):
         """
@@ -480,13 +452,6 @@ class XML_Meta(object):
         else:
             self.data['SORDAT'] = tm_date
             
-    def convert_dateformat_HSMDB(self):
-        if self.version=='HSMDB':
-            self.datekeys=['SURSTA', 'SORDAT', 'SUREND']
-            for key in self.datekeys: 
-                if key in self.source:
-                    date1 =  parser.parse(self.source[key])
-                    self.data[key]=date1.strftime('%Y%m%d')
                 
     def _read_survey_authority(self):
         """ 
@@ -562,7 +527,7 @@ class XML_Meta(object):
             tme_date = None
             try:
                 parsed_date = parser.parse(text_end_date)
-                tme_date = parsed_date.strftime('%Y%m%d')#('%Y-%m-%dT%H:%M:%SZ')
+                tme_date = parsed_date.strftime('%Y%m%d')
             except Exception:
                 log.warning("unable to handle the survey end string: %s" % text_end_date)    
             if tme_date is None:
@@ -699,7 +664,6 @@ def check_firstline(meta_xml):
         xml_version = 'ISO-8859-1'        
     return xml_version#returns 'ISO-8859-1'
        
-
 #------------------------------------------------------------------------------
 xml_path_to_baseattribute = {
         'metadata/idinfo/citation/citeinfo/origin':'origin',
@@ -814,7 +778,6 @@ xml_path_to_baseattribute = {
         'metadata/metainfo/metc/cntinfo/cntorgp/cntper':'cntper',
         'metadata/metainfo/mettc':'mettc',
         }
-
 #------------------------------------------------------------------------------
 iso_xml_path_to_baseattribute = {
 		'metadata/idinfo/citation/citeinfo/origin':'origin',
@@ -868,235 +831,6 @@ iso_xml_path_to_baseattribute = {
         }
 #		'metadata/#text':'#text',
 #------------------------------------------------------------------------------
-
-xmlbasename_to_index1 = {
-        'origin':'0',
-        'pubdate':'1',
-        'title':'2',
-        'geoform':'3',
-        'pubplace':'4',
-        'publish':'5',
-        'onlink':'6',
-        'abstract':'7',
-        'purpose':'8',
-        'caldate':'9',
-        'current':'10',
-        'progress':'11',
-        'update':'12',
-        'westbc':'13',
-        'eastbc':'14',
-        'northbc':'15',
-        'southbc':'16',
-        'themekt':'17',
-        'themekey':'18',
-        'placekt':'19',
-        'placekey':'20',
-        'accconst':'21',
-        'useconst':'22',
-        'cntorg':'23',
-        'cntper':'24',
-        'cntpos':'25',
-        'addrtype':'26',
-        'address':'27',
-        'city':'28',
-        'state':'29',
-        'postal':'30',
-        'country':'31',
-        'cntvoice':'32',
-        'cntfax':'33',
-        'cntemail':'34',
-        'datacred':'35',
-        'native':'36',
-        'attraccr':'37',
-        'logic':'38',
-        'complete':'39',
-        'horizpar':'40',
-        'vertaccr':'41',
-        'procdesc':'42',
-        'procdate':'43',
-        'direct':'44',
-        'sdtstype':'45',
-        'ptvctcnt':'46',
-        'gridsysn':'47',
-        'spcszone':'48',
-        'stdparll':'49',
-        'longcm':'50',
-        'latprjo':'51',
-        'feast':'52',
-        'fnorth':'53',
-        'plance':'54',
-        'absres':'55',
-        'ordres':'56',
-        'plandu':'57',
-        'horizdn':'58',
-        'ellips':'59',
-        'semiaxis':'60',
-        'denflat':'61',
-        'enttypl':'62',
-        'enttypd':'63',
-        'enttypds':'64',
-        'attr':'65',
-        'eaover':'66',
-        'eadetcit':'67',
-        'cntorg':'68',
-        'cntper':'69',
-        'cntpos':'70',
-        'addrtype':'71',
-        'address':'72',
-        'city':'73',
-        'state':'74',
-        'postal':'75',
-        'country':'76',
-        'cntvoice':'77',
-        'cntfax':'78',
-        'cntemail':'79',
-        'distliab':'80',
-        'formname':'81',
-        'networkr':'82',
-        'fees':'83',
-        'metd':'84',
-        'cntper':'85',
-        'cntorg':'86',
-        'cntpos':'87',
-        'addrtype':'88',
-        'address':'89',
-        'city':'90',
-        'state':'91',
-        'postal':'92',
-        'country':'93',
-        'cntvoice':'94',
-        'cntfax':'95',
-        'cntemail':'96',
-        'metstdn':'97',
-        'metstdv':'98',
-        'pubtime':'101',
-        'theme':'102',
-        'ptcontac':'103',
-        'mapprojn':'104',
-        'sfctrmer':'105',
-        'longcm':'106',
-        'latprjo':'107',
-        'feast':'108',
-        'fnorth':'109',
-        'cntorg':'110',
-        'cntper':'111',
-        'mettc':'112',
-        }
-
-#------------------------------------------------------------------------------
-xml_path_to_index1 ={
-        'metadata/idinfo/citation/citeinfo/origin':'0',
-        'metadata/idinfo/citation/citeinfo/pubdate':'1',
-        'metadata/idinfo/citation/citeinfo/title':'2',
-        'metadata/idinfo/citation/citeinfo/geoform':'3',
-        'metadata/idinfo/citation/citeinfo/pubinfo/pubplace':'4',
-        'metadata/idinfo/citation/citeinfo/pubinfo/publish':'5',
-        'metadata/idinfo/citation/citeinfo/onlink':'6',
-        'metadata/idinfo/descript/abstract':'7',
-        'metadata/idinfo/descript/purpose':'8',
-        'metadata/idinfo/timeperd/timeinfo/sngdate/caldate':'9',
-        'metadata/idinfo/timeperd/current':'10',
-        'metadata/idinfo/status/progress':'11',
-        'metadata/idinfo/status/update':'12',
-        'metadata/idinfo/spdom/bounding/westbc':'13',
-        'metadata/idinfo/spdom/bounding/eastbc':'14',
-        'metadata/idinfo/spdom/bounding/northbc':'15',
-        'metadata/idinfo/spdom/bounding/southbc':'16',
-        'metadata/idinfo/keywords/theme/themekt':'17',
-        'metadata/idinfo/keywords/theme/themekey':'18',
-        'metadata/idinfo/keywords/place/placekt':'19',
-        'metadata/idinfo/keywords/place/placekey':'20',
-        'metadata/idinfo/accconst':'21',
-        'metadata/idinfo/useconst':'22',
-        'metadata/idinfo/ptcontac/cntinfo/cntorgp/cntorg':'23',
-        'metadata/idinfo/ptcontac/cntinfo/cntorgp/cntper':'24',
-        'metadata/idinfo/ptcontac/cntinfo/cntpos':'25',
-        'metadata/idinfo/ptcontac/cntinfo/cntaddr/addrtype':'26',
-        'metadata/idinfo/ptcontac/cntinfo/cntaddr/address':'27',
-        'metadata/idinfo/ptcontac/cntinfo/cntaddr/city':'28',
-        'metadata/idinfo/ptcontac/cntinfo/cntaddr/state':'29',
-        'metadata/idinfo/ptcontac/cntinfo/cntaddr/postal':'30',
-        'metadata/idinfo/ptcontac/cntinfo/cntaddr/country':'31',
-        'metadata/idinfo/ptcontac/cntinfo/cntvoice':'32',
-        'metadata/idinfo/ptcontac/cntinfo/cntfax':'33',
-        'metadata/idinfo/ptcontac/cntinfo/cntemail':'34',
-        'metadata/idinfo/datacred':'35',
-        'metadata/idinfo/native':'36',
-        'metadata/dataqual/attracc/attraccr':'37',
-        'metadata/dataqual/logic':'38',
-        'metadata/dataqual/complete':'39',
-        'metadata/dataqual/posacc/horizpa/horizpar':'40',
-        'metadata/dataqual/posacc/vertacc/vertaccr':'41',
-        'metadata/dataqual/lineage/procstep/procdesc':'42',
-        'metadata/dataqual/lineage/procstep/procdate':'43',
-        'metadata/spdoinfo/direct':'44',
-        'metadata/spdoinfo/ptvctinf/sdtsterm/sdtstype':'45',
-        'metadata/spdoinfo/ptvctinf/sdtsterm/ptvctcnt':'46',
-        'metadata/spref/horizsys/planar/gridsys/gridsysn':'47',
-        'metadata/spref/horizsys/planar/gridsys/spcs/spcszone':'48',
-        'metadata/spref/horizsys/planar/gridsys/spcs/lambertc/stdparll':'49',
-        'metadata/spref/horizsys/planar/gridsys/spcs/lambertc/longcm':'50',
-        'metadata/spref/horizsys/planar/gridsys/spcs/lambertc/latprjo':'51',
-        'metadata/spref/horizsys/planar/gridsys/spcs/lambertc/feast':'52',
-        'metadata/spref/horizsys/planar/gridsys/spcs/lambertc/fnorth':'53',
-        'metadata/spref/horizsys/planar/planci/plance':'54',
-        'metadata/spref/horizsys/planar/planci/coordrep/absres':'55',
-        'metadata/spref/horizsys/planar/planci/coordrep/ordres':'56',
-        'metadata/spref/horizsys/planar/planci/plandu':'57',
-        'metadata/spref/horizsys/geodetic/horizdn':'58',
-        'metadata/spref/horizsys/geodetic/ellips':'59',
-        'metadata/spref/horizsys/geodetic/semiaxis':'60',
-        'metadata/spref/horizsys/geodetic/denflat':'61',
-        'metadata/eainfo/detailed/enttyp/enttypl':'62',
-        'metadata/eainfo/detailed/enttyp/enttypd':'63',
-        'metadata/eainfo/detailed/enttyp/enttypds':'64',
-        'metadata/eainfo/detailed/attr':'65',
-        'metadata/eainfo/overview/eaover':'66',
-        'metadata/eainfo/overview/eadetcit':'67',
-        'metadata/distinfo/distrib/cntinfo/cntorgp/cntorg':'68',
-        'metadata/distinfo/distrib/cntinfo/cntorgp/cntper':'69',
-        'metadata/distinfo/distrib/cntinfo/cntpos':'70',
-        'metadata/distinfo/distrib/cntinfo/cntaddr/addrtype':'71',
-        'metadata/distinfo/distrib/cntinfo/cntaddr/address':'72',
-        'metadata/distinfo/distrib/cntinfo/cntaddr/city':'73',
-        'metadata/distinfo/distrib/cntinfo/cntaddr/state':'74',
-        'metadata/distinfo/distrib/cntinfo/cntaddr/postal':'75',
-        'metadata/distinfo/distrib/cntinfo/cntaddr/country':'76',
-        'metadata/distinfo/distrib/cntinfo/cntvoice':'77',
-        'metadata/distinfo/distrib/cntinfo/cntfax':'78',
-        'metadata/distinfo/distrib/cntinfo/cntemail':'79',
-        'metadata/distinfo/distliab':'80',
-        'metadata/distinfo/stdorder/digform/digtinfo/formname':'81',
-        'metadata/distinfo/stdorder/digform/digtopt/onlinopt/computer/networka/networkr':'82',
-        'metadata/distinfo/stdorder/fees':'83',
-        'metadata/metainfo/metd':'84',
-        'metadata/metainfo/metc/cntinfo/cntperp/cntper':'85',
-        'metadata/metainfo/metc/cntinfo/cntperp/cntorg':'86',
-        'metadata/metainfo/metc/cntinfo/cntpos':'87',
-        'metadata/metainfo/metc/cntinfo/cntaddr/addrtype':'88',
-        'metadata/metainfo/metc/cntinfo/cntaddr/address':'89',
-        'metadata/metainfo/metc/cntinfo/cntaddr/city':'90',
-        'metadata/metainfo/metc/cntinfo/cntaddr/state':'91',
-        'metadata/metainfo/metc/cntinfo/cntaddr/postal':'92',
-        'metadata/metainfo/metc/cntinfo/cntaddr/country':'93',
-        'metadata/metainfo/metc/cntinfo/cntvoice':'94',
-        'metadata/metainfo/metc/cntinfo/cntfax':'95',
-        'metadata/metainfo/metc/cntinfo/cntemail':'96',
-        'metadata/metainfo/metstdn':'97',
-        'metadata/metainfo/metstdv':'98',#adding ones also found in Mobile District
-        'metadata/idinfo/citation/citeinfo/pubtime':'101',
-        'metadata/idinfo/keywords/theme':'102',
-        'metadata/idinfo/ptcontac':'103',
-        'metadata/spref/horizsys/planar/mapproj/mapprojn':'104',
-        'metadata/spref/horizsys/planar/mapproj/transmer/sfctrmer':'105',
-        'metadata/spref/horizsys/planar/mapproj/transmer/longcm':'106',
-        'metadata/spref/horizsys/planar/mapproj/transmer/latprjo':'107',
-        'metadata/spref/horizsys/planar/mapproj/transmer/feast':'108',
-        'metadata/spref/horizsys/planar/mapproj/transmer/fnorth':'109',
-        'metadata/metainfo/metc/cntinfo/cntorgp/cntorg':'110',
-        'metadata/metainfo/metc/cntinfo/cntorgp/cntper':'111',
-        'metadata/metainfo/mettc':'112',
-        }
 #------------------------------------------------------------------------------
 
 def parsing_xml_FGDC_attributes_s57(meta_xml):
@@ -1164,18 +898,15 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 elif line.find('Multi Beam Soundings') >= 0:
                    m['TECSOU']= '3'#'multi beam'
                 else:
-                   m['TECSOU']= ''#'multi beam'/'single beam' etc.
-                    
+                   m['TECSOU']= ''#'multi beam'/'single beam' etc.                    
             if  line.find('Horizontal Coordinate System:') >= 0:
                 name = line.split('Horizontal Coordinate System:')[-1]
-                m['horizontal_datum_i'] = name
-    
+                m['horizontal_datum_i'] = name    
             if  line.find('Coordinate System (SPCS)') >= 0:
                 name = line.split('Coordinate System (SPCS),')[-1]
                 name = name.split('. Distance units in')
                 m['SPCS'] = name[0]
-                m['Horizontal_Units'] = name[1]
-                                  
+                m['Horizontal_Units'] = name[1]                                  
             if  line.find('Vertical Datum:') >= 0:
                 name = line.split('Vertical Datum:')[-1]
                 m['Vertical Datum Description']= name
@@ -1225,7 +956,11 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 m['VERTDAT'] = ''
     return m
                     
-def convert_meta_to_input(m):                   
+def convert_meta_to_input(m):
+    """
+    m = convert_meta_to_input(m)
+    maps dictionary keys to new keys
+    """                   
     m['from_vert_datum'] = m['Vertical Datum Description']
     #m['script: from_vert_units']
     m['from_horiz_datum'] = m['horizontal_datum_i'] + ',' + m['SPCS']
@@ -1237,6 +972,6 @@ def convert_meta_to_input(m):
     m['script: complete_coverage'] = m['flcvrg']
     m['script: complete_bathymetry'] = m['flbath']
     return m
-            
 
 #------------------------------------------------------------------------------
+    
