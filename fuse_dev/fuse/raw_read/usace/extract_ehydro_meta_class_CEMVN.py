@@ -19,7 +19,6 @@ import re as _re
 
 _ussft2m = 0.30480060960121924 # US survey feet to meters
 
-import pandas as pd
 import numpy as _np 
 try:
     import parse_usace_xml as p_usace_xml
@@ -28,6 +27,10 @@ except:
 ##-----------------------------------------------------------------------------
 
 class read_raw_cemvn:
+    """
+    This class passes back bathymetry
+    & a metadata dictionary from the e-Hydro files
+    """
     
     def read_metadata(self, infilename):
         """
@@ -36,7 +39,6 @@ class read_raw_cemvn:
         """
         version='CEMVN'
         self.version = version
-        #Version_Info = use_extract_meta_CEMVN(self)
         return retrieve_meta_for_Ehydro_out_onefile(infilename)#return retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)
     
     def read_bathymetry_dat(self, infilename):
@@ -88,7 +90,6 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     #next if pull the subset of the table in the dataframe related to the list of files passed to it.
     merged_meta = {}
     merge2 = {}      
-    nn = pd.DataFrame()
     f = filename
     basename = os.path.basename(f)
     ex_string1 = '*_A.xyz'
@@ -141,23 +142,10 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
                     combined_row[key] = meta[key] + ' , ' + meta_xml[key]
             else:
                 subset_no_overlap[key] = meta[key]
-    mydict = meta_xml
-    for i0, key1 in enumerate(mydict):#for key1 in mydict:
-        key_fromdict=key1
-        #use common numeric index i0
-        if key_fromdict in combined_row:
-            nn.loc[f, key_fromdict] = combined_row[key_fromdict]#[row, column]
-        else:
-            nn.loc[f, key_fromdict] = mydict[key_fromdict]#[row, column]
-    for i0, key1 in enumerate(subset_no_overlap):
-        key_fromdict=key1
-        nn.loc[f, key_fromdict] = subset_row[key_fromdict]
-    for i0, key1 in enumerate(meta_from_ehydro):
-        key_fromdict=key1
-        nn.loc[f, key_fromdict] = meta_from_ehydro[key_fromdict]
-    merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row } 
-    merged_meta = { **meta, **meta_from_ehydro,**meta_xml }
-    return merged_meta, nn
+    merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row } #this one excluded 'unknown' keys, and 
+    #in merging sources from the text file and xml it will show any values that do not match as a list.
+    merged_meta = { **meta, **meta_from_ehydro,**meta_xml }#this method overwrites
+    return merged_meta
     
 ###---------------------------------------------------------------------------- 
 class Extract_Txt(object):
@@ -551,8 +539,8 @@ def _parse_LWRP_(line):
         metadata = {'LWRP' : ''}
     else:
         metadata = {'LWRP' : name}
-        metadata = {'script: from_vert_datum':name}
-        metadata = {'script: from_vert_key' : 'LWRP'}
+        metadata = {'from_vert_datum':name}
+        metadata = {'from_vert_key' : 'LWRP'}
         print('Data in LWRP')
     return metadata
 

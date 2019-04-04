@@ -64,11 +64,11 @@ def extract_s57_dict(xmlfilename):
 class XML_Meta(object):
     """ 
     Helper class to manage xml metadata. This class takes an xml string and
-    parses the string based on a dictionary (named 'source') with keys that
+    parses the string based on a dictionary with keys that
     name the item to extract and the tree path string to find the data.
     Different versions of the source dictionary can be set based on the version
-    of the metadata being parsed.  All extracted data is placed in a dictionary
-    (named 'data').
+    of the metadata being parsed.  All extracted metadata is placed in a 
+    dictionary (my_etree_dict1)
     """
 
     def __init__(self, meta_xml, version = '', filename = ''):
@@ -167,8 +167,8 @@ class XML_Meta(object):
    
     def convert_xml_to_dict(self):
         """
-        This version exports out multiple entries into a comma delimited list within the dictionary
-        it is just appended within the dictionary
+        This version exports out multiple entries into a comma delimited list
+        within the dictionary it is just appended within the dictionary
         The method may be modified if needed.
         This approach is just going through the first few layers of the etree
         and pulling them out, it is not for more deeply nested files
@@ -200,12 +200,11 @@ class XML_Meta(object):
     def convert_xml_to_dict2(self):
         """
         This version exports out  entries into a dictionary using the dictionary
-        xml_path_to_baseattribute
-        defined below for USACE FGDC data
+        xml_path_to_baseattribute for USACE FGDC data (as opposed to ISO format)
         The method may be modified if needed.
         
         my_etree_dict1={}
-
+        Example:
         for key in xml_path_to_baseattribute:
             my_etree_dict1[xml_path_to_baseattribute[key]] = self.xml_tree.findall('./' + key[8:])[0].text
         self.my_etree_dict1 = my_etree_dict1
@@ -225,12 +224,11 @@ class XML_Meta(object):
     def convert_xml_to_dict_ISO_FGDC(self):
         """
         This version exports out entries into a dictionary using the dictionary
-        iso_xml_path_to_baseattribute
-        defined below for USACE ISO FGDC data
+        'iso_xml_path_to_baseattribute' for USACE ISO FGDC data
         The method may be modified if needed.
         
         my_etree_dict1={}
-
+        Example:
         for key in xml_path_to_baseattribute:
             my_etree_dict1[iso_xml_path_to_baseattribute[key]] = self.xml_tree.findall('./' + key[8:])[0].text
         self.my_etree_dict1 = my_etree_dict1
@@ -255,9 +253,8 @@ class XML_Meta(object):
             if self.xml_tree.findall('./'+ key[len_root_name_to_remove:]):
                 if isinstance(self.xml_tree.findall('./'+ key[len_root_name_to_remove:]), list) == True: #check if list                                    
                     if len(self.xml_tree.find('./'+ key[len_root_name_to_remove:]))>0:
-                        if self.xml_tree.find('./'+ key[len_root_name_to_remove:]) is None:
+                        if self.xml_tree.find('./'+ key[len_root_name_to_remove:]) is None:#Checks for NoneType object ('None')
                              my_etree_dict1['script: from_vert_key'] = ''
-                             #Checks for NoneType object ('None')
                         else:
                             my_etree_dict1[vertdatum[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text
                             my_etree_dict1['from_vert_key'] = my_etree_dict1[vertdatum[key]]
@@ -285,8 +282,7 @@ class XML_Meta(object):
                 print(si_key, si_value)
                 try:
                     if Survey_Instruments:
-                        if bool(Survey_Instruments.get(si_key)) == False:
-                            #if this key is not populated for the dictionary yet, then populate it
+                        if bool(Survey_Instruments.get(si_key)) == False:#if this key is not populated for the dictionary yet, then populate it
                             Survey_Instruments[si_key] = si_value
                         else:#if this key already exists, then append to it
                             SI = Survey_Instruments[si_key]
@@ -498,7 +494,7 @@ class XML_Meta(object):
             tms_date = None
             try:
                 parsed_date = parser.parse(text_start_date)
-                tms_date = parsed_date.strftime('%Y%m%d')#('%Y-%m-%dT%H:%M:%SZ')
+                tms_date = parsed_date.strftime('%Y%m%d')#S-57/S-101 date format
             except Exception:
                 log.warning("unable to handle the survey start string: %s" % text_start_date)
     
@@ -658,6 +654,9 @@ def parse_namespace(meta_str):
 
 #------------------------------------------------------------------------------
 def check_firstline(meta_xml):
+    """
+    Check the first line of the xml for version encoding used on E-Hydro
+    """
     xml_version = ''
     if meta_xml.startswith('<?xml version="1.0" encoding="ISO-8859-1"?>\n'):
         print('ISO-8859-1 xml version')
@@ -831,12 +830,242 @@ iso_xml_path_to_baseattribute = {
         }
 #		'metadata/#text':'#text',
 #------------------------------------------------------------------------------
+def convert_tofips(SOURCEPROJECTION_dict, SPCS):
+    """
+    SOURCEPROJECTION or SPCS
+    FIPS = SOURCEPROJECTION_dict[SPCS]##state plane coordinate system 
+    """
+    FIPS = SOURCEPROJECTION_dict[SPCS]
+    return FIPS
+
+
+SOURCEPROJECTION_dict = {}
+SOURCEPROJECTION_dict = {
+     'Alabama East' : '0101',
+     'Alabama West' : '0102',
+     'Alabama_West' : '0102',
+     'Alabama East Zone' : '0101',
+     'Alabama West Zone' : '0102',
+     'Alabama_West Zone' : '0102',
+     'Alaska 1' : '5001',
+     'Alaska 2' : '5002',
+     'Alaska 3' : '5003',
+     'Alaska 4' : '5004',
+     'Alaska 5' : '5005',
+     'Alaska 6' : '5006',
+     'Alaska 7' : '5007',
+     'Alaska 8' : '5008',
+     'Alaska 9' : '5009',
+     'Alaska 10' : '5010',
+     'Alaska 1 Zone' : '5001',
+     'Alaska 2 Zone' : '5002',
+     'Alaska 3 Zone' : '5003',
+     'Alaska 4 Zone' : '5004',
+     'Alaska 5 Zone' : '5005',
+     'Alaska 6 Zone' : '5006',
+     'Alaska 7 Zone' : '5007',
+     'Alaska 8 Zone' : '5008',
+     'Alaska 9 Zone' : '5009',
+     'Alaska 10 Zone' : '5010',
+     'California I' : '0401',
+     'California II' : '0402',
+     'California III' : '0403',
+     'California IV' : '0404',
+     'California V' : '0405',
+     'California VI' : '0406',
+     'California I Zone' : '0401',
+     'California II Zone' : '0402',
+     'California III Zone' : '0403',
+     'California IV Zone' : '0404',
+     'California V Zone' : '0405',
+     'California VI Zone' : '0406',
+     'Connecticut' : '0600',
+     'Connecticut Zone' : '0600',
+     'Delaware' : '0700',
+     'Delaware Zone' : '0700',
+     'Florida East' : '0901',
+     'Florida North' : '0903',
+     'Florida West' : '0902',
+     'Florida_North' : '0903',
+     'Florida East  Zone' : '0901',
+     'Florida North Zone' : '0903',
+     'Florida West Zone' : '0902',
+     'Florida_North Zone' : '0903',
+     'Georgia East' : '1001',
+     'Georgia West' : '1002',
+     'Georgia East  Zone' : '1001',
+     'Georgia West  Zone' : '1002',
+     'Hawaii 1' : '5101',
+     'Hawaii 2' : '5102',
+     'Hawaii 3' : '5103',
+     'Hawaii 4' : '5104',
+     'Hawaii 5' : '5105',
+     'Hawaii 1 Zone' : '5101',
+     'Hawaii 2 Zone' : '5102',
+     'Hawaii 3 Zone' : '5103',
+     'Hawaii 4 Zone' : '5104',
+     'Hawaii 5 Zone' : '5105',
+     'Illinois East' : '1201',
+     'Illinois West' : '1202',
+     'Illinois_East' : '1201',
+     'Illinois_West' : '1202',
+     'Illinois East Zone' : '1201',
+     'Illinois West Zone' : '1202',
+     'Illinois_East Zone' : '1201',
+     'Illinois_West Zone' : '1202',     
+     'Indiana East' : '1301',
+     'Indiana West' : '1302',
+     'Indiana East Zone' : '1301',
+     'Indiana West Zone' : '1302',
+     'Iowa_North' : '1401',
+     'Iowa_South' : '1402',
+     'Iowa_North Zone' : '1401',
+     'Iowa_South Zone' : '1402',
+     'Kentucky North' : '1601',
+     'Kentucky South' : '1602',
+     'Kentucky North Zone' : '1601',
+     'Kentucky South Zone' : '1602',
+     'Louisiana North' : '1701',
+     'Louisiana South' : '1702',
+     'Louisiana North Zone' : '1701',
+     'Louisiana South Zone' : '1702',
+     'Maine East' : '1801',
+     'Maine West' : '1802',
+     'Maine East Zone' : '1801',
+     'Maine West Zone' : '1802',
+     'Maryland' : '1900',
+     'Maryland Zone' : '1900',
+     'Massachusetts Island' : '2002',
+     'Massachusetts Mainland' : '2001',
+     'Massachusetts Island Zone' : '2002',
+     'Massachusetts Mainland Zone' : '2001',
+     'Michigan North' : '2111',
+     'Michigan Central' : '2112',
+     'Michigan South' : '2113',
+     'Michigan North Zone' : '2111',
+     'Michigan Central Zone' : '2112',
+     'Michigan South Zone' : '2113',     
+     'Minnesota_Central' : '2202',
+     'Minnesota Central' : '2202',
+     'Minnesota_North' : '2201',
+     'Minnesota North' : '2201',
+     'Minnesota_South' : '2203',
+     'Minnesota South' : '2203',
+     'Minnesota_Central Zone' : '2202',
+     'Minnesota Central Zone' : '2202',
+     'Minnesota_North Zone' : '2201',
+     'Minnesota North Zone' : '2201',
+     'Minnesota_South Zone' : '2203',
+     'Minnesota South Zone' : '2203',     
+     'Mississippi East' : '2301',
+     'Mississippi_East' : '2301',
+     'Mississippi_West' : '2302',
+     'Mississippi West' : '2302',     
+     'Mississippi East Zone' : '2301',
+     'Mississippi_East Zone' : '2301',
+     'Mississippi_West Zone' : '2302',
+     'Mississippi West Zone' : '2302',     
+     'Missouri West' : '2403',
+     'Missouri Central' : '2402',
+     'Missouri East' : '2401',
+     'Missouri_East' : '2401',
+     'Missouri West Zone' : '2403',
+     'Missouri Central Zone' : '2402',
+     'Missouri East Zone' : '2401',
+     'Missouri_East Zone' : '2401',     
+     'New Hampshire' : '2800',
+     'New Hampshire Zone' : '2800',
+     'New Jersey' : '2900',
+     'New Jersey Zone' : '2900',
+     'New York Long Island' : '3104',
+     'New York Long Island Zone' : '3104',
+     'New_Jersey' : '2900',
+     'New_Jersey Zone' : '2900',
+     'New York Central' : '3102',
+     'New York West' : '3103',
+     'New_York_East' : '3101',
+     'New York East' : '3101',
+     'New_York_Long_Island' : '3104',
+     'New York Central Zone' : '3102',
+     'New York West Zone' : '3103',
+     'New_York_East Zone' : '3101',
+     'New York East Zone' : '3101',
+     'New_York_Long_Island Zone' : '3104',     
+     'North Carolina' : '3200',
+     'North Carolina Zone' : '3200',    
+     'Ohio North' : '3401',
+     'Ohio_South' : '3402',
+     'Ohio North Zone' : '3401',
+     'Ohio_South Zone' : '3402',     
+     'Oregon North' : '3601',
+     'Oregon South' : '3602',
+     'Oregon North Zone' : '3601',
+     'Oregon South Zone' : '3602',     
+     'Puerto Rico Virgin Islands' : '5200',
+     'Puerto Rico Virgin Islands Zone' : '5200',
+     'Rhode Island' : '3800',
+     'Rhode Island Zone' : '3800',          
+     'South Carolina' : '3900',
+     'South Carolina Zone' : '3900',          
+     'Texas North' : '4201',
+     'Texas North Central' : '4202',
+     'Texas Central' : '4203',
+     'Texas South' : '4205',
+     'Texas South Central' : '4204',
+     'Texas North Zone' : '4201',
+     'Texas North Central Zone' : '4202',
+     'Texas Central Zone' : '4203',
+     'Texas South Zone' : '4205',
+     'Texas South Central Zone' : '4204',     
+     'Virginia North' : '4501',
+     'Virginia South' : '4502',
+     'Virginia North Zone' : '4501',
+     'Virginia South Zone' : '4502',
+     'Washington North' : '4601',
+     'Washington South' : '4602',
+     'Washington North Zone' : '4601',
+     'Washington South Zone' : '4602',     
+     'West_Virginia_North' : '4701',
+     'West_Virginia_South' : '4702',
+     'West_Virginia_North Zone' : '4701',
+     'West_Virginia_South Zone' : '4702',     
+     'Wisconsin Central' : '4802',
+     'Wisconsin North' : '4801',
+     'Wisconsin South' : '4803',     
+     'Wisconsin Central Zone' : '4802',
+     'Wisconsin North Zone' : '4801',
+     'Wisconsin South Zone' : '4803'}
 #------------------------------------------------------------------------------
 
 def parsing_xml_FGDC_attributes_s57(meta_xml):
     """
     #PARSING XML attributes
-    'Survey Type' = themekey.find('Condition Survey')
+   
+    Within the abstact line pull out information on TECSOU, VERDAT, Horizontal
+    Coordinate System, State Plane Coordinate System, Horizonatal units
+    
+    
+    abstract = meta_xml['abstract']        
+    if abstract.find('Survey Type: Single Beam Soundings') >= 0:
+       TECSOU= 'single beam'
+       
+    -> 1= TECSOU, | abstract.find('Vertical Datum:) 
+    # later step assign (NO)=1, 1= f_dict. 1= f_lstd, 9999=f_size, 1 =flbath, 1=flcvrg for TECSOU 1
+    -> find(Mean Lower Low Water) 
+    ->(pass to function) 
+    -> VERTDAT |
+     Horizontal 
+     abstract.find('State Plane Coordinate System (SPCS),
+    
+    
+    Horizontal Units are also found within plandu:
+        
+    if m['Horizontal_Units'] == '':
+        if  meta_xml['plandu'] == 'Foot_US':   
+            #plandu = #horizontal units
+            m['Horizontal_Units']='U.S. Survey Feet'
+    
+
     
     #QC_checks
     #if expected results found ok, if not trigger more QC:
@@ -847,12 +1076,12 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         print('expected')
     else:
         print('double check horizontal reference system')
-    fipstr = spcszone
+    fipstr = spcszone #spczone was found to be the same as Oregon's in CEMVN
+    copied from the template example
     #QC check against FIPS from table
     
-    if plandu == 'Foot_US':
-        horiz_units = plandu      
-    #plandu = #horizontal units    
+    'Survey Type' = themekey.find('Condition Survey')
+            
     if horizdn == 'D_North_American_1983':
         horizontal_datum = horizdn
     if ellips =='GRS_1980':
@@ -864,7 +1093,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     elif horizpar.find('DGPS, 1 Meter') == True:
         horiz_uncert='1'# (POSACC)    
     if vertaccr.find('Bar Checked to 0.1 foot') == True:
-        vert_unc
+        vert_unc = 
                 
     if procdesc.find():
     procdesc
@@ -873,17 +1102,11 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
          if =='Odom MKIII echosounder':
              'single beam'
              
-   abstract = meta_xml['abstract']        
-   if abstract.find('Survey Type: Single Beam Soundings') >= 0:
-       TECSOU= 'single beam'
-       
-    -> 1= TECSOU, (NO)=1, 1= f_dict. 1= f_lstd, 9999=f_size, 1 =flbath, 1=flcvrg | abstract.find('Vertical Datum:) 
-    -> find(Mean Lower Low Water) 
-    ->(pass to function) 
-    -> VERTDAT | abstract.find('State Plane Coordinate System (SPCS),
     """
     #------------------------------------------------------------------------------
-    m={}    
+
+    m={}
+    m['horiz_units']=''
     abstract = meta_xml['abstract']
     lines = abstract.split('\n')
     for line in lines:
@@ -901,11 +1124,13 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                    m['TECSOU']= ''#'multi beam'/'single beam' etc.                    
             if  line.find('Horizontal Coordinate System:') >= 0:
                 name = line.split('Horizontal Coordinate System:')[-1]
-                m['horizontal_datum_i'] = name    
+                m['horizontal_datum_i'] = name
             if  line.find('Coordinate System (SPCS)') >= 0:
-                name = line.split('Coordinate System (SPCS),')[-1]
-                name = name.split('. Distance units in')
-                m['SPCS'] = name[0]
+                name = line.split('Coordinate System (SPCS), ')[-1]
+                name = name.split('. Distance units in ')
+                m['SPCS'] = name[0]#written description of state plane coordinate system
+                if len(m['SPCS']) > 0:
+                    m['FIPS'] = convert_tofips(SOURCEPROJECTION_dict, m['SPCS'])#conversion to SPCS/ FIPS code using a dictionary
                 m['Horizontal_Units'] = name[1]                                  
             if  line.find('Vertical Datum:') >= 0:
                 name = line.split('Vertical Datum:')[-1]
@@ -916,14 +1141,14 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                     m['VERTDAT'] = 'MLLW'
                 elif name.find('Values are based on the National Geodetic Vertical Datum (NGVD) of 1929') >=0:#CESAM
                     m['VERTDAT'] = 'NGVD29'
-                elif abstract.find('LWRP') >= 0:
+                elif name.find('LWRP') >= 0:
                     m['VERTDAT'] = 'LWRP'
-                elif abstract.find('Low Water Reference Plane 2007 (LWRP07)') >= 0:
+                elif name.find('Low Water Reference Plane 2007 (LWRP07)') >= 0:
                     m['VERTDAT'] = 'LWRP'
-                elif abstract.find('MLG') >= 0:
+                elif name.find('MLG') >= 0:
                     m['VERTDAT'] = 'MLG'
                     print(name)
-                elif abstract.find('depths below National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
+                elif name.find('depths below National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
                     m['VERTDAT'] = 'NGVD29'
                 if name.find('Soundings are shown in feet') >= 0:
                     m['script: from_vert_units'] = 'US Survey Foot'
@@ -938,7 +1163,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
             if abstract.find('Vertical Datum:') >= 0:
                 if abstract.find('Soundings are shown in feet and indicate depths below Mean Lower Low Water') >= 0:
                     m['VERTDAT'] = 'MLLW'
-                elif name.find('Soundings are shown in feet and are referenced to Mean Lower Low Water') >= 0:#CESAM
+                elif abstract.find('Soundings are shown in feet and are referenced to Mean Lower Low Water') >= 0:#CESAM
                     m['VERTDAT'] = 'MLLW'                    
                 elif abstract.find('LWRP') >= 0:
                     m['VERTDAT'] = 'LWRP'
@@ -947,13 +1172,16 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 elif abstract.find('MLG') >= 0:
                     m['VERTDAT'] = 'MLG'
                     print(abstract)
-                elif name.find('Values are based on the National Geodetic Vertical Datum (NGVD) of 1929') >=0:#CESAM
+                elif abstract.find('Values are based on the National Geodetic Vertical Datum (NGVD) of 1929') >=0:#CESAM
                     m['VERTDAT'] = 'NGVD29'
                 elif abstract.find('depths below National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
                     m['VERTDAT'] = 'NGVD29'
                     print(abstract)
             else:
                 m['VERTDAT'] = ''
+    if m['Horizontal_Units'] == '':
+        if  meta_xml['plandu'] == 'Foot_US': #plandu = #horizontal units
+            m['Horizontal_Units']='U.S. Survey Feet'
     return m
                     
 def convert_meta_to_input(m):
@@ -962,16 +1190,25 @@ def convert_meta_to_input(m):
     maps dictionary keys to new keys
     """                   
     m['from_vert_datum'] = m['Vertical Datum Description']
-    #m['script: from_vert_units']
+    #m['script: from_vert_units'] = m['from_vert_units']#needs to be added
     m['from_horiz_datum'] = m['horizontal_datum_i'] + ',' + m['SPCS']
     m['from_horiz_units'] = m['Horizontal_Units']#may need to enforce some kind of uniform spelling etc. here
+    m['from_vert_key'] = m['VERTDAT']
     m['script: from_vert_key'] = m['VERTDAT']
-    m['script: feat_size'] = m['f_size']
-    m['script: feat_detect'] = m['f_dict'] 
-    m['script: feat_least_depth'] =m['f_lstd']
-    m['script: complete_coverage'] = m['flcvrg']
-    m['script: complete_bathymetry'] = m['flbath']
+    m['from_fips'] = m['FIPS']
     return m
 
+def convert_meta_to_input_coverage(m):
+    m['feat_size'] = m['f_size']
+    m['script: feat_size'] = m['f_size']
+    m['feat_detect'] = m['f_dict'] 
+    m['script: feat_detect'] = m['f_dict'] 
+    m['script: feat_least_depth'] =m['f_lstd']
+    m['feat_least_depth'] =m['f_lstd']
+    m['script: complete_coverage'] = m['flcvrg']
+    m['complete_coverage'] = m['flcvrg']
+    m['script: complete_bathymetry'] = m['flbath']
+    m['complete_bathymetry'] = m['flbath']
+    return m
 #------------------------------------------------------------------------------
     
