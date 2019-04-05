@@ -75,7 +75,7 @@ class XML_Meta(object):
         """
         Provided an xml string for parsing, a tree will be created and the
         name speace parsed from the second line.  Values are then extracted
-        based on the source dictionary.  If this dictionary
+        based on the source dictionary.
         """
         self.filename = filename
         self.xml_tree = et.fromstring(meta_xml)
