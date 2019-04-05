@@ -218,6 +218,17 @@ class XML_Meta(object):
                 elif len(self.xml_tree.findall('./' + key[len_root_name_to_remove:]))>0:
                     my_etree_dict1[xml_path_to_baseattribute[key]] = self.xml_tree.findall('./' + key[len_root_name_to_remove:])[0].text
             #editing path to add ./ and then remove root name ('metadata'), the first 8 characters in this case.
+        for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
+            #pulling in Z units from attrs
+            if x.text == 'Z_depth':
+                my_etree_dict1['Z_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
+                print(self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text)
+                if my_etree_dict1['Z_units'] == 'usSurveyFoot':
+                    my_etree_dict1['from_vert_units'] = 'US Survey Foot'
+        for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
+            if x.text == 'Z_use':
+                my_etree_dict1['Z_use_def'] = self.xml_tree.find('./eainfo/detailed/attr/attrdef').text
+                my_etree_dict1['Z_use_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
         self.my_etree_dict1 = my_etree_dict1
         return my_etree_dict1
     
@@ -1131,7 +1142,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 m['SPCS'] = name[0]#written description of state plane coordinate system
                 if len(m['SPCS']) > 0:
                     m['FIPS'] = convert_tofips(SOURCEPROJECTION_dict, m['SPCS'])#conversion to SPCS/ FIPS code using a dictionary
-                m['Horizontal_Units'] = name[1]                                  
+                m['Horizontal_Units'] = name[1].rstrip('.')                                  
             if  line.find('Vertical Datum:') >= 0:
                 name = line.split('Vertical Datum:')[-1]
                 m['Vertical Datum Description']= name
@@ -1182,6 +1193,12 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     if m['Horizontal_Units'] == '':
         if  meta_xml['plandu'] == 'Foot_US': #plandu = #horizontal units
             m['Horizontal_Units']='U.S. Survey Feet'
+    horizpar = meta_xml['horizpar']
+    if horizpar.find('DGPS, 1 Meter') == True:        
+        m['horiz_uncert']='1'# (POSACC) DGPS, 1 Meter
+    vertaccr = meta_xml['vertaccr']
+    if vertaccr.find('Expected values 0.5 -1.0 Foot') == True:
+        m['vert_acc'] = '0.3'# 1 ft =   0.30480060960121924 m 
     return m
                     
 def convert_meta_to_input(m):
@@ -1198,17 +1215,7 @@ def convert_meta_to_input(m):
     m['from_fips'] = m['FIPS']
     return m
 
-def convert_meta_to_input_coverage(m):
-    m['feat_size'] = m['f_size']
-    m['script: feat_size'] = m['f_size']
-    m['feat_detect'] = m['f_dict'] 
-    m['script: feat_detect'] = m['f_dict'] 
-    m['script: feat_least_depth'] =m['f_lstd']
-    m['feat_least_depth'] =m['f_lstd']
-    m['script: complete_coverage'] = m['flcvrg']
-    m['complete_coverage'] = m['flcvrg']
-    m['script: complete_bathymetry'] = m['flbath']
-    m['complete_bathymetry'] = m['flbath']
-    return m
+
 #------------------------------------------------------------------------------
-    
+
+#------------------------------------------------------------------------------    

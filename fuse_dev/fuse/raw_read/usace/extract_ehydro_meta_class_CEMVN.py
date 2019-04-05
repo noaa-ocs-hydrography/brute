@@ -9,7 +9,8 @@ Additionally, it passes the matching .xml file and utilizes
 the parse_usace_xml script to pull out the relevant metadata if it
 is either FGDC or ISO FGDC USACE metadata format.
 
-updated April 2, 2019
+update 4/5/19
+major update April 2, 2019
 
 """
 __version__ = 'FUSE'
@@ -299,13 +300,13 @@ class Extract_Txt(object):
                     metalist.append(metadata['RTK'])
                     if _is_RTK_Tide(line):
                         metadata['RTK TIDES']='YES'
-                        metalist.append(metadata['RTK TIDES'])
+                        metalist.append(metadata['RTK TIDES'])                   
+                elif line.startswith('Ranges'):
+                    metalist.append(_parse_Ranges(line))
                 else:
                     more_metalist.append(line)#usually gage offets from MLG and NGVD/NAVD**, tides or river water levels
                     #plus gage name
-                    #may include DRAFT, VELOCITY (sound velocity), Index within lines as well                       
-                #elif line.startswith('Ranges'):
-                #    metalist.append(_parse_Ranges(line))
+                    #may include DRAFT, VELOCITY (sound velocity), Index within lines as well    
             # bring all the dictionaries together
             meta = {}
         try:
@@ -359,6 +360,10 @@ def get_xml_xt(filename, extension):
 ##-----------------------------------------------------------------------------        
 
 def _start_xyz(infilename):
+    """
+    looks for the first line of the xyz data after the header
+    returns the row number of first line of data
+    """
     first_instance = ''
     numberofrows = []
     pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
@@ -414,7 +419,6 @@ def _parse_note(line):
         fips = horiz_datum.split()[1]
         fips = fips.rstrip(',')
         metadata['from_fips'] = fips
-        metadata['from_wkt'] = _fips2wkt(fips)
         horiz_units = horiz_datum.split(',')[1]
         if horiz_units.lstrip(' ') == 'US SURVEY FEET':
             metadata['from_horiz_units'] = 'US Survey Foot'
@@ -422,7 +426,6 @@ def _parse_note(line):
             metadata['from_horiz_units'] = horiz_units.lstrip(' ')
         metadata['from_horiz_datum'] = horiz_datum
     else:
-        metadata['from_wkt'] = 'unknown'
         metadata['from_horiz_units'] = 'unknown'
         metadata['from_horiz_datum'] = 'unknown'
     # find the vertical datum information
@@ -520,12 +523,18 @@ def _parse_sea_condition(line):
     return metadata
 
 def _parse_vessel_name(line):
+    """
+    vessel name 
+    """
     name = line.split('VESSEL_NAME==')[-1]
     name = name.strip('\n')
     metadata = {'vessel_name' : name}
     return metadata
 
 def _parse_LWRP_(line):
+    """
+    Checks to see if its in Low Water Reference Plane
+    """
     name = line.split('LWRP==')[-1]
     name = name.split('LWRP=')[-1]
     name = name.strip('\n')
@@ -545,6 +554,9 @@ def _parse_LWRP_(line):
     return metadata
 
 def _parse_Gage_Reading(line, allcap1):
+    """
+    Looks for the water level Gage
+    """
     if allcap1 == 1:
         name = line.split('GAGE_READING==')[-1]
         name = name.strip('\n')
@@ -556,9 +568,19 @@ def _parse_Gage_Reading(line, allcap1):
     return metadata  
 
 def _parse_sound_velocity(line):
+    """
+    Looks for Sound Velocity
+    """
     name = line.split('SOUND VELOCITY')[-1]
     name = name.strip('\n')
     metadata = {'sound_velocity' : name}
+    return metadata
+
+def _parse_Ranges(line):
+    name = line.split('Range:')[-1]
+    name = name.strip('\n')
+    metadata = {'Range' : name}
+    return metadata
 
 def _is_RTK(line):
     pattern_coordinates = '[RTK]'#at least six digits# should be seven then . plus two digits
