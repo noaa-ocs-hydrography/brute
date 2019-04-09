@@ -16,9 +16,9 @@ import re as _re
 import pickle as _pickle
 from xml.etree.ElementTree import parse as _parse
 import numpy as _np
-from fuse.datum_transform import fips2wkt as _fips2wkt
+from fuse.datum_transform import usefips as _usefips
 
-class read_raw_cenan:
+class read_raw:
     """
     An abstract raw data reader.
     """
@@ -69,11 +69,11 @@ class read_raw_cenan:
         merged_meta = {**default_meta, **name_meta, **file_meta}
         if 'from_horiz_unc' in merged_meta:
             if merged_meta['from_horiz_units'] == 'US Survey Foot':
-                val = read_raw_cenan._ussft2m * float(merged_meta['from_horiz_unc'])
+                val = read_raw._ussft2m * float(merged_meta['from_horiz_unc'])
                 merged_meta['horiz_uncert'] = val
         if 'from_vert_unc' in merged_meta:
             if merged_meta['from_vert_units'] == 'US Survey Foot':
-                val = read_raw_cenan._ussft2m * float(merged_meta['from_vert_unc'])
+                val = read_raw._ussft2m * float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
         sorind = (name_meta['projid'] + '_' + 
@@ -184,7 +184,7 @@ class read_raw_cenan:
             fips = horiz_datum.split()[1]
             fips = fips.rstrip(',')
             metadata['from_fips'] = fips
-            metadata['from_wkt'] = _fips2wkt(fips)
+            metadata['from_wkt'] = _usefips.fips2wkt(fips)
             horiz_units = horiz_datum.split(',')[1]
             if horiz_units.lstrip(' ') == 'US SURVEY FEET':
                 metadata['from_horiz_units'] = 'US Survey Foot'
@@ -250,7 +250,7 @@ class read_raw_cenan:
             delim = '-'
         else:
             delim = ' to '
-        dateout = datestr.split(self, delim)
+        dateout = datestr.split(delim)
         metadata['start_date'] = self._xyztext2date(dateout[0])
         if len(dateout) == 1: 
             metadata['end_date'] = 'unknown'
@@ -272,7 +272,7 @@ class read_raw_cenan:
         except:
             return 'unknown'
     
-    def load_default_metadata(self, infilename, default_meta):
+    def _load_default_metadata(self, infilename, default_meta):
         """
         Given the file name for data and a default metadata file (containing a
         picked dictionary), look for the default file.  If that files does not
@@ -289,7 +289,7 @@ class read_raw_cenan:
             meta = {}
         return meta
     
-    def parse_ehydro_xml(self, infilename):
+    def _parse_ehydro_xml(self, infilename):
         """
         Parse the eHydro XML file as provided by Wilmington, Charleston, and
         Norfolk Districts.

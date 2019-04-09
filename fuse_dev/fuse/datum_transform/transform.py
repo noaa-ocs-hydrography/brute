@@ -7,7 +7,7 @@ transform.py
 Abstract datum transformation.
 """
 
-import use_vdatum as uv
+from fuse.datum_transform import use_vdatum as uv
 
 class transform:
     """

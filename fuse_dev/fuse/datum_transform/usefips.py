@@ -27,10 +27,9 @@ def fips2wkt(fips, units = 'FEET'):
         esri_code = "-1"
     # search the file 'esri_StatePlane_extra.wkt' for the code
     # hard link to file in Pydro directory until I can figure out how to find it
-    osgeo_path = _osgeo.__file__
-    path, junk = _os.path.split(osgeo_path)
-    relpath = '../../../Library/share/gdal/esri_StatePlane_extra.wkt'
-    wktfilename = _os.path.join(path,relpath)
+    osgeo_path = _osgeo.__path__[0]
+    relpath = 'data/gdal/esri_StatePlane_extra.wkt'
+    wktfilename = _os.path.join(osgeo_path,relpath)
     wktline = ''
     with open(wktfilename, 'r') as wktfile:
         for line in wktfile:

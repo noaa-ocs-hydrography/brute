@@ -8,7 +8,7 @@ Created on Thu Jan 31 10:30:11 2019
 """
 
 import os as _os
-import fuse_base_class as _fbc
+import fuse.fuse_base_class as _fbc
 import fuse.meta_review.meta_review_ehydro as _mre
 import fuse.raw_read.usace as _usace
 import fuse.datum_transform.transform as _trans
@@ -46,13 +46,13 @@ class fuse_ehydro(_fbc.fuse_base_class):
             'script_version',
             ]
     
-    def __init__(self):
-        super().__init__()
+    def __init__(self, config_filename):
+        super().__init__(config_filename)
         self._meta_obj = _mre.meta_review_ehydro(self._config['metapath'],
                                                 fuse_ehydro._cols)
         self._set_data_reader()
         self._set_data_transform()
-        self._set_writer()
+        self._set_data_writer()
         
     def _set_data_reader(self):
         """
@@ -62,7 +62,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         try:
             reader_type = self._config['raw_reader_type'].casefold()
             if reader_type == 'cenan':
-                self.reader = _usace.read_raw_cenan.read_raw_cenan()
+                self._reader = _usace.cenan.read_raw()
             else:
                 print('reader type not implemented')
                 raise
@@ -100,13 +100,13 @@ class fuse_ehydro(_fbc.fuse_base_class):
         # get the default metadata
         
         # get the metadata
-        meta = self.reader.read_metadata(infilename)
+        meta = self._reader.read_metadata(infilename)
         
         meta['to_horiz_datum'] = self._config['to_horiz_datum']
         meta['to_vert_datum'] = self._config['to_vert_datum']
         meta['to_vert_units'] = 'metres'
         meta['interpolated'] = 'True'
-        meta['script_version'] = meta['script_version'] #+ ',' + __version__ + i2c.__version__
+        #meta['script_version'] = meta['script_version'] #+ ',' + __version__ + i2c.__version__
         self._meta = meta
         # write the metadata
         self._meta_obj.write_meta_record(meta)
@@ -118,7 +118,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         Do the datum transformtion and interpolation.
         """
-        self._get_stored_meta(infilename)
+        metadata = self._get_stored_meta(infilename)
         if 'from_fips' in self._meta:
             # convert the bathy
             outpath = self._config['outpath']

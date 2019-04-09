@@ -9,7 +9,7 @@ from pathlib import Path as _Path
 from tempfile import NamedTemporaryFile as _NamedTemporaryFile
 import shutil as _shutil
 import csv as _csv
-import meta_review_base as mrb
+import fuse.meta_review.meta_review_base as mrb
 
 class meta_review_ehydro(mrb.meta_review_base):
     """
@@ -75,8 +75,8 @@ class meta_review_ehydro(mrb.meta_review_base):
             'Local' : '131',
             }
     
-    def __init__(self):
-        super().__init__()
+    def __init__(self, metafile_path, meta_keys):
+        super().__init__(metafile_path, meta_keys)
         self._fieldnames = self._make_col_header()
         
     def _make_col_header(self):
@@ -106,7 +106,12 @@ class meta_review_ehydro(mrb.meta_review_base):
         """
         infile = _Path(self._metafilename)
         if infile.exists():
-            self._add_to_csv(meta)
+            if type(meta) == dict: # just a single record
+                self._add_to_csv([meta])
+            elif type(meta) == list: # this is a list of records
+                self._add_to_csv(meta)
+            else:
+                raise ValueError('Unknown meta data container provided')
         # just write a new file since there is not one already
         else:
             self._write_new_csv(meta)
@@ -155,6 +160,12 @@ class meta_review_ehydro(mrb.meta_review_base):
         """
         Write the provided metadata to a new CSV file.
         """
+        if type(meta) == dict: # just a single record
+            meta = self._scriptkeys([meta])
+        elif type(meta) == list: # this is a list of records
+            meta = self._scriptkeys(meta)
+        else:
+            raise ValueError('Unknown meta data container provided')
         meta = self._scriptkeys(meta)
         with open(self._metafilename, 'w', newline='') as csvfile:
             writer = _csv.DictWriter(csvfile, 
@@ -203,11 +214,13 @@ class meta_review_ehydro(mrb.meta_review_base):
         the record name that matches the provided key.  Once the record is
         found the record is "simplified" and returned.
         """
+        metadata = {}
         with open(self._metafilename,'r') as csvfile:
             reader = _csv.DictReader(csvfile)
             # get the row
             for row in reader:
-                metadata.append(self._simplify_row(row))
+                if row[meta_key] == meta_value:
+                    metadata = self._simplify_row(row)
         return metadata
     
     def _simplify_row(self, row):
