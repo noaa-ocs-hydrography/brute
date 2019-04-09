@@ -1220,8 +1220,9 @@ def parse_xml_info_text_ISO(xml_txt, m):
     lines = xml_i_bottom.split('\n')
     for line in lines:
         if line.find('ellips')>0:
-            if m['ellips'] == '':
-                print(line)
+            print(line)
+            #if m['ellips'] == '':
+            #    print(line)
         elif line != '':
             names = line.split(':')
             if len(names) == 2:
@@ -1248,6 +1249,18 @@ def extract_from_iso_meta(xml_meta):
         Vert_unc = float(Vert_unc)
         Vert_unc * _ussft2m
         xml_meta['from_vert_unc'] = Vert_unc
+    if xml_meta['System'] == 'single beam':
+        xml_meta['TECSOU'] = '1'
+    elif  xml_meta['System'] == 'multibeam beam':
+        xml_meta['TECSOU'] = '3'
+    elif  xml_meta['System'].find('sweep'):
+        xml_meta['TECSOU'] = ''
+    if len(xml_meta['Horizontal_Zone']) >0 :
+        xml_meta ['from_horiz_datum'] = xml_meta['Projected_Coordinate_System'] + xml_meta['Horizontal_Zone'] 
+        code = xml_meta['Horizontal_Zone'].split(' ')[0]
+        for key in fipskeys:
+            if xml_meta['Horizontal_Zone'].find(key) == True:
+                xml_meta['from_fips'] = fipskey[key]
     return xml_meta
                     
 def convert_meta_to_input(m):
