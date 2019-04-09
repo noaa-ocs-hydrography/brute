@@ -48,6 +48,8 @@ horz_datum = {
         'NAD27' : '74',
         'NAD83' : '75',
         'Local' : '131'}
+
+_ussft2m = 0.30480060960121924 # US survey feet to meters
        
 def extract_s57_dict(xmlfilename):
     """
@@ -257,7 +259,7 @@ class XML_Meta(object):
                     if len(self.xml_tree.find('./'+ key[len_root_name_to_remove:]))>0:            
                         my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:])[0].text
                     else:
-                        my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text                
+                        my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text
             else:
                 my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = ''
         for key in vertdatum:#
@@ -266,9 +268,14 @@ class XML_Meta(object):
                     if len(self.xml_tree.find('./'+ key[len_root_name_to_remove:]))>0:
                         if self.xml_tree.find('./'+ key[len_root_name_to_remove:]) is None:#Checks for NoneType object ('None')
                              my_etree_dict1['script: from_vert_key'] = ''
+                             my_etree_dict1['from_vert_key'] = ''
                         else:
                             my_etree_dict1[vertdatum[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text
                             my_etree_dict1['from_vert_key'] = my_etree_dict1[vertdatum[key]]
+                    else:
+                        my_etree_dict1['from_vert_key'] = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text
+                else:
+                    my_etree_dict1['from_vert_key'] = self.xml_tree.find('./'+ key[len_root_name_to_remove:])
             else:
                 my_etree_dict1['from_vert_key'] = ''
             my_etree_dict1['script: from_vert_key'] = my_etree_dict1['from_vert_key']
@@ -403,6 +410,7 @@ class XML_Meta(object):
         """
         if self.version == 'ISO-8859-1':
             meta_xml = self.convert_xml_to_dict_ISO_FGDC()#
+            meta_xml = parse_xml_info_text_ISO(self.xml_txt, meta_xml)
             meta={}
             try:
                 m = convert_meta_to_input(meta)
@@ -1200,6 +1208,47 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     if vertaccr.find('Expected values 0.5 -1.0 Foot') == True:
         m['vert_acc'] = '0.3'# 1 ft =   0.30480060960121924 m 
     return m
+
+def find_ISO_xml_bottom(xml_txt):         
+    #handlingof ISO xml USACE format information not proper children of the root 'metadata':           
+    xml_i_bottom = xml_txt.split('</metainfo>')[1]
+    xml_i_bottom = xml_i_bottom.rstrip('</metadata>\n')
+    return xml_i_bottom
+
+def parse_xml_info_text_ISO(xml_txt, m):
+    xml_i_bottom = find_ISO_xml_bottom(xml_txt)
+    lines = xml_i_bottom.split('\n')
+    for line in lines:
+        if line.find('ellips')>0:
+            if m['ellips'] == '':
+                print(line)
+        elif line != '':
+            names = line.split(':')
+            if len(names) == 2:
+                m[names[0]] = names[1]
+            elif len(names)> 2:
+                m[names[0]] = names[1: len(names)]#makes a list type
+            else:
+                m[names[0]] = ''
+    return m
+
+def extract_from_iso_meta(xml_meta):
+    xml_meta['from_vert_units'] = xml_meta['altunits']
+    Hor_unc = xml_meta['Implied_Horizontal_Accuracy']
+    Vert_unc = xml_meta['Implied_Vertical_Accuracy']
+    Hor_unc = Hor_unc.strip('+/- ')
+    Vert_unc = Vert_unc.strip('+/- ')
+    if Hor_unc.find('feet'):
+        Hor_unc = Hor_unc.rstrip('Feet')
+        Hor_unc = float(Hor_unc)
+        Hor_unc * _ussft2m
+        xml_meta['from_horiz_unc'] = Hor_unc
+    if Vert_unc.find('feet'):
+        Vert_unc = Vert_unc.rstrip('Feet')
+        Vert_unc = float(Vert_unc)
+        Vert_unc * _ussft2m
+        xml_meta['from_vert_unc'] = Vert_unc
+    return xml_meta
                     
 def convert_meta_to_input(m):
     """
