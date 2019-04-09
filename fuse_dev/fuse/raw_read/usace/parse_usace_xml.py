@@ -411,6 +411,7 @@ class XML_Meta(object):
         if self.version == 'ISO-8859-1':
             meta_xml = self.convert_xml_to_dict_ISO_FGDC()#
             meta_xml = parse_xml_info_text_ISO(self.xml_txt, meta_xml)
+            meta_xml = extract_from_iso_meta(meta_xml)
             meta={}
             try:
                 m = convert_meta_to_input(meta)
@@ -1242,25 +1243,28 @@ def extract_from_iso_meta(xml_meta):
     if Hor_unc.find('feet'):
         Hor_unc = Hor_unc.rstrip('Feet')
         Hor_unc = float(Hor_unc)
-        Hor_unc * _ussft2m
-        xml_meta['from_horiz_unc'] = Hor_unc
+        Hor_unc = Hor_unc * _ussft2m
+        xml_meta['from_horiz_unc'] = str(Hor_unc)
     if Vert_unc.find('feet'):
         Vert_unc = Vert_unc.rstrip('Feet')
         Vert_unc = float(Vert_unc)
-        Vert_unc * _ussft2m
-        xml_meta['from_vert_unc'] = Vert_unc
+        Vert_unc = Vert_unc * _ussft2m
+        xml_meta['from_vert_unc'] = str(Vert_unc)
     if xml_meta['System'] == 'single beam':
         xml_meta['TECSOU'] = '1'
     elif  xml_meta['System'] == 'multibeam beam':
         xml_meta['TECSOU'] = '3'
     elif  xml_meta['System'].find('sweep'):
         xml_meta['TECSOU'] = ''
-    if len(xml_meta['Horizontal_Zone']) >0 :
-        xml_meta ['from_horiz_datum'] = xml_meta['Projected_Coordinate_System'] + xml_meta['Horizontal_Zone'] 
-        code = xml_meta['Horizontal_Zone'].split(' ')[0]
-        for key in fipskeys:
-            if xml_meta['Horizontal_Zone'].find(key) == True:
-                xml_meta['from_fips'] = fipskey[key]
+    xml_meta ['from_horiz_datum'] = xml_meta['Projected_Coordinate_System'] + ',' + xml_meta['Horizontal_Zone'] + ',' + xml_meta['Units']
+    xml_meta ['from_horiz_units'] = xml_meta['Units']
+    if len(xml_meta['Horizontal_Zone']) >0 :        
+        code = xml_meta['Horizontal_Zone'].split(' ')[1]
+        print(code)
+        for key in SOURCEPROJECTION_dict:
+            if key.upper() in xml_meta['Horizontal_Zone']:
+                print(key)
+                xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, key)
     return xml_meta
                     
 def convert_meta_to_input(m):
