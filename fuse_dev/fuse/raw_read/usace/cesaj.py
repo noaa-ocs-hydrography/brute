@@ -268,9 +268,9 @@ class Extract_Txt(object):
                         break
                 for line in infile.readlines():
                     if line.startswith('Survey_Number=='):
-                         temp_meta['Survey_Number==']=line.split('Survey_Number==')[1]
+                        metalist.append(_parse_Survey_Number(line))
                     if line.startswith('Survey_Type=='):
-                         temp_meta['Survey_Type==']=line.split('Survey_Type==')[1]
+                        metalist.append(_parse_Survey_Type(line)) 
         try:
             for m in tempmeta:
                 meta = {**meta, **m}
@@ -556,5 +556,18 @@ def _is_RTK_Tide(line):
         return False
     else:
         return True
+def _parse_Survey_Type(line):
+    """
+    parse Survey Type
+    """
+    metadata = {'Survey_Type==' : line.split('Survey_Type==')[1]}
+    return metadata
+
+def _parse_Survey_Number(line):
+    """
+    parse Survey Number
+    """
+    metadata = {'Survey_Number==':line.split('Survey_Number==')[1]}
+    return metadata
 ##-----------------------------------------------------------------------------
         
