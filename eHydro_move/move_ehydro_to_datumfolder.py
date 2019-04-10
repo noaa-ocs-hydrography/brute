@@ -1,7 +1,8 @@
 """
 move_ehydro_to_datumfolder.py
 
-Brings in metadata from ehydro all files list, folder of district data
+Brings in metadata from ehydro all files list, 
+given a path for the folder of district data
 datums are used to move data into a new folder based on vertical datum
 
 J. Kinney
@@ -13,19 +14,31 @@ import pandas as pd
 import shutil
 
 #------------------------------------------------------------------------------
+
     
 def test_from_existing_file():
     """
-    take an existing metadata .csv file
+    take an existing metadata .csv file that has all the metadata
+    For internal development and testing at this point.
     """
     mv_to_dir = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\CEMVN"
     df_export_to_csv = mv_to_dir + "\metadata\ehydro_allscript_meta_v1.txt"#r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt'
+    merged_dataframe = pd.read_csv(df_export_to_csv, sep = '\t', index_col = 0)
     #metafile = mv_to_dir + "\metadata\ehydro_meta_dict_out.txt"
-    merged_dataframe = pd.read_csv(df_export_to_csv)
     #alternative
-    #merged_meta = pd.read_csv(metafile)
-    move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir)        
-    
+    #merged_dataframe = pd.read_csv(metafile, sep = ",", index_col = 1)
+    move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir)
+
+def test_from_existing_file_meta2csvstyle():
+    """
+    take an existing metadata .csv file that comes as output from meta2csv
+    """
+    mv_to_dir = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\CEMVN"
+    metafile = mv_to_dir + "\metadata\ehydro_meta_dict_out.txt"
+    merged_dataframe = pd.read_csv(metafile, sep = ",", index_col = 1)
+    move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir)
+     
+#------------------------------------------------------------------------------    
 def look_for_Ehydro_datum_folders(f, datumfolder = 'unknown', newpathroot = None):
     """
     look_for_Ehydro_datum_folders(f, datumfolder = 'unknown')
@@ -84,10 +97,19 @@ def look_for_Ehydro_datum_folders(f, datumfolder = 'unknown', newpathroot = None
                     for ff in survey_files:
                         shutil.move(ff,filedatumpath)#shutil.move(f,filedatumpath)
                         print('moved ' + str(ff) + ' to datum folder: ' + str(datumfolder))
-
 #------------------------------------------------------------------------------                
 
+def return_surveyid(filenamepath, ex_string):
+    
+    basename = os.path.basename(filenamepath)
+    surveybasename = basename.rstrip(ex_string)
+    return surveybasename
+    
+#------------------------------------------------------------------------------
 def move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir):
+    """
+    move all files with matching extension to new folder based on the datum
+    """
     Ax = merged_dataframe.axes
     Ax_row_index = Ax[0].tolist()
     Ax_row_index.sort()
@@ -118,7 +140,8 @@ def move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir):
     print('moving of files complete!')
 
 def main():
-    test_from_existing_file()
-
+    #test_from_existing_file()
+    test_from_existing_file_meta2csvstyle()
+    
 if __name__ == '__main__':
     main()
