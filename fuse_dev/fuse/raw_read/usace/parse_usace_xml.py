@@ -1199,9 +1199,10 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                     print(abstract)
             else:
                 m['VERTDAT'] = ''
-    if m['Horizontal_Units'] == '':
-        if  meta_xml['plandu'] == 'Foot_US': #plandu = #horizontal units
-            m['Horizontal_Units']='U.S. Survey Feet'
+    if 'Horizontal_Units' in m:
+        if m['Horizontal_Units'] == '':
+            if  meta_xml['plandu'] == 'Foot_US': #plandu = #horizontal units
+                m['Horizontal_Units']='U.S. Survey Feet'
     horizpar = meta_xml['horizpar']
     if horizpar.find('DGPS, 1 Meter') == True:        
         m['horiz_uncert']='1'# (POSACC) DGPS, 1 Meter
@@ -1275,14 +1276,19 @@ def convert_meta_to_input(m):
     """
     m = convert_meta_to_input(m)
     maps dictionary keys to new keys
-    """                   
-    m['from_vert_datum'] = m['Vertical Datum Description']
+    """
+    if 'Vertical Datum Description' in m:                   
+        m['from_vert_datum'] = m['Vertical Datum Description']
     #m['script: from_vert_units'] = m['from_vert_units']#needs to be added
-    m['from_horiz_datum'] = m['horizontal_datum_i'] + ',' + m['SPCS']
-    m['from_horiz_units'] = m['Horizontal_Units']#may need to enforce some kind of uniform spelling etc. here
+    if 'SPCS' in m and 'horizontal_datum_i' in m :
+        m['from_horiz_datum'] = m['horizontal_datum_i'] + ',' + m['SPCS']
+    if 'Horizontal_Units' in m:
+        m['from_horiz_units'] = m['Horizontal_Units']#may need to enforce some kind of uniform spelling etc. here
+    if 'FIPS' in m:
+        m['from_fips'] = m['FIPS']
     m['from_vert_key'] = m['VERTDAT']
     m['script: from_vert_key'] = m['VERTDAT']
-    m['from_fips'] = m['FIPS']
+
     return m
 
 

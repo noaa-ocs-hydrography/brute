@@ -115,7 +115,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
         xmlbasename = os.path.basename(xmlfilename)
         xml_data = p_usace_xml.XML_Meta(xml_txt, filename = xmlbasename)
         if xml_data.version == 'USACE_FGDC':
-            meta_xml = xml_data._extract_meta_ ()
+            meta_xml = xml_data._extract_meta_CEMVN()
         elif xml_data.version == 'ISO-8859-1':
                 meta_xml = xml_data._extract_meta_USACE_ISO()                
         else:
@@ -255,6 +255,7 @@ class Extract_Txt(object):
         """
         header = []
         metalist = []
+        tempmeta ={}
         more_metalist = []
         # get the header
         if version=='CESAM':
@@ -270,24 +271,24 @@ class Extract_Txt(object):
                     #within header:
             for line in header:
                 if line.startswith('notes_chart== 1.'):
-                    tempmeta = header_parse_notes_chart(line)
+                    metalist.append(header_parse_notes_chart(line))
                     #do something with this line metaline.append()
                     #tokens = line.split('\n')#tokens= ['value', 'value2', etc]
                 if line.startswith('Notes_chart== 1.'):
-                    tempmeta = header_parse_notes_chart(line)
+                    metalist.append(header_parse_notes_chart(line))
                     #do something with this line metaline.append()
                     #tokens = line.split('\n')#tokens= ['value', 'value2', etc]
                 if line.startswith('ProcessedBy=='):
-                    tempmeta['ProcessedBy']=line
+                    metalist.append(_parse_processedBy(line))
                     #pass            
                 if line.startswith('CheckedBy=='):                
-                    tempmeta['CheckedBy']=line.split('CheckedBy==')[1]
+                    metalist.append(_parse_CheckedBy(line))
                     #pass
                 if line.startswith('ReviewedBy=='):
-                    tempmeta['ReviewedBy']=line.split('ReviewedBy==')[1]
+                    metalist.append(_parse_ReviewedBy(line))
                     #pass
         try:
-            for m in tempmeta:
+            for m in metalist:
                 meta = {**meta, **m}
             return meta
         except:
@@ -571,5 +572,18 @@ def _is_RTK_Tide(line):
         return False
     else:
         return True
+    
+def _parse_processedBy(line):
+    metadata = {'ProcessedBy' : line}
+    return metadata
+
+def _parse_CheckedBy(line):
+    metadata = {'CheckedBy':line.split('CheckedBy==')[1]}
+    return metadata
+
+def _parse_ReviewedBy(line):
+    metadata = {'ReviewedBy':line.split('ReviewedBy==')[1]}
+    return metadata
+
 ##-----------------------------------------------------------------------------
         
