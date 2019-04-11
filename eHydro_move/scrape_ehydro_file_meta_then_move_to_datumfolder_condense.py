@@ -172,9 +172,12 @@ def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, meta
         
 def test_cesam_ccom_defaultnames():    
     district = 'CESAM'
-    highresfolder = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\downloads\CESAM"
-    ehydrofolder = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\downloads\CESAM"#r'N:\New_Directory_1\GulfCoast\Mississippi\USACE\ehydro\tst'
-    mv_to_dir = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\CESAM"#D:\NBS_Data\PBG_GulfCoast_PR_VI\Mississippi\USACE\E-Hydro\download\files\downloads\CEMVN"
+    highresfolder = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\downloads\cesam_test"
+    #CESAM"
+    ehydrofolder = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\downloads\cesam_test"
+    #CESAM"#r'N:\New_Directory_1\GulfCoast\Mississippi\USACE\ehydro\tst'
+    mv_to_dir = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\test_move"
+    #"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\CESAM"#D:\NBS_Data\PBG_GulfCoast_PR_VI\Mississippi\USACE\E-Hydro\download\files\downloads\CEMVN"
     metafile = mv_to_dir + "\metadata\ehydro_meta_dict_out.txt"#r"N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\ehydrometa_sm_set.txt"
     df_export_to_csv = mv_to_dir + "\metadata\ehydro_allscript_meta_v1.txt"#r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt'
     merged_meta1, merged_dataframe = retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, metafile, df_export_to_csv)
