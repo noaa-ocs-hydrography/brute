@@ -19,7 +19,7 @@ import pickle as _pickle
 import re as _re
 
 _ussft2m = 0.30480060960121924 # US survey feet to meters
-
+import datetime as _datetime
 import numpy as _np 
 try:
     import fuse.raw_read.usace.parse_usace_xml as p_usace_xml
@@ -255,8 +255,6 @@ class Extract_Txt(object):
         """
         header = []
         metalist = []
-        tempmeta ={}
-        more_metalist = []
         # get the header
         if version=='CESAM':
             with open(infilename, 'r') as infile:
@@ -271,22 +269,23 @@ class Extract_Txt(object):
                     #within header:
             for line in header:
                 if line.startswith('notes_chart== 1.'):
-                    metalist.append(header_parse_notes_chart(line))
+                    metalist.append(_parse_note(line))
+                    metalist.append(_parse_notes_chart(line))
                     #do something with this line metaline.append()
                     #tokens = line.split('\n')#tokens= ['value', 'value2', etc]
-                if line.startswith('Notes_chart== 1.'):
-                    metalist.append(header_parse_notes_chart(line))
-                    #do something with this line metaline.append()
-                    #tokens = line.split('\n')#tokens= ['value', 'value2', etc]
+                elif line.startswith('Notes_chart== 1.'):
+                    metalist.append(_parse_note(line))
+                    metalist.append(_parse_notes_chart(line))
+                elif line.startswith('notes_chart=='):
+                    metalist.append(_parse_note(line))
+                    metalist.append(_parse_notes_chart(line))
                 if line.startswith('ProcessedBy=='):
-                    metalist.append(_parse_processedBy(line))
-                    #pass            
+                    metalist.append(_parse_processedBy(line))      
                 if line.startswith('CheckedBy=='):                
                     metalist.append(_parse_CheckedBy(line))
-                    #pass
                 if line.startswith('ReviewedBy=='):
                     metalist.append(_parse_ReviewedBy(line))
-                    #pass
+            meta = {}
         try:
             for m in metalist:
                 meta = {**meta, **m}
@@ -384,28 +383,54 @@ def _parse_projectname(line):
     metadata = {'projectname' : name}
     return metadata
 
+def _parse_notes_chart(line):
+    lines = line.split('\\n')
+    metadata = {}
+    metadata ['notes_chart']= line
+    for aline in lines:
+        if aline != '':
+            if aline.find('ALL ELEVATIONS SHOWN ARE REFERENCED') > 0:                
+                if aline.find('FEET') > 0:
+                    metadata['from_vert_units'] = 'US Survey Foot'
+                else:
+                    metadata['from_vert_units']= aline.split('ALL ELEVATIONS SHOWN ARE REFERENCED')[-1]
+            if aline.find('COORDINATES ARE REFERENCED TO') > 0:
+                metadata['horiz_sys'] = aline.split('COORDINATES ARE REFERENCED TO')[-1]
+            if aline.find('COORDINATE SYSTEM') > 0:
+                metadata['COORDINATE SYSTEM'] = aline.split('COORDINATE SYSTEM')[-1]              
+            if aline.find('SURVEY VESSEL') > 0:
+                metadata['SURVEY VESSEL'] = aline.split('SURVEY VESSEL:')[-1]
+            if aline.find('SURVEY DATE:') > 0:
+                metadata['SURVEY DATE'] = aline.split(':')[-1]
+                #metadata =_parse_surveydates(aline.split(':')[-1])
+            if aline.find('SURVEYED BY:') > 0:
+                metadata['SURVEYED_BY'] = aline.split(':')[-1]#metadata = _split_at_colon(key, line)
+            if aline.find('FREQUENCY SOUNDINGS') > 0:
+                metadata['FREQUENCY SOUNDINGS'] = aline.split(':')[-1]
+    return metadata            
+
 def _parse_note(line):
     """
     Parse the notes line.
     """
     metadata = {}
     # find the horizontal datum information.
-    zone_idx = line.find('ZONE')
-    zone_len = line[zone_idx:].find('.')
-    horiz_datum = line[zone_idx:zone_idx + zone_len]
-    if len(horiz_datum) > 0:
-        fips = horiz_datum.split()[1]
-        fips = fips.rstrip(',')
-        metadata['from_fips'] = fips
-        horiz_units = horiz_datum.split(',')[1]
-        if horiz_units.lstrip(' ') == 'US SURVEY FEET':
-            metadata['from_horiz_units'] = 'US Survey Foot'
-        else:
-            metadata['from_horiz_units'] = horiz_units.lstrip(' ')
-        metadata['from_horiz_datum'] = horiz_datum
-    else:
-        metadata['from_horiz_units'] = 'unknown'
-        metadata['from_horiz_datum'] = 'unknown'
+#    zone_idx = line.find('ZONE')
+#    zone_len = line[zone_idx:].find('.')
+#    horiz_datum = line[zone_idx:zone_idx + zone_len]
+#    if len(horiz_datum) > 0:
+#        fips = horiz_datum.split()[1]
+#        fips = fips.rstrip(',')
+#        metadata['from_fips'] = fips
+#        horiz_units = horiz_datum.split(',')[1]
+#        if horiz_units.lstrip(' ') == 'US SURVEY FEET':
+#            metadata['from_horiz_units'] = 'US Survey Foot'
+#        else:
+#            metadata['from_horiz_units'] = horiz_units.lstrip(' ')
+#        metadata['from_horiz_datum'] = horiz_datum
+#    else:
+#        metadata['from_horiz_units'] = 'unknown'
+#        metadata['from_horiz_datum'] = 'unknown'
     # find the vertical datum information
     if line.find('MEAN LOWER LOW WATER') > 0:
         metadata['from_vert_key'] = 'MLLW'
@@ -415,21 +440,21 @@ def _parse_note(line):
         metadata['from_vert_key'] = 'MLW'
     else:
         metadata['vert_key'] = 'unknown'
-    vert_units_tags = ['NAVD88','NAVD1988','NAVD 1988']
-    for tag in vert_units_tags:
-        vert_units_end = line.find(tag) 
-        if vert_units_end >= 0:
-            vert_units_end += len(tag)
-            break
-        else:
-            vert_units_end = 0
-    vert_units_start = vert_units_end - line[vert_units_end::-1].find('>krb<')
-    vert_units = line[vert_units_start+1:vert_units_end]
-    metadata['from_vert_datum'] = vert_units
-    if vert_units.find('FEET') > 0:
-        metadata['from_vert_units'] = 'US Survey Foot'
-    else:
-        metadata['from_vert_units'] = 'unknown'
+#    vert_units_tags = ['NAVD88','NAVD1988','NAVD 1988']
+#    for tag in vert_units_tags:
+#        vert_units_end = line.find(tag) 
+#        if vert_units_end >= 0:
+#            vert_units_end += len(tag)
+#            break
+#        else:
+#            vert_units_end = 0
+#    vert_units_start = vert_units_end - line[vert_units_end::-1].find('>krb<')
+#    vert_units = line[vert_units_start+1:vert_units_end]
+#    metadata['from_vert_datum'] = vert_units
+#    if vert_units.find('FEET') > 0:
+#        metadata['from_vert_units'] = 'US Survey Foot'
+#    else:
+#        metadata['from_vert_units'] = 'unknown'
     return metadata
 
 def _parse_surveyname(line):
@@ -462,6 +487,23 @@ def _parse_surveydates(line):
         print('ambiguous date found!')
     return metadata
 
+def _xyztext2date(textdate):
+    """
+    Take the date as provided in a text string as "day month year" as in
+    "20 March 2017" and return the format "YearMonthDay" as in "20170320".
+    """
+    try:
+        date = _datetime.strptime(textdate, '%d %B %Y')
+        numdate=date.strftime('%Y%m%d')
+        return numdate
+    except:
+        try:
+            date = _datetime.strptime(textdate, '%d\%B\%Y')
+            numdate=date.strftime('%Y%m%d')
+            return numdate
+        except:
+            return 'unknown'
+
 def _parse_sounding_frequency(line):
     """
     parse sounding frequency. 
@@ -472,6 +514,18 @@ def _parse_sounding_frequency(line):
     name = line.split('SOUNDING_FREQUENCY==')[-1].strip('\n')
     metadata = {'sounding_frequency' : name}
     return metadata
+
+def _split_at_colon(key, line):
+    """
+    parse sounding frequency. 
+    Note: LOW & HIGH are usually settings for the 
+    single beam in New Orleans
+    400kHz seems to be their multibeam.
+    """
+    name = line.split(':')[-1].strip('\n')
+    metadata = {key : name}
+    return metadata
+  
   
 def _parse_survey_type(line):
     """

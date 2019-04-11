@@ -1279,6 +1279,9 @@ def convert_meta_to_input(m):
     """
     if 'Vertical Datum Description' in m:                   
         m['from_vert_datum'] = m['Vertical Datum Description']
+    elif 'from_vert_datum' not in m:
+        if 'VERTDAT' in m:
+            m['from_vert_datum'] = m['VERTDAT']
     #m['script: from_vert_units'] = m['from_vert_units']#needs to be added
     if 'SPCS' in m and 'horizontal_datum_i' in m :
         m['from_horiz_datum'] = m['horizontal_datum_i'] + ',' + m['SPCS']

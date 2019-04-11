@@ -19,7 +19,7 @@ import pickle as _pickle
 import re as _re
 
 _ussft2m = 0.30480060960121924 # US survey feet to meters
-
+import datetime as _datetime
 import numpy as _np 
 try:
     import fuse.raw_read.usace.parse_usace_xml as p_usace_xml
@@ -503,6 +503,18 @@ def _parse_survey_type(line):
     name = name.strip('\n')
     metadata = {'text: survey_type' : name}
     return metadata
+
+def _xyztext2date(textdate):
+    """
+    Take the date as provided in a text string as "day month year" as in
+    "20 March 2017" and return the format "YearMonthDay" as in "20170320".
+    """
+    try:
+        date = _datetime.strptime(textdate, '%d %B %Y')
+        numdate = date.strftime('%Y%m%d')
+        return numdate
+    except:
+        return 'unknown'
             
 def _parse_survey_crew(line):
     """
