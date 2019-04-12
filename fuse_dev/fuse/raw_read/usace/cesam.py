@@ -47,13 +47,13 @@ class read_raw_cesam:
         Read the bathymetry from the .dat file. The dat file is less precise,
         but had no header and is in a standardized format
         """
-        # get the dat file for CESAM
+        # get the dat file for CESAM# Mobile
         stub, ext = os.path.splitext(infilename)
         bathyfilename = stub + '.dat'
         xyz = _np.loadtxt(bathyfilename, delimiter = ' ')
         self.xyz
         return xyz
-    
+
     def read_bathymetry(self, infilename):
         """
         Read the bathymetry from the xyz files, this tells it to not include
@@ -69,7 +69,7 @@ class read_raw_cesam:
         else:
             xyz = _np.loadtext(infilename, delimeter = ',')
         return xyz        
-  
+
 #------------------------------------------------------------------------------
 def return_surveyid(filenamepath, ex_string):
     """
@@ -147,7 +147,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     #in merging sources from the text file and xml it will show any values that do not match as a list.
     merged_meta = { **meta, **meta_from_ehydro,**meta_xml }#this method overwrites
     return merged_meta
-    
+
 ###---------------------------------------------------------------------------- 
 class Extract_Txt(object):
     
@@ -243,7 +243,7 @@ class Extract_Txt(object):
         else:
             print(name + ' appears to have a nonstandard naming convention.')
         return meta
-    
+
     def parse_xyz_header(self, infilename, version=None):
         """
         Parse the xyz file header for meta data and return a dictionary.  The
@@ -296,7 +296,7 @@ class Extract_Txt(object):
             with open(errorfile,'a') as metafail:
                 metafail.write(infilename + '\n')
             return meta
-        
+
     def load_default_metadata(self, infilename, default_meta):
         """
         Given the file name for data and a default metadata file (containing a
@@ -322,7 +322,7 @@ def get_xml(filename):
     """
     basef = filename.rpartition('.')[0]
     xml_name = basef + '.xml'
-    return xml_name            
+    return xml_name
 
 def get_xml_xt(filename, extension):
     """
@@ -337,7 +337,7 @@ def get_xml_xt(filename, extension):
     else:
         basef = filename
     xml_name = basef + '.xml'
-    return xml_name       
+    return xml_name
 ##-----------------------------------------------------------------------------        
 
 def _start_xyz(infilename):
@@ -355,7 +355,7 @@ def _start_xyz(infilename):
         first_instance = numberofrows[0]
         return first_instance
     return first_instance
-    
+
 def _is_header2(line, version = None):
     if version == None:
         version = ''
@@ -377,7 +377,7 @@ def _is_header2(line, version = None):
             return False
         else:
             return True
-        
+
 def _parse_projectname(line):
     """
     Parse the project name line.
@@ -477,7 +477,7 @@ def _parse_surveydates(line):
     metadata = {}
     datestr = line.split('=')[-1]
     datestr = datestr.strip('\n')
-    if datestr.find('-') > =0:
+    if datestr.find('-') >= 0:
         delim = '-'
     else:
         delim = ' to '
@@ -519,18 +519,6 @@ def _parse_sounding_frequency(line):
     metadata = {'sounding_frequency' : name}
     return metadata
 
-def _split_at_colon(key, line):
-    """
-    parse sounding frequency. 
-    Note: LOW & HIGH are usually settings for the 
-    single beam in New Orleans
-    400kHz seems to be their multibeam.
-    """
-    name = line.split(':')[-1].strip('\n')
-    metadata = {key : name}
-    return metadata
-  
-  
 def _parse_survey_type(line):
     """
     returns survey type
@@ -539,7 +527,7 @@ def _parse_survey_type(line):
     name = name.strip('\n')
     metadata = {'text: survey_type' : name}
     return metadata
-            
+
 def _parse_survey_crew(line):
     """
     returns survey crew
@@ -548,7 +536,7 @@ def _parse_survey_crew(line):
     name = name.strip('\n')
     metadata = {'survey_crew' : name}
     return metadata 
-        
+
 def _parse_sea_condition(line):
     """
     sea conditions
@@ -630,7 +618,7 @@ def _is_RTK_Tide(line):
         return False
     else:
         return True
-    
+
 def _parse_processedBy(line):
     metadata = {'ProcessedBy' : line}
     return metadata
@@ -644,4 +632,4 @@ def _parse_ReviewedBy(line):
     return metadata
 
 ##-----------------------------------------------------------------------------
-        
+

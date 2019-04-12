@@ -19,7 +19,7 @@ import pickle as _pickle
 import re as _re
 
 _ussft2m = 0.30480060960121924 # US survey feet to meters
-
+import datetime as _datetime
 import numpy as _np 
 try:
     import fuse.raw_read.usace.parse_usace_xml as p_usace_xml
@@ -32,7 +32,7 @@ class read_raw_cesaj:
     This class passes back bathymetry
     & a metadata dictionary from the e-Hydro files
     """
-    
+
     def read_metadata(self, infilename):
         """
         Read all available meta data.
@@ -41,7 +41,7 @@ class read_raw_cesaj:
         version='CESAJ'
         self.version = version
         return retrieve_meta_for_Ehydro_out_onefile(infilename)#return retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)
-    
+
     def read_bathymetry_dat(self, infilename):
         """
         Read the bathymetry from the .dat file. The dat file is less precise,
@@ -53,7 +53,7 @@ class read_raw_cesaj:
         xyz = _np.loadtxt(bathyfilename, delimiter = ' ')
         self.xyz
         return xyz
-    
+
     def read_bathymetry(self, infilename):
         """
         Read the bathymetry from the xyz files, this tells it to not include
@@ -69,7 +69,7 @@ class read_raw_cesaj:
         else:
             xyz = _np.loadtext(infilename, delimeter = ',')
         return xyz        
-  
+
 #------------------------------------------------------------------------------
 def return_surveyid(filenamepath, ex_string):
     """
@@ -147,7 +147,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     #in merging sources from the text file and xml it will show any values that do not match as a list.
     merged_meta = { **meta, **meta_from_ehydro,**meta_xml }#this method overwrites
     return merged_meta
-    
+
 ###---------------------------------------------------------------------------- 
 class Extract_Txt(object):
     
@@ -243,7 +243,7 @@ class Extract_Txt(object):
         else:
             print(name + ' appears to have a nonstandard naming convention.')
         return meta
-    
+
     def parse_xyz_header(self, infilename, version=None):
         """
         Parse the xyz file header for meta data and return a dictionary.  The
@@ -272,7 +272,7 @@ class Extract_Txt(object):
                     if line.startswith('Survey_Type=='):
                         metalist.append(_parse_Survey_Type(line)) 
         try:
-            for m in tempmeta:
+            for m in metalist:
                 meta = {**meta, **m}
             return meta
         except:
@@ -303,12 +303,12 @@ class Extract_Txt(object):
 def get_xml(filename):
     """
     input USACE .xyz/.XYZ filename or any last extension and return .xml
-    xmlname = get_xml(filename)this makes this friendlier to .ppxyz files 
+    xmlname = get_xml(filename) this makes this friendlier to .ppxyz files 
     for instance
     """
     basef = filename.rpartition('.')[0]
     xml_name = basef + '.xml'
-    return xml_name            
+    return xml_name
 
 def get_xml_xt(filename, extension):
     """
@@ -323,7 +323,7 @@ def get_xml_xt(filename, extension):
     else:
         basef = filename
     xml_name = basef + '.xml'
-    return xml_name          
+    return xml_name
 ##-----------------------------------------------------------------------------        
 
 def _start_xyz(infilename):
@@ -341,7 +341,7 @@ def _start_xyz(infilename):
         first_instance = numberofrows[0]
         return first_instance
     return first_instance
-    
+
 def _is_header2(line, version = None):
     if version == None:
         version = ''
@@ -363,7 +363,7 @@ def _is_header2(line, version = None):
             return False
         else:
             return True
-        
+
 def _parse_projectname(line):
     """
     Parse the project name line.
@@ -451,6 +451,23 @@ def _parse_surveydates(line):
         print('ambiguous date found!')
     return metadata
 
+def _xyztext2date(textdate):
+    """
+    Take the date as provided in a text string as "day month year" as in
+    "20 March 2017" and return the format "YearMonthDay" as in "20170320".
+    """
+    try:
+        date = _datetime.strptime(textdate, '%d %B %Y')
+        numdate=date.strftime('%Y%m%d')
+        return numdate
+    except:
+        try:
+            date = _datetime.strptime(textdate, '%d\%B\%Y')
+            numdate=date.strftime('%Y%m%d')
+            return numdate
+        except:
+            return 'unknown'
+
 def _parse_sounding_frequency(line):
     """
     parse sounding frequency. 
@@ -461,7 +478,7 @@ def _parse_sounding_frequency(line):
     name = line.split('SOUNDING_FREQUENCY==')[-1].strip('\n')
     metadata = {'sounding_frequency' : name}
     return metadata
-  
+
 def _parse_survey_type(line):
     """
     returns survey type
@@ -470,7 +487,7 @@ def _parse_survey_type(line):
     name = name.strip('\n')
     metadata = {'text: survey_type' : name}
     return metadata
-            
+
 def _parse_survey_crew(line):
     """
     returns survey crew
@@ -479,7 +496,7 @@ def _parse_survey_crew(line):
     name = name.strip('\n')
     metadata = {'survey_crew' : name}
     return metadata 
-        
+
 def _parse_sea_condition(line):
     """
     sea conditions
@@ -575,4 +592,4 @@ def _parse_Survey_Number(line):
     metadata = {'Survey_Number==':line.split('Survey_Number==')[1]}
     return metadata
 ##-----------------------------------------------------------------------------
-        
+
