@@ -299,13 +299,14 @@ class Extract_Txt(object):
             meta = {}
         return meta
 ##-----------------------------------------------------------------------------
+
 def get_xml(filename):
     """
-    input USACE .xyz/.XYZ filename and return .xml
-    xmlname = get_xml(filename)
+    input USACE .xyz/.XYZ filename or any last extension and return .xml
+    xmlname = get_xml(filename)this makes this friendlier to .ppxyz files 
+    for instance
     """
-    basef = filename.rstrip('.xyz')
-    basef = basef.rstrip('.XYZ')
+    basef = filename.rpartition('.')[0]
     xml_name = basef + '.xml'
     return xml_name            
 
@@ -316,7 +317,11 @@ def get_xml_xt(filename, extension):
     (_A.xyz for instance or _FULL.XYZ are examples of extensions)
     xmlname = get_xml_xt(filename, extension)
     """
-    basef = filename.rstrip(extension)
+    end_len = len(extension)
+    if filename[-end_len:] == extension:
+        basef =  filename[:-end_len]
+    else:
+        basef = filename
     xml_name = basef + '.xml'
     return xml_name          
 ##-----------------------------------------------------------------------------        
@@ -391,11 +396,11 @@ def _parse_note(line):
         metadata['from_horiz_units'] = 'unknown'
         metadata['from_horiz_datum'] = 'unknown'
     # find the vertical datum information
-    if line.find('MEAN LOWER LOW WATER') > 0:
+    if line.find('MEAN LOWER LOW WATER') >= 0:
         metadata['from_vert_key'] = 'MLLW'
-    elif line.find('MLLW') > 0:
+    elif line.find('MLLW') >= 0:
         metadata['from_vert_key'] = 'MLLW'
-    elif line.find('MEAN LOW WATER') > 0:
+    elif line.find('MEAN LOW WATER') >=0 :
         metadata['from_vert_key'] = 'MLW'
     else:
         metadata['vert_key'] = 'unknown'
@@ -410,7 +415,7 @@ def _parse_note(line):
     vert_units_start = vert_units_end - line[vert_units_end::-1].find('>krb<')
     vert_units = line[vert_units_start+1:vert_units_end]
     metadata['from_vert_datum'] = vert_units
-    if vert_units.find('FEET') > 0:
+    if vert_units.find('FEET') >= 0:
         metadata['from_vert_units'] = 'US Survey Foot'
     else:
         metadata['from_vert_units'] = 'unknown'
@@ -432,7 +437,7 @@ def _parse_surveydates(line):
     metadata = {}
     datestr = line.split('=')[-1]
     datestr = datestr.strip('\n')
-    if datestr.find('-') > 0:
+    if datestr.find('-') >= 0:
         delim = '-'
     else:
         delim = ' to '

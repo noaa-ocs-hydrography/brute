@@ -316,11 +316,11 @@ class Extract_Txt(object):
 ##-----------------------------------------------------------------------------
 def get_xml(filename):
     """
-    input USACE .xyz/.XYZ filename and return .xml
-    xmlname = get_xml(filename)
+    input USACE .xyz/.XYZ filename or any last extension and return .xml
+    xmlname = get_xml(filename) this makes this friendlier to .ppxyz files 
+    for instance
     """
-    basef = filename.rstrip('.xyz')
-    basef = basef.rstrip('.XYZ')
+    basef = filename.rpartition('.')[0]
     xml_name = basef + '.xml'
     return xml_name            
 
@@ -331,9 +331,13 @@ def get_xml_xt(filename, extension):
     (_A.xyz for instance or _FULL.XYZ are examples of extensions)
     xmlname = get_xml_xt(filename, extension)
     """
-    basef = filename.rstrip(extension)
+    end_len = len(extension)
+    if filename[-end_len:] == extension:
+        basef =  filename[:-end_len]
+    else:
+        basef = filename
     xml_name = basef + '.xml'
-    return xml_name          
+    return xml_name       
 ##-----------------------------------------------------------------------------        
 
 def _start_xyz(infilename):
@@ -389,23 +393,23 @@ def _parse_notes_chart(line):
     metadata ['notes_chart']= line
     for aline in lines:
         if aline != '':
-            if aline.find('ALL ELEVATIONS SHOWN ARE REFERENCED') > 0:                
-                if aline.find('FEET') > 0:
+            if aline.find('ALL ELEVATIONS SHOWN ARE REFERENCED') >= 0:                
+                if aline.find('FEET') >= 0:
                     metadata['from_vert_units'] = 'US Survey Foot'
                 else:
                     metadata['from_vert_units']= aline.split('ALL ELEVATIONS SHOWN ARE REFERENCED')[-1]
-            if aline.find('COORDINATES ARE REFERENCED TO') > 0:
+            if aline.find('COORDINATES ARE REFERENCED TO') >= 0:
                 metadata['horiz_sys'] = aline.split('COORDINATES ARE REFERENCED TO')[-1]
-            if aline.find('COORDINATE SYSTEM') > 0:
+            if aline.find('COORDINATE SYSTEM') >= 0:
                 metadata['COORDINATE SYSTEM'] = aline.split('COORDINATE SYSTEM')[-1]              
-            if aline.find('SURVEY VESSEL') > 0:
+            if aline.find('SURVEY VESSEL') >= 0:
                 metadata['SURVEY VESSEL'] = aline.split('SURVEY VESSEL:')[-1]
-            if aline.find('SURVEY DATE:') > 0:
+            if aline.find('SURVEY DATE:') > =0:
                 metadata['SURVEY DATE'] = aline.split(':')[-1]
                 #metadata =_parse_surveydates(aline.split(':')[-1])
-            if aline.find('SURVEYED BY:') > 0:
+            if aline.find('SURVEYED BY:') >= 0:
                 metadata['SURVEYED_BY'] = aline.split(':')[-1]#metadata = _split_at_colon(key, line)
-            if aline.find('FREQUENCY SOUNDINGS') > 0:
+            if aline.find('FREQUENCY SOUNDINGS') > =0:
                 metadata['FREQUENCY SOUNDINGS'] = aline.split(':')[-1]
     return metadata            
 
@@ -432,11 +436,11 @@ def _parse_note(line):
 #        metadata['from_horiz_units'] = 'unknown'
 #        metadata['from_horiz_datum'] = 'unknown'
     # find the vertical datum information
-    if line.find('MEAN LOWER LOW WATER') > 0:
+    if line.find('MEAN LOWER LOW WATER') >= 0:
         metadata['from_vert_key'] = 'MLLW'
-    elif line.find('MLLW') > 0:
+    elif line.find('MLLW') >= 0:
         metadata['from_vert_key'] = 'MLLW'
-    elif line.find('MEAN LOW WATER') > 0:
+    elif line.find('MEAN LOW WATER') >= 0:
         metadata['from_vert_key'] = 'MLW'
     else:
         metadata['vert_key'] = 'unknown'
@@ -451,7 +455,7 @@ def _parse_note(line):
 #    vert_units_start = vert_units_end - line[vert_units_end::-1].find('>krb<')
 #    vert_units = line[vert_units_start+1:vert_units_end]
 #    metadata['from_vert_datum'] = vert_units
-#    if vert_units.find('FEET') > 0:
+#    if vert_units.find('FEET') >= 0:
 #        metadata['from_vert_units'] = 'US Survey Foot'
 #    else:
 #        metadata['from_vert_units'] = 'unknown'
@@ -473,7 +477,7 @@ def _parse_surveydates(line):
     metadata = {}
     datestr = line.split('=')[-1]
     datestr = datestr.strip('\n')
-    if datestr.find('-') > 0:
+    if datestr.find('-') > =0:
         delim = '-'
     else:
         delim = ' to '

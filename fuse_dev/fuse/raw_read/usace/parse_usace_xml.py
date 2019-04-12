@@ -225,12 +225,27 @@ class XML_Meta(object):
             if x.text == 'Z_depth':
                 my_etree_dict1['Z_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
                 print(self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text)
-                if my_etree_dict1['Z_units'] == 'usSurveyFoot':
+                if my_etree_dict1['Z_units'].upper() == 'usSurveyFoot'.upper():
                     my_etree_dict1['from_vert_units'] = 'US Survey Foot'
         for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
             if x.text == 'Z_use':
                 my_etree_dict1['Z_use_def'] = self.xml_tree.find('./eainfo/detailed/attr/attrdef').text
                 my_etree_dict1['Z_use_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
+        if 'Horizontal_Units' in my_etree_dict1:#check if Horizontal units already defined if not populate
+            if len(my_etree_dict1['Horizontal_Units'])<1:
+                for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
+                    if x.text == 'xLocation':
+                        my_etree_dict1['xLocation'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
+                        my_etree_dict1['H_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
+                        if my_etree_dict1['H_units'].upper() == 'usSurveyFoot'.upper():
+                            my_etree_dict1['Horizontal_Units'] = 'US Survey Foot'
+        else:
+            for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
+                if x.text == 'xLocation':#horizontal unit, yLocation should be the same
+                    my_etree_dict1['xLocation'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
+                    my_etree_dict1['H_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
+                    if my_etree_dict1['H_units'].upper() == 'usSurveyFoot'.upper():
+                        my_etree_dict1['Horizontal_Units'] = 'US Survey Foot'
         self.my_etree_dict1 = my_etree_dict1
         return my_etree_dict1
     
@@ -1151,6 +1166,12 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 m['SPCS'] = name[0]#written description of state plane coordinate system
                 if len(m['SPCS']) > 0:
                     m['FIPS'] = convert_tofips(SOURCEPROJECTION_dict, m['SPCS'])#conversion to SPCS/ FIPS code using a dictionary
+                else:#WARNING CEMVN did not have this attribute correct, it was still the value for Oregon
+                    if 'mapprojn' in m:
+                        if len(m['mapprojn']) > 0:
+                            m['FIPS'] = m['mapprojn'].split('FIPS')[-1].strip('Feet').strip()
+                            m['CHECK_FIPS']= 'CHECK_IF_EXPECTED'
+                            #print may need qc check to see if this coming in correctly
                 m['Horizontal_Units'] = name[1].rstrip('.')                                  
             if  line.find('Vertical Datum:') >= 0:
                 name = line.split('Vertical Datum:')[-1]
@@ -1199,9 +1220,18 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                     print(abstract)
             else:
                 m['VERTDAT'] = ''
+    procdesc =  meta_xml['procdesc']
+    if 'TECSOU' not in m:#checking for technique of sounding alternative metadata location
+        if procdesc.find('Ross SmartSweep')>0:
+             m['TECSOU']= '8'#'swept vertical beam system'#essentially multiple single beam transducers on a boom type apparatus
+        elif procdesc.find('Odom MKIII echosounder')>0:
+             m['TECSOU']= '1'#'single beam'
+        elif procdesc.find('multibeam')>= 0 or  procdesc.find('multi beam')>= 0:
+             m['TECSOU']= '3'#'multibeam'
+        
     if 'Horizontal_Units' in m:
         if m['Horizontal_Units'] == '':
-            if  meta_xml['plandu'] == 'Foot_US': #plandu = #horizontal units
+            if  meta_xml['plandu'].upper() == 'FOOT_US': #plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
                 m['Horizontal_Units']='U.S. Survey Feet'
     horizpar = meta_xml['horizpar']
     if horizpar.find('DGPS, 1 Meter') == True:        
@@ -1259,8 +1289,9 @@ def extract_from_iso_meta(xml_meta):
             xml_meta['TECSOU'] = '1'
         elif  xml_meta['System'] == 'multibeam beam':
             xml_meta['TECSOU'] = '3'
-        elif  xml_meta['System'].find('sweep'):
-            xml_meta['TECSOU'] = ''
+        elif  xml_meta['System'].find('sweep') >=0 or xml_meta['System'].find('SmartSweep') >=0:
+            xml_meta['TECSOU'] = '8'#could also consider it just multiple single beams in this water depth range#Ross SmartSweep example modle
+            #see _print_TECSOU_defs() for more TECSOU definitions
         xml_meta ['from_horiz_datum'] = xml_meta['Projected_Coordinate_System'] + ',' + xml_meta['Horizontal_Zone'] + ',' + xml_meta['Units']
         xml_meta ['from_horiz_units'] = xml_meta['Units']
         if len(xml_meta['Horizontal_Zone']) >0 :        
@@ -1284,7 +1315,9 @@ def convert_meta_to_input(m):
             m['from_vert_datum'] = m['VERTDAT']
     #m['script: from_vert_units'] = m['from_vert_units']#needs to be added
     if 'SPCS' in m and 'horizontal_datum_i' in m :
-        m['from_horiz_datum'] = m['horizontal_datum_i'] + ',' + m['SPCS']
+        m['from_horiz_datum'] = m['horizontal_datum_i'].split('Vertical Datum:')[0] + ',' + m['SPCS']
+    elif 'horizontal_datum_i' in m:
+         m['from_horiz_datum'] = m['horizontal_datum_i'].split('Vertical Datum:')[0]
     if 'Horizontal_Units' in m:
         m['from_horiz_units'] = m['Horizontal_Units']#may need to enforce some kind of uniform spelling etc. here
     if 'FIPS' in m:
@@ -1296,5 +1329,57 @@ def convert_meta_to_input(m):
 
 
 #------------------------------------------------------------------------------
+def _print_TECSOU_defs(myvalue = None):
 
+    #            'TECSOU S-57 definitions'
+    TECSOU_S57codes = {
+            '1' : 'found by echo-sounder',
+            '2' : 'found by side scan sonar',
+            '3' : 'found by multi-beam',
+            '4' : 'found by diver',
+            '5' : 'found by lead-line',
+            '6' : 'swept by wire-drag',
+            '7' : 'found by laser',
+            '8' : 'swept by vertical acoustic system',
+            '9' : 'found by electromagnetic sensor',
+            '10' : 'photogrammetry',
+            '11' : 'satellite imagery',
+            '12' : 'found by levelling',
+            '13' : 'swept by side-scan sonar',
+            '14' : 'computer generated',
+            }
+    TECSOU_def = {
+            "1" : "found by echo-sounder: the depth was determined by using an instrument that determines depth of water by measuring the time interval between emission of a sonic or ultrasonic signal and return of its echo from the bottom. (adapted from IHO Dictionary, S-32, 1547)",
+            "2" : "found by side-scan-sonar: the depth was computed from a record produced by active sonar in which fixed acoustic beams are directed into the water perpendicularly to the direction of travel to scan the bottom and generate a record of the bottom configuration. (adapted from IHO Dictionary, S-32, 4710)",
+            "3" : "found by multi-beam: the depth was determined by using a wide swath echo sounder that uses multiple beams to measure depths directly below and transverse to the ship's track. (adapted from IHO Dictionary, S-32, 3339)",
+            "4" : "found by diver: the depth was determined by a person skilled in the practice of diving. (adapted from IHO Dictionary, S-32, 1422)",
+            "5" : "found by lead-line: the depth was determined by using a line, graduated with attached marks and fastened to a sounding lead. (adapted from IHO Dictionary, S-32, 2698)",
+            "6" : "swept by wire-drag: the given area was determined to be free from navigational dangers to a certain depth by towing a buoyed wire at the desired depth by two launches, or a least depth was identified using the same technique. (adapted from IHO Dictionary, S-32, 5248, 6013)",
+            "7" : "found by laser: the depth was determined by using an instrument that measures distance by emitting timed pulses of laser light and measuring the time between emission and reception of the reflected pulses. (adapted from IHO Dictionary, S-32, 2763)",
+            "8" : "swept by vertical acoustic system: the given area has been swept using a system comprised of multiple echo sounder transducers attached to booms deployed from the survey vessel.",
+            "9" : "found by electromagnetic sensor: the depth was determined by using an instrument that compares electromagnetic signals. (adapted from IHO Dictionary, S-32, 1571)",
+            "10" : "photogrammetry: the depth was determined by applying mathematical techniques to photographs. (adapted from IHO Dictionary, S-32, 3791)",
+            "11" : "satellite imagery: the depth was determined by using instruments placed aboard an artificial satellite. (adapted from IHO Dictionary, S-32, 4509)",
+            "12" : "found by levelling: the depth was determined by using levelling techniques to find the elevation of the point relative to a datum. (adapted from IHO Dictionary, S-32, 2741)",
+            "13" : "swept by side-scan-sonar: the given area was determined to be free from navigational dangers to a certain depth by towing a side-scan-sonar. (adapted from IHO Dictionary, S-32, 5248, 4710) [415.2]",
+            "14" : "computer generated: the sounding was determined from a bottom model constructed using a computer"
+            }
+    
+    print(TECSOU_def)
+    print(TECSOU_S57codes)
+    if myvalue == None:
+        myvalue = 'no'
+        print('Just printing codes')
+    else:
+        print('returning dictionary')
+        return TECSOU_def, TECSOU_S57codes
+    """
+    _print_TECSOU_defs(myvalue = None)
+        if myvalue == None:
+        myvalue = 'no'
+        print('Just printing codes')
+    else:
+        print('returning dictionary')
+        return TECSOU_def, TECSOU_S57codes
+    """
 #------------------------------------------------------------------------------    
