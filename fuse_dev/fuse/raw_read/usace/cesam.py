@@ -404,12 +404,12 @@ def _parse_notes_chart(line):
                 metadata['COORDINATE SYSTEM'] = aline.split('COORDINATE SYSTEM')[-1]              
             if aline.find('SURVEY VESSEL') >= 0:
                 metadata['SURVEY VESSEL'] = aline.split('SURVEY VESSEL:')[-1]
-            if aline.find('SURVEY DATE:') > =0:
+            if aline.find('SURVEY DATE:') >= 0:
                 metadata['SURVEY DATE'] = aline.split(':')[-1]
                 #metadata =_parse_surveydates(aline.split(':')[-1])
             if aline.find('SURVEYED BY:') >= 0:
                 metadata['SURVEYED_BY'] = aline.split(':')[-1]#metadata = _split_at_colon(key, line)
-            if aline.find('FREQUENCY SOUNDINGS') > =0:
+            if aline.find('FREQUENCY SOUNDINGS') >= 0:
                 metadata['FREQUENCY SOUNDINGS'] = aline.split(':')[-1]
     return metadata            
 
