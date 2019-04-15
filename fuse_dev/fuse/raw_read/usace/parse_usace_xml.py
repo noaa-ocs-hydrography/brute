@@ -1125,10 +1125,14 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     if  horizpar.find('RTK'):
         ?
         horiz_uncert = ?
-    elif horizpar.find('DGPS, 1 Meter') == True:
+    elif horizpar.find('DGPS, 1 Meter') > = 0:
         horiz_uncert='1'# (POSACC)    
-    if vertaccr.find('Bar Checked to 0.1 foot') == True:
-        vert_unc = 
+    if vertaccr.find('Expected values 0.5 -1.0 Foot')  >= 0:
+        m['vert_acc'] = '0.3'# 1 ft =   0.30480060960121924 m 
+    elif vertaccr.find('+/- 0.03 meter (0.1 foot)')  >= 0:
+        m['vert_acc'] = '0.03'#
+    
+
                 
     if procdesc.find():
     procdesc
@@ -1142,11 +1146,13 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
 
     m={}
     m['horiz_units']=''
+    m['horiz_uncert'] = ''
+    m['vert_acc'] = ''
     abstract = meta_xml['abstract']
     lines = abstract.split('\n')
     for line in lines:
         try:
-            if line.find('Survey Type: ') >= 0:
+            if line.find('Survey Type: ') >= 0 or line.find('SURVEY TYPE:') >= 0:
                 name = line.split('Survey Type:')[-1]
                 m['survey_description'] = name
                 if line.find('Survey Type: Single Beam Soundings') >= 0:
@@ -1163,16 +1169,20 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
             if  line.find('Coordinate System (SPCS)') >= 0:
                 name = line.split('Coordinate System (SPCS), ')[-1]
                 name = name.split('. Distance units in ')
+                m['Horizontal_Units'] = name[1].rstrip('.') 
                 m['SPCS'] = name[0]#written description of state plane coordinate system
                 if len(m['SPCS']) > 0:
-                    m['FIPS'] = convert_tofips(SOURCEPROJECTION_dict, m['SPCS'])#conversion to SPCS/ FIPS code using a dictionary
-                else:#WARNING CEMVN did not have this attribute correct, it was still the value for Oregon
-                    if 'mapprojn' in m:
-                        if len(m['mapprojn']) > 0:
+                    m['FIPS'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(m['SPCS'].split()))#conversion to SPCS/ FIPS code using a dictionary
+                #remove extra white spaces,but not all spaces. " ".join(string_var.split())
+            elif m['spcszone'] in m:
+                if len(m['spcszone']) >0:
+                    m['FIPS'] = m['spcszone']
+            else:#WARNING CEMVN did not have this attribute correct, it was still the value for Oregon
+                if 'mapprojn' in m:
+                    if len(m['mapprojn']) > 0:
                             m['FIPS'] = m['mapprojn'].split('FIPS')[-1].strip('Feet').strip()
                             m['CHECK_FIPS']= 'CHECK_IF_EXPECTED'
-                            #print may need qc check to see if this coming in correctly
-                m['Horizontal_Units'] = name[1].rstrip('.')                                  
+                            #print may need qc check to see if this coming in correctly                                 
             if  line.find('Vertical Datum:') >= 0:
                 name = line.split('Vertical Datum:')[-1]
                 m['Vertical Datum Description']= name
@@ -1234,11 +1244,15 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
             if  meta_xml['plandu'].upper() == 'FOOT_US': #plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
                 m['Horizontal_Units']='U.S. Survey Feet'
     horizpar = meta_xml['horizpar']
-    if horizpar.find('DGPS, 1 Meter') == True:        
+    if horizpar.find('DGPS, 1 Meter') >= 0:        
+        m['horiz_uncert']='1'# (POSACC) DGPS, 1 Meter
+    elif horizpar.find('DGPS, +/-1.0 Meter (3.28 feet)') >= 0:
         m['horiz_uncert']='1'# (POSACC) DGPS, 1 Meter
     vertaccr = meta_xml['vertaccr']
-    if vertaccr.find('Expected values 0.5 -1.0 Foot') == True:
+    if vertaccr.find('Expected values 0.5 -1.0 Foot')  >= 0:
         m['vert_acc'] = '0.3'# 1 ft =   0.30480060960121924 m 
+    elif vertaccr.find('+/- 0.03 meter (0.1 foot)')  >= 0:
+        m['vert_acc'] = '0.03'#        
     return m
 
 def find_ISO_xml_bottom(xml_txt):         
@@ -1300,7 +1314,7 @@ def extract_from_iso_meta(xml_meta):
             for key in SOURCEPROJECTION_dict:
                 if key.upper() in xml_meta['Horizontal_Zone']:
                     print(key)
-                    xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, key)
+                    xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
     return xml_meta
                     
 def convert_meta_to_input(m):
@@ -1322,9 +1336,13 @@ def convert_meta_to_input(m):
         m['from_horiz_units'] = m['Horizontal_Units']#may need to enforce some kind of uniform spelling etc. here
     if 'FIPS' in m:
         m['from_fips'] = m['FIPS']
-    m['from_vert_key'] = m['VERTDAT']
-    m['script: from_vert_key'] = m['VERTDAT']
-
+    if 'VERTDAT' in m:
+        m['from_vert_key'] = m['VERTDAT']
+        m['script: from_vert_key'] = m['VERTDAT']
+    if 'from_vert_unc' not in m and 'vert_acc' in m:
+        m['from_vert_unc'] = m['vert_acc']
+    if 'from_horiz_unc' not in m and 'horiz_uncert' in m:        
+        m['from_horiz_unc'] = m['horiz_uncert']
     return m
 
 
