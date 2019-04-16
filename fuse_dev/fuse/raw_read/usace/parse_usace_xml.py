@@ -1169,18 +1169,18 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
             if  line.find('Coordinate System (SPCS)') >= 0:
                 name = line.split('Coordinate System (SPCS), ')[-1]
                 name = name.split('. Distance units in ')
-                m['Horizontal_Units'] = name[1].rstrip('.') 
+                m['Horizontal_Units'] = name[1].split('Vertical Datum:')[0].rstrip().rstrip('.') 
                 m['SPCS'] = name[0]#written description of state plane coordinate system
                 if len(m['SPCS']) > 0:
                     m['FIPS'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(m['SPCS'].split()))#conversion to SPCS/ FIPS code using a dictionary
                 #remove extra white spaces,but not all spaces. " ".join(string_var.split())
-            elif m['spcszone'] in m:
-                if len(m['spcszone']) >0:
-                    m['FIPS'] = m['spcszone']
+            elif 'spcszone' in meta_xml:
+                if len(meta_xml['spcszone']) >0:
+                    m['FIPS'] = meta_xml['spcszone']
             else:#WARNING CEMVN did not have this attribute correct, it was still the value for Oregon
-                if 'mapprojn' in m:
-                    if len(m['mapprojn']) > 0:
-                            m['FIPS'] = m['mapprojn'].split('FIPS')[-1].strip('Feet').strip()
+                if 'mapprojn' in meta_xml:
+                    if len(meta_xml['mapprojn']) > 0:
+                            m['FIPS'] = meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip()
                             m['CHECK_FIPS']= 'CHECK_IF_EXPECTED'
                             #print may need qc check to see if this coming in correctly                                 
             if  line.find('Vertical Datum:') >= 0:
@@ -1250,7 +1250,9 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         m['horiz_uncert']='1'# (POSACC) DGPS, 1 Meter
     vertaccr = meta_xml['vertaccr']
     if vertaccr.find('Expected values 0.5 -1.0 Foot')  >= 0:
-        m['vert_acc'] = '0.3'# 1 ft =   0.30480060960121924 m 
+        m['vert_acc'] = '0.3'# 1 ft =   0.30480060960121924 m
+    elif vertaccr.find('Bar Test, 0.5 Foot')  >= 0:
+        m['vert_acc'] = '0.15'#
     elif vertaccr.find('+/- 0.03 meter (0.1 foot)')  >= 0:
         m['vert_acc'] = '0.03'#        
     return m
