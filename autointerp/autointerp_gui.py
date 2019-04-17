@@ -9,6 +9,7 @@ import os
 import wx
 import autointerp
 import autointerp_ui
+from datetime import datetime as _dt
 
 class Form(autointerp_ui.Form):
     '''Load ui and: define tif storage columns, overwrite ui defined fucntions 
@@ -53,8 +54,13 @@ class Form(autointerp_ui.Form):
         self.gettifList()
         
     def main(self):
-        self.bar_status.SetStatusText('')
-        self.progressBar.Pulse()
+        '''Main function run as a thread by programProg(). This function 
+        collects the input field values and passes them to autointerp.py's 
+        'main' function interp()
+        '''
+        st = 'Started - ' + str(_dt.now())
+        self.bar_status.SetStatusText(st)
+#        self.progressBar.Pulse()
         bagPath = self.picker_bag.GetPath()
         self.gettifList()
         tifPath = self.tifList
@@ -63,9 +69,9 @@ class Form(autointerp_ui.Form):
             desPath = os.path.split(bagPath)[0]
         catzoc = self.choice_catzoc.GetString(self.choice_catzoc.GetCurrentSelection())
         ioOut = self.radio_data.GetSelection()
-        returned = autointerp.interp(bagPath, tifPath, desPath, catzoc, ioOut)
+        returned = autointerp.main(bagPath, tifPath, desPath, catzoc, ioOut)
         self.bar_status.SetStatusText(returned)
-        self.progressBar.SetValue(100)
+#        self.progressBar.SetValue(100)
             
     def programProg(self, event):
         '''Collects the GUI field values for use in running the main
@@ -76,6 +82,9 @@ class Form(autointerp_ui.Form):
         th.start()
             
     def gettifList(self):
+        '''Used for checking and updating the contents of current collection
+        of .tiff files
+        '''
         tifCount = self.list_tif.GetItemCount()
         self.tifList = []
         for x in range(0, tifCount):
