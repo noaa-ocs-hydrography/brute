@@ -30,9 +30,9 @@ csvName = 'eHydro_csv.txt'
 csvLocation = os.path.join(progLoc, csvName)
 logName = 'eHydro_log.txt'
 logLocation = os.path.join(progLoc, logName)
-holding = progLoc + '/downloads/'
-logging = progLoc + '/logs/'
-running = progLoc + '/runs/'
+holding = progLoc + '\\downloads\\'
+logging = progLoc + '\\logs\\'
+running = progLoc + '\\runs\\'
 # eHydro survey entry attributes
 attributes = [ "OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
               "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION",
@@ -618,19 +618,20 @@ def main():
         logWriter(fileLog, '\tSurveys queried from eHydro\n' + paramString)
     except:
         logWriter(fileLog, '\teHydro query failed')
-    try:
-        csvFile = csvOpen()
-        txtWriter(csvFile, txtLocation)
-        logWriter(fileLog, '\teHydro_csv.txt opened for reading')
-    except:
-        logWriter(fileLog, '\teHydro_csv.txt unable to be opened')
-    if runType != 'yes':
+    if runType == 'no':
+        try:
+            csvFile = csvOpen()
+            txtWriter(csvFile, txtLocation)
+            logWriter(fileLog, '\teHydro_csv.txt opened for reading')
+        except:
+            logWriter(fileLog, '\teHydro_csv.txt unable to be opened')
         try:
             logWriter(fileLog, '\tComparing query results to eHydro_csv.txt')
             changes = csvCompare(rows, csvFile, newSurveysNum)
         except:
             logWriter(fileLog, '\t\tUnable to compare query results to eHydro_csv.txt')
     elif runType == 'yes':
+        csvFile = []
         changes = rows
     try:
         logWriter(fileLog, '\tParsing new entries for resolution:')
@@ -653,13 +654,14 @@ def main():
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
-        if runType != 'yes':
-            csvWriter(csvSave, csvLocation)
+        if runType == 'no':
+            csvPath = csvLocation
+            csvWriter(csvSave, csvPath)
         elif runType == 'yes':
             x = 0
             datestamp = date()
             while True:
-                name = running + csvName
+#                name = running + csvName
                 name = datestamp +'_' + str(x) + '_' + csvName
                 csvPath = running + name
                 print (csvPath)
@@ -668,9 +670,9 @@ def main():
                 else:
                     break
             csvWriter(csvSave, csvPath)
-        logWriter(fileLog, '\tAdding results to eHydro_csv.txt')
+        logWriter(fileLog, '\tAdding results to ' + csvPath)
     except:
-        logWriter(fileLog, '\tUnable to add results to eHydro_csv.txt')
+        logWriter(fileLog, '\tUnable to add results to ' + csvPath)
     logClose(fileLog)
     print('log closed')
 
