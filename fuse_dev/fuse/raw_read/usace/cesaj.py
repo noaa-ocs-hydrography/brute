@@ -24,10 +24,13 @@ import numpy as _np
 try:
     import fuse.raw_read.usace.parse_usace_xml as p_usace_xml
 except:
-    print('check if the extract_xml classes have been merged yet see extract_ehydro_meta_class_CESAJ.py')    
+    try:
+        from . import parse_usace_xml as p_usace_xml
+    except:
+        print('importing fuse.raw_read.usace.parse_usace_xml as p_usace_xml did not work')    
 ##-----------------------------------------------------------------------------
 
-class read_raw_cesaj:
+class read_raw:
     """
     This class passes back bathymetry
     & a metadata dictionary from the e-Hydro files

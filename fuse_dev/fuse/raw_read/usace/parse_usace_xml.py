@@ -123,7 +123,7 @@ class XML_Meta(object):
             print('FGDC format not ISO, USACE example')
         else:
             return -1.0
-            print('We do not have a template for this verion yet!')
+            print('We do not have a template for this version yet!')
 
     def _set_format(self):
         """
@@ -224,7 +224,7 @@ class XML_Meta(object):
             #pulling in Z units from attrs
             if x.text == 'Z_depth':
                 my_etree_dict1['Z_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-                print(self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text)
+                print(self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text + ' Z units')
                 if my_etree_dict1['Z_units'].upper() == 'usSurveyFoot'.upper():
                     my_etree_dict1['from_vert_units'] = 'US Survey Foot'
         for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
@@ -409,7 +409,10 @@ class XML_Meta(object):
         """
         if self.version =='USACE_FGDC':
             meta_xml = self.convert_xml_to_dict2()
-            meta = parsing_xml_FGDC_attributes_s57(meta_xml)
+            if len(meta_xml)>0:
+                meta = parsing_xml_FGDC_attributes_s57(meta_xml)
+            else:
+                meta = {}
             try:
                 m = convert_meta_to_input(meta)
             except:
@@ -1182,6 +1185,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                     if len(meta_xml['mapprojn']) > 0:
                             m['FIPS'] = meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip()
                             m['CHECK_FIPS']= 'CHECK_IF_EXPECTED'
+                            #it does not always specify US Survey Feet, only Feet here thus we pull horizontal units from another entry
                             #print may need qc check to see if this coming in correctly                                 
             if  line.find('Vertical Datum:') >= 0:
                 name = line.split('Vertical Datum:')[-1]
@@ -1198,7 +1202,6 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                     m['VERTDAT'] = 'LWRP'
                 elif name.find('MLG') >= 0:
                     m['VERTDAT'] = 'MLG'
-                    print(name)
                 elif name.find('depths below National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
                     m['VERTDAT'] = 'NGVD29'
                 if name.find('Soundings are shown in feet') >= 0:
@@ -1242,7 +1245,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     if 'Horizontal_Units' in m:
         if m['Horizontal_Units'] == '':
             if  meta_xml['plandu'].upper() == 'FOOT_US': #plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
-                m['Horizontal_Units']='U.S. Survey Feet'
+                m['Horizontal_Units'] = 'U.S. Survey Feet'
     horizpar = meta_xml['horizpar']
     if horizpar.find('DGPS, 1 Meter') >= 0:        
         m['horiz_uncert']='1'# (POSACC) DGPS, 1 Meter

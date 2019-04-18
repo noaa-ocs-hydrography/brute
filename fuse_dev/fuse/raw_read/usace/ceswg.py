@@ -3,6 +3,9 @@
 Edited by Juliet Kinney
 extract_ehydro_meta_class_CESWG.py
 
+Glaveston uses MLLW in the name of some files, but not all?
+Many are in MLLW even if its not in the filename.
+
 This script takes as an input the filename and path of an USACE e-Hydro .xyz 
 text file and pull the metadata from the xyz header and file name.
 Additionally, it passes the matching .xml file and utilizes 
@@ -24,10 +27,13 @@ import numpy as _np
 try:
     import fuse.raw_read.usace.parse_usace_xml as p_usace_xml
 except:
-    print('check if the extract_xml classes have been merged yet see extract_ehydro_meta_class_CESWG.py')    
+    try:
+        from . import parse_usace_xml as p_usace_xml
+    except:
+        print('importing fuse.raw_read.usace.parse_usace_xml as p_usace_xml did not work') 
 ##-----------------------------------------------------------------------------
 
-class read_raw_ceswg:
+class read_raw:
     """
     This class passes back bathymetry
     & a metadata dictionary from the e-Hydro files

@@ -1,11 +1,13 @@
 """
-cenan2meta.py
-
+cemvn2meta.py
+ed jkinney
+20190417
+based on cenan2meta.py by
 grice
 20190408
 V.0.0.1 20190408
 
-This is a script to demonstrate importing data from the USACE district CENAN
+This is a script to demonstrate importing data from the USACE district CEMVN
 into the metadata file for qualification.
 """
 
