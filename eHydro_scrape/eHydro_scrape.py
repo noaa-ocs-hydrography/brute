@@ -509,29 +509,30 @@ def logOpen(logType):
     -------
     fileLog : :function:`open` object
         A text document object representing the output log
+    nameLog : str
+        File path for the output log object
 
     """
     timestamp = time()
+    message = timestamp + ' - Program Initiated, Log Opened'
     if logType == 'False' or False:
         fileLog = open(logLocation, 'a')
-        message = '\n' + timestamp + ' - Program Initiated, Log Opened'
-        logWriter(fileLog, message)
-        return fileLog
+        nameLog = logLocation
     elif logType == 'True' or True:
         x = 0
         datestamp = date()
         while True:
             name = datestamp +'_' + str(x) + '_' + logName
             logPath = logging + name
-            print (logPath)
+#            print (logPath)
             if os.path.exists(logPath):
                 x += 1
             else:
                 break
         fileLog = open(logPath, 'w')
-        message = '\n' + timestamp + ' - Program Initiated, Log Opened'
-        logWriter(fileLog, message)
-        return fileLog
+        nameLog = logPath
+    logWriter(fileLog, message)
+    return fileLog, nameLog
 
 def logWriter(fileLog, message):
     """Takes a file object 'fileLog' and a string 'message'. Writes
@@ -559,7 +560,7 @@ def logClose(fileLog):
 
     """
     timestamp = time()
-    message = timestamp +' - Program Finished, Log Closed'
+    message = timestamp +' - Program Finished, Log Closed\n'
     logWriter(fileLog, message)
     fileLog.close()
 
@@ -611,7 +612,7 @@ def fileTime():
 def main():
     runType = config['Data Checking']['Override']
     logType = config['Output Log']['Log Type']
-    fileLog = logOpen(logType)
+    fileLog, nameLog = logOpen(logType)
     try:
         surveyIDs, newSurveysNum, paramString = query()
         rows = surveyCompile(surveyIDs, newSurveysNum)
@@ -661,10 +662,9 @@ def main():
             x = 0
             datestamp = date()
             while True:
-#                name = running + csvName
                 name = datestamp +'_' + str(x) + '_' + csvName
                 csvPath = running + name
-                print (csvPath)
+#                print (csvPath)
                 if os.path.exists(csvPath):
                     x += 1
                 else:
@@ -673,6 +673,8 @@ def main():
         logWriter(fileLog, '\tAdding results to ' + csvPath)
     except:
         logWriter(fileLog, '\tUnable to add results to ' + csvPath)
+    
+    logWriter(fileLog, '\tOutput Log saved as ' + nameLog)
     logClose(fileLog)
     print('log closed')
 
