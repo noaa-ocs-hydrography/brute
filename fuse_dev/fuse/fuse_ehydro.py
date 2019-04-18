@@ -53,6 +53,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_writer()
+        self._meta = {} # initialize the metadata holder
         
     def _set_data_reader(self):
         """
@@ -63,12 +64,18 @@ class fuse_ehydro(_fbc.fuse_base_class):
             reader_type = self._config['raw_reader_type'].casefold()
             if reader_type == 'cenan':
                 self._reader = _usace.cenan.read_raw()
+            elif reader_type == 'cemvn':
+                self._reader = _usace.cemvn.read_raw()
+            elif reader_type == 'cesaj':
+                self._reader = _usace.cesaj.read_raw()
+            elif reader_type == 'cesam':
+                self._reader = _usace.cesam.read_raw()
+            elif reader_type == 'ceswg':
+                self._reader = _usace.ceswg.read_raw()
             else:
-                print('reader type not implemented')
-                raise
+                raise ValueError('reader type not implemented')
         except:
-            print("No reader type found in the configuration file.")
-            raise
+            raise ValueError("No reader type found in the configuration file.")
             
     def _set_data_transform(self):
         """
@@ -118,7 +125,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         Do the datum transformtion and interpolation.
         """
-        metadata = self._get_stored_meta(infilename)
+        self._get_stored_meta(infilename)
         if 'from_fips' in self._meta:
             # convert the bathy
             outpath = self._config['outpath']
@@ -131,7 +138,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
                 datfilename = _os.path.join(infilepath, infileroot + '.DAT')
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
-            dataset = self._transform.translate(datfilename, metadata)
+            dataset = self._transform.translate(datfilename, self._meta)
             # take a gdal dataset for interpolation and return a gdal dataset
             dataset = self._interpolator.interpolate(dataset)
             self._writer.write(dataset, outfilename)
@@ -142,8 +149,10 @@ class fuse_ehydro(_fbc.fuse_base_class):
         Get the metadata in a local dictionary so that it can be used within
         the instantiated object.
         """
+        # file name is the key rather than the path
+        path, f = _os.path.split(infilename)
         if 'from_filename' not in self._meta:
-            self._meta = self._meta_obj.read_meta_record(infilename)
+            self._meta = self._meta_obj.read_meta_record(f)
         elif self._meta['from_filename'] is not infilename:
-            self._meta = self._meta_obj.read_meta_record(infilename)
-            # need to catch if this file is not in the metadata record yet here.
+            self._meta = self._meta_obj.read_meta_record(f)
+        # need to catch if this file is not in the metadata record yet here.
