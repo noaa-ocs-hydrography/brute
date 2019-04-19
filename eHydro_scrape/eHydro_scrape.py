@@ -24,9 +24,13 @@ progLoc = os.getcwd()
 """progLoc is the program's own file location / current working directory (cwd)
 obtained by :func:`os.getcwd()`"""
 full = re.compile(r'FULL.xyz', re.IGNORECASE)
-"""regex object for searching zipfile contents for high-res data"""
+"""regex object for searching zipfile contents for high-res data ending in 
+``FULL.xyz``
+"""
 full_a = re.compile(r'_A.xyz', re.IGNORECASE)
-"""regex object for searching zipfile contents for high-res data"""
+"""regex object for searching zipfile contents for high-res data ending in 
+``_A.xyz``
+"""
 # location of data items
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -42,11 +46,18 @@ logLocation = os.path.join(progLoc, logName)
 """Default location for :attr:`logName`"""
 #"""Default location for """
 holding = progLoc + '\\downloads\\'
-"""Default location for downloaded data"""
+"""Default location for all downloaded data, regardless of the type of query 
+performed. Data is broken up into folders representing each district (ex.
+``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)
+"""
 logging = progLoc + '\\logs\\'
-"""Default location for individual query logs"""
+"""Default location for individual query logs. These are named like 
+``YYYYMMDD_0_eHydro_log.txt``
+"""
 running = progLoc + '\\runs\\'
-"""Default location for individual query csvs"""
+"""Default location for individual query csv outputs. These are named like 
+``YYYYMMDD_0_eHydro_csv.txt``
+"""
 # eHydro survey entry attributes
 attributes = [ "OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
               "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION",

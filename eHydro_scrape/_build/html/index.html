@@ -53,11 +53,121 @@
 <ul class="simple">
 <li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
 </ul>
+<div class="section" id="ehydro-scrape-lnk-assumptions">
+<h3>eHydro_scrape.lnk Assumptions<a class="headerlink" href="#ehydro-scrape-lnk-assumptions" title="Permalink to this headline">¶</a></h3>
+<p>The shortcut link <code class="docutils literal"><span class="pre">eHydro_srape.lnk</span></code> provided with the distribution to run the script makes
+several assumptions:</p>
+<ol class="arabic simple">
+<li>The user&#8217;s command prompt is located in <code class="docutils literal"><span class="pre">C:\Windows\System32\cmd.exe</span></code></li>
+<li>The user has Pydro installed in <code class="docutils literal"><span class="pre">C:\\PydroXL</span></code></li>
+</ol>
 </div>
-<div class="section" id="ehydro-scrape-module">
-<h2>eHydro_scrape Module<a class="headerlink" href="#ehydro-scrape-module" title="Permalink to this headline">¶</a></h2>
-<span class="target" id="module-eHydro_scrape"></span><p>Created on Tue Oct 2 13:44:14 2018</p>
-<p>Last Modified: Apr 19 11:29:15 2019</p>
+<div class="section" id="configuring-an-individual-query">
+<h3>Configuring an Individual Query<a class="headerlink" href="#configuring-an-individual-query" title="Permalink to this headline">¶</a></h3>
+<p>The configuration file <code class="docutils literal"><span class="pre">config.ini</span></code> provided with the distribution allows
+users to modify the query run by the script.  As a script geared towards
+automation, the <code class="docutils literal"><span class="pre">config.ini</span></code> maintains a &#8216;set and forget&#8217; fucntionality.
+However, if a user wishes to modifiy the file for specific queries, there are
+plenty of options avaiable:</p>
+<ol class="arabic simple">
+<li><dl class="first docutils">
+<dt><strong>[Timeframe]</strong></dt>
+<dd><ul class="first last">
+<li>Dates are formated <code class="docutils literal"><span class="pre">YYYY-MM-DD</span></code></li>
+<li>Start Date and End Date are used to define custom date ranges for a query. If these fields are left blank, the default values are <code class="docutils literal"><span class="pre">Yesterday</span></code> and <code class="docutils literal"><span class="pre">Today</span></code> as defined in <a class="reference internal" href="#eHydro_scrape.query" title="eHydro_scrape.query"><code class="xref py py-func docutils literal"><span class="pre">eHydro_scrape.query()</span></code></a></li>
+<li>If Ignore Date is set to <code class="docutils literal"><span class="pre">yes</span></code>, both the default values and values entered in the <code class="docutils literal"><span class="pre">Start</span> <span class="pre">Date</span></code> and <code class="docutils literal"><span class="pre">End</span> <span class="pre">Date</span></code> fields are ignored and the script will query the entirety of eHydro (barring additional modifications in a seperate section)</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>[Agencies]</strong></dt>
+<dd><ul class="first last">
+<li><dl class="first docutils">
+<dt>Agencies: List of agencies to focus on listed in CAPS and seperated by commas (ex. CEMVN, CENWP)</dt>
+<dd><ul class="first last">
+<li>Surveys from agencies listed here that do not contain <code class="docutils literal"><span class="pre">_A.xyz</span></code> or <code class="docutils literal"><span class="pre">_FULL.xyz</span></code> will be deleted unless <strong>[Resolutions]</strong> Override is set to <code class="docutils literal"><span class="pre">yes</span></code></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Only Listed: Default is <code class="docutils literal"><span class="pre">no</span></code></dt>
+<dd><ul class="first last">
+<li><code class="docutils literal"><span class="pre">no</span></code>: Will query from all avaiable agencies</li>
+<li><code class="docutils literal"><span class="pre">yes</span></code>: Will only query from the listed agencies</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>[Resolutions]</strong></dt>
+<dd><ul class="first last">
+<li><dl class="first docutils">
+<dt>Override: Default is <code class="docutils literal"><span class="pre">no</span></code></dt>
+<dd><ul class="first last">
+<li><code class="docutils literal"><span class="pre">no</span></code>: The tool will delete the files for non high-res data from queries</li>
+<li><code class="docutils literal"><span class="pre">yes</span></code>: Overrides deletion of non high-res data from queries</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>[Data Checking]</strong></dt>
+<dd><ul class="first last">
+<li><dl class="first docutils">
+<dt>Override: Default is <code class="docutils literal"><span class="pre">no</span></code>; This option may be used if you wish to compile the complete results from a specific query</dt>
+<dd><ul class="first last">
+<li><code class="docutils literal"><span class="pre">no</span></code>: The program will check against the master list of past surveys and remove items that have already been checked in the past</li>
+<li><code class="docutils literal"><span class="pre">yes</span></code>: Overrides the deletion of previously checked surveys.  These results are saved to the <a class="reference internal" href="#eHydro_scrape.running" title="eHydro_scrape.running"><code class="xref py py-attr docutils literal"><span class="pre">eHydro_scrape.running</span></code></a> folder</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>[Output Log]</strong></dt>
+<dd><ul class="first last">
+<li><dl class="first docutils">
+<dt>Query List: Default is <code class="docutils literal"><span class="pre">yes</span></code>; Choice of full query results or only program steps</dt>
+<dd><ul class="first last">
+<li><code class="docutils literal"><span class="pre">yes</span></code>: will list basic details for every survey object found, including if Hi-Res data is found</li>
+<li><code class="docutils literal"><span class="pre">no</span></code>: will not list any basic details for the surveys found and only list the number of Hi-Res surveys found in the query</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Log Type: Default is <code class="docutils literal"><span class="pre">False</span></code>; Choice of the default continuous log file or a individual log file for the run</dt>
+<dd><ul class="first last">
+<li><code class="docutils literal"><span class="pre">False</span></code>: will update the continuous log file</li>
+<li><code class="docutils literal"><span class="pre">True</span></code>: will create a seperate log file in the <a class="reference internal" href="#eHydro_scrape.logging" title="eHydro_scrape.logging"><code class="xref py py-attr docutils literal"><span class="pre">eHydro_scrape.logging</span></code></a> folder</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+</div>
+</div>
+<div class="section" id="module-eHydro_scrape">
+<span id="ehydro-scrape-module"></span><h2>eHydro_scrape Module<a class="headerlink" href="#module-eHydro_scrape" title="Permalink to this headline">¶</a></h2>
+<p>Created on Tue Oct 2 13:44:14 2018</p>
+<p>Last Modified: Apr 19 12:12:42 2019</p>
 <p>&#64;author: Casiano.Koprowski &lt;<a class="reference external" href="mailto:casiano&#46;koprowski&#37;&#52;&#48;noaa&#46;gov">casiano<span>&#46;</span>koprowski<span>&#64;</span>noaa<span>&#46;</span>gov</a>&gt;</p>
 <dl class="data">
 <dt id="eHydro_scrape.attributes">
@@ -255,19 +365,23 @@ formated current date and time at the time of calling.  Generated by
 <dl class="data">
 <dt id="eHydro_scrape.full">
 <code class="descclassname">eHydro_scrape.</code><code class="descname">full</code><em class="property"> = re.compile('FULL.xyz', re.IGNORECASE)</em><a class="headerlink" href="#eHydro_scrape.full" title="Permalink to this definition">¶</a></dt>
-<dd><p>regex object for searching zipfile contents for high-res data</p>
+<dd><p>regex object for searching zipfile contents for high-res data ending in
+<code class="docutils literal"><span class="pre">FULL.xyz</span></code></p>
 </dd></dl>
 
 <dl class="data">
 <dt id="eHydro_scrape.full_a">
 <code class="descclassname">eHydro_scrape.</code><code class="descname">full_a</code><em class="property"> = re.compile('_A.xyz', re.IGNORECASE)</em><a class="headerlink" href="#eHydro_scrape.full_a" title="Permalink to this definition">¶</a></dt>
-<dd><p>regex object for searching zipfile contents for high-res data</p>
+<dd><p>regex object for searching zipfile contents for high-res data ending in
+<code class="docutils literal"><span class="pre">_A.xyz</span></code></p>
 </dd></dl>
 
 <dl class="data">
 <dt id="eHydro_scrape.holding">
 <code class="descclassname">eHydro_scrape.</code><code class="descname">holding</code><em class="property"> = '\\eHydro_scrape\\downloads\\'</em><a class="headerlink" href="#eHydro_scrape.holding" title="Permalink to this definition">¶</a></dt>
-<dd><p>Default location for downloaded data</p>
+<dd><p>Default location for all downloaded data, regardless of the type of query
+performed. Data is broken up into folders representing each district (ex.
+<code class="docutils literal"><span class="pre">\downloads\CEMVN</span></code>, <code class="docutils literal"><span class="pre">\downloads\CENWP</span></code>, etc.)</p>
 </dd></dl>
 
 <dl class="function">
@@ -343,7 +457,8 @@ run</td>
 <dl class="data">
 <dt id="eHydro_scrape.logging">
 <code class="descclassname">eHydro_scrape.</code><code class="descname">logging</code><em class="property"> = '\\eHydro_scrape\\logs\\'</em><a class="headerlink" href="#eHydro_scrape.logging" title="Permalink to this definition">¶</a></dt>
-<dd><p>Default location for individual query logs</p>
+<dd><p>Default location for individual query logs. These are named like
+<code class="docutils literal"><span class="pre">YYYYMMDD_0_eHydro_log.txt</span></code></p>
 </dd></dl>
 
 <dl class="function">
@@ -388,7 +503,8 @@ and the integer number of surveys contained by the query</p>
 <dl class="data">
 <dt id="eHydro_scrape.running">
 <code class="descclassname">eHydro_scrape.</code><code class="descname">running</code><em class="property"> = '\\eHydro_scrape\\runs\\'</em><a class="headerlink" href="#eHydro_scrape.running" title="Permalink to this definition">¶</a></dt>
-<dd><p>Default location for individual query csvs</p>
+<dd><p>Default location for individual query csv outputs. These are named like
+<code class="docutils literal"><span class="pre">YYYYMMDD_0_eHydro_csv.txt</span></code></p>
 </dd></dl>
 
 <dl class="function">
@@ -486,8 +602,12 @@ outputLog</li>
   <h3><a href="#">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Welcome to eHydro_scrape&#8217;s documentation!</a><ul>
-<li><a class="reference internal" href="#index">Index</a></li>
-<li><a class="reference internal" href="#ehydro-scrape-module">eHydro_scrape Module</a></li>
+<li><a class="reference internal" href="#index">Index</a><ul>
+<li><a class="reference internal" href="#ehydro-scrape-lnk-assumptions">eHydro_scrape.lnk Assumptions</a></li>
+<li><a class="reference internal" href="#configuring-an-individual-query">Configuring an Individual Query</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-eHydro_scrape">eHydro_scrape Module</a></li>
 </ul>
 </li>
 </ul>

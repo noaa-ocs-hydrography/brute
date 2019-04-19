@@ -5,18 +5,59 @@
 
 Welcome to eHydro_scrape's documentation!
 =========================================
- 
+
 Index
 -----
 
 * :ref:`genindex`
 
+eHydro_scrape.lnk Assumptions
++++++++++++++++++++++++++++++
+
+The shortcut link ``eHydro_srape.lnk`` provided with the distribution to run the script makes
+several assumptions:
+
+1. The user's command prompt is located in ``C:\Windows\System32\cmd.exe``
+2. The user has Pydro installed in ``C:\\PydroXL``
+
+Configuring an Individual Query
++++++++++++++++++++++++++++++++
+
+The configuration file ``config.ini`` provided with the distribution allows
+users to modify the query run by the script.  As a script geared towards
+automation, the ``config.ini`` maintains a 'set and forget' fucntionality.
+However, if a user wishes to modifiy the file for specific queries, there are
+plenty of options avaiable:
+
+1. **[Timeframe]**
+    - Dates are formated ``YYYY-MM-DD``
+    - Start Date and End Date are used to define custom date ranges for a query. If these fields are left blank, the default values are ``Yesterday`` and ``Today`` as defined in :func:`eHydro_scrape.query`
+    - If Ignore Date is set to ``yes``, both the default values and values entered in the ``Start Date`` and ``End Date`` fields are ignored and the script will query the entirety of eHydro (barring additional modifications in a seperate section)
+2. **[Agencies]**
+    - Agencies: List of agencies to focus on listed in CAPS and seperated by commas (ex. CEMVN, CENWP)
+        - Surveys from agencies listed here that do not contain ``_A.xyz`` or ``_FULL.xyz`` will be deleted unless **[Resolutions]** Override is set to ``yes``
+    - Only Listed: Default is ``no``
+        - ``no``: Will query from all avaiable agencies
+        - ``yes``: Will only query from the listed agencies
+3. **[Resolutions]**
+    - Override: Default is ``no``
+        - ``no``: The tool will delete the files for non high-res data from queries
+        - ``yes``: Overrides deletion of non high-res data from queries
+4. **[Data Checking]**
+    - Override: Default is ``no``; This option may be used if you wish to compile the complete results from a specific query
+        - ``no``: The program will check against the master list of past surveys and remove items that have already been checked in the past
+        - ``yes``: Overrides the deletion of previously checked surveys.  These results are saved to the :attr:`eHydro_scrape.running` folder
+5. **[Output Log]**
+    - Query List: Default is ``yes``; Choice of full query results or only program steps
+        - ``yes``: will list basic details for every survey object found, including if Hi-Res data is found
+        - ``no``: will not list any basic details for the surveys found and only list the number of Hi-Res surveys found in the query
+    - Log Type: Default is ``False``; Choice of the default continuous log file or a individual log file for the run
+        - ``False``: will update the continuous log file
+        - ``True``: will create a seperate log file in the :attr:`eHydro_scrape.logging` folder
+
 
 eHydro_scrape Module
 --------------------
-
-.. :currentmodule:autoattribute:: eHydro_scrape
-    :annotation:
 
 .. automodule:: eHydro_scrape
     :members:

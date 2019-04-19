@@ -52,7 +52,7 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Created on Tue Oct 2 13:44:14 2018</span>
 
-<span class="sd">Last Modified: Apr 19 11:29:15 2019</span>
+<span class="sd">Last Modified: Apr 19 12:12:42 2019</span>
 
 <span class="sd">@author: Casiano.Koprowski &lt;casiano.koprowski@noaa.gov&gt;</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -69,14 +69,18 @@
 
 <span class="sd">&quot;&quot;&quot;Known global constants&quot;&quot;&quot;</span>
 <span class="c1"># print (datetime.datetime.now().strftime(&#39;%b %d %X %Y&#39;))</span>
-<span class="c1">#progLoc = os.getcwd()</span>
 <span class="n">progLoc</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">eHydro_scrape&#39;</span>
+<span class="c1">#progLoc = os.getcwd()</span>
 <span class="sd">&quot;&quot;&quot;progLoc is the program&#39;s own file location / current working directory (cwd)</span>
 <span class="sd">obtained by :func:`os.getcwd()`&quot;&quot;&quot;</span>
 <span class="n">full</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;FULL.xyz&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
-<span class="sd">&quot;&quot;&quot;regex object for searching zipfile contents for high-res data&quot;&quot;&quot;</span>
+<span class="sd">&quot;&quot;&quot;regex object for searching zipfile contents for high-res data ending in </span>
+<span class="sd">``FULL.xyz``</span>
+<span class="sd">&quot;&quot;&quot;</span>
 <span class="n">full_a</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;_A.xyz&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
-<span class="sd">&quot;&quot;&quot;regex object for searching zipfile contents for high-res data&quot;&quot;&quot;</span>
+<span class="sd">&quot;&quot;&quot;regex object for searching zipfile contents for high-res data ending in </span>
+<span class="sd">``_A.xyz``</span>
+<span class="sd">&quot;&quot;&quot;</span>
 <span class="c1"># location of data items</span>
 <span class="n">config</span> <span class="o">=</span> <span class="n">configparser</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">()</span>
 <span class="n">config</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;config.ini&#39;</span><span class="p">)</span>
@@ -92,11 +96,18 @@
 <span class="sd">&quot;&quot;&quot;Default location for :attr:`logName`&quot;&quot;&quot;</span>
 <span class="c1">#&quot;&quot;&quot;Default location for &quot;&quot;&quot;</span>
 <span class="n">holding</span> <span class="o">=</span> <span class="n">progLoc</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">downloads</span><span class="se">\\</span><span class="s1">&#39;</span>
-<span class="sd">&quot;&quot;&quot;Default location for downloaded data&quot;&quot;&quot;</span>
+<span class="sd">&quot;&quot;&quot;Default location for all downloaded data, regardless of the type of query </span>
+<span class="sd">performed. Data is broken up into folders representing each district (ex.</span>
+<span class="sd">``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)</span>
+<span class="sd">&quot;&quot;&quot;</span>
 <span class="n">logging</span> <span class="o">=</span> <span class="n">progLoc</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">logs</span><span class="se">\\</span><span class="s1">&#39;</span>
-<span class="sd">&quot;&quot;&quot;Default location for individual query logs&quot;&quot;&quot;</span>
+<span class="sd">&quot;&quot;&quot;Default location for individual query logs. These are named like </span>
+<span class="sd">``YYYYMMDD_0_eHydro_log.txt``</span>
+<span class="sd">&quot;&quot;&quot;</span>
 <span class="n">running</span> <span class="o">=</span> <span class="n">progLoc</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">runs</span><span class="se">\\</span><span class="s1">&#39;</span>
-<span class="sd">&quot;&quot;&quot;Default location for individual query csvs&quot;&quot;&quot;</span>
+<span class="sd">&quot;&quot;&quot;Default location for individual query csv outputs. These are named like </span>
+<span class="sd">``YYYYMMDD_0_eHydro_csv.txt``</span>
+<span class="sd">&quot;&quot;&quot;</span>
 <span class="c1"># eHydro survey entry attributes</span>
 <span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;OBJECTID&quot;</span><span class="p">,</span> <span class="s2">&quot;SURVEYJOBIDPK&quot;</span><span class="p">,</span> <span class="s2">&quot;SURVEYAGENCY&quot;</span><span class="p">,</span> <span class="s2">&quot;CHANNELAREAIDFK&quot;</span><span class="p">,</span>
               <span class="s2">&quot;SDSFEATURENAME&quot;</span><span class="p">,</span> <span class="s2">&quot;SOURCEPROJECTION&quot;</span><span class="p">,</span> <span class="s2">&quot;SOURCEDATALOCATION&quot;</span><span class="p">,</span>
