@@ -1,7 +1,4 @@
-*/__pycache__/*
-*/*/__pycache__/*
-*/*/*/__pycache__/*
-*/*/*/*/__pycache__/*
+*.pyc
 *.fbp
 *.rst
 autointerp/Documentation/*
