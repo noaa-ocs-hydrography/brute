@@ -1,0 +1,11 @@
+*/__pycache__/*
+*/*/__pycache__/*
+*/*/*/__pycache__/*
+*/*/*/*/__pycache__/*
+autointerp/Documentation/*
+eHydro_scrape/_misc/*
+eHydro_scrape/downloads/*
+eHydro_scrape/logs/*
+eHydro_scrape/runs/*
+
+
