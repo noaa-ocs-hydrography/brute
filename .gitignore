@@ -2,6 +2,8 @@
 */*/__pycache__/*
 */*/*/__pycache__/*
 */*/*/*/__pycache__/*
+*.fbp
+*.rst
 autointerp/Documentation/*
 eHydro_scrape/_misc/*
 eHydro_scrape/downloads/*
