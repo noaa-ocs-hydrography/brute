@@ -1,5 +1,6 @@
-*.pyc
+*.db
 *.fbp
+*.pyc
 *.rst
 autointerp/Documentation/*
 eHydro_scrape/_misc/*
