@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Oct  2 13:44:14 2018
+Created on Tue Oct 2 13:44:14 2018
 
-@author: Casiano.Koprowski
+Last Modified: Apr 19 12:12:42 2019
+
+@author: Casiano.Koprowski <casiano.koprowski@noaa.gov>
 """
 
 import os
@@ -16,28 +18,42 @@ import requests
 import configparser
 
 """Known global constants"""
-# progLoc is the program's own file location / current working directory (cwd)
+# print (datetime.datetime.now().strftime('%b %d %X %Y'))
+#progLoc = '\\eHydro_scrape'
 progLoc = os.getcwd()
-# regex object for searching zipfile contents
+"""progLoc is the program's own file location / current working directory (cwd)
+obtained by :func:`os.getcwd()`"""
 full = re.compile(r'FULL.xyz', re.IGNORECASE)
-fullalt = re.compile(r'_A.xyz', re.IGNORECASE)
+"""regex object for searching zipfile contents for high-res data"""
+full_a = re.compile(r'_A.xyz', re.IGNORECASE)
+"""regex object for searching zipfile contents for high-res data"""
 # location of data items
 config = configparser.ConfigParser()
 config.read('config.ini')
-txtName = 'eHydro_txt.txt'
-txtLocation = os.path.join(progLoc, txtName)
+#txtName = 'eHydro_txt.txt'
+#txtLocation = os.path.join(progLoc, txtName)
 csvName = 'eHydro_csv.txt'
+"""Default name for csv.txt output"""
 csvLocation = os.path.join(progLoc, csvName)
+"""Default location for :attr:`csvName`"""
 logName = 'eHydro_log.txt'
+"""Default name for log.txt output"""
 logLocation = os.path.join(progLoc, logName)
+"""Default location for :attr:`logName`"""
+#"""Default location for """
 holding = progLoc + '\\downloads\\'
+"""Default location for downloaded data"""
 logging = progLoc + '\\logs\\'
+"""Default location for individual query logs"""
 running = progLoc + '\\runs\\'
+"""Default location for individual query csvs"""
 # eHydro survey entry attributes
 attributes = [ "OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
               "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION",
               "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
               "SURVEYTYPE", "PROJECTEDAREA"]
+"""The specific attributes queried for each survey in :func:`surveyCompile`"""
+
 # check to see if the downloaded data folder exists, will create it if not
 if not os.path.exists(holding):
     os.mkdir(holding)
@@ -178,7 +194,7 @@ def surveyCompile(surveyIDs, newSurveysNum):
     and finally strings.
 
     The function returns the lists of returned survey data as a list 'rows'.
-    The specific attributes for each survey are:
+    The specific :attr:`attributes` for each survey are:
 
     - OBJECTID.
     - SDSFEATURENAME.
@@ -262,7 +278,7 @@ def contentSearch(contents):
     """
     x = 0
     for content in contents:
-        if full.search(content) or fullalt.search(content):
+        if full.search(content) or full_a.search(content):
             print ('\nvive le resolution', content, end=' ') #link + '\n')
             x = 1
             return x
@@ -277,21 +293,21 @@ def downloadAndCheck(rows):
     files are expected to be zip files.  The funtion attempts to open the files
     as zipfile objects:
 
-    1) If it succeeds, the function requests a list of included contents
+    1. If it succeeds, the function requests a list of included contents
     of the zipfile objects and passes that list, the download link, and
     location of the local download to contentSearch() to determine if the
     desired data exists. The downloaded content is kept.
-    2) If it fails, the link, downloaded
+    2. If it fails, the link, downloaded
     contents, and survey data in 'rows' are immediately removed.
 
-   Through each of these steps a value is appended to the end of each 'row' or
-   survey data object in list 'rows' to indicate the result of the search for
-   highest resolution data.  The full range of possible values are:
+    Through each of these steps a value is appended to the end of each 'row' or
+    survey data object in list 'rows' to indicate the result of the search for
+    highest resolution data.  The full range of possible values are:
 
-   1) Yes; the survey contains a FULL.xyz file.
-   2) No; the survey does not contain a FULL.xyz file.
-   3) BadURL; the survey URL from query response was bad/yeilded no results.
-   4) BadZip; the resulting .zip downloaded was corrupt/unable to be opened.
+    1. Yes; the survey contains a FULL.xyz file.
+    2. No; the survey does not contain a FULL.xyz file.
+    3. BadURL; the survey URL from query response was bad/yeilded no results.
+    4. BadZip; the resulting .zip downloaded was corrupt/unable to be opened.
 
     Parameters
     ----------
@@ -507,7 +523,7 @@ def logOpen(logType):
 
     Returns
     -------
-    fileLog : :function:`open` object
+    fileLog : text file object
         A text document object representing the output log
     nameLog : str
         File path for the output log object
@@ -540,7 +556,7 @@ def logWriter(fileLog, message):
 
     Parameters
     ----------
-    fileLog : :function:`open` object
+    fileLog : text file object
         A text document object representing the output log
     message : string
         A string of text to be written to the fileLog input
@@ -555,7 +571,7 @@ def logClose(fileLog):
 
     Parameters
     ----------
-    fileLog : :function:`open` object
+    fileLog : text file object
         A text document object representing the output log
 
     """
@@ -567,8 +583,8 @@ def logClose(fileLog):
 def time():
     """Creates and returns a string 'timestamp' that contains a
     formated current date and time at the time of calling.  Generated by
-    :function:`datetime.datetime.now` and formated using
-    :function:`datetime.datetime.strftime` to reflect 'YYYY-MM-DD Time'
+    :obj:`datetime.now` and formated using
+    :obj:`datetime.datetime.strftime` to reflect 'YYYY-MM-DD Time'
 
     Returns
     -------
@@ -583,8 +599,8 @@ def time():
 def date():
     """Creates and returns a string 'datestamp' that contains a
     formated current date at the time of calling.  Generated by
-    :function:`datetime.datetime.now` and formated using
-    :function:`datetime.datetime.strftime` to reflect 'YYYY-MM-DD'
+    :obj:`datetime.datetime.now` and formated using
+    :obj:`datetime.datetime.strftime` to reflect 'YYYY-MM-DD'
 
     Returns
     -------
@@ -598,8 +614,8 @@ def date():
 def fileTime():
     """Creates and returns a string 'timestamp' that contains a
     formated current date and time at the time of calling.  Generated by
-    :function:`datetime.datetime.now` and formated using
-    :function:`datetime.datetime.strftime` to reflect 'YYYYMMDD'
+    :obj:`datetime.datetime.now` and formated using
+    :obj:`datetime.datetime.strftime` to reflect 'YYYYMMDD'
 
     Returns
     -------
@@ -622,7 +638,7 @@ def main():
     if runType == 'no':
         try:
             csvFile = csvOpen()
-            txtWriter(csvFile, txtLocation)
+            txtWriter(csvFile, csvLocation)
             logWriter(fileLog, '\teHydro_csv.txt opened for reading')
         except:
             logWriter(fileLog, '\teHydro_csv.txt unable to be opened')
@@ -673,7 +689,7 @@ def main():
         logWriter(fileLog, '\tAdding results to ' + csvPath)
     except:
         logWriter(fileLog, '\tUnable to add results to ' + csvPath)
-    
+
     logWriter(fileLog, '\tOutput Log saved as ' + nameLog)
     logClose(fileLog)
     print('log closed')

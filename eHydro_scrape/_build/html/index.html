@@ -1,0 +1,533 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Welcome to eHydro_scrape’s documentation! &#8212; eHydro_scrape  documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">eHydro_scrape  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="welcome-to-ehydro-scrape-s-documentation">
+<h1>Welcome to eHydro_scrape&#8217;s documentation!<a class="headerlink" href="#welcome-to-ehydro-scrape-s-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="index">
+<h2>Index<a class="headerlink" href="#index" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+</ul>
+</div>
+<div class="section" id="ehydro-scrape-module">
+<h2>eHydro_scrape Module<a class="headerlink" href="#ehydro-scrape-module" title="Permalink to this headline">¶</a></h2>
+<span class="target" id="module-eHydro_scrape"></span><p>Created on Tue Oct 2 13:44:14 2018</p>
+<p>Last Modified: Apr 19 11:29:15 2019</p>
+<p>&#64;author: Casiano.Koprowski &lt;<a class="reference external" href="mailto:casiano&#46;koprowski&#37;&#52;&#48;noaa&#46;gov">casiano<span>&#46;</span>koprowski<span>&#64;</span>noaa<span>&#46;</span>gov</a>&gt;</p>
+<dl class="data">
+<dt id="eHydro_scrape.attributes">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">attributes</code><em class="property"> = ['OBJECTID', 'SURVEYJOBIDPK', 'SURVEYAGENCY', 'CHANNELAREAIDFK', 'SDSFEATURENAME', 'SOURCEPROJECTION', 'SOURCEDATALOCATION', 'SURVEYDATEUPLOADED', 'SURVEYDATEEND', 'SURVEYDATESTART', 'SURVEYTYPE', 'PROJECTEDAREA']</em><a class="headerlink" href="#eHydro_scrape.attributes" title="Permalink to this definition">¶</a></dt>
+<dd><p>The specific attributes queried for each survey in <a class="reference internal" href="#eHydro_scrape.surveyCompile" title="eHydro_scrape.surveyCompile"><code class="xref py py-func docutils literal"><span class="pre">surveyCompile()</span></code></a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.contentSearch">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">contentSearch</code><span class="sig-paren">(</span><em>contents</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#contentSearch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.contentSearch" title="Permalink to this definition">¶</a></dt>
+<dd><p>This funtion takes a list of zipfile contents, the download link the
+contents came from and the current local file location where the downloaded
+data resides.</p>
+<p>Using the zipfile contents, it parses the files for any file containing the
+full string &#8216;_FULL.xyz&#8217;.  If a file name contains this string, it returns a
+Boolean True</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>contents</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; A list of file names</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">If search conditions are met, return 1 for True</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)">int</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)">bool</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.csvCompare">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">csvCompare</code><span class="sig-paren">(</span><em>rows</em>, <em>csvFile</em>, <em>newSurveysNum</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#csvCompare"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.csvCompare" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes list &#8216;rows&#8217; and list &#8216;csvFile&#8217;.  It proceeds to compare each list
+item&#8217;s contents against each other.  If they match, the relevant list item
+is removed from list &#8216;rows&#8217;.  If all items are identical, the function
+returns a string &#8216;No Changes&#8217;. If not empty, returns the list &#8216;changes&#8217;</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>rows</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; The list compiled of the attributes for every survey in surveyIDs. This
+uses the list generated by <a class="reference internal" href="#eHydro_scrape.downloadAndCheck" title="eHydro_scrape.downloadAndCheck"><code class="xref py py-func docutils literal"><span class="pre">downloadAndCheck()</span></code></a> but can also use
+the original list generated by <a class="reference internal" href="#eHydro_scrape.surveyCompile" title="eHydro_scrape.surveyCompile"><code class="xref py py-func docutils literal"><span class="pre">surveyCompile()</span></code></a></li>
+<li><strong>csvFile</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; The list of all compiled survey attributes stored in a dedicated .txt
+file generated by <a class="reference internal" href="#eHydro_scrape.csvOpen" title="eHydro_scrape.csvOpen"><code class="xref py py-func docutils literal"><span class="pre">csvOpen()</span></code></a></li>
+<li><strong>newSurveysNum</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) &#8211; Total number of surveys usualy returned by <a class="reference internal" href="#eHydro_scrape.query" title="eHydro_scrape.query"><code class="xref py py-func docutils literal"><span class="pre">query()</span></code></a></li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">returns A list compiled of the attributes for every survey in surveyIDs
+minus the surveys found in the csvFile list or returns a string &#8216;No
+Changes&#8217;</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)">list</a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)">str</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="data">
+<dt id="eHydro_scrape.csvLocation">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">csvLocation</code><em class="property"> = '\\eHydro_scrape\\eHydro_csv.txt'</em><a class="headerlink" href="#eHydro_scrape.csvLocation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default location for <a class="reference internal" href="#eHydro_scrape.csvName" title="eHydro_scrape.csvName"><code class="xref py py-attr docutils literal"><span class="pre">csvName</span></code></a></p>
+</dd></dl>
+
+<dl class="data">
+<dt id="eHydro_scrape.csvName">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">csvName</code><em class="property"> = 'eHydro_csv.txt'</em><a class="headerlink" href="#eHydro_scrape.csvName" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default name for csv.txt output</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.csvOpen">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">csvOpen</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#csvOpen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.csvOpen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses global variable csvLocation to open eHydro_csv.txt for use.
+Populates a list &#8216;csvFile&#8217; with it&#8217;s contents. Returns list and
+closes file</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>csvFile</strong> &#8211; The list of all compiled survey attributes stored in eHydro_csv.txt</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)">list</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.csvWriter">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">csvWriter</code><span class="sig-paren">(</span><em>csvFile</em>, <em>csvLocation</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#csvWriter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.csvWriter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses global variable csvLocation. Opens file at csvLocation for
+writing. Iterates line by line through csvFile and imediatly writes
+to eHydro_csv.txt.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>csvFile</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; A list of survey attributes each containing a row of data to be written
+to eHydro_csv.txt</li>
+<li><strong>txtLocation</strong> (<a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)"><em>string</em></a>) &#8211; Complete file path string for a text file to be created</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.date">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">date</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#date"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.date" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates and returns a string &#8216;datestamp&#8217; that contains a
+formated current date at the time of calling.  Generated by
+<a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime.now" title="(in Python v3.7)"><code class="xref py py-obj docutils literal"><span class="pre">datetime.datetime.now</span></code></a> and formated using
+<a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime.strftime" title="(in Python v3.7)"><code class="xref py py-obj docutils literal"><span class="pre">datetime.datetime.strftime</span></code></a> to reflect &#8216;YYYY-MM-DD&#8217;</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>timestamp</strong> &#8211; A string with the current date and time</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)">string</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.downloadAndCheck">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">downloadAndCheck</code><span class="sig-paren">(</span><em>rows</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#downloadAndCheck"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.downloadAndCheck" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function takes a list of complete survey data as provided by the
+query response (&#8216;rows&#8217;).</p>
+<p>For each link provided, it saves the returned data localy. All downloaded
+files are expected to be zip files.  The funtion attempts to open the files
+as zipfile objects:</p>
+<p>1. If it succeeds, the function requests a list of included contents
+of the zipfile objects and passes that list, the download link, and
+location of the local download to contentSearch() to determine if the
+desired data exists. The downloaded content is kept.
+2. If it fails, the link, downloaded
+contents, and survey data in &#8216;rows&#8217; are immediately removed.</p>
+<p>Through each of these steps a value is appended to the end of each &#8216;row&#8217; or
+survey data object in list &#8216;rows&#8217; to indicate the result of the search for
+highest resolution data.  The full range of possible values are:</p>
+<ol class="arabic simple">
+<li>Yes; the survey contains a FULL.xyz file.</li>
+<li>No; the survey does not contain a FULL.xyz file.</li>
+<li>BadURL; the survey URL from query response was bad/yeilded no results.</li>
+<li>BadZip; the resulting .zip downloaded was corrupt/unable to be opened.</li>
+</ol>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rows</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; A list compiled of the attributes for every survey in surveyIDs usually
+generated by <a class="reference internal" href="#eHydro_scrape.surveyCompile" title="eHydro_scrape.surveyCompile"><code class="xref py py-func docutils literal"><span class="pre">surveyCompile()</span></code></a></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li><strong>rows</strong> (<em>list</em>) &#8211; The list compiled of the attributes for every survey in surveyIDs with
+the results of checking for high-res data appended to the end of each
+entry</li>
+<li><strong>hr</strong> (<em>int</em>) &#8211; The total number of high-res surveys found</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.fileTime">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">fileTime</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#fileTime"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.fileTime" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates and returns a string &#8216;timestamp&#8217; that contains a
+formated current date and time at the time of calling.  Generated by
+<a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime.now" title="(in Python v3.7)"><code class="xref py py-obj docutils literal"><span class="pre">datetime.datetime.now</span></code></a> and formated using
+<a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime.strftime" title="(in Python v3.7)"><code class="xref py py-obj docutils literal"><span class="pre">datetime.datetime.strftime</span></code></a> to reflect &#8216;YYYYMMDD&#8217;</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>timestamp</strong> &#8211; A string with the current date and time</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)">string</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="data">
+<dt id="eHydro_scrape.full">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">full</code><em class="property"> = re.compile('FULL.xyz', re.IGNORECASE)</em><a class="headerlink" href="#eHydro_scrape.full" title="Permalink to this definition">¶</a></dt>
+<dd><p>regex object for searching zipfile contents for high-res data</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="eHydro_scrape.full_a">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">full_a</code><em class="property"> = re.compile('_A.xyz', re.IGNORECASE)</em><a class="headerlink" href="#eHydro_scrape.full_a" title="Permalink to this definition">¶</a></dt>
+<dd><p>regex object for searching zipfile contents for high-res data</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="eHydro_scrape.holding">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">holding</code><em class="property"> = '\\eHydro_scrape\\downloads\\'</em><a class="headerlink" href="#eHydro_scrape.holding" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default location for downloaded data</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.logClose">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">logClose</code><span class="sig-paren">(</span><em>fileLog</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#logClose"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.logClose" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes a file object &#8216;fileLog&#8217;. Writes text stating when the
+function was called. Closes the file object upon completion</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fileLog</strong> (<em>text file object</em>) &#8211; A text document object representing the output log</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="data">
+<dt id="eHydro_scrape.logLocation">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">logLocation</code><em class="property"> = '\\eHydro_scrape\\eHydro_log.txt'</em><a class="headerlink" href="#eHydro_scrape.logLocation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default location for <a class="reference internal" href="#eHydro_scrape.logName" title="eHydro_scrape.logName"><code class="xref py py-attr docutils literal"><span class="pre">logName</span></code></a></p>
+</dd></dl>
+
+<dl class="data">
+<dt id="eHydro_scrape.logName">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">logName</code><em class="property"> = 'eHydro_log.txt'</em><a class="headerlink" href="#eHydro_scrape.logName" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default name for log.txt output</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.logOpen">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">logOpen</code><span class="sig-paren">(</span><em>logType</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#logOpen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.logOpen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses global variable logLocation. Opens file at logLocation
+for appending. Writes text stating when the function was called.
+Returns the file object for future writing.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>logType</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) &#8211; Boolean expression that determines whether or not the object for the
+continuous log is passed back or a new log is created for an individual
+run</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li><strong>fileLog</strong> (<em>text file object</em>) &#8211; A text document object representing the output log</li>
+<li><strong>nameLog</strong> (<em>str</em>) &#8211; File path for the output log object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.logWriter">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">logWriter</code><span class="sig-paren">(</span><em>fileLog</em>, <em>message</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#logWriter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.logWriter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes a file object &#8216;fileLog&#8217; and a string &#8216;message&#8217;. Writes
+&#8216;messege&#8217; to &#8216;fileLog&#8217;</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fileLog</strong> (<em>text file object</em>) &#8211; A text document object representing the output log</li>
+<li><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)"><em>string</em></a>) &#8211; A string of text to be written to the fileLog input</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="data">
+<dt id="eHydro_scrape.logging">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">logging</code><em class="property"> = '\\eHydro_scrape\\logs\\'</em><a class="headerlink" href="#eHydro_scrape.logging" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default location for individual query logs</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.main">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">main</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="data">
+<dt id="eHydro_scrape.progLoc">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">progLoc</code><em class="property"> = '\\eHydro_scrape'</em><a class="headerlink" href="#eHydro_scrape.progLoc" title="Permalink to this definition">¶</a></dt>
+<dd><p>progLoc is the program&#8217;s own file location / current working directory (cwd)
+obtained by <a class="reference external" href="https://docs.python.org/3/library/os.html#os.getcwd" title="(in Python v3.7)"><code class="xref py py-func docutils literal"><span class="pre">os.getcwd()</span></code></a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.query">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">query</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#query"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.query" title="Permalink to this definition">¶</a></dt>
+<dd><p>Holds the Queries for the eHydro REST API, asks for responses, and uses
+the json library to make it readable by the program. Returns the json
+responses for number of surveys and surveys in the response.</p>
+<p>-REMOVED- It also saves a prettyprinted version of the response as a text
+file.</p>
+<p>The funtion uses the requests library to retrieve the API&#8217;s response(s) and
+uses the json library to make them readable by the program.</p>
+<p>The function returns the json object containing the contents of the query
+and the integer number of surveys contained by the query</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li><strong>surveyIDs</strong> (<em>list</em>) &#8211; List of survey ids from query</li>
+<li><strong>newSurveysNum</strong> (<em>int</em>) &#8211; Total number of surveys returned by the query</li>
+<li><strong>paramString</strong> (<em>str</em>) &#8211; String containing the parameters gathered from the config file</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="data">
+<dt id="eHydro_scrape.running">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">running</code><em class="property"> = '\\eHydro_scrape\\runs\\'</em><a class="headerlink" href="#eHydro_scrape.running" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default location for individual query csvs</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.surveyCompile">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">surveyCompile</code><span class="sig-paren">(</span><em>surveyIDs</em>, <em>newSurveysNum</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#surveyCompile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.surveyCompile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses the json object return of the each queried survey id and the total
+number of surveys included to compile a list of complete returned survey
+data, as provided in the response. The function also takes into account
+that the survey data returns for any date/time are returned as timestamps.
+The function looks for these fields and converts them to datetime objects
+and finally strings.</p>
+<p>The function returns the lists of returned survey data as a list &#8216;rows&#8217;.
+The specific <a class="reference internal" href="#eHydro_scrape.attributes" title="eHydro_scrape.attributes"><code class="xref py py-attr docutils literal"><span class="pre">attributes</span></code></a> for each survey are:</p>
+<ul class="simple">
+<li>OBJECTID.</li>
+<li>SDSFEATURENAME.</li>
+<li>SURVEYTYPE.</li>
+<li>CHANNELAREAIDFK.</li>
+<li>SURVEYAGENCY.</li>
+<li>SURVEYDATEUPLOADED.</li>
+<li>SURVEYDATESTART.</li>
+<li>SURVEYDATEEND.</li>
+<li>SOURCEDATALOCATION.</li>
+<li>SOURCEPROJECTION.</li>
+<li>SURVEYJOBIDPK.</li>
+<li>PROJECTEDAREA.</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>surveyIDs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; List of survey ids usualy generated by <a class="reference internal" href="#eHydro_scrape.query" title="eHydro_scrape.query"><code class="xref py py-func docutils literal"><span class="pre">query()</span></code></a></li>
+<li><strong>newSurveysNum</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) &#8211; Total number of surveys usualy returned by <a class="reference internal" href="#eHydro_scrape.query" title="eHydro_scrape.query"><code class="xref py py-func docutils literal"><span class="pre">query()</span></code></a></li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>rows</strong> &#8211; A list compiled of the attributes for every survey in surveyIDs</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)">list</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.time">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">time</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates and returns a string &#8216;timestamp&#8217; that contains a
+formated current date and time at the time of calling.  Generated by
+<code class="xref py py-obj docutils literal"><span class="pre">datetime.now</span></code> and formated using
+<a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime.strftime" title="(in Python v3.7)"><code class="xref py py-obj docutils literal"><span class="pre">datetime.datetime.strftime</span></code></a> to reflect &#8216;YYYY-MM-DD Time&#8217;</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>timestamp</strong> &#8211; A string with the current date and time</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)">string</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="eHydro_scrape.txtWriter">
+<code class="descclassname">eHydro_scrape.</code><code class="descname">txtWriter</code><span class="sig-paren">(</span><em>fileText</em>, <em>txtLocation</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eHydro_scrape.html#txtWriter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#eHydro_scrape.txtWriter" title="Permalink to this definition">¶</a></dt>
+<dd><p>String &#8220;fileText&#8221; is writen to the &#8220;txtLocation&#8221; save path</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fileText</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; A list of strings each containing a line of text to be written in the
+outputLog</li>
+<li><strong>txtLocation</strong> (<a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)"><em>string</em></a>) &#8211; Complete file path string for a text file to be created</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Welcome to eHydro_scrape&#8217;s documentation!</a><ul>
+<li><a class="reference internal" href="#index">Index</a></li>
+<li><a class="reference internal" href="#ehydro-scrape-module">eHydro_scrape Module</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">eHydro_scrape  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Casiano Koprowski &lt;casiano.koprowski@noaa.gov&gt;.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+  </body>
+</html>
