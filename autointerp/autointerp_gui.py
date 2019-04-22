@@ -95,11 +95,11 @@ class Done(autointerp_ui.Done):
     def __init__(self, parent):
         autointerp_ui.Done.__init__(self, parent)
         
-        
-app = wx.App()
-frame = Form(None)
-icon = wx.Icon()
-icon.CopyFromBitmap(wx.Bitmap("autointerp.ico", wx.BITMAP_TYPE_ANY))
-frame.SetIcon(icon)
-frame.Show()
-app.MainLoop()
+if __name__ == '__main__':   
+    app = wx.App()
+    frame = Form(None)
+    icon = wx.Icon()
+    icon.CopyFromBitmap(wx.Bitmap("autointerp.ico", wx.BITMAP_TYPE_ANY))
+    frame.SetIcon(icon)
+    frame.Show()
+    app.MainLoop()

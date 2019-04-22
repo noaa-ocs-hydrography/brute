@@ -69,8 +69,8 @@
 
 <span class="sd">&quot;&quot;&quot;Known global constants&quot;&quot;&quot;</span>
 <span class="c1"># print (datetime.datetime.now().strftime(&#39;%b %d %X %Y&#39;))</span>
-<span class="n">progLoc</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">eHydro_scrape&#39;</span>
-<span class="c1">#progLoc = os.getcwd()</span>
+<span class="c1">#progLoc = &#39;\\eHydro_scrape&#39;</span>
+<span class="n">progLoc</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
 <span class="sd">&quot;&quot;&quot;progLoc is the program&#39;s own file location / current working directory (cwd)</span>
 <span class="sd">obtained by :func:`os.getcwd()`&quot;&quot;&quot;</span>
 <span class="n">full</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;FULL.xyz&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
@@ -116,12 +116,12 @@
 <span class="sd">&quot;&quot;&quot;The specific attributes queried for each survey in :func:`surveyCompile`&quot;&quot;&quot;</span>
 
 <span class="c1"># check to see if the downloaded data folder exists, will create it if not</span>
-<span class="c1">#if not os.path.exists(holding):</span>
-<span class="c1">#    os.mkdir(holding)</span>
-<span class="c1">#if not os.path.exists(logging):</span>
-<span class="c1">#    os.mkdir(logging)</span>
-<span class="c1">#if not os.path.exists(running):</span>
-<span class="c1">#    os.mkdir(running)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">holding</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">holding</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">logging</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">logging</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">running</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">running</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="query"><a class="viewcode-back" href="../index.html#eHydro_scrape.query">[docs]</a><span class="k">def</span> <span class="nf">query</span><span class="p">():</span>
@@ -794,7 +794,7 @@
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2019, Casiano Koprowski &lt;casiano.koprowski@noaa.gov&gt;.
+        &#169; Copyright .
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
     </div>
   </body>

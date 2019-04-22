@@ -11,6 +11,9 @@ Index
 
 * :ref:`genindex`
 
+eHydro_scrape Module
+--------------------
+
 eHydro_scrape.lnk Assumptions
 +++++++++++++++++++++++++++++
 
@@ -32,7 +35,7 @@ plenty of options avaiable:
 1. **[Timeframe]**
     - Dates are formated ``YYYY-MM-DD``
     - Start Date and End Date are used to define custom date ranges for a query. If these fields are left blank, the default values are ``Yesterday`` and ``Today`` as defined in :func:`eHydro_scrape.query`
-    - If Ignore Date is set to ``yes``, both the default values and values entered in the ``Start Date`` and ``End Date`` fields are ignored and the script will query the entirety of eHydro (barring additional modifications in a seperate section)
+    - If Ignore Date is set to ``yes``, both the default values and values entered in the Start Date and End Date fields are ignored and the script will query the entirety of eHydro (barring additional modifications in a seperate section)
 2. **[Agencies]**
     - Agencies: List of agencies to focus on listed in CAPS and seperated by commas (ex. CEMVN, CENWP)
         - Surveys from agencies listed here that do not contain ``_A.xyz`` or ``_FULL.xyz`` will be deleted unless **[Resolutions]** Override is set to ``yes``
@@ -56,8 +59,8 @@ plenty of options avaiable:
         - ``True``: will create a seperate log file in the :attr:`eHydro_scrape.logging` folder
 
 
-eHydro_scrape Module
---------------------
+eHydro_scrape Functions
++++++++++++++++++++++++
 
 .. automodule:: eHydro_scrape
     :members:
