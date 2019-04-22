@@ -177,11 +177,18 @@ def fileMove(regionFiles, destination, folder, method, text_region=None,
         else:
             _os.makedirs(newPath)
         for item in v[0]:
-            name = _os.path.split(item)[-1]
-            newName = _os.path.join(newPath, name)
+            splits = _os.path.split(item)
+            name = splits[-1]
+            district = splits[-2].split('\\')[-1]
+            newerPath = _os.path.join(newPath, district)
+            if _os.path.isdir(newerPath):
+                pass
+            else:
+                _os.makedirs(newerPath)
+            newName = _os.path.join(newerPath, name)
             if _os.path.exists(item) and not _os.path.exists(newName):
                 if text_output != None:
-                    text_output.write(name+ '\n')
+                    text_output.write(district+'\\'+name+ '\n')
                 if method == False:
                     _shutil.copy2(item, newName)
                 elif method == True:
