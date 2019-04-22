@@ -21,6 +21,7 @@ downloads = config['Source']['downloads']
 destination = config['Destination']['destination']
 folder = config['Destination']['folder']
 repo = _os.path.split(progLoc)[0]
+method = config.getboolean('Method', 'method')
 
 def regionPath(root, folder):
     """Uses repo path derived from the program's location to find the downloads
@@ -125,7 +126,7 @@ def eHydroZIPs(regions):
     return hold
 
 
-def fileMove(regionFiles, destination, folder, text_region=None,
+def fileMove(regionFiles, destination, folder, method, text_region=None,
              progressBar=None, text_output=None):
     """Takes a dictionary of keys representing regions and values representing
     a list of all files downloaded from districts within the respective regions
@@ -135,10 +136,10 @@ def fileMove(regionFiles, destination, folder, text_region=None,
     names to extrapolate the complete path where the region-associated files
     will be moved to.
 
-    Given a destination path such as ``..\\vlab-nbs\New_Directory\\``, the
-    default folder of ``USACE\\eHydro\original\\`` and a region defined as
+    Given a destination path such as ``..\\vlab-nbs\\New_Directory\\``, the
+    default folder of ``USACE\\eHydro\\original\\`` and a region defined as
     ``NorthEast = CENAN``, the function would produce a destination folder path
-    like ``..\\vlab-nbs\New_Directory\\northeast\\USACE\\eHydro\original\\``.
+    like ``..\\vlab-nbs\\New_Directory\\northeast\\USACE\\eHydro\\original\\``.
     The eHydro_scrape download files associated for each region would be copied
     to folders like this.  If the folder does not exist, it will be created
     using :func:`os.makedirs` and the folder path produced.
@@ -181,7 +182,10 @@ def fileMove(regionFiles, destination, folder, text_region=None,
             if _os.path.exists(item) and not _os.path.exists(newName):
                 if text_output != None:
                     text_output.write(name+ '\n')
-                _shutil.copy2(item, newName)
+                if method == False:
+                    _shutil.copy2(item, newName)
+                elif method == True:
+                    _shutil.move(item, newName)
             if progressBar!= None:
                 pbv += 1
                 progressBar.SetValue(pbv)
@@ -207,5 +211,8 @@ def _main(text_region=None, progressBar=None, text_output=None):
         progressBar.Pulse()
     regions = regionPath(repo, downloads)
     regionFiles = eHydroZIPs(regions)
-    fileMove(regionFiles, destination, folder, text_region, progressBar,
-             text_output)
+    fileMove(regionFiles, destination, folder, method, text_region,
+             progressBar, text_output)
+
+if __name__ == '__main__':
+    _main()
