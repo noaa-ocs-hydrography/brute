@@ -1,0 +1,892 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Welcome to autointerp’s documentation! &#8212; autointerp  documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">autointerp  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="welcome-to-autointerp-s-documentation">
+<h1>Welcome to autointerp&#8217;s documentation!<a class="headerlink" href="#welcome-to-autointerp-s-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="index">
+<h2>Index<a class="headerlink" href="#index" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+</ul>
+</div>
+<div class="section" id="module-autointerp">
+<span id="autointerp-functions"></span><h2>autointerp Functions<a class="headerlink" href="#module-autointerp" title="Permalink to this headline">¶</a></h2>
+<p>Created on Thu Oct 11 16:52:49 2018</p>
+<p>&#64;author: Casiano.Koprowski</p>
+<dl class="docutils">
+<dt>Made in part with code from:</dt>
+<dd><ul class="first last simple">
+<li>hyo.bag Library Pydro by HydrOffice</li>
+<li><dl class="first docutils">
+<dt>&#8220;What is the simplest way...&#8221; on GIS Stack Exchange [Answer by &#8216;Jon&#8217;</dt>
+<dd>(<a class="reference external" href="https://gis.stackexchange.com/a/278965">https://gis.stackexchange.com/a/278965</a>)]</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>&#8220;How to get raster corner...&#8221; on on GIS Stack Exchange [Answer by &#8216;James&#8217;</dt>
+<dd>(<a class="reference external" href="https://gis.stackexchange.com/a/201320">https://gis.stackexchange.com/a/201320</a>)]</dd>
+</dl>
+</li>
+</ul>
+</dd>
+<dt>Icon from <a class="reference external" href="https://www.ngdc.noaa.gov/mgg/image/2minrelief.html">https://www.ngdc.noaa.gov/mgg/image/2minrelief.html</a></dt>
+<dd>via <a class="reference external" href="https://commons.wikimedia.org/wiki/File:Atlantic_bathymetry.jpg">https://commons.wikimedia.org/wiki/File:Atlantic_bathymetry.jpg</a></dd>
+</dl>
+<dl class="function">
+<dt id="autointerp.alignGrids">
+<code class="descclassname">autointerp.</code><code class="descname">alignGrids</code><span class="sig-paren">(</span><em>bag</em>, <em>tif</em>, <em>maxVal</em>, <em>targs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#alignGrids"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.alignGrids" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes an input of two arrays representing bag and tif data. These arrays
+hold information like extent, data, and more. The goal of this function is
+to fit and/or shift the provided tif to the area of the bag.</p>
+<p>Steps:</p>
+<ol class="arabic simple">
+<li>Determine/confirm the resolution of the tif using a mix of file naming, extent, and dimensions.</li>
+<li>Determine the resolution of the bag using file naming conventions.</li>
+<li>Calculate the tif/bag resolution to determine the value needed to resize the tif.</li>
+<li>Resize the tif so that the resolution matches the bag using.</li>
+<li>Convert tif values to either numpy.nan or maxVal for use later.</li>
+<li>Store the extents of the bag and tif and calculate the difference.</li>
+<li>Create an empty array with dimensions equal to the original extents of the tiff data plus the additional space needed to match the total extents of the BAG data.</li>
+<li>Align the content of the tiff as needed in order to match the bag and apply the shifted content to the empty array created in Step 7.</li>
+<li>Enforce the size of the bag onto the shifted tiff data stored in the array created and modified in Step(s) 7 and 8.</li>
+</ol>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>bag</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; BAG file object
+Position loaded, file name, grid extents, file size, grid dimensions,
+uncertainty numpy.array, bathymetry numpy.array</li>
+<li><strong>tif</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; GeoTiff file objects with numpy.array raster data replaced with binary
+data only showing data and nodata areas and that is alligned within
+the maximum extents of all input GeoTiffs</li>
+<li><strong>maxVal</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) &#8211; Maximum occurance value AKA nodata value</li>
+<li><strong>targs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; Additional arguments generated in <a class="reference internal" href="#autointerp.polyTifVals" title="autointerp.polyTifVals"><code class="xref py py-func docutils literal"><span class="pre">polyTifVals()</span></code></a> for use in saving
+the BAG aligned Tiff data</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>bagRes</strong> (<em>float</em>) &#8211; Resolution of the BAG data</li>
+<li><strong>grids</strong> (<em>list</em>) &#8211; The BAG and GeoTiff objects, GeoTiff object&#8217;s numpy.array raster data
+replaced with BAG aligned Tiff data</li>
+<li><strong>bagBounds</strong> (<em>list</em>) &#8211; Geographic extent of the BAG data</li>
+<li><strong>bShape</strong> (<em>tuple</em>) &#8211; Dimensions of the input BAG data (y, x)</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.alignTifs">
+<code class="descclassname">autointerp.</code><code class="descname">alignTifs</code><span class="sig-paren">(</span><em>tifs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#alignTifs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.alignTifs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes an input of an array of tiff objects. The goal of this function
+is to fit the provided tifs to the largest combined area of the inputs.</p>
+<ol class="arabic">
+<li><p class="first">Find NW and SE corners of the first input array and the number of rows and columns in the input.</p>
+</li>
+<li><p class="first">Find NW and SE corners of subsiquent input arrays and record differences as the NW differences (nxd, nyd) SE differences (sxd, syd).</p>
+<blockquote>
+<div><ul class="simple">
+<li>also modify the original NW and/or SE corner values if applicable.</li>
+<li>also modify the original number or rows and columns if applicable.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">Resize the area of each input array to the new total combined size of all input arrays based on the stored number of rows and columns.</p>
+</li>
+<li><p class="first">Reposition the data within each input array to maintain original geographic placement based on the difference of the input array&#8217;s original NW corner and the recorded &#8216;largest&#8217; NW boundry of the combined input areas.</p>
+</li>
+<li><p class="first">Return tiff objects with the newly resized/repositioned tifs and the new NW and SE extents of the new combined area.</p>
+</li>
+</ol>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>tifs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; List of GeoTiff objects created by <a class="reference internal" href="#autointerp.getTifElev" title="autointerp.getTifElev"><code class="xref py py-func docutils literal"><span class="pre">getTifElev()</span></code></a></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li><strong>sizedTifs</strong> (<em>list</em>) &#8211; GeoTiff file objects with numpy.array raster data replaced with data
+that is alligned within the maximum extents of all input GeoTiffs</li>
+<li><strong>tifs</strong> (<em>list</em>) &#8211; Replaces sizedTifs if there is no resizing needed</li>
+<li><strong>ext</strong> (<em>list</em>) &#8211; The maximum extents of all input GeoTiffs</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.bagSave">
+<code class="descclassname">autointerp.</code><code class="descname">bagSave</code><span class="sig-paren">(</span><em>bag</em>, <em>new</em>, <em>tifs</em>, <em>res</em>, <em>ext</em>, <em>path</em>, <em>newu</em>, <em>polyList</em>, <em>ioVal</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#bagSave"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.bagSave" title="Permalink to this definition">¶</a></dt>
+<dd><p>Primary function for saving final products of the tool.</p>
+<p>Extended description of function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>bag</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; BAG file object</li>
+<li><strong>new</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.array.html#numpy.array" title="(in NumPy v1.16)"><em>numpy.array</em></a>) &#8211; Origninal and interpolated BAG data or only interpolated data</li>
+<li><strong>tifs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; GeoTiff file object</li>
+<li><strong>res</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) &#8211; Resolution of input BAG data</li>
+<li><strong>ext</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; Extent of the input BAG data [NW, SE] in [x, y]</li>
+<li><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) &#8211; Output folder path</li>
+<li><strong>newu</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.array.html#numpy.array" title="(in NumPy v1.16)"><em>numpy.array</em></a>) &#8211; Origninal and interpolated Uncertainty data or only interpolated data</li>
+<li><strong>polyList</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; List of binary grids generated by <a class="reference internal" href="#autointerp.rePrint" title="autointerp.rePrint"><code class="xref py py-func docutils literal"><span class="pre">rePrint()</span></code></a> for
+output for use in validating or debugging products</li>
+<li><strong>ioVal</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) &#8211; User input. Determines whether origninal and interpolated or only
+interpolated data is output</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="autointerp.chunk">
+<em class="property">class </em><code class="descclassname">autointerp.</code><code class="descname">chunk</code><span class="sig-paren">(</span><em>sliceInfo</em>, <em>chunkSlice</em>, <em>shape</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#chunk"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.chunk" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
+<p>chunk() serves as the data container for individual tile data. It&#8217;s
+inputs inlcude sliceInfo=[buffer, height, width], chunkSlice=tile[y,x]
+(tile position), and the total height and width of the BAG grid.  This
+information is then used to calculate the indices of each tile (with and
+without a buffer) and the indices of the data within the buffered tiles.</p>
+<dl class="method">
+<dt id="autointerp.chunk.calcSlice">
+<code class="descname">calcSlice</code><span class="sig-paren">(</span><em>buffer</em>, <em>yChunk</em>, <em>xChunk</em>, <em>chunkSlice</em>, <em>shape</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#chunk.calcSlice"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.chunk.calcSlice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes the complete information of a give individual tile and
+calculates the indices of each tile (with and without a buffer) and the
+indices of the data within the buffered tiles.</p>
+<p>The calculations are the same, regardless of axis:</p>
+<ol class="arabic">
+<li><p class="first">Determination of the data (with a buffer) for interpolation.:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Min</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1">#(for tiles on the upper or right borders)</span>
+<span class="c1">#or</span>
+<span class="n">Min</span> <span class="o">=</span> <span class="p">(</span><span class="n">chunk</span> \<span class="o">*</span> <span class="n">index</span><span class="p">)</span> <span class="o">-</span> <span class="n">buffer</span>
+<span class="n">Max</span> <span class="o">=</span> <span class="n">chunk</span> \<span class="o">*</span> <span class="p">(</span><span class="n">inex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">buffer</span>
+<span class="c1">#or</span>
+<span class="n">Max</span> <span class="o">=</span> <span class="n">axis</span> <span class="n">total</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Determination of the data (without a buffer) for use in re-applying data back to the original shape of the data.:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">BMin</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1">#(for tiles on the upper or right borders)</span>
+<span class="c1">#or</span>
+<span class="n">BMin</span> <span class="o">=</span> <span class="p">(</span><span class="n">chunk</span> \<span class="o">*</span> <span class="n">index</span><span class="p">)</span>
+<span class="n">BMax</span> <span class="o">=</span> <span class="n">chunk</span> \<span class="o">*</span> <span class="p">(</span><span class="n">inex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+<span class="c1">#or</span>
+<span class="n">BMax</span> <span class="o">=</span> <span class="n">axis</span> <span class="n">total</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Determination of where the data (without a buffer) lies within an interpolated tile (with a buffer).:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">IMin</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="c1">#or</span>
+<span class="n">IMin</span> <span class="o">=</span> <span class="n">BMin</span> <span class="o">-</span> <span class="n">Min</span>
+<span class="n">ma</span> <span class="o">=</span> <span class="n">Max</span> <span class="o">-</span> <span class="n">BMin</span>
+<span class="c1">#or</span>
+<span class="n">ma</span> <span class="o">=</span> <span class="n">axis</span> <span class="n">total</span>
+<span class="k">if</span> <span class="n">ma</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">IMax</span> <span class="o">=</span> <span class="n">chunk</span> <span class="o">+</span> <span class="n">buffer</span>
+<span class="k">if</span> <span class="n">ma</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">IMax</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">yma</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p class="rubric">Example</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tiles</span><span class="p">,</span> <span class="n">chunkGrid</span><span class="p">,</span> <span class="n">sliceInfo</span> <span class="o">=</span> <span class="n">sliceFinder</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="o">.</span><span class="mi">5</span><span class="p">,</span> <span class="p">[</span><span class="mi">25710</span><span class="p">,</span><span class="mi">35010</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">tiles</span><span class="p">)</span>
+<span class="go">36 # 36 Total Tiles</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">chunkGrid</span><span class="p">)</span>
+<span class="go">array([[ 0,  1,  2,  3,  4,  5],</span>
+<span class="go">       [ 6,  7,  8,  9, 10, 11],</span>
+<span class="go">       [12, 13, 14, 15, 16, 17],</span>
+<span class="go">       [18, 19, 20, 21, 22, 23],</span>
+<span class="go">       [24, 25, 26, 27, 28, 29],</span>
+<span class="go">       [30, 31, 32, 33, 34, 35]])</span>
+<span class="go"># Tile 3 is index [0,3] and has a value of 2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">sliceInfo</span><span class="p">)</span>
+<span class="go">[40.0, 4285, 5835]</span>
+</pre></div>
+</div>
+<p>For a shape of:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">25710</span><span class="p">,</span><span class="mi">35010</span><span class="p">]</span>
+<span class="p">(</span><span class="mi">4285</span><span class="p">,</span> <span class="mi">5835</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Tile 1 of 36:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">chunkSlice</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4325</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5875</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4285</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5835</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">40</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">40</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Tile 8 of 36:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">chunkSlice</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">4245</span><span class="p">,</span> <span class="mi">8610</span><span class="p">,</span> <span class="mi">5795</span><span class="p">,</span> <span class="mi">11710</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">4285</span><span class="p">,</span> <span class="mi">8570</span><span class="p">,</span> <span class="mi">5835</span><span class="p">,</span> <span class="mi">11670</span><span class="p">]</span>
+<span class="p">[</span><span class="mi">40</span><span class="p">,</span> <span class="o">-</span><span class="mi">40</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="o">-</span><span class="mi">40</span><span class="p">]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="autointerp.chunk.xBMax">
+<code class="descname">xBMax</code><em class="property"> = 0</em><a class="headerlink" href="#autointerp.chunk.xBMax" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="autointerp.chunk.xBMin">
+<code class="descname">xBMin</code><em class="property"> = 0</em><a class="headerlink" href="#autointerp.chunk.xBMin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="autointerp.chunk.xIMax">
+<code class="descname">xIMax</code><em class="property"> = 0</em><a class="headerlink" href="#autointerp.chunk.xIMax" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="autointerp.chunk.xIMin">
+<code class="descname">xIMin</code><em class="property"> = 0</em><a class="headerlink" href="#autointerp.chunk.xIMin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="autointerp.chunk.xMax">
+<code class="descname">xMax</code><em class="property"> = 0</em><a class="headerlink" href="#autointerp.chunk.xMax" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="autointerp.chunk.xMin">
+<code class="descname">xMin</code><em class="property"> = 0</em><a class="headerlink" href="#autointerp.chunk.xMin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="autointerp.chunk.yBMax">
+<code class="descname">yBMax</code><em class="property"> = 0</em><a class="headerlink" href="#autointerp.chunk.yBMax" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="autointerp.chunk.yBMin">
+<code class="descname">yBMin</code><em class="property"> = 0</em><a class="headerlink" href="#autointerp.chunk.yBMin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="autointerp.chunk.yIMax">
+<code class="descname">yIMax</code><em class="property"> = 0</em><a class="headerlink" href="#autointerp.chunk.yIMax" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="autointerp.chunk.yIMin">
+<code class="descname">yIMin</code><em class="property"> = 0</em><a class="headerlink" href="#autointerp.chunk.yIMin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="autointerp.chunk.yMax">
+<code class="descname">yMax</code><em class="property"> = 0</em><a class="headerlink" href="#autointerp.chunk.yMax" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="autointerp.chunk.yMin">
+<code class="descname">yMin</code><em class="property"> = 0</em><a class="headerlink" href="#autointerp.chunk.yMin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.comboGrid">
+<code class="descclassname">autointerp.</code><code class="descname">comboGrid</code><span class="sig-paren">(</span><em>grids</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#comboGrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.comboGrid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepares the tif and bag data to be split in concatGrid and returns
+the results</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>grids</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; The BAG and GeoTiff objects</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li><strong>combo</strong> (<em>numpy.array</em>) &#8211; Array of indecies where nodata values meet data values
+in order x, y</li>
+<li><strong>vals</strong> (<em>numpy.array</em>) &#8211; Array of values where nodata values meet data values
+in order z</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.concatGrid">
+<code class="descclassname">autointerp.</code><code class="descname">concatGrid</code><span class="sig-paren">(</span><em>grids</em>, <em>maxVal</em>, <em>shape</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#concatGrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.concatGrid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes an input of an array of grid objects and the assumed nodata value
+Passes the assumed nodata value and the arrays held within each of the
+listed grid objects to tupleGrid(grid, maxVal) for a return of an array of
+edge points for each grid [[x, y, z], ...]</p>
+<p>Takes the results of both tupleGrid calls and combines them into a single
+array of edge points.  Then uses .view().sort() to sort the combined
+products [[x, y, z], ...] based on ascending x, then column y.</p>
+<p>The results of the sorted point array are then split into a list of points
+[[x, y], ...] and values [[z], ...] and returned</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grids</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; The BAG and GeoTiff objects</li>
+<li><strong>maxVal</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) &#8211; The BAG data&#8217;s nodata value</li>
+<li><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><em>tuple</em></a>) &#8211; Dimensions of the input BAG data (y, x)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>grid</strong> (<em>numpy.array</em>) &#8211; Array of indecies where nodata values meet data values
+in order x, y</li>
+<li><strong>vals</strong> (<em>numpy.array</em>) &#8211; Array of values where nodata values meet data values
+in order z</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.getBagLyrs">
+<code class="descclassname">autointerp.</code><code class="descname">getBagLyrs</code><span class="sig-paren">(</span><em>fileObj</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#getBagLyrs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.getBagLyrs" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function takes a list of BAG filepaths and opens each in order
+to access their values. Returned is a list of bag objects are the order a
+file was found, the path of the file, the file&#8217;s elevation values, and the
+file&#8217;s uncertainty values as [x, file, extent, elev] and a list of file
+names</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>files</strong> (<a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)"><em>string</em></a>) &#8211; File path of the input BAG file</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li><strong>bag</strong> (<em>list</em>) &#8211; BAG file object
+Position loaded, file name, grid extents, file size, grid dimensions,
+uncertainty numpy.array, bathymetry numpy.array</li>
+<li><strong>maxVal</strong> (<em>int</em>) &#8211; Maximum occurance value AKA nodata value</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.getShpRast">
+<code class="descclassname">autointerp.</code><code class="descname">getShpRast</code><span class="sig-paren">(</span><em>file</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#getShpRast"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.getShpRast" title="Permalink to this definition">¶</a></dt>
+<dd><p>Import shapefile</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>file</strong> (<a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)"><em>string</em></a>) &#8211; Shapefile file location</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<p class="last">Inital working idea for importing shapefiles as rasters</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.getTifElev">
+<code class="descclassname">autointerp.</code><code class="descname">getTifElev</code><span class="sig-paren">(</span><em>files</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#getTifElev"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.getTifElev" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function takes a list of GeoTiff filepaths and opens each in order
+to access their values. Returned as a list of tif objects are the order a
+file was found, the path of the file, and the file&#8217;s values as
+[x, file, extent, arr] and a list of file names</p>
+<p>Upper Left Corner and Lower Right Corner Bounds Directly from:
+&#8220;How to get raster corner...&#8221; on on GIS Stack Exchange [Answer by &#8216;James&#8217;
+(<a class="reference external" href="https://gis.stackexchange.com/a/201320">https://gis.stackexchange.com/a/201320</a>)]</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>files</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; File paths of the input GeoTiff files</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li><strong>tifFiles</strong> (<em>list</em>) &#8211; List of GeoTiff file objects
+Position loaded, file name, raster extents, numpy.array</li>
+<li><strong>names</strong> (<em>list</em>) &#8211; list of names of imported GeoTiffs</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.interp">
+<code class="descclassname">autointerp.</code><code class="descname">interp</code><span class="sig-paren">(</span><em>grids</em>, <em>size</em>, <em>res</em>, <em>shape</em>, <em>uval</em>, <em>ioVal</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#interp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.interp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Summary of function</p>
+<p>Extended description of function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grids</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; The BAG and GeoTiff objects</li>
+<li><strong>size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) &#8211; Size of the input BAG file</li>
+<li><strong>res</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) &#8211; Resolution of the input BAG data</li>
+<li><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><em>tuple</em></a>) &#8211; Dimensions of the input BAG data (y, x)</li>
+<li><strong>uval</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><em>tuple</em></a>) &#8211; Values for uncertainty calculation</li>
+<li><strong>ioVal</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) &#8211; User input. Determines whether origninal and interpolated or only
+interpolated data is output</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>ugrids</strong> &#8211; Complete interpolated data as unitedBag, unitedUncr, and unitedPre</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)">list</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.main">
+<code class="descclassname">autointerp.</code><code class="descname">main</code><span class="sig-paren">(</span><em>bagPath</em>, <em>tifPath</em>, <em>desPath</em>, <em>catzoc</em>, <em>ioVal</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>main function of the interpolation process.  This function handles
+the flow of data in input, tiling, interpolation, and reintigration of the
+final grid.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>bagPath</strong> (<a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)"><em>string</em></a>) &#8211; File path of the input BAG file</li>
+<li><strong>tifPath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; File paths of the input GeoTiff files</li>
+<li><strong>desPath</strong> (<a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)"><em>string</em></a>) &#8211; Folder path for the output files</li>
+<li><strong>catzoc</strong> (<a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)"><em>string</em></a>) &#8211; Selection of catzoc grade used to calculate interpolated uncertainty</li>
+<li><strong>ioVal</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) &#8211; User input. Determines whether origninal and interpolated or only
+interpolated data is output</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>msg</strong> &#8211; String with the total time it took to complete the process</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)">string</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.maxValue">
+<code class="descclassname">autointerp.</code><code class="descname">maxValue</code><span class="sig-paren">(</span><em>arr</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#maxValue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.maxValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the most used value in the array as an integer</p>
+<p>Takes an input array and finds the most used value in the array, this
+value is used by the program to assume the array&#8217;s nodata value</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>arr</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.array.html#numpy.array" title="(in NumPy v1.16)"><em>numpy.array</em></a>) &#8211; An input array</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>maxVal</strong> &#8211; Returns the most used value in the array as an integer</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)">int</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.polyTifVals">
+<code class="descclassname">autointerp.</code><code class="descname">polyTifVals</code><span class="sig-paren">(</span><em>tifs</em>, <em>path</em>, <em>names</em>, <em>extent</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#polyTifVals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.polyTifVals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Heavy Influence From:
+&#8220;What is the simplest way...&#8221; on GIS Stack Exchange [Answer by &#8216;Jon&#8217;
+(<a class="reference external" href="https://gis.stackexchange.com/a/278965">https://gis.stackexchange.com/a/278965</a>)]</p>
+<p>This function takes an array input of tif objects, a destination path (for
+ouput saving), and a list the names of the input tif objects.</p>
+<p>Takes the arrays of each tif object and combines them along the z axis of
+each:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">[[</span><span class="n">za</span><span class="p">,</span><span class="n">zb</span><span class="p">],[</span><span class="n">za</span><span class="p">,</span><span class="n">zb</span><span class="p">],[</span><span class="n">za</span><span class="p">,</span><span class="n">zb</span><span class="p">],</span>
+ <span class="p">[</span><span class="n">za</span><span class="p">,</span><span class="n">zb</span><span class="p">],[</span><span class="n">za</span><span class="p">,</span><span class="n">zb</span><span class="p">],[</span><span class="n">za</span><span class="p">,</span><span class="n">zb</span><span class="p">],</span>
+ <span class="p">[</span><span class="n">za</span><span class="p">,</span><span class="n">zb</span><span class="p">],[</span><span class="n">za</span><span class="p">,</span><span class="n">zb</span><span class="p">],[</span><span class="n">za</span><span class="p">,</span><span class="n">zb</span><span class="p">]]</span>
+</pre></div>
+</div>
+<p>Then takes the mean of the values along the z axis. The reslult is then
+modified to a binary raster by making all values that are not the nodata
+value 1 and the values that are nodata 0.</p>
+<p>This binary raster is saved at the input path and also returned with the
+new full path for the output</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>tifs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; List of GeoTiff objects</li>
+<li><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)"><em>string</em></a>) &#8211; Folder path for the output files</li>
+<li><strong>names</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; List of names of imported GeoTiffs</li>
+<li><strong>extent</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; The maximum extents of all input GeoTiffs</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>meanTiff</strong> (<em>numpy.array</em>) &#8211; Binary raster only showing data and nodata areas for all of the input
+GeoTiff data</li>
+<li><strong>outputtiff</strong> (<em>string</em>) &#8211; File name and path generated for saving meanTiff data in Tiff format</li>
+<li><strong>outputhdf5</strong> (<em>string</em>) &#8211; File name and path generated for saving meanTiff data in HDF5 format</li>
+<li><strong>targs</strong> (<em>list</em>) &#8211; Additional arguments passed back for use in <a class="reference internal" href="#autointerp.alignGrids" title="autointerp.alignGrids"><code class="xref py py-func docutils literal"><span class="pre">alignGrids()</span></code></a></li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.rePrint">
+<code class="descclassname">autointerp.</code><code class="descname">rePrint</code><span class="sig-paren">(</span><em>grids</em>, <em>ugrids</em>, <em>maxVal</em>, <em>ioVal</em>, <em>debug=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#rePrint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.rePrint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses a mix of interpolated and original bag and tif data in order to
+determine where new interpolated data should be applied. No interpolated
+data is used where original bag data exists.</p>
+<dl class="docutils">
+<dt>bag <span class="classifier-delimiter">:</span> <span class="classifier">numpy.array</span></dt>
+<dd>orignal bag data</dd>
+<dt>interp <span class="classifier-delimiter">:</span> <span class="classifier">numpy.array</span></dt>
+<dd>interpolated bag data (smoothed)</dd>
+<dt>pbag <span class="classifier-delimiter">:</span> <span class="classifier">numpy.array</span></dt>
+<dd>interpolated bag data (before smooth)</dd>
+<dt>poly <span class="classifier-delimiter">:</span> <span class="classifier">numpy.array</span></dt>
+<dd>binary raster of tif coverage</dd>
+<dt>uncr <span class="classifier-delimiter">:</span> <span class="classifier">numpy.array</span></dt>
+<dd>original uncertainty</dd>
+<dt>iuncrt <span class="classifier-delimiter">:</span> <span class="classifier">numpy.array</span></dt>
+<dd>interpolated uncertainty</dd>
+<dt>maxVal <span class="classifier-delimiter">:</span> <span class="classifier">numpy.array</span></dt>
+<dd>bag no-data value</dd>
+<dt>ioVal <span class="classifier-delimiter">:</span> <span class="classifier">numpy.array</span></dt>
+<dd>user option to include all data or interpolated data only</dd>
+</dl>
+<p>Steps:</p>
+<ol class="arabic simple">
+<li>Create a binary grid of tif dat, tpoly.</li>
+<li>Create a binary grid of bag data, bpoly.</li>
+<li>Create a combined grid of the &#8220;complete coverage&#8221; of data; cpoly, numpy.logical_or of bpoly, tpoly.</li>
+<li>Use bpoly to remove the bag coverage from the combined &#8220;complete coverage&#8221;; dpoly, numpy.logical_xor of bpoly, cpoly.</li>
+<li>Use dpoly to determine where interpolated data can be applied and apply original bag data everywhere else; ibag, numpy.where of dpoly, pbag, bag.</li>
+<li>Create a binary grid of ibag, npoly.</li>
+<li>Use npoly and dpoly to create a binary grid where only data is present; fpoly, numpy.logical_and of dpoly, nopoly.</li>
+<li>Finalize results by using fpoly to apply interpolated data where appropriate and original bag data everywhere else.</li>
+</ol>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grids</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; List of original data objects for BAG and GeoTiff data</li>
+<li><strong>ugrids</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; List of interpolated data objects for BAG depth and uncertainty data</li>
+<li><strong>ioVal</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) &#8211; User input. Determines whether origninal and interpolated or only
+interpolated data is output</li>
+<li><strong>debug</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) &#8211; Whether or not polyList includes all or only the last step in the
+evaluation process</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>nbag</strong> (<em>numpy.array</em>) &#8211; Interpolated BAG bathymetry</li>
+<li><strong>nunc</strong> (<em>numpy.array</em>) &#8211; Interpolated BAG uncertainty</li>
+<li><strong>polyList</strong> (<em>list</em>) &#8211; List of numpy.array objects containting all or only the last step in
+the evaluation process</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.shift5">
+<code class="descclassname">autointerp.</code><code class="descname">shift5</code><span class="sig-paren">(</span><em>arr</em>, <em>y</em>, <em>x</em>, <em>fill_value=nan</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#shift5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.shift5" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference external" href="https://stackoverflow.com/questions/30399534/shift-elements-in-a-numpy-array">https://stackoverflow.com/questions/30399534/shift-elements-in-a-numpy-array</a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.sliceFinder">
+<code class="descclassname">autointerp.</code><code class="descname">sliceFinder</code><span class="sig-paren">(</span><em>size</em>, <em>res</em>, <em>shape</em>, <em>var=5000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#sliceFinder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.sliceFinder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses the file size of the bag to determine if the grid should be tiled.
+If the file is less than 100Mb, the file will not be tiled.  If the file is
+large enough to tile, the number of tiles and index size of each tile will
+be calculated based on the ratio of the total size of each array.</p>
+<p>yChunk = 5000*sqrt(height/width)
+xChunk = 5000*sqrt(width/height)</p>
+<p>ny = _np.ceil(height/yChunk)
+nx = _np.ceil(width/xChunk)</p>
+<p>tiles = nx*ny</p>
+<p>chunkgird is both the arrangement of tiles in relation to the grid and the
+order in which the tiles are processed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) &#8211; Size of the input BAG file</li>
+<li><strong>res</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) &#8211; Resolution of the input BAG data</li>
+<li><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><em>tuple</em></a>) &#8211; Dimensions of the input BAG data (y, x)</li>
+<li><strong>var</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a><em>, </em><em>optional</em>) &#8211; Arbitrary value for determining chunk size</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>tiles</strong> (<em>int</em>) &#8211; Number of tiles used to process the data</li>
+<li><strong>chunkGrid</strong> (<em>numpy.array, None</em>) &#8211; The arrangement of tiles in relation to the grid and the
+order in which the tiles are proceced</li>
+<li><strong>sliceInfo</strong> (<em>list, None</em>) &#8211; The value for the tile buffer and dimensions of each tile</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">chunkGrid</span> <span class="o">=</span> <span class="n">_np</span><span class="o">.</span><span class="n">arrange</span><span class="p">(</span><span class="n">tiles</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">ny</span><span class="p">,</span> <span class="n">nx</span><span class="p">))</span>
+<span class="go">array([[ 0,  1,  2,  3,  4,  5],</span>
+<span class="go">       [ 6,  7,  8,  9, 10, 11],</span>
+<span class="go">       [12, 13, 14, 15, 16, 17],</span>
+<span class="go">       [18, 19, 20, 21, 22, 23],</span>
+<span class="go">       [24, 25, 26, 27, 28, 29],</span>
+<span class="go">       [30, 31, 32, 33, 34, 35]])</span>
+<span class="go"># 36 Total Tiles</span>
+<span class="go"># Tile 3 is index [0,3] and has a value of 2</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.triangulateSurfaces">
+<code class="descclassname">autointerp.</code><code class="descname">triangulateSurfaces</code><span class="sig-paren">(</span><em>grids</em>, <em>combo</em>, <em>vals</em>, <em>uval</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#triangulateSurfaces"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.triangulateSurfaces" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolates input data and convolves the ouput of the interpolation</p>
+<p>Takes input BAG and GeoTiff objects; tile or complete data.  This data is
+used to inform the shape/size of the resulting output of the interpolation
+function. If combo and vals are empty, the interpolation process is skipped
+and the tile or complete data is passed back from the function. Otherwise,
+combo, vals and the shape of the BAG data input are passed to
+<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.griddata.html#scipy.interpolate.griddata" title="(in SciPy v1.2.1)"><code class="xref py py-func docutils literal"><span class="pre">scipy.interpolate.griddata()</span></code></a> and output to the variable &#8220;grid_pre&#8221;.
+The output of this function is also saved to a seperate variable &#8220;grid&#8221;
+while the original output is left untouched. The seperate output is then
+passed to <a class="reference external" href="http://docs.astropy.org/en/latest/api/astropy.convolution.convolve.html#astropy.convolution.convolve" title="(in Astropy v3.2.dev1394)"><code class="xref py py-func docutils literal"><span class="pre">astropy.convolution.convolve()</span></code></a> to smooth the output.</p>
+<p>The uncertainty layer is calculated using uval and grid:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">m</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">uval</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">uncr</span> <span class="o">=</span> <span class="p">(</span><span class="n">grid</span><span class="o">*</span><span class="n">m</span><span class="p">)</span><span class="o">+</span><span class="n">b</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grids</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><em>list</em></a>) &#8211; The BAG and GeoTiff objects</li>
+<li><strong>combo</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.array.html#numpy.array" title="(in NumPy v1.16)"><em>numpy.array</em></a>) &#8211; Array of indecies where nodata values meet data values
+in order x, y</li>
+<li><strong>vals</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.array.html#numpy.array" title="(in NumPy v1.16)"><em>numpy.array</em></a>) &#8211; Array of values where nodata values meet data values
+in order z</li>
+<li><strong>uval</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><em>tuple</em></a>) &#8211; Values for uncertainty calculation</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>grid</strong> (<em>numpy.array</em>) &#8211; The interpolated and convolved bathemetry</li>
+<li><strong>uncr</strong> (<em>numpy.array</em>) &#8211; The calculated uncertainty from the interpolated and convolved
+bathemetry</li>
+<li><strong>grid_pre</strong> (<em>numpy.array</em>) &#8211; The interpolated bathemetry before convolution is performed</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.tupleGrid">
+<code class="descclassname">autointerp.</code><code class="descname">tupleGrid</code><span class="sig-paren">(</span><em>grid</em>, <em>maxVal</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#tupleGrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.tupleGrid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes an input matrix and an assumed nodata value. The function iterates
+through the matrix and compiles a list of &#8216;edge&#8217; points [[x, y, z], ...]
+where:</p>
+<ol class="arabic">
+<li><p class="first">the current value is not a nodata value and previous value was a nodata value.</p>
+<blockquote>
+<div><ul class="simple">
+<li>sets io True, indicating that the next value to compare against should be a nodata value.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">the current value is a nodata value and the previous value was not a nodata value.</p>
+<blockquote>
+<div><ul class="simple">
+<li>sets io False, indicating that the next value to compare against should not be a nodata value.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">returns a list of the points found.</p>
+</li>
+</ol>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grid</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.array.html#numpy.array" title="(in NumPy v1.16)"><em>numpy.array</em></a>) &#8211; An input array</li>
+<li><strong>maxVal</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) &#8211; The array&#8217;s nodata value</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Array of indecies where nodata values meet data values
+in order x, y, z</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">np.array</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="autointerp.write_raster">
+<code class="descclassname">autointerp.</code><code class="descname">write_raster</code><span class="sig-paren">(</span><em>raster_array</em>, <em>gt</em>, <em>data_obj</em>, <em>outputpath</em>, <em>dtype=4</em>, <em>options=0</em>, <em>color_table=0</em>, <em>nbands=1</em>, <em>nodata=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/autointerp.html#write_raster"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#autointerp.write_raster" title="Permalink to this definition">¶</a></dt>
+<dd><p>Directly From:
+&#8220;What is the simplest way...&#8221; on GIS Stack Exchange [Answer by &#8216;Jon&#8217;
+(<a class="reference external" href="https://gis.stackexchange.com/a/278965">https://gis.stackexchange.com/a/278965</a>)]</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>raster_array</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.array.html#numpy.array" title="(in NumPy v1.16)"><em>numpy.array</em></a>) &#8211; Array to be written to a GeoTiff file</li>
+<li><strong>gt</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><em>tuple</em></a><em>, </em><em>gdal.GeoTransform</em>) &#8211; Norhtern extent, resolution, 0.0, Western extent, 0.0, -resolution)</li>
+<li><strong>data_obj</strong> (<em>gdal.RasterBand</em>) &#8211; gdal.RasterBand</li>
+<li><strong>outputpath</strong> (<a class="reference external" href="https://docs.python.org/3/library/string.html#module-string" title="(in Python v3.7)"><em>string</em></a>) &#8211; Folder to save the GeoTiff raster</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Welcome to autointerp&#8217;s documentation!</a><ul>
+<li><a class="reference internal" href="#index">Index</a></li>
+<li><a class="reference internal" href="#module-autointerp">autointerp Functions</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">autointerp  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright .
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+    </div>
+  </body>
+</html>
