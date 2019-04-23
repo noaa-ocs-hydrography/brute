@@ -24,6 +24,8 @@ Sources:
 
 from osgeo import gdal
 import numpy as np
+import matplotlib as mpl
+from mpl_toolkits import natgrid as _nn
 
 class point_interpolator:
     """
@@ -44,10 +46,13 @@ class point_interpolator:
         """
         linear = False
         invdist = False
+        natural = True
         if interpolation_type == 'linear':
             linear = True
         elif interpolation_type == 'invdist':
             invdist = True
+        elif interpolation_type == 'natural':
+            natural = True
         else:
             raise ValueError('interpolation type not implemented.')
         minrad, meanrad, maxrad = self._get_point_spacing(dataset)
@@ -62,12 +67,22 @@ class point_interpolator:
         if linear:
             # trim the triangulated interpolation back using the inv dist as a mask
             ds5 = self._mask_with_raster(ds2, ds4)
+        if natural:
+            ds9 = self._get_natural_interp(dataset)
         # write the files out using the above function
         if linear:
             return ds5
         if invdist:
             return ds4
+        if natural:
+            return ds9
         
+    def _get_natural_interp(self, dataset):
+        lyr = dataset.GetLayerByIndex(0)
+        count = lyr.GetFeatureCount()
+        data = np.zeros((count,3))
+        print (lyr, count, data)
+    
     def _get_point_spacing(self, dataset):
         """
         Take a gdal vector xyz point cloud and return the min and max spacing

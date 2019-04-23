@@ -13,6 +13,8 @@ import numpy as np
 from osgeo import gdal
 gdal.UseExceptions()
 
+__version__ = 'Test'
+
 def maxValue(arr):
     '''Takes an input array and finds the most used value in the array, this 
     value is used by the program to assume the array's nodata value

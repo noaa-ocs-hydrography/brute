@@ -6,6 +6,7 @@ Created on Wed Apr 17 17:19:27 2019
 """
 
 import os as _os
+import csv as _csv
 import shutil as _shutil
 import configparser as _cp
 
@@ -19,7 +20,6 @@ config.read('config.ini')
 #sections = config.sections()
 downloads = config['Source']['downloads']
 destination = config['Destination']['destination']
-folder = config['Destination']['folder']
 repo = _os.path.split(progLoc)[0]
 method = config.getboolean('Method', 'method')
 
@@ -50,12 +50,27 @@ def regionPath(root, folder):
 
     """
     regions = []
-    for k, v in dict(config.items('Regions')).items():
+#    for k, v in dict(config.items('Regions')).items():
+#        dwnlds = []
+#        districts = [i.strip() for i in v.split(',')]
+#        for i in districts:
+#            dwnlds.append(repo + _os.path.join(downloads, i))
+#        regions.append((k, dwnlds))
+#    regions = dict(regions)
+    fileName = open(config['CSVs']['NBS'], 'r')
+    opened = _csv.reader(fileName,delimiter=',')
+    temp = []
+    for row in opened:
+        if len(row) > 0:
+            temp.append(row)
+    fileName.close()
+    for row in temp[1:]:
+        regionName = row[1].strip() + '_' + row[0].strip()
         dwnlds = []
-        districts = [i.strip() for i in v.split(',')]
+        districts = [i.strip() for i in row[2].split(',')]
         for i in districts:
-            dwnlds.append(repo + _os.path.join(downloads, i))
-        regions.append((k, dwnlds))
+             dwnlds.append(repo + _os.path.join(downloads, i))
+        regions.append((regionName, dwnlds))
     regions = dict(regions)
     return regions
 
@@ -89,7 +104,7 @@ def fileCollect(path):
     if len(zips) > 0:
         return zips
     else:
-        zips.append('None')
+        zips.append(None)
         return zips
 
 def eHydroZIPs(regions):
@@ -126,7 +141,7 @@ def eHydroZIPs(regions):
     return hold
 
 
-def fileMove(regionFiles, destination, folder, method, text_region=None,
+def fileMove(regionFiles, destination, method, text_region=None,
              progressBar=None, text_output=None):
     """Takes a dictionary of keys representing regions and values representing
     a list of all files downloaded from districts within the respective regions
@@ -165,37 +180,47 @@ def fileMove(regionFiles, destination, folder, method, text_region=None,
         names of files copied
 
     """
+    fileName = open(config['CSVs']['USACE'], 'r')
+    opened = _csv.reader(fileName,delimiter=',')
+    district_name = []
+    for row in opened:
+        if len(row) > 0:
+            district_name.append(row[:2])
+    fileName.close()
+    district_name = dict(district_name[1:])
     for k, v in regionFiles.items():
-        if text_region != None and progressBar!= None and text_output != None:
+        if text_region != None:
             text_region.SetValue(k)
+        if text_output != None:
             progressBar.SetRange(v[1])
+        if progressBar != None:
             progressBar.SetValue(0)
             pbv = 0
-        newPath = _os.path.join(destination, k, folder)
-        if _os.path.isdir(newPath):
-            pass
-        else:
-            _os.makedirs(newPath)
         for item in v[0]:
-            splits = _os.path.split(item)
-            name = splits[-1]
-            district = splits[-2].split('\\')[-1]
-            newerPath = _os.path.join(newPath, district)
-            if _os.path.isdir(newerPath):
-                pass
-            else:
-                _os.makedirs(newerPath)
-            newName = _os.path.join(newerPath, name)
-            if _os.path.exists(item) and not _os.path.exists(newName):
-                if text_output != None:
-                    text_output.write(district+'\\'+name+ '\n')
-                if method == False:
-                    _shutil.copy2(item, newName)
-                elif method == True:
-                    _shutil.move(item, newName)
-            if progressBar!= None:
-                pbv += 1
-                progressBar.SetValue(pbv)
+            if item != None:
+                splits = _os.path.split(item)
+                name = splits[-1]
+                district_code = splits[-2].split('\\')[-1]
+#                print (k, district_code, item)
+                district_abbr = district_code[-3:]
+                district_full = district_name[district_abbr]
+                eHydro_folder = 'USACE\\eHydro_' + district_full + '_district\\original'
+                newerPath = _os.path.join(destination, k, eHydro_folder)
+                if _os.path.isdir(newerPath):
+                    pass
+                else:
+                    _os.makedirs(newerPath)
+                newName = _os.path.join(newerPath, name)
+                if _os.path.exists(item) and not _os.path.exists(newName):
+                    if text_output != None:
+                        text_output.write(eHydro_folder +'\\'+ name + '\n')
+                    if method == False:
+                        _shutil.copy2(item, newName)
+                    elif method == True:
+                        _shutil.move(item, newName)
+                if progressBar!= None:
+                    pbv += 1
+                    progressBar.SetValue(pbv)
 
 def _main(text_region=None, progressBar=None, text_output=None):
     """Main function of the program. Responsible for passing items through the
@@ -218,7 +243,7 @@ def _main(text_region=None, progressBar=None, text_output=None):
         progressBar.Pulse()
     regions = regionPath(repo, downloads)
     regionFiles = eHydroZIPs(regions)
-    fileMove(regionFiles, destination, folder, method, text_region,
+    fileMove(regionFiles, destination, method, text_region,
              progressBar, text_output)
 
 if __name__ == '__main__':
