@@ -118,11 +118,11 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
         xmlbasename = os.path.basename(xmlfilename)
         xml_data = p_usace_xml.XML_Meta(xml_txt, filename = xmlbasename)
         if xml_data.version == 'USACE_FGDC':
-            meta_xml = xml_data._extract_meta_CEMVN()
+            meta_xml = xml_data._extract_meta_USACE_FGDC() #xml_data._extract_meta_CEMVN() is the version it is pulling#xml_data.my_etree_dict1# 
         elif xml_data.version == 'ISO-8859-1':
-                meta_xml = xml_data._extract_meta_USACE_ISO()                
+            meta_xml = xml_data._extract_meta_USACE_ISO()# is the version it is pulling  #xml_data.my_etree_dict1#     
         else:
-            meta_xml = xml_data.convert_xml_to_dict2()
+            meta_xml = xml_data.convert_xml_to_dict2()#specify how to handle
     else:
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CESAM', default_meta = '')#

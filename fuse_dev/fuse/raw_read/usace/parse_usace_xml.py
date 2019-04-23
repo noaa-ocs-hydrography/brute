@@ -78,6 +78,10 @@ class XML_Meta(object):
         Provided an xml string for parsing, a tree will be created and the
         name speace parsed from the second line.  Values are then extracted
         based on the source dictionary.
+        
+        version within the intitial call adds the capability to specify
+        versions, most scenarios are guessing the version based on information
+        in the file otherwise
         """
         self.filename = filename
         self.xml_tree = et.fromstring(meta_xml)
@@ -130,17 +134,21 @@ class XML_Meta(object):
         Set the locations of the desired data types based on the version of the
         metadata.
         """
-        version = self.version        
+        version = self.version
+        self.metadataformat = ""
+        self.metadataformat_check = ""
         if version =='USACE_FGDC':
             self.source = {}
             try:
-               my_etree_dict = self.convert_xml_to_dict2() 
+               my_etree_dict = self.convert_xml_to_dict2()#_extract_meta_USACE_FGDC()# option pull metadata now, or only pull key pieces?
                if my_etree_dict['metstdv']:
                    Metadataformat = my_etree_dict['metstdv']
                    print(Metadataformat)
                    self.metadataformat = Metadataformat
+                   self.metadataformat_check = 'y'
             except:
                 print('unexpected issue with assumed USACE FGDC format parsing')
+                self.metadataformat_check = 'fail'
         elif version == 'ISO-8859-1':
             self.source = {}
             try:
@@ -149,8 +157,10 @@ class XML_Meta(object):
                    Metadataformat = my_etree_dict['metstdv']
                    print(Metadataformat)
                    self.metadataformat = Metadataformat
+                   self.metadataformat_check = 'y'
             except:
-                print('unexpected issue with assumed USACE ISO 88591 FGDC format parsing')                          
+                print('unexpected issue with assumed USACE ISO 88591 FGDC format parsing')
+                self.metadataformat_check = 'fail'                       
         else:           
             version = float(self.version)            
             if version == 1.0:
@@ -166,6 +176,7 @@ class XML_Meta(object):
                 self.source['sensor'] = './/gmi:acquisitionInformation/gmi:MI_AcquisitionInformation/gmi:instrument/gmi:MI_Instrument/gmi:description/gco:CharacterString' #updated               
             else:
                 log.warning("verison not compatible")
+                self.metadataformat_check = 'fail'
    
     def convert_xml_to_dict(self):
         """
@@ -246,6 +257,10 @@ class XML_Meta(object):
                     my_etree_dict1['H_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
                     if my_etree_dict1['H_units'].upper() == 'usSurveyFoot'.upper():
                         my_etree_dict1['Horizontal_Units'] = 'US Survey Foot'
+        #Location for END DATES in some files!                
+        # 'metadata/idinfo/timeperd/timeinfo/rngdates': 'rngdates',
+        # 'metadata/dataqual/lineage/srcinfo/srctime/timeinfo/rngdates': 'rngdates',
+        # 'metadata/distinfo/availabl/timeinfo/rngdates': 'rngdates',
         self.my_etree_dict1 = my_etree_dict1
         return my_etree_dict1
     
@@ -402,13 +417,16 @@ class XML_Meta(object):
         return s57
     
     #--------------------------------------------------------------------------
-    def _extract_meta_CEMVN(self):
+    def _extract_meta_USACE_FGDC(self):
         """
         retrieves USACE e-hydro metadata that follows the FGDC format 
         and returns a dictionary
         """
         if self.version =='USACE_FGDC':
             meta_xml = self.convert_xml_to_dict2()
+            #if self.metadataformat_check == 'fail':#Do we need this check yet?
+            #   meta = {}
+            #else:
             if len(meta_xml)>0:
                 meta = parsing_xml_FGDC_attributes_s57(meta_xml)
             else:
@@ -428,9 +446,12 @@ class XML_Meta(object):
         """
         if self.version == 'ISO-8859-1':
             meta_xml = self.convert_xml_to_dict_ISO_FGDC()#
-            meta_xml = parse_xml_info_text_ISO(self.xml_txt, meta_xml)
-            meta_xml = extract_from_iso_meta(meta_xml)
-            meta={}
+            if self.metadataformat_check == 'fail':
+                meta = {}
+            else:
+                meta_xml = parse_xml_info_text_ISO(self.xml_txt, meta_xml)
+                meta_xml = extract_from_iso_meta(meta_xml)
+                meta={}
             try:
                 m = convert_meta_to_input(meta)
             except:
@@ -817,56 +838,128 @@ xml_path_to_baseattribute = {
         }
 #------------------------------------------------------------------------------
 iso_xml_path_to_baseattribute = {
-		'metadata/idinfo/citation/citeinfo/origin':'origin',
-		'metadata/idinfo/citation/citeinfo/pubdate':'pubdate',
-		'metadata/idinfo/citation/citeinfo/title':'title',
-		'metadata/idinfo/descript/abstract':'abstract',
-		'metadata/idinfo/descript/purpose':'purpose',
-		'metadata/idinfo/timeperd/timeinfo/sngdate/caldate':'caldate',
-		'metadata/idinfo/timeperd/timeinfo/current':'current',
-		'metadata/idinfo/status/progress':'progress',
-		'metadata/idinfo/status/update':'update',
-		'metadata/idinfo/spdom/bounding/westbc':'westbc',
-		'metadata/idinfo/spdom/bounding/eastbc':'eastbc',
-		'metadata/idinfo/spdom/bounding/northbc':'northbc',
-		'metadata/idinfo/spdom/bounding/southbc':'southbc',
-		'metadata/idinfo/keywords/themekt':'themekt',
-		'metadata/idinfo/accconst':'accconst',
-		'metadata/idinfo/useconst':'useconst',
-		'metadata/idinfo/ptcontac/cntinfo/cntperp/cntper':'cntper',
-		'metadata/idinfo/ptcontac/cntinfo/cntperp/cntorg':'cntorg',
-		'metadata/idinfo/ptcontac/cntinfo/cntaddr/addrtype':'addrtype',
-		'metadata/idinfo/ptcontac/cntinfo/cntaddr/address':'address',
-		'metadata/idinfo/ptcontac/cntinfo/cntaddr/city':'city',
-		'metadata/idinfo/ptcontac/cntinfo/cntaddr/state':'state',
-		'metadata/idinfo/ptcontac/cntinfo/cntaddr/postal':'postal',
-		'metadata/idinfo/ptcontac/cntinfo/cntvoice':'cntvoice',
-		'metadata/spref/horizsys/planar/gridsys/gridsysn':'gridsysn',
-		'metadata/spref/horizsys/planar/planci/plance':'plance',
-		'metadata/spref/horizsys/planar/planci/absres':'absres',
-		'metadata/spref/horizsys/planar/planci/ordres':'ordres',
-		'metadata/spref/vertdef/altsys/altdatum':'altdatum',
-		'metadata/spref/vertdef/altsys/altres':'altres',
-		'metadata/spref/vertdef/altsys/altunits':'altunits',
-		'metadata/spref/vertdef/altsys/altenc':'altenc',
-		'metadata/spref/vertdef/depthsys/depthdn':'depthdn',
-		'metadata/spref/vertdef/depthsys/depthres':'depthres',
-		'metadata/spref/vertdef/depthsys/depthdu':'depthdu',
-		'metadata/spref/vertdef/depthsys/depthem':'depthem',
-		'metadata/metainfo/metd':'metd',
-		'metadata/metainfo/metc/cntinfo/cntperp/cntper':'cntper',
-		'metadata/metainfo/metc/cntinfo/cntperp/cntorg':'cntorg',
-		'metadata/metainfo/metc/cntinfo/cntaddr/addrtype':'addrtype',
-		'metadata/metainfo/metc/cntinfo/cntaddr/address':'address',
-		'metadata/metainfo/metc/cntinfo/cntaddr/city':'city',
-		'metadata/metainfo/metc/cntinfo/cntaddr/state':'state',
-		'metadata/metainfo/metc/cntinfo/cntaddr/postal':'postal',
-		'metadata/metainfo/metc/cntinfo/cntvoice':'cntvoice',
-		'metadata/metainfo/metstdn':'metstdn',
-		'metadata/metainfo/metstdv':'metstdv',
-		'metadata/ellips':'ellips',
+        'metadata/idinfo/citation/citeinfo/origin':'origin',
+        'metadata/idinfo/citation/citeinfo/pubdate':'pubdate',
+        'metadata/idinfo/citation/citeinfo/title':'title',
+        'metadata/idinfo/descript/abstract':'abstract',
+        'metadata/idinfo/descript/purpose':'purpose',
+        'metadata/idinfo/timeperd/timeinfo/sngdate/caldate':'caldate',
+        'metadata/idinfo/timeperd/timeinfo/current':'current',
+        'metadata/idinfo/status/progress':'progress',
+        'metadata/idinfo/status/update':'update',
+        'metadata/idinfo/spdom/bounding/westbc':'westbc',
+        'metadata/idinfo/spdom/bounding/eastbc':'eastbc',
+        'metadata/idinfo/spdom/bounding/northbc':'northbc',
+        'metadata/idinfo/spdom/bounding/southbc':'southbc',
+        'metadata/idinfo/keywords/themekt':'themekt',
+        'metadata/idinfo/accconst':'accconst',
+        'metadata/idinfo/useconst':'useconst',
+        'metadata/idinfo/ptcontac/cntinfo/cntperp/cntper':'cntper',
+        'metadata/idinfo/ptcontac/cntinfo/cntperp/cntorg':'cntorg',
+        'metadata/idinfo/ptcontac/cntinfo/cntaddr/addrtype':'addrtype',
+        'metadata/idinfo/ptcontac/cntinfo/cntaddr/address':'address',
+        'metadata/idinfo/ptcontac/cntinfo/cntaddr/city':'city',
+        'metadata/idinfo/ptcontac/cntinfo/cntaddr/state':'state',
+        'metadata/idinfo/ptcontac/cntinfo/cntaddr/postal':'postal',
+        'metadata/idinfo/ptcontac/cntinfo/cntvoice':'cntvoice',
+        'metadata/spref/horizsys/planar/gridsys/gridsysn':'gridsysn',
+        'metadata/spref/horizsys/planar/planci/plance':'plance',
+        'metadata/spref/horizsys/planar/planci/absres':'absres',
+        'metadata/spref/horizsys/planar/planci/ordres':'ordres',
+        'metadata/spref/vertdef/altsys/altdatum':'altdatum',
+        'metadata/spref/vertdef/altsys/altres':'altres',
+        'metadata/spref/vertdef/altsys/altunits':'altunits',
+        'metadata/spref/vertdef/altsys/altenc':'altenc',
+        'metadata/spref/vertdef/depthsys/depthdn':'depthdn',
+        'metadata/spref/vertdef/depthsys/depthres':'depthres',
+        'metadata/spref/vertdef/depthsys/depthdu':'depthdu',
+        'metadata/spref/vertdef/depthsys/depthem':'depthem',
+        'metadata/metainfo/metd':'metd',
+        'metadata/metainfo/metc/cntinfo/cntperp/cntper':'cntper',
+        'metadata/metainfo/metc/cntinfo/cntperp/cntorg':'cntorg',
+        'metadata/metainfo/metc/cntinfo/cntaddr/addrtype':'addrtype',
+        'metadata/metainfo/metc/cntinfo/cntaddr/address':'address',
+        'metadata/metainfo/metc/cntinfo/cntaddr/city':'city',
+        'metadata/metainfo/metc/cntinfo/cntaddr/state':'state',
+        'metadata/metainfo/metc/cntinfo/cntaddr/postal':'postal',
+        'metadata/metainfo/metc/cntinfo/cntvoice':'cntvoice',
+        'metadata/metainfo/metstdn':'metstdn',
+        'metadata/metainfo/metstdv':'metstdv',
+        'metadata/ellips':'ellips',
         }
-#		'metadata/#text':'#text',
+#        'metadata/#text':'#text',
+
+fgdc_additional_values ={
+        'metadata/distinfo/stdorder/digform/digtopt/onlinopt/accinstr': 'accinstr',
+         'metadata/spdoinfo/spref/vertdef/altsys/altdatum': 'altdatum',
+         'metadata/spdoinfo/spref/vertdef/altsys/altenc': 'altenc',
+         'metadata/spdoinfo/spref/vertdef/altsys/altres': 'altres',
+         'metadata/spdoinfo/spref/vertdef/altsys/altunits': 'altunits',
+         'metadata/dataqual/attracc': 'attracc',
+         'metadata/eainfo/detailed/attr/attrdomv': 'attrdomv',
+         'metadata/eainfo/detailed/attr/attrvai': 'attrvai',
+         'metadata/spdoinfo/spref/horizsys/planar/gridsys/arcsys/azimequi': 'azimequi',
+         'metadata/dataqual/lineage/procstep/proccont/cntinfo/cntaddr': 'cntaddr',
+         'metadata/distinfo/distrib/cntinfo/cntinst': 'cntinst',
+         'metadata/metainfo/metc/cntinfo/cntinst': 'cntinst',
+         'metadata/dataqual/lineage/procstep/proccont/cntinfo/cntorgp': 'cntorgp',
+         'metadata/idinfo/ptcontac/cntinfo/cntperp': 'cntperp',
+         'metadata/dataqual/lineage/procstep/proccont/cntinfo/cntperp': 'cntperp',
+         'metadata/distinfo/distrib/cntinfo/cntperp': 'cntperp',
+         'metadata/metainfo/metc/cntinfo/cntperp': 'cntperp',
+         'metadata/spdoinfo/spref/vertdef/depthsys/depthdn': 'depthdn',
+         'metadata/spdoinfo/spref/vertdef/depthsys/depthdu': 'depthdu',
+         'metadata/spdoinfo/spref/vertdef/depthsys/depthem': 'depthem',
+         'metadata/spdoinfo/spref/vertdef/depthsys/depthres': 'depthres',
+         'metadata/spdoinfo/spref/horizsys/planar/planci/distbrep': 'distbrep',
+         'metadata/idinfo/citation/citeinfo/edition': 'edition',
+         'metadata/eainfo/detailed/enttyp': 'enttyp',
+         'metadata/spdoinfo/spref/horizsys/planar/gridsys/arcsys/equirect': 'equirect',
+         'metadata/distinfo/stdorder/digform/digtinfo/filedec': 'filedec',
+         'metadata/distinfo/stdorder/digform/digtinfo/formvern': 'formvern',
+         'metadata/dataqual/posacc/horizpa': 'horizpa',
+         'metadata/idinfo/ptcontac/cntinfo/hours': 'hours',
+         'metadata/distinfo/distrib/cntinfo/hours': 'hours',
+         'metadata/metainfo/metc/cntinfo/hours': 'hours',
+         'metadata/spdoinfo/spref/horizsys/planar/gridsys/spcs/lambertc': 'lambertc',
+         'metadata/idinfo/timeperd/timeinfo/mdattim': 'mdattim',
+         'metadata/dataqual/lineage/srcinfo/srctime/timeinfo/mdattim': 'mdattim',
+         'metadata/distinfo/availabl/timeinfo/mdattim': 'mdattim',
+         'metadata/metainfo/metac': 'metac',
+         'metadata/metainfo/metrd': 'metrd',
+         'metadata/metainfo/metsi/metsc': 'metsc',
+         'metadata/metainfo/metsi/metscs': 'metscs',
+         'metadata/metainfo/metsi/metshd': 'metshd',
+         'metadata/metainfo/metuc': 'metuc',
+         'metadata/spdoinfo/spref/horizsys/planar/gridsys/spcs/obqmerc/obqlpt': 'obqlpt',
+         'metadata/eainfo/overview': 'overview',
+         'metadata/spdoinfo/spref/horizsys/planar/gridsys/ups/polarst': 'polarst',
+         'metadata/spdoinfo/spref/horizsys/planar/gridsys/spcs/polycon': 'polycon',
+         'metadata/idinfo/citation/citeinfo/lworkcit/citeinfo/pubinfo': 'pubinfo',
+         'metadata/idinfo/crossref/citeinfo/pubinfo': 'pubinfo',
+         'metadata/dataqual/lineage/srcinfo/srccite/citeinfo/pubinfo': 'pubinfo',
+         'metadata/dataqual/lineage/srcinfo/srccite/citeinfo/lworkcit/citeinfo/pubinfo': 'pubinfo',
+         'metadata/distinfo/resdesc': 'resdesc',
+         'metadata/idinfo/timeperd/timeinfo/rngdates': 'rngdates',
+         'metadata/dataqual/lineage/srcinfo/srctime/timeinfo/rngdates': 'rngdates',
+         'metadata/distinfo/availabl/timeinfo/rngdates': 'rngdates',
+         'metadata/spdoinfo/ptvctinf/sdtsterm': 'sdtsterm',
+         'metadata/idinfo/secinfo/secclass': 'secclass',
+         'metadata/idinfo/secinfo/sechandl': 'sechandl',
+         'metadata/idinfo/secinfo/secsys': 'secsys',
+         'metadata/idinfo/citation/citeinfo/lworkcit/citeinfo/serinfo': 'serinfo',
+         'metadata/idinfo/crossref/citeinfo/serinfo': 'serinfo',
+         'metadata/dataqual/lineage/srcinfo/srccite/citeinfo/serinfo': 'serinfo',
+         'metadata/dataqual/lineage/srcinfo/srccite/citeinfo/lworkcit/citeinfo/serinfo': 'serinfo',
+         'metadata/idinfo/citation/citeinfo/serinfo/sername': 'sername',
+         'metadata/dataqual/lineage/srcinfo/srctime/timeinfo/sngdate': 'sngdate',
+         'metadata/distinfo/availabl/timeinfo/sngdate': 'sngdate',
+         'metadata/idinfo/keywords/stratum': 'stratum',
+         'metadata/idinfo/descript/supplinf': 'supplinf',
+         'metadata/idinfo/keywords/temporal': 'temporal',
+         'metadata/spdoinfo/spref/horizsys/planar/gridsys/utm/transmer': 'transmer',
+         'metadata/dataqual/posacc/vertacc': 'vertacc'}
+
 #------------------------------------------------------------------------------
 def convert_tofips(SOURCEPROJECTION_dict, SPCS):
     """
