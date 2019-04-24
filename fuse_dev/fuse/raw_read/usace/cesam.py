@@ -271,7 +271,11 @@ class Extract_Txt(object):
                     #do header check:
                     #within header:
             for line in header:
-                if line.startswith('notes_chart== 1.'):
+                term = 'Notes_chart='
+                if line.startswith(term):
+                    metalist.append(_parse_note(line))
+                    metalist.append(_parse_notes_chart(line))
+                elif line.startswith('notes_chart== 1.'):
                     metalist.append(_parse_note(line))
                     metalist.append(_parse_notes_chart(line))
                     #do something with this line metaline.append()
@@ -441,10 +445,13 @@ def _parse_note(line):
     # find the vertical datum information
     if line.find('MEAN LOWER LOW WATER') >= 0:
         metadata['from_vert_key'] = 'MLLW'
+        metadata['script: from_vert_key'] = 'MLLW'
     elif line.find('MLLW') >= 0:
         metadata['from_vert_key'] = 'MLLW'
+        metadata['script: from_vert_key'] = 'MLLW'
     elif line.find('MEAN LOW WATER') >= 0:
         metadata['from_vert_key'] = 'MLW'
+        metadata['script: from_vert_key'] = 'MLW'
     else:
         metadata['vert_key'] = 'unknown'
 #    vert_units_tags = ['NAVD88','NAVD1988','NAVD 1988']
