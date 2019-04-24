@@ -32,7 +32,7 @@ def coordQuery(nx, ny, sx, sy):
     bounds = dict(bounds)
 #    print (bounds)
     return bounds
-    
+
 def bagIDQuery(bounds):
     bounds = str(bounds)
     bagList = 'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/3/query?where=&text=&objectIds=&time=&geometry=' + bounds + '&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=true&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
@@ -44,9 +44,11 @@ def bagIDQuery(bounds):
     print (objectIDs, objectNum)
     return objectIDs, objectNum
 
-def surveyCompile(surveyIDs):
+def surveyCompile(surveyIDs,num,pb=None):
     x = 0
     rows = []
+    if pb != None:
+        pb.SetRange(num)
     for num in surveyIDs:
         print (x, end=' ')
         bagID = str(num)
@@ -61,28 +63,37 @@ def surveyCompile(surveyIDs):
                 else:
                     row.append(str(page['features'][0]['attributes'][attribute]))
             rows.append(row)
-            x += 1
         except KeyError as e:
             print (e, page)
 #            break
+        if pb != None:
+            pb.SetValue(x)
+        x += 1
     print (len(rows))
     print ('rows complete')
     return rows
 
-def csvWriter(csvFile, csvLocation, name):
+def csvWriter(csvFile, csvLocation, name, pb=None):
     name = csvLocation + '\\' + name + '.txt'
-    csvOpen = open(name, 'w')
+    csvOpen = open(name, 'w', newline='')
     save = csv.writer(csvOpen, delimiter = ',')
     save.writerow(attributes)
+    x = 0
+    if pb != None:
+        pb.SetRange(len(csvFile))
     for row in csvFile:
         save.writerow(row)
+        if pb != None:
+            pb.SetValue(x)
+        x += 1
     csvOpen.close()
-    
-def main(name,nx,sy,sx,ny):
+
+def main(name,nx,sy,sx,ny,pb=None):
     print(name,nx,sy,sx,ny)
+    if pb != None:
+        pb.Pulse()
     bounds = coordQuery(nx,ny,sx,sy)
     bagIDs, bagNum = bagIDQuery(bounds)
-    rows = surveyCompile(bagIDs)
-    csvWriter(rows,progLoc,name)
+    rows = surveyCompile(bagIDs,bagNum,pb)
+    csvWriter(rows,progLoc,name,pb)
     return True
-    

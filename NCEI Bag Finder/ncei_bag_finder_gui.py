@@ -18,7 +18,17 @@ class Form(ncei_ui.Form):
     '''
     def __init__(self, parent):
         ncei_ui.Form.__init__(self, parent)
-        
+
+    def main(self):
+        self.status_bar.SetStatusText('')
+        name = self.text_file.GetValue()
+        nx = self.text_west.GetValue()
+        sy = self.text_south.GetValue()
+        sx = self.text_east.GetValue()
+        ny = self.text_north.GetValue()
+        if nceiBAGs.main(name,nx,sy,sx,ny,self.progress_bar) == True:
+            self.status_bar.SetStatusText('Done!')
+
     def programQuit(self, event):
         '''Closes GUI, ends program.
         Maps to Cancel button, File->Quit, and CTRL+Q
@@ -29,15 +39,10 @@ class Form(ncei_ui.Form):
         '''Collects the GUI field values for use in running the main
         function
         '''
-        self.status_bar.SetStatusText('')
-        name = self.text_file.GetValue()
-        nx = self.text_west.GetValue()
-        sy = self.text_south.GetValue()
-        sx = self.text_east.GetValue()
-        ny = self.text_north.GetValue()
-        if nceiBAGs.main(name,nx,sy,sx,ny) == True:
-            self.status_bar.SetStatusText('Done!')
-        
+        import threading
+        th = threading.Thread(target=self.main)
+        th.start()
+
 app = wx.App()
 frame = Form(None)
 frame.Show()

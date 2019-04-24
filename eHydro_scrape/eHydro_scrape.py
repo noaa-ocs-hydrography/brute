@@ -24,11 +24,11 @@ progLoc = os.getcwd()
 """progLoc is the program's own file location / current working directory (cwd)
 obtained by :func:`os.getcwd()`"""
 full = re.compile(r'FULL.xyz', re.IGNORECASE)
-"""regex object for searching zipfile contents for high-res data ending in 
+"""regex object for searching zipfile contents for high-res data ending in
 ``FULL.xyz``
 """
 full_a = re.compile(r'_A.xyz', re.IGNORECASE)
-"""regex object for searching zipfile contents for high-res data ending in 
+"""regex object for searching zipfile contents for high-res data ending in
 ``_A.xyz``
 """
 # location of data items
@@ -46,16 +46,16 @@ logLocation = os.path.join(progLoc, logName)
 """Default location for :attr:`logName`"""
 #"""Default location for """
 holding = progLoc + '\\downloads\\'
-"""Default location for all downloaded data, regardless of the type of query 
+"""Default location for all downloaded data, regardless of the type of query
 performed. Data is broken up into folders representing each district (ex.
 ``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)
 """
 logging = progLoc + '\\logs\\'
-"""Default location for individual query logs. These are named like 
+"""Default location for individual query logs. These are named like
 ``YYYYMMDD_0_eHydro_log.txt``
 """
 running = progLoc + '\\runs\\'
-"""Default location for individual query csv outputs. These are named like 
+"""Default location for individual query csv outputs. These are named like
 ``YYYYMMDD_0_eHydro_csv.txt``
 """
 # eHydro survey entry attributes
@@ -490,9 +490,9 @@ def csvOpen():
 
     """
     if not os.path.exists(csvLocation):
-        create = open(csvLocation, 'w')
+        create = open(csvLocation, 'w', newline='')
         create.close()
-    fileOpened = open(csvLocation, 'r', newline='\n')
+    fileOpened = open(csvLocation, 'r', newline='')
     opened = csv.reader(fileOpened, delimiter = ',')
     csvFile = []
     for row in opened:
@@ -514,7 +514,7 @@ def csvWriter(csvFile, csvLocation):
         Complete file path string for a text file to be created
 
     """
-    csvOpen = open(csvLocation, 'w')
+    csvOpen = open(csvLocation, 'w', newline='')
     save = csv.writer(csvOpen, delimiter = ',')
     for row in csvFile:
         save.writerow(row)

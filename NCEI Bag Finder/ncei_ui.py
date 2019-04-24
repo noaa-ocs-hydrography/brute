@@ -17,7 +17,7 @@ import wx.xrc
 class Form ( wx.Frame ):
 
 	def __init__( self, parent ):
-		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"NCEI Bag Finder", pos = wx.DefaultPosition, size = wx.Size( 300,325 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"NCEI Bag Finder", pos = wx.DefaultPosition, size = wx.Size( 300,350 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
 
 		self.SetSizeHints( wx.Size( 300,325 ), wx.DefaultSize )
 		self.SetBackgroundColour( wx.SystemSettings.GetColour( wx.SYS_COLOUR_WINDOW ) )
@@ -109,6 +109,10 @@ class Form ( wx.Frame ):
 
 
 		box_container.Add( bSizer2, 1, wx.ALIGN_CENTER_HORIZONTAL, 5 )
+
+		self.progress_bar = wx.Gauge( self, wx.ID_ANY, 100, wx.DefaultPosition, wx.DefaultSize, wx.GA_HORIZONTAL )
+		self.progress_bar.SetValue( 0 )
+		box_container.Add( self.progress_bar, 0, wx.ALL|wx.EXPAND, 5 )
 
 
 		self.SetSizer( box_container )
