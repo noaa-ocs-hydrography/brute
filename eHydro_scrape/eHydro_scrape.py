@@ -112,30 +112,28 @@ def query():
         end = config['Timeframe']['End Date']
     else:
         end = strToday
-    print ('\nStart:', start, '\nEnd:', end)
     if (config['Agencies']['Only Listed'] == 'yes'
         and config['Agencies']['Agencies'] != ''):
         areas = ''
         agencies = config['Agencies']['Agencies'].split(',')
-
         if len(agencies) > 1:
             i = 0
             areas += '('
             while i < len(agencies):
                 if i == 0:
                     areas += ('UPPER(SURVEYAGENCY)%20like%20%27%25'
-                              + agencies[0]
+                              + agencies[0].strip()
                               + '%25%27')
                     i += 1
                 else:
                     areas += ('%20OR%20UPPER(SURVEYAGENCY)%20like%20%27%25'
-                              + agencies[i]
+                              + agencies[i].strip()
                               + '%25%27')
                     i += 1
             areas += ')%20'
         else:
             areas = ('UPPER(SURVEYAGENCY)%20like%20%27%25'
-                     + agencies[0]
+                     + agencies[0].strip()
                      + '%25%27')
     else:
         areas = ''
@@ -143,6 +141,7 @@ def query():
     # The main query parameters that will determine the contents of the response
     # Survey Date Uploaded
     if config ['Timeframe']['Ignore Date'] == 'no' and areas != '':
+        print ('\nStart:', start, '\nEnd:', end)
         where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
                  + start
                  + 'T00%3A01%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
@@ -150,12 +149,16 @@ def query():
                  + 'T11%3A59%3A00.000Z%27%20AND%20'
                  + areas)
     elif config ['Timeframe']['Ignore Date'] == 'no' and areas == '':
+        print ('\nStart:', start, '\nEnd:', end)
         where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
                  + start
                  + 'T00%3A01%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
                  + end
                  + 'T11%3A59%3A00.000Z%27')
     else:
+        print ('\nStart: Ignored', '\nEnd: Ignored')
+        start = 'Ignored'
+        end = 'Ignored'
         if areas != '':
             where = areas
         else:
