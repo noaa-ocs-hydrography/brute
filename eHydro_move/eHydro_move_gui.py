@@ -14,6 +14,9 @@ class Form(eHydro_move_ui.Form):
     
     def main(self):
         eHydro_move._main(self.text_region, self.progressBar, self.text_output)
+        self.progressBar.SetRange(100)
+        self.progressBar.SetValue(100)
+        self.text_region.SetValue('Done!')
 #        self.Close()
         
     def programProg(self):
