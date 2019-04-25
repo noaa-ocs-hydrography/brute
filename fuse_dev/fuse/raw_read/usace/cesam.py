@@ -423,8 +423,10 @@ def _parse_notes_chart(line):
                 horiz_datum = metadata['horiz_sys'].split(' STATE PLANE')[0] + metadata['COORDINATE SYSTEM'].split('83 DATUM')[-1].strip('.')
                 horiz_datum = horiz_datum.lstrip()
                 SPCS = horiz_datum
-                metadata['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, SPCS)
                 metadata['from_horiz_datum'] = SPCS
+                for key in p_usace_xml.SOURCEPROJECTION_dict:
+                    if key.upper() in metadata['from_horiz_datum']:
+                        metadata['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, " ".join(key.split()))                
     return metadata      
      
 
