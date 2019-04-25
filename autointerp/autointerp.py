@@ -327,15 +327,10 @@ def tupleGrid(grid, maxVal):
     where:
 
     1. the current value is not a nodata value and previous value was a nodata value.
-
         - sets io True, indicating that the next value to compare against should be a nodata value.
-
     2. the current value is a nodata value and the previous value was not a nodata value.
-
         - sets io False, indicating that the next value to compare against should not be a nodata value.
-
     3. returns a list of the points found.
-
 
     Parameters
     ----------
