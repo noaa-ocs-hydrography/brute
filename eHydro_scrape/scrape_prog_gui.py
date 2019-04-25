@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Apr 22 11:01:24 2019
+Created on Thu Apr 25 13:48:02 2019
 
 @author: Casiano.Koprowski
 """
-import wx
-import eHydro_move
-import eHydro_move_ui
 
-class Form(eHydro_move_ui.Form):
+import wx
+import scrape_prog
+import eHydro_scrape
+
+class Form(scrape_prog.Form):
     def __init__(self, parent):
-        eHydro_move_ui.Form.__init__(self, parent)
+        scrape_prog.Form.__init__(self, parent)
     
     def main(self):
-        eHydro_move._main(self.text_region, self.progressBar, self.text_output)
+        eHydro_scrape.main(self.progress_bar, self.output_text)
 #        self.Close()
         
     def programProg(self):

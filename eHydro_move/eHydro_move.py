@@ -191,9 +191,8 @@ def fileMove(regionFiles, destination, method, text_region=None,
     for k, v in regionFiles.items():
         if text_region != None:
             text_region.SetValue(k)
-        if text_output != None:
-            progressBar.SetRange(v[1])
         if progressBar != None:
+            progressBar.SetRange(v[1])
             progressBar.SetValue(0)
             pbv = 0
         for item in v[0]:

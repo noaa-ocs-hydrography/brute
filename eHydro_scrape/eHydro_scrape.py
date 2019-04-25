@@ -199,7 +199,7 @@ def query():
 
     return (surveyIDs, newSurveysNum, paramString)
 
-def surveyCompile(surveyIDs, newSurveysNum):
+def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     """Uses the json object return of the each queried survey id and the total
     number of surveys included to compile a list of complete returned survey
     data, as provided in the response. The function also takes into account
@@ -238,6 +238,9 @@ def surveyCompile(surveyIDs, newSurveysNum):
     """
     x = 0
     rows = []
+    if pb!= None:
+        pb.SetRange(newSurveysNum)
+        pb.SetValue(x)
     while x < newSurveysNum:
         print (x, end=' ')
         query = ('https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID%20%3D%20'
@@ -266,6 +269,8 @@ def surveyCompile(surveyIDs, newSurveysNum):
                 row.append('error')
         rows.append(row)
         x += 1
+        if pb!= None:
+            pb.SetValue(x)
     print (len(rows))
     print ('rows complete')
     return rows
@@ -299,7 +304,7 @@ def contentSearch(contents):
         else:
             x = 0
 
-def downloadAndCheck(rows):
+def downloadAndCheck(rows, pb=None, to=None):
     """This function takes a list of complete survey data as provided by the
     query response ('rows').
 
@@ -342,6 +347,10 @@ def downloadAndCheck(rows):
     x = len(rows)
     hr = 0
     agencies = config['Agencies']['Agencies']
+    if pb!= None:
+        pb.SetRange(x)
+        i = 0
+        pb.SetValue(i)
     for row in rows:
         link = row[6]
         agency = row[2]
@@ -397,6 +406,8 @@ def downloadAndCheck(rows):
                     print ('z', end=' ')
                     row.append('BadZip')
                 print ('o', end=' ')
+                if to != None:
+                    to.write(agency + '\\' + name  + '\n')
                 row.append('Yes')
             else:
                 try:
@@ -413,16 +424,23 @@ def downloadAndCheck(rows):
                         print ('y', end=' ')
                         row.append('Yes')
                         hr += 1
+                        if to != None:
+                            to.write('\t\t' + agency + '\\' + name  + '\n')
                 except zipfile.BadZipfile:
                     os.remove(saved)
                     print ('z', end=' ')
                     row.append('BadZip')
                 row.append('No')
         x -= 1
+        if pb != None:
+            i += 1
+            pb.SetValue(i)
+    if to != None:
+        to.write('\n')
     print ('\nrow downloads verified')
     return rows, hr
 
-def csvCompare(rows, csvFile, newSurveysNum):
+def csvCompare(rows, csvFile, newSurveysNum, pb=None):
     """Takes list 'rows' and list 'csvFile'.  It proceeds to compare each list
     item's contents against each other.  If they match, the relevant list item
     is removed from list 'rows'.  If all items are identical, the function
@@ -448,7 +466,12 @@ def csvCompare(rows, csvFile, newSurveysNum):
         Changes'
 
     """
+    
     print(len(rows), end = ' ')
+    before = str(len(rows))
+    if pb != None:
+        pb.SetRange(len(rows))
+        pb.SetValue(0)
     for line in csvFile:
         x = 0
         y = len(rows)
@@ -458,11 +481,15 @@ def csvCompare(rows, csvFile, newSurveysNum):
                 rows.remove(row)
                 y = len(rows)
             x += 1
+            if pb != None:
+                pb.SetValue(x)
     print(len(rows))
+    after = str(len(rows))
+    numstring = '\t\tSurveys in Query: ' + before + '\n\t\tNew Surveys: ' + after
     if len(rows) != 0:
-        return rows
+        return rows, numstring
     else:
-        return 'No Changes'
+        return 'No Changes', numstring
 
 def txtWriter(fileText, txtLocation):
     """String "fileText" is writen to the "txtLocation" save path
@@ -503,7 +530,7 @@ def csvOpen():
     fileOpened.close()
     return csvFile[1:]
 
-def csvWriter(csvFile, csvLocation):
+def csvWriter(csvFile, csvLocation, pb=None):
     """Uses global variable csvLocation. Opens file at csvLocation for
     writing. Iterates line by line through csvFile and imediatly writes
     to eHydro_csv.txt.
@@ -517,13 +544,21 @@ def csvWriter(csvFile, csvLocation):
         Complete file path string for a text file to be created
 
     """
+    
     csvOpen = open(csvLocation, 'w', newline='')
     save = csv.writer(csvOpen, delimiter = ',')
+    if pb != None:
+        pb.SetRange(len(csvFile))
+        pb.SetValue(0)
+        x = 0
     for row in csvFile:
         save.writerow(row)
+        if pb != None:
+            x += 1
+            pb.SetValue(x)
     csvOpen.close()
 
-def logOpen(logType):
+def logOpen(logType, to=None):
     """Uses global variable logLocation. Opens file at logLocation
     for appending. Writes text stating when the function was called.
     Returns the file object for future writing.
@@ -546,7 +581,7 @@ def logOpen(logType):
     timestamp = time()
     message = timestamp + ' - Program Initiated, Log Opened'
     if logType == 'False' or False:
-        fileLog = open(logLocation, 'a')
+        fo = open(logLocation, 'a')
         nameLog = logLocation
     elif logType == 'True' or True:
         x = 0
@@ -559,8 +594,9 @@ def logOpen(logType):
                 x += 1
             else:
                 break
-        fileLog = open(logPath, 'w')
+        fo = open(logPath, 'w')
         nameLog = logPath
+    fileLog = (fo, to)
     logWriter(fileLog, message)
     return fileLog, nameLog
 
@@ -577,7 +613,10 @@ def logWriter(fileLog, message):
 
     """
     print (message)
-    fileLog.write(message + '\n')
+    fl, to = fileLog
+    fl.write(message + '\n')
+    if to != None:
+        to.write(message + '\n')
 
 def logClose(fileLog):
     """Takes a file object 'fileLog'. Writes text stating when the
@@ -589,10 +628,11 @@ def logClose(fileLog):
         A text document object representing the output log
 
     """
+    fo = fileLog[0]
     timestamp = time()
     message = timestamp +' - Program Finished, Log Closed\n'
     logWriter(fileLog, message)
-    fileLog.close()
+    fo.close()
 
 def time():
     """Creates and returns a string 'timestamp' that contains a
@@ -639,14 +679,16 @@ def fileTime():
     timestamp = datetime.datetime.now().strftime('%Y%m%d')
     return timestamp
 
-def main():
+def main(pb=None,to=None):
     runType = config['Data Checking']['Override']
     logType = config['Output Log']['Log Type']
-    fileLog, nameLog = logOpen(logType)
+    fileLog, nameLog = logOpen(logType, to)
     try:
-        surveyIDs, newSurveysNum, paramString = query()
-        rows = surveyCompile(surveyIDs, newSurveysNum)
-        logWriter(fileLog, '\tSurveys queried from eHydro\n' + paramString)
+        surveyIDs, newSurveysNum, paramString = query()        
+        logWriter(fileLog, '\tSurvey IDs queried from eHydro\n' + paramString)
+        logWriter(fileLog, '\tCompiling survey objects from Survey IDs')
+        rows = surveyCompile(surveyIDs, newSurveysNum, pb)
+        logWriter(fileLog, '\tSurvey objects compiled from eHydro')
     except:
         logWriter(fileLog, '\teHydro query failed')
     if runType == 'no':
@@ -658,7 +700,8 @@ def main():
             logWriter(fileLog, '\teHydro_csv.txt unable to be opened')
         try:
             logWriter(fileLog, '\tComparing query results to eHydro_csv.txt')
-            changes = csvCompare(rows, csvFile, newSurveysNum)
+            changes, numstring = csvCompare(rows, csvFile, newSurveysNum)
+            logWriter(fileLog, numstring)
         except:
             logWriter(fileLog, '\t\tUnable to compare query results to eHydro_csv.txt')
     elif runType == 'yes':
@@ -669,9 +712,10 @@ def main():
         attributes.append('Hi-Res?')
         attributes.append('Override?')
         if changes != 'No Changes':
-            checked, hiRes = downloadAndCheck(changes)
+            checked, hiRes = downloadAndCheck(changes, pb, to)
             csvFile.extend(checked)
             if config['Output Log']['Query List'] == 'yes':
+                logWriter(fileLog, '\tNew Survey Details:')
                 for row in checked:
                     txt = ''
                     for i in [1,4,5,6,12]:
@@ -687,7 +731,7 @@ def main():
         csvSave = csvFile
         if runType == 'no':
             csvPath = csvLocation
-            csvWriter(csvSave, csvPath)
+            csvWriter(csvSave, csvPath, pb)
         elif runType == 'yes':
             x = 0
             datestamp = date()
@@ -699,7 +743,7 @@ def main():
                     x += 1
                 else:
                     break
-            csvWriter(csvSave, csvPath)
+            csvWriter(csvSave, csvPath, pb)
         logWriter(fileLog, '\tAdding results to ' + csvPath)
     except:
         logWriter(fileLog, '\tUnable to add results to ' + csvPath)
