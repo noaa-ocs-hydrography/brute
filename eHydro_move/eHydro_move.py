@@ -203,8 +203,8 @@ def fileMove(regionFiles, destination, method, text_region=None,
                 district_code = splits[-2].split('\\')[-1]
 #                print (k, district_code, item)
                 district_abbr = district_code[-3:]
-                district_full = district_name[district_abbr]
-                eHydro_folder = 'USACE\\eHydro_' + district_full + '_district\\original'
+                district_full = district_name[district_abbr] + '_' + district_code
+                eHydro_folder = 'USACE\\eHydro_' + district_full + '\\original'
                 newerPath = _os.path.join(destination, k, eHydro_folder)
                 if _os.path.isdir(newerPath):
                     pass

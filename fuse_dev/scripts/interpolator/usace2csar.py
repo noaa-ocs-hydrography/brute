@@ -13,6 +13,7 @@ import numpy as _np
 import matplotlib.pyplot as _plt
 import matplotlib.mlab as _mlab
 import matplotlib
+import scipy as _scipy
 
 print(matplotlib.__version__)
 
@@ -25,9 +26,9 @@ progLoc = os.getcwd()
 _ussft2m = 0.30480060960121924 # US survey feet to meters
 
 #path = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\scripts\\interpolator\\GR_LD_GR1_20180817_CS_15_16_SORT.DAT'
-path = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\scripts\\interpolator\\GR_LD_GR1_20180817_CS_15_16_SORT_A.XYZ'
+#path = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\scripts\\interpolator\\GR_LD_GR1_20180817_CS_15_16_SORT_A.XYZ'
 #path = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\scripts\\interpolator\\MR_54_NO1_20190108_CS_10X10_A.xyz'
-#path = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\scripts\\interpolator\\MR_54_NO1_20190108_CS_10X10.dat'
+path = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\scripts\\interpolator\\MR_54_NO1_20190108_CS_10X10.dat'
 
 def _start_xyz(infilename):
     """
@@ -181,6 +182,7 @@ def make_grid(data):
 def natInterp(xy, z, shape):
     print ('natInterp')
     print (shape)
+    maxVal = 1000000.0
     a = xy[:,0]
     b = xy[:,1]
 #    shape = xy.shape, z.shape
@@ -188,7 +190,9 @@ def natInterp(xy, z, shape):
     x, y = _np.arange(shape[1]), _np.arange(shape[0])
     print (a, b, z)
     xi, yi = _np.meshgrid(x, y)
-    interp = _mlab.griddata(a, b, z, xi, yi)
+#    interp = _mlab.griddata(a, b, z, xi, yi)
+    interp = _scipy.interpolate.griddata(xy, z, (xi, yi),
+                                            method='linear', fill_value=_np.nan)
     
     print ('interp done')
     
