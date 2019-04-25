@@ -418,7 +418,15 @@ def _parse_notes_chart(line):
                 metadata['SURVEYED_BY'] = aline.split(':')[-1]#metadata = _split_at_colon(key, line)
             if aline.find('FREQUENCY SOUNDINGS') >= 0:
                 metadata['FREQUENCY SOUNDINGS'] = aline.split(':')[-1]
-    return metadata            
+                
+            if 'horiz_sys' in metadata and 'COORDINATE SYSTEM' in metadata:
+                horiz_datum = metadata['horiz_sys'].split(' STATE PLANE')[0] + metadata['COORDINATE SYSTEM'].split('83 DATUM')[-1].strip('.')
+                horiz_datum = horiz_datum.lstrip()
+                SPCS = horiz_datum
+                metadata['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, SPCS)
+                metadata['from_horiz_datum'] = SPCS
+    return metadata      
+     
 
 def _parse_note(line):
     """
