@@ -1,39 +1,39 @@
 ﻿SYMBOL,DISTRICT,DIVISION,DIV_SYM
-LRC,Chicago,Great Lakes and Ohio River Division,LRD
-LRB,Buffalo,Great Lakes and Ohio River Division,LRD
-LRH,Huntington,Great Lakes and Ohio River Division,LRD
-LRL,Louisville,Great Lakes and Ohio River Division,LRD
-LRN,Nashville,Great Lakes and Ohio River Division,LRD
-LRP,Pittsburgh,Great Lakes and Ohio River Division,LRD
-LRE,Detroit,Great Lakes and Ohio River Division,LRD
-MVS,St. Louis,Mississippi Valley Division,MVD
-MVM,Memphis,Mississippi Valley Division,MVD
-MVP,St. Paul,Mississippi Valley Division,MVD
-MVN,New Orleans,Mississippi Valley Division,MVD
-MVK,Vicksburg,Mississippi Valley Division,MVD
-MVR,Rock Island,Mississippi Valley Division,MVD
-NAN,New York,North Atlantic Division,NAD
-NAE,New England,North Atlantic Division,NAD
-NAP,Philadelphia,North Atlantic Division,NAD
-NWS,Seattle,Northwestern Division,NWD
-NWW,Walla Walla,Northwestern Division,NWD
-NWP,Portland,Northwestern Division,NWD
-NWO,Omaha,Northwestern Division,NWD
-NWK,Kansas City,Northwestern Division,NWD
-POH,Honolulu,Pacific Ocean Division,POD
-POA,Alaska,Pacific Ocean Division,POD
-SAW,Wilmington,South Atlantic Division,SAD
-SAS,Savannah,South Atlantic Division,SAD
-SAM,Mobile,South Atlantic Division,SAD
-SAJ,Jacksonville,South Atlantic Division,SAD
-SAC,Charleston,South Atlantic Division,SAD
-SPK,Sacramento,South Pacific Division,SPD
-SPN,San Francisco,South Pacific Division,SPD
-SPL,Los Angeles,South Pacific Division,SPD
-SPA,Albuquerque,South Pacific Division,SPD
-SWL,Little Rock,Southwestern Division,SWD
-SWT,Tulsa,Southwestern Division,SWD
-SWG,Galveston,Southwestern Division,SWD
-SWF,Fort Worth,Southwestern Division,SWD
-NAO,Norfolk,North Atlantic Division,NAD
-NAB,Baltimore,North Atlantic Division,NAD
+LRC,Chicago,GreatLakesandOhioRiverDivision,LRD
+LRB,Buffalo,GreatLakesandOhioRiverDivision,LRD
+LRH,Huntington,GreatLakesandOhioRiverDivision,LRD
+LRL,Louisville,GreatLakesandOhioRiverDivision,LRD
+LRN,Nashville,GreatLakesandOhioRiverDivision,LRD
+LRP,Pittsburgh,GreatLakesandOhioRiverDivision,LRD
+LRE,Detroit,GreatLakesandOhioRiverDivision,LRD
+MVS,St.Louis,MississippiValleyDivision,MVD
+MVM,Memphis,MississippiValleyDivision,MVD
+MVP,St.Paul,MississippiValleyDivision,MVD
+MVN,NewOrleans,MississippiValleyDivision,MVD
+MVK,Vicksburg,MississippiValleyDivision,MVD
+MVR,RockIsland,MississippiValleyDivision,MVD
+NAN,NewYork,NorthAtlanticDivision,NAD
+NAE,NewEngland,NorthAtlanticDivision,NAD
+NAP,Philadelphia,NorthAtlanticDivision,NAD
+NWS,Seattle,NorthwesternDivision,NWD
+NWW,Walla Walla,NorthwesternDivision,NWD
+NWP,Portland,NorthwesternDivision,NWD
+NWO,Omaha,NorthwesternDivision,NWD
+NWK,Kansas City,NorthwesternDivision,NWD
+POH,Honolulu,PacificOceanDivision,POD
+POA,Alaska,PacificOceanDivision,POD
+SAW,Wilmington,SouthAtlanticDivision,SAD
+SAS,Savannah,SouthAtlanticDivision,SAD
+SAM,Mobile,SouthAtlanticDivision,SAD
+SAJ,Jacksonville,SouthAtlanticDivision,SAD
+SAC,Charleston,SouthAtlanticDivision,SAD
+SPK,Sacramento,SouthPacificDivision,SPD
+SPN,SanFrancisco,SouthPacificDivision,SPD
+SPL,LosAngeles,SouthPacificDivision,SPD
+SPA,Albuquerque,SouthPacificDivision,SPD
+SWL,LittleRock,SouthwesternDivision,SWD
+SWT,Tulsa,SouthwesternDivision,SWD
+SWG,Galveston,SouthwesternDivision,SWD
+SWF,FortWorth,SouthwesternDivision,SWD
+NAO,Norfolk,NorthAtlanticDivision,NAD
+NAB,Baltimore,NorthAtlanticDivision,NAD
