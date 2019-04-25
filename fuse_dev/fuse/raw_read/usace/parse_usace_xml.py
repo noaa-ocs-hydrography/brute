@@ -137,11 +137,11 @@ class XML_Meta(object):
         version = self.version
         self.metadataformat = ""
         self.metadataformat_check = ""
-        if version =='USACE_FGDC':
+        if version == 'USACE_FGDC':
             self.source = {}
             try:
                my_etree_dict = self.convert_xml_to_dict2()#_extract_meta_USACE_FGDC()# option pull metadata now, or only pull key pieces?
-               if my_etree_dict['metstdv']:
+               if 'metstdv' in my_etree_dict:
                    Metadataformat = my_etree_dict['metstdv']
                    print(Metadataformat)
                    self.metadataformat = Metadataformat
@@ -153,7 +153,7 @@ class XML_Meta(object):
             self.source = {}
             try:
                my_etree_dict = self.convert_xml_to_dict() 
-               if my_etree_dict['metstdv']:
+               if 'metstdv' in my_etree_dict:
                    Metadataformat = my_etree_dict['metstdv']
                    print(Metadataformat)
                    self.metadataformat = Metadataformat
@@ -310,6 +310,27 @@ class XML_Meta(object):
                 my_etree_dict1['from_vert_key'] = ''
             my_etree_dict1['script: from_vert_key'] = my_etree_dict1['from_vert_key']
         self.my_etree_dict1 = my_etree_dict1
+        return my_etree_dict1
+    
+    
+    def extended_xml_fgdc(self):
+        """
+        testing just the extra attribute paths found in the older CESAJ metadata, but may be in other files
+        """
+        my_etree_dict1={}
+        len_root_name_to_remove = len(self.xml_tree.tag)  
+        for key in fgdc_additional_values:
+            if self.xml_tree.findall('./'+ key[len_root_name_to_remove:]):
+                if self.xml_tree.findall('./'+ key[len_root_name_to_remove:]) is None:
+                    my_etree_dict1[fgdc_additional_values[key]]  = ''
+                elif isinstance(self.xml_tree.findall('./'+ key[len_root_name_to_remove:]), list) == True: #check if list
+                    if len(self.xml_tree.find('./'+ key[len_root_name_to_remove:]))>0:            
+                        my_etree_dict1[fgdc_additional_values[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:])[0].text
+                    else:
+                        my_etree_dict1[fgdc_additional_values[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text
+            else:
+                my_etree_dict1[fgdc_additional_values[key]]  = ''
+        self.my_etree_dict2 = my_etree_dict1
         return my_etree_dict1
     
     def find_Instruments(self):
@@ -941,6 +962,8 @@ fgdc_additional_values ={
          'metadata/dataqual/lineage/srcinfo/srccite/citeinfo/lworkcit/citeinfo/pubinfo': 'pubinfo',
          'metadata/distinfo/resdesc': 'resdesc',
          'metadata/idinfo/timeperd/timeinfo/rngdates': 'rngdates',
+         'metadata/idinfo/timeperd/timeinfo/rngdates/begdate': 'begdate',
+         'metadata/idinfo/timeperd/timeinfo/rngdates/enddate': 'enddate',
          'metadata/dataqual/lineage/srcinfo/srctime/timeinfo/rngdates': 'rngdates',
          'metadata/distinfo/availabl/timeinfo/rngdates': 'rngdates',
          'metadata/spdoinfo/ptvctinf/sdtsterm': 'sdtsterm',
