@@ -46,7 +46,7 @@ class point_interpolator:
         """
         linear = False
         invdist = False
-        natural = True
+        natural = False
         if interpolation_type == 'linear':
             linear = True
         elif interpolation_type == 'invdist':
@@ -55,58 +55,87 @@ class point_interpolator:
             natural = True
         else:
             raise ValueError('interpolation type not implemented.')
-        minrad, meanrad, maxrad = self._get_point_spacing(dataset)
+        data_array = self._gdal2vector(dataset)
+        minrad, meanrad, maxrad = self._get_point_spacing(data_array)
         window = maxrad * self.window_scal
         if linear:
             # do the triangulation interpolation
             ds2 = self._gdal_linear_interp_points(dataset, resolution)
-        # do the inverse distance interpolation
-        ds3 = self._gdal_invdist_interp_points(dataset, resolution, window)
-        # shrink the coverage back on the edges and in the holidays on the inv dist
-        ds4 = self._shrink_coverage(ds3, resolution, window)
-        if linear:
+        elif natural:
+            ds2 = self._get_natural_interp(dataset)
+        elif invdist:
+            # do the inverse distance interpolation
+            ds3 = self._gdal_invdist_interp_points(dataset, resolution, window)
+            # shrink the coverage back on the edges and in the holidays on the inv dist
+            ds4 = self._shrink_coverage(ds3, resolution, window)
+        if linear or natural:
             # trim the triangulated interpolation back using the inv dist as a mask
+            ds3 = self._get_mask(dataset, resolution, window)
+            ds4 = self._shrink_coverage(ds3, resolution, window)
             ds5 = self._mask_with_raster(ds2, ds4)
-        if natural:
-            ds9 = self._get_natural_interp(dataset)
         # write the files out using the above function
-        if linear:
+        if linear or natural:
             return ds5
-        if invdist:
+        elif invdist:
             return ds4
-        if natural:
-            return ds9
-        
-    def _get_natural_interp(self, dataset):
-        lyr = dataset.GetLayerByIndex(0)
-        count = lyr.GetFeatureCount()
-        data = np.zeros((count,3))
-        print (lyr, count, data)
+        else:
+            raise ValueError('Interpolation type not understood')
     
-    def _get_point_spacing(self, dataset):
+    def _gdal2vector(self, dataset):
         """
-        Take a gdal vector xyz point cloud and return the min and max spacing
-        between different points in the XY direction for interpolation without 
-        holes.  The returned units will be the same as the provided horizontal 
-        coordinate system.
+        Take a gdal vector xyz point cloud and return a numpy array.
         """
         # get the data out of the gdal data structure
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
         data = np.zeros((count,3))
-        min_dist = np.zeros(count) + np.inf
         for n in np.arange(count):
             f = lyr.GetFeature(n)
             data[n,:] = f.geometry().GetPoint()
-        data = data[:,:2] # drop z
+        return data
+            
+    def _get_point_spacing(self, dataset):
+        """
+        Take a numpy xyz array and return the min, mean, and max spacing
+        between different points in the XY direction for interpolation without 
+        holes.  The returned units will be the same as the provided horizontal 
+        coordinate system.
+        """
+        count = len(dataset)
+        min_dist = np.zeros(count) + np.inf
         # roll the array through, comparing all points and saving the minimum dist.
         for n in np.arange(1,count):
-            tmp = np.roll(data,n,axis = 0)
-            dist = np.sqrt(np.square(data[:,0] - tmp[:,0]) + np.square(data[:,1] - tmp[:,1]))
+            tmp = np.roll(dataset,n,axis = 0)
+            dist = np.sqrt(np.square(dataset[:,0] - tmp[:,0]) + np.square(dataset[:,1] - tmp[:,1]))
             idx = np.nonzero(dist < min_dist)[0]
             if len(idx) > 0:
                 min_dist[idx] = dist[idx]
         return min_dist.min(), min_dist.mean(), min_dist.max()
+    
+    def _get_mask(self, dataset, resolution, window):
+        """
+        This is a hack to compute the mask.  Casiano will make this better some
+        day.
+        
+        Return a gdal raster that has nodes where data should be populated with
+        1, and all other nodes populated with the "no data" value.
+        """
+        # Find the bounds of the provided data
+        xmin,xmax,ymin,ymax = np.nan,np.nan,np.nan,np.nan
+        lyr = dataset.GetLayerByIndex(0)
+        count = lyr.GetFeatureCount()
+        for n in np.arange(count):
+            f = lyr.GetFeature(n)
+            x,y,z = f.geometry().GetPoint()
+            xmin, xmax = self._compare_vals(x,xmin,xmax)
+            ymin, ymax = self._compare_vals(y,ymin,ymax)
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, [xmin,ymin,xmax,ymax])
+        # casiano's process for figuring out which nodes are to be populated
+        # make a grid with the no data value
+        # populate the nodes that should have data with one
+        # turn the array into a gdal dataset
+        mask = self._gdal_invdist_interp_points(dataset, resolution, window)
+        return mask
     
     def _gdal_linear_interp_points(self, dataset, resolution, nodata = 1000000):
         """
@@ -123,7 +152,6 @@ class point_interpolator:
             xmin, xmax = self._compare_vals(x,xmin,xmax)
             ymin, ymax = self._compare_vals(y,ymin,ymax)
         numrows, numcolumns, bounds = self._get_nodes3(resolution, [xmin,ymin,xmax,ymax])
-        
         algorithm = "linear:radius=0:nodata=" + str(int(nodata))
         interp_data = gdal.Grid('', dataset, format='MEM',
                                 width = numcolumns,
@@ -154,6 +182,12 @@ class point_interpolator:
                                 outputBounds = bounds,
                                 algorithm=algorithm)
         return interp_data
+    
+    def _get_natural_interp(self, dataset):
+        lyr = dataset.GetLayerByIndex(0)
+        count = lyr.GetFeatureCount()
+        data = np.zeros((count,3))
+        print (lyr, count, data)
     
     def _compare_vals(self, val, valmin, valmax):
         """
