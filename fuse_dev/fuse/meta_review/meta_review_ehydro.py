@@ -166,7 +166,6 @@ class meta_review_ehydro(mrb.meta_review_base):
             meta = self._scriptkeys(meta)
         else:
             raise ValueError('Unknown meta data container provided')
-        meta = self._scriptkeys(meta)
         with open(self._metafilename, 'w', newline='') as csvfile:
             writer = _csv.DictWriter(csvfile, 
                                      fieldnames = self._fieldnames,
