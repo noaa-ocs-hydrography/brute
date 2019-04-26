@@ -118,7 +118,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
         # write the metadata
         self._meta_obj.write_meta_record(meta)
         if 'from_fips' in self._meta:
-            self.process(infilename)
+            pass
+            #self.process(infilename)
         # reading the bathymetry is not required > goes directly to datum trans
                 
     def process(self, infilename):
