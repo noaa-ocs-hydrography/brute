@@ -15,7 +15,7 @@ import os
 from glob import glob
 import fuse.fuse_ehydro as ffe
 
-cemvn = ffe.fuse_ehydro('cesaj.config') # this config is local for testing
+cesaj = ffe.fuse_ehydro('cesaj.config') # this config is local for testing
 for path in cesaj.rawdata_path:
     flist = glob(os.path.join(path,'*.xyz'))
     for f in flist:
