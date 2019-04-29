@@ -95,7 +95,7 @@ class vdatum:
         overt = ' overt:' + out_verdat.lower()  + ':m:sounding'
         georef = ihorz + ivert + ohorz + overt
         java_str = _os.path.join(self._java_path,'java')
-        shell = java_str + r' -jar vdatum.jar %s -file:txt:space,0,1,2:"%s";"%s"' % (georef, infilename, out_dir)
+        shell = java_str + r' -jar vdatum.jar %s -file:txt:space,0,1,2:%s;%s' % (georef, infilename, out_dir)
         try:
             proc = _subprocess.Popen(shell, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, cwd=self._vdatum_path)
         except:
