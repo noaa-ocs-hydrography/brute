@@ -37,9 +37,10 @@ class transform:
         Run the specified transformation engine to translate the provided
         dataset.
         """
-        in_fips = self._meta['from_fips'], 
-        in_verdat = self._meta['from_vert_datum'],
-        out_epsg = self._meta['to_epsg'], 
+        self._meta = metadata
+        in_fips = int(self._meta['from_fips'])
+        in_verdat = self._meta['from_vert_datum']
+        out_epsg = int(self._meta['to_horiz_datum'])
         out_verdat = self._meta['to_vert_datum']
         return self._engine.translate(infilename, 
                                       in_fips, 
