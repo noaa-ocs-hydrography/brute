@@ -1099,8 +1099,8 @@ def triangulateSurfaces(grids, combo, vals, uval):
         grid = _np.asarray(grid, dtype='float64')
         print (grid.shape, poly.shape)
         grid[grid>0] = _np.nan
-        kernel = _apc.Gaussian2DKernel(3)
         print ('interp')
+        kernel = _apc.Gaussian2DKernel(3)
         grid = _apc.convolve(grid,kernel)
         print ('interp done')
         grid[_np.isnan(grid)]=maxVal
