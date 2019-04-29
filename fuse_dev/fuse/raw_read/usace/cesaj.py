@@ -123,13 +123,23 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
                 meta_xml = xml_data._extract_meta_USACE_ISO()                
         else:
             meta_xml = xml_data.convert_xml_to_dict2()
+        try:
+            ext_dict = xml_data.extended_xml_fgdc()            
+        except:
+            ext_dict = {}
+            err_file = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\CESAJ\metadata\Error_file_if_extdict_checkfail.txt"
+            with open(err_file,'a') as error:
+                error.write(f + ' : extra dict call fail \n')
+
     else:
+        ext_dict = {}
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CESAJ', default_meta = '')#
     list_keys_empty =[]
     combined_row = {}
     subset_row = {}
     subset_no_overlap = {}
+    subset_dict ={}
     for key in meta:
         if meta[key] == 'unknown' or  meta[key] == '':
             list_keys_empty.append(key)
@@ -146,9 +156,25 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
                     combined_row[key] = meta[key] + ' , ' + meta_xml[key]
             else:
                 subset_no_overlap[key] = meta[key]
+                
+    for key in ext_dict:
+        if ext_dict[key] == 'unknown' or  ext_dict[key] == '' or ext_dict[key] == None:
+            list_keys_empty.append(key)
+        else:
+            if key in meta_xml:
+                if meta_xml[key] == ext_dict[key]:
+                    combined_row[key] = ext_dict[key]
+                    """
+                    only make list within cell if values from different sources are different
+                    """
+                else:
+                    combined_row[key] = ext_dict[key] + ' , ' + meta_xml[key]
+            else:
+                subset_dict[key] = ext_dict[key]
+            
     merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row } #this one excluded 'unknown' keys, and 
     #in merging sources from the text file and xml it will show any values that do not match as a list.
-    merged_meta = { **meta, **meta_from_ehydro,**meta_xml }#this method overwrites
+    merged_meta = { **meta, **meta_from_ehydro, **meta_xml }#this method overwrites
     return merged_meta
 
 ###---------------------------------------------------------------------------- 
