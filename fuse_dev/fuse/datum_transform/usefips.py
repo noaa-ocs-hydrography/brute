@@ -5,7 +5,6 @@ Created on Thu Aug 16 15:26:20 2018
 @author: grice
 """
 import os as _os
-import osgeo as _osgeo
 
 def fips2wkt(fips, units = 'FEET'):
     """
@@ -26,10 +25,8 @@ def fips2wkt(fips, units = 'FEET'):
         print("Unit type not recognized")
         esri_code = "-1"
     # search the file 'esri_StatePlane_extra.wkt' for the code
-    # hard link to file in Pydro directory until I can figure out how to find it
-    osgeo_path = _osgeo.__path__[0]
-    relpath = 'data/gdal/esri_StatePlane_extra.wkt'
-    wktfilename = _os.path.join(osgeo_path,relpath)
+    gdal_data_path = _os.environ['GDAL_DATA']  # path to the gdal data
+    wktfilename = _os.path.join(gdal_data_path,'esri_StatePlane_extra.wkt')
     wktline = ''
     with open(wktfilename, 'r') as wktfile:
         for line in wktfile:
