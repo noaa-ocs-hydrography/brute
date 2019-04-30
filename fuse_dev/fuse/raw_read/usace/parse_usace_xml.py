@@ -1293,7 +1293,9 @@ def VERDAT_iso_check(xml_meta):
             elif xml_meta['depthdn'].find('MLT') >= 0:
                 m['VERTDAT'] = 'MLT'
             elif xml_meta['depthdn'].find('LWD') >= 0:
-                m['VERTDAT'] = 'LWD'
+                m['VERTDAT'] = 'LWD'    
+    for k in m:
+        xml_meta[k] = m[k]
     return xml_meta
 
 def extract_from_iso_meta(xml_meta):
@@ -1628,6 +1630,12 @@ def convert_meta_to_input(m):
         m['from_vert_unc'] = m['vert_acc']
     if 'from_horiz_unc' not in m and 'horiz_uncert' in m:        
         m['from_horiz_unc'] = m['horiz_uncert']
+    if 'begdate' in m:
+        if  m['begdate'] != '' and  m['begdate'] != None:
+            m['start_date'] = m['begdate']
+    if 'enddate' in m:
+        if  m['enddate'] != '' and  m['enddate'] != None:
+            m['end_date'] = m['enddate']
     return m
 
 
