@@ -286,8 +286,8 @@ def natInterp(grid, xy, z, shape, diff):
     print ('natInterp')
     print (shape, diff)
     maxVal = 1000000.0
-    a = xy[:,0]
-    b = xy[:,1]
+#    a = xy[:,0]
+#    b = xy[:,1]
 #    shape = xy.shape, z.shape
 #    print (shape)
     x, y = _np.arange(shape[1]), _np.arange(shape[0])

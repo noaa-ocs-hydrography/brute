@@ -10,7 +10,7 @@ import sys, os
 import pickle
 import subprocess
 import numpy as np
-from osgeo import gdal
+from osgeo import gdal, osr
 gdal.UseExceptions()
 
 __version__ = 'Test'
@@ -46,7 +46,7 @@ class proc_io:
         if self._in_data_type =='gdal':
             data, metadata = self._convert_gdal(dataset)
         elif self._in_data_type =='bag':
-            data, metadata = self._read_bag(dataset)
+            data, metadata = self._convert_gdal(dataset)
         else:
             raise ValueError('input data type unknown: ' + 
                              str(self._in_data_type))
@@ -54,6 +54,8 @@ class proc_io:
         metadata['z_up'] = z_up
         if self._out_data_type == 'csar':
             self._write_csar(data, metadata)
+        elif self._out_data_type == 'bag':
+            self._write_bag(data, metadata)
         else:
             raise ValueError('writer type unknown: ' + 
                              str(self._out_data_type))
@@ -117,6 +119,55 @@ class proc_io:
             subprocess.Popen(' '.join(args), creationflags=subprocess.CREATE_NEW_CONSOLE)
         else:
             print("Unable to create %s" % metadata['outfilename'])
+            
+    def _write_bag(data, metadata, dtype=gdal.GDT_UInt32,
+                 options=0, color_table=0, nbands=1, nodata=False):
+        pass
+#        """Directly From:
+#        "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
+#        (https://gis.stackexchange.com/a/278965)]
+#    
+#        Parameters
+#        ----------
+#        raster_array : numpy.array
+#            Array to be written to a GeoTiff file
+#        gt : tuple, gdal.GeoTransform
+#            Norhtern extent, resolution, 0.0, Western extent, 0.0, -resolution)
+#        data_obj : gdal.RasterBand
+#            gdal.RasterBand
+#        outputpath : string
+#            Folder to save the GeoTiff raster
+#    
+#        """
+#        print('write_raster')
+#    
+#        height, width = data.shape
+#    
+#        # Prepare destination file
+#        driver = gdal.GetDriverByName("BAG")
+#        if options != 0:
+#            dest = driver.Create(metadata['outfilename'], width, height, nbands, dtype, options)
+#        else:
+#            dest = driver.Create(metadata['outfilename'], width, height, nbands, dtype)
+#    
+#        # Write output raster
+#        if color_table != 0:
+#            dest.GetRasterBand(1).SetColorTable(color_table)
+#    
+#        dest.GetRasterBand(1).WriteArray(data)
+#    
+#        if nodata is not False:
+#            dest.GetRasterBand(1).SetNoDataValue(nodata)
+#    
+#        # Set transform and projection
+#        dest.SetGeoTransform(gt)
+#        wkt = data_obj.GetProjection()
+#        srs = osr.SpatialReference()
+#        srs.ImportFromWkt(wkt)
+#        dest.SetProjection(srs.ExportToWkt())
+#    
+#        # Close output raster dataset
+#        dest = None
 
 # helper function to retrieve the path to the "Scripts" folder in PydroXL
 def _retrieve_scripts_folder():
