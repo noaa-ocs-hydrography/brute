@@ -34,19 +34,24 @@ class read_raw:
         """
         Read all available meta data.
         """
-        return self._parse_ehydro_xyz(infilename)
+        return self._parse_ehydro_xyz_header(infilename)
     
     def read_bathymetry(self, infilename):
         """
-        Read the bathymetry.
+        Read the bathymetry and return an array of the xyz points.
         """
-        # get the dat file for NY / NJ
-        stub, ext = _os.path.splitext(infilename)
-        bathyfilename = stub + '.dat'
-        xyz = _np.loadtxt(bathyfilename, delimiter = ' ')
+        xyz = self._parse_ehydro_xyz_bathy(infilename)
         return xyz
+    
+    def read_bathymetry_point(self, infilename):
+        """
+        Read the bathymetry and return point by point.
+        """
+        xyz = self.read_bathymetry(infilename)
+        for n in xyz:
+            yield n
 
-    def _parse_ehydro_xyz(self, infilename, 
+    def _parse_ehydro_xyz_header(self, infilename, 
                          meta_source = 'xyz',
                          default_meta = ''):
         """
@@ -361,3 +366,27 @@ class read_raw:
         if fips is not None:
             txt_meta['fips'] = int(fips.group())
         return txt_meta
+    
+    def _parse_ehydro_xyz_bathy(self, infilename):
+        """
+        Read the best available point bathymetry for the district.
+        
+        This method assumes the provided file name is the XYZ file.
+        """
+        bathy = []
+        # get the header
+        with open(infilename, 'r') as infile:
+            for line in infile.readlines():
+                if line == '\n':
+                    continue
+                elif line == '\x1a':
+                    continue
+                elif self._is_header(line):
+                    pass
+                else:
+                    bathy.append([float(x) for x in line.split(' ')])
+        bathy = _np.asarray(bathy)
+        return bathy
+        
+                
+        
