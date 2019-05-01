@@ -66,7 +66,7 @@ catZones = {
 combo = _re.compile(r'COMBINED', _re.IGNORECASE)
 interp = _re.compile(r'INTERP', _re.IGNORECASE)
 
-def getTifElev(files):
+def getTifElev(file, y):
     '''This function takes a list of GeoTiff filepaths and opens each in order
     to access their values. Returned as a list of tif objects are the order a
     file was found, the path of the file, and the file's values as
@@ -78,61 +78,147 @@ def getTifElev(files):
 
     Parameters
     ----------
-    files : list
-        File paths of the input GeoTiff files
+    file : string
+        GeoTiff file location
 
     Returns
     -------
-    tifFiles : list
-        List of GeoTiff file objects
-        Position loaded, file name, raster extents, numpy.array
-    names : list
-        list of names of imported GeoTiffs
+    tifFile : list
+        List of GeoTiff file objects: position loaded, file name, raster
+        extents, numpy.array
+    name : str
+        Name of the GeoTiff file
 
     '''
     print ('getTifElev')
-    tifFiles = []
-    names = []
-    maxVal = 0
-    y = 0
-    for file in files:
-        print (file)
-        ds = _gdal.Open(file)
-#        print (_gdal.Info(ds))
-        ulx, xres, xskew, uly, yskew, yres  = ds.GetGeoTransform()
-        print (xres, yres)
-        lrx = ulx + (ds.RasterXSize * xres)
-        lry = uly + (ds.RasterYSize * yres)
-        print (ulx, lrx)
-        print (uly, lry)
-        if lrx<ulx:
-            s = ulx
-            ulx = lrx
-            lrx = s
-        if uly<lry:
-            s = lry
-            lry = uly
-            uly = s
-        meta = ([ulx, uly], [lrx, lry])
 
-        fName = _os.path.split(file)[-1]
+    maxVal = 0
+    print (file)
+    ds = _gdal.Open(file)
+#        print (_gdal.Info(ds))
+    ulx, xres, xskew, uly, yskew, yres  = ds.GetGeoTransform()
+    print (xres, yres)
+    lrx = ulx + (ds.RasterXSize * xres)
+    lry = uly + (ds.RasterYSize * yres)
+    print (ulx, lrx)
+    print (uly, lry)
+    if lrx<ulx:
+        s = ulx
+        ulx = lrx
+        lrx = s
+    if uly<lry:
+        s = lry
+        lry = uly
+        uly = s
+    meta = ([ulx, uly], [lrx, lry])
+
+    fName = _os.path.split(file)[-1]
+    splits = fName.split('_')
+    name = '_'.join([x for x in splits[:2]])
+    band = ds.GetRasterBand(1)
+    arr = band.ReadAsArray()
+    print (arr)
+    maxVal = maxValue(arr)
+    print (maxVal)
+    [cols, rows] = arr.shape
+    print(arr.shape)
+    print (_np.amax(arr), _np.amin(arr))
+    print (meta)
+    band=None
+    ds=None
+    tifFile = [y, file, meta, arr]
+
+    return tifFile, name
+
+def getShpRast(y, file, pixel_size=1, nodata=255):
+    """Import shapefile
+
+    Parameters
+    ----------
+    file : string
+        Shapefile file location
+
+    Returns
+    -------
+    shpFile : list
+        List of shapefile file objects: position loaded, file name, raster
+        extents, numpy.array
+    name : str
+        Name of the shapefile file
+
+    """
+    print ('getShpRast')
+    fName = _os.path.split(file)[-1]
+    splits = fName.split('_')
+    name = '_'.join([x for x in splits[:2]])
+
+    # Open the data source and read in the extent
+    source_ds = _ogr.Open(file)
+    source_layer = source_ds.GetLayer()
+    source_srs = source_layer.GetSpatialRef()
+    x_min, x_max, y_min, y_max = source_layer.GetExtent()
+    meta = ([x_min,y_max],[x_max,y_min])
+
+    # Create the destination data source
+    x_res = int((x_max - x_min) / pixel_size)
+    y_res = int((y_max - y_min) / pixel_size)
+    target_ds = _gdal.GetDriverByName('MEM').Create('', x_res, y_res, _gdal.GDT_Byte)
+    target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+    band = target_ds.GetRasterBand(1)
+    band.SetNoDataValue(nodata)
+
+    # Rasterize
+    _gdal.RasterizeLayer(target_ds, [1], source_layer, burn_values=[1])
+
+    # Read as array
+    arr = band.ReadAsArray()
+
+    band=None
+    source_ds=None
+
+    shpRast = [y, file, meta, arr]
+
+    return shpRast, name
+
+def getBndRast(files):
+    """Passes individual file paths to the appropriate data reader(s)
+    :func:`getTifElev` or :func:`getShpRast`
+
+    Parameters
+    ----------
+    files : list
+        File paths of the input GeoTiff and/or Shapefile files
+
+    Returns
+    -------
+    bndFiles : list
+        List of bounding raster objects passed back by either :func:`getTifElev`
+        and :func:`getShpRast`
+    names : str
+        Names of the input files passed back by either :func:`getTifElev`
+        and :func:`getShpRast`
+
+    """
+    print('getBndRast')
+    bndRasts = []
+    names = []
+    y = 0
+    for item in files:
+        fName = _os.path.split(item)[1]
+        ext = _os.path.splitext(fName)[1].lower()
         splits = fName.split('_')
         name = '_'.join([x for x in splits[:2]])
         names.append(name)
-        band = ds.GetRasterBand(1)
-        arr = band.ReadAsArray()
-        print (arr)
-        maxVal = maxValue(arr)
-        print (maxVal)
-        [cols, rows] = arr.shape
-        print(arr.shape)
-        print (_np.amax(arr), _np.amin(arr))
-        print (meta)
-        band=None
-        ds=None
-        tifFiles.append ([y, file, meta, arr])
+
+        if ext == '.tiff' or ext == '.tif':
+            rast, name = getTifElev(item, y)
+        elif ext == '.shp':
+            rast, name = getShpRast(item, y)
+        bndRasts.append(rast)
+        names.append(name)
         y += 1
-    return tifFiles, names
+
+    return bndRasts, names
 
 
 def getBagLyrs(fileObj):
@@ -144,7 +230,7 @@ def getBagLyrs(fileObj):
 
     Parameters
     ----------
-    files : string
+    fileObj : string
         File path of the input BAG file
 
     Returns
@@ -226,28 +312,6 @@ def getBagLyrs(fileObj):
         bagfile.close()
     return bag, maxVal, bagfile
 
-def getShpRast(file):
-    """Import shapefile
-
-    Parameters
-    ----------
-    file : string
-        Shapefile file location
-
-    Todo
-    ----
-    Inital working idea for importing shapefiles as rasters
-
-    """
-    print ('getShpRast')
-    file = _ogr.Open(file)
-    shape = file.GetLayer()
-    fnum = shape.GetFeatureCount()
-    x = _np.arrange(fnum)
-    polys = []
-    for n, x in enumerate(_np.arange(fnum)):
-        polys.append(shape.GetFeature(n))
-    print (polys)
 
 def write_raster(raster_array, gt, data_obj, outputpath, dtype=_gdal.GDT_UInt32,
                  options=0, color_table=0, nbands=1, nodata=False):
@@ -1357,7 +1421,7 @@ def interp(grids, size, res, shape, uval, ioVal):
     return ugrids
 
 
-def main(bagPath, tifPath, desPath, catzoc, ioVal):
+def main(bagPath, bndPaths, desPath, catzoc, ioVal):
     """main function of the interpolation process.  This function handles
     the flow of data in input, tiling, interpolation, and reintigration of the
     final grid.
@@ -1366,8 +1430,8 @@ def main(bagPath, tifPath, desPath, catzoc, ioVal):
     ----------
     bagPath : string
         File path of the input BAG file
-    tifPath : list
-        File paths of the input GeoTiff files
+    bndPaths : list
+        File paths of the input GeoTiff and/or Shapefile files
     desPath : string
         Folder path for the output files
     catzoc : string
@@ -1384,7 +1448,7 @@ def main(bagPath, tifPath, desPath, catzoc, ioVal):
     """
     start = _dt.now()
     print ('start', start)
-    tifFiles, names = getTifElev(tifPath)
+    tifFiles, names = getBndRast(bndPaths)
     if len(tifFiles) > 1:
         tifGrids, extent = alignTifs(tifFiles)
         for tif in tifGrids:

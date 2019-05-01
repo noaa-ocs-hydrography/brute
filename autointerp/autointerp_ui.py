@@ -56,15 +56,15 @@ class Form ( wx.Frame ):
 		self.picker_bag = wx.FilePickerCtrl( self, wx.ID_ANY, wx.EmptyString, u"Select a file", u"BAG Files (*.bag)|*.bag", wx.DefaultPosition, wx.DefaultSize, wx.FLP_DEFAULT_STYLE )
 		opts_form.Add( self.picker_bag, 1, wx.ALL|wx.EXPAND, 5 )
 
-		self.label_tif = wx.StaticText( self, wx.ID_ANY, u"Add GeoTIFF File:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.label_tif = wx.StaticText( self, wx.ID_ANY, u"Add Bounding File:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.label_tif.Wrap( -1 )
 
 		opts_form.Add( self.label_tif, 0, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 5 )
 
-		self.picker_tif = wx.FilePickerCtrl( self, wx.ID_ANY, wx.EmptyString, u"Select a file", u"GeoTIFF Files (*.tiff; *tif)|*.tiff; *.tif", wx.DefaultPosition, wx.DefaultSize, wx.FLP_DEFAULT_STYLE )
+		self.picker_tif = wx.FilePickerCtrl( self, wx.ID_ANY, wx.EmptyString, u"Select a file", u"GeoTIFF Files (*.tiff; *tif)|*.tiff; *.tif|Shapefile Files (*.shp)|*.shp", wx.DefaultPosition, wx.DefaultSize, wx.FLP_DEFAULT_STYLE )
 		opts_form.Add( self.picker_tif, 1, wx.ALL|wx.EXPAND, 5 )
 
-		self.label_tifList = wx.StaticText( self, wx.ID_ANY, u"GeoTIFF File List:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.label_tifList = wx.StaticText( self, wx.ID_ANY, u"File List:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.label_tifList.Wrap( -1 )
 
 		opts_form.Add( self.label_tifList, 0, wx.ALL|wx.ALIGN_RIGHT, 5 )
