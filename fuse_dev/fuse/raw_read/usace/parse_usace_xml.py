@@ -192,7 +192,7 @@ class XML_Meta(object):
         for ch in self.xml_tree:
             grandchildren = ch.getchildren()
             for ss in grandchildren:
-                print(ss.tag, ss.text)
+                #print(ss.tag, ss.text)#may wish to use to debug new/unsual formats
                 tag1=ss.tag
                 key=tag1
                 value1=ss.text
@@ -235,7 +235,7 @@ class XML_Meta(object):
             #pulling in Z units from attrs
             if x.text == 'Z_depth':
                 my_etree_dict1['Z_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-                print(self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text + ' Z units')
+                #use to debug#print(self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text + ' Z units')
                 if my_etree_dict1['Z_units'].upper() == 'usSurveyFoot'.upper():
                     my_etree_dict1['from_vert_units'] = 'US Survey Foot'
         for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
@@ -339,24 +339,6 @@ class XML_Meta(object):
                 my_etree_dict1[fgdc_additional_values[key]]  = ''
         self.my_etree_dict2 = my_etree_dict1
         return my_etree_dict1
-    
-    def ext_xml_map_endate(xml_meta):
-        """
-        retreiving attributes found in the extended list of attributes
-        namely end_date
-        
-        #xml_meta = self.my_etree_dict2
-        #Location for END DATES in some files!                
-        # 'metadata/idinfo/timeperd/timeinfo/rngdates': 'rngdates',
-        # 'metadata/dataqual/lineage/srcinfo/srctime/timeinfo/rngdates': 'rngdates',
-        # 'metadata/distinfo/availabl/timeinfo/rngdates': 'rngdates',
-        """
-
-        if 'rngdate' in xml_meta:
-            print(xml_meta['rngdate'])
-        if 'enddate' in xml_meta:
-            xml_meta['end_date'] =xml_meta['enddate']
-        return xml_meta
     
     def find_Instruments(self):
         """
@@ -1369,8 +1351,7 @@ def extract_from_iso_meta(xml_meta):
             code = xml_meta['Horizontal_Zone'].split(' ')[1]
             print(code)
             for key in SOURCEPROJECTION_dict:
-                if key.upper() in xml_meta['Horizontal_Zone']:
-                    print(key)
+                if key.upper() in xml_meta['Horizontal_Zone']:#print(key)
                     xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
     return xml_meta
 
@@ -1387,7 +1368,26 @@ def date_iso_abstract(abstract):
         m['daterange'] = datestr2
     return m
         
-            
+def ext_xml_map_enddate(xml_meta):
+    """
+    retreiving attributes found in the extended list of attributes
+    namely end_date
+    
+    #xml_meta = self.my_etree_dict2
+    #Location for END DATES in some files!                
+    # 'metadata/idinfo/timeperd/timeinfo/rngdates': 'rngdates',
+    # 'metadata/dataqual/lineage/srcinfo/srctime/timeinfo/rngdates': 'rngdates',
+    # 'metadata/distinfo/availabl/timeinfo/rngdates': 'rngdates',
+    """
+
+    #place holder would more be needed?
+    #if 'rngdate' in xml_meta:
+    #    if  xml_meta['rngdate'] != '' and xml_meta['rngdate'] != None:
+    #        print(xml_meta['rngdate'])
+    if 'enddate' in xml_meta:
+        if xml_meta['enddate'] != '' and xml_meta['enddate'] != None:
+            xml_meta['end_date'] = xml_meta['enddate']
+    return xml_meta           
 #------------------------------------------------------------------------------
 def parsing_xml_FGDC_attributes_s57(meta_xml):
     """
@@ -1536,12 +1536,10 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                     m['VERTDAT'] = 'LWRP'
                 elif abstract.find('MLG') >= 0:
                     m['VERTDAT'] = 'MLG'
-                    print(abstract)
                 elif abstract.find('Values are based on the National Geodetic Vertical Datum (NGVD) of 1929') >=0:#CESAM
                     m['VERTDAT'] = 'NGVD29'
                 elif abstract.find('depths below National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
                     m['VERTDAT'] = 'NGVD29'
-                    print(abstract)
             else:
                 m['VERTDAT'] = ''
     procdesc =  meta_xml['procdesc']
@@ -1589,20 +1587,40 @@ def parse_xml_info_text_ISO(xml_txt, m):
     """
     xml_i_bottom = find_ISO_xml_bottom(xml_txt)
     lines = xml_i_bottom.split('\n')
+    other_lines = []
+    other_lines_str = ''
     for line in lines:
         if line.find('ellips')>0:
             print(line)
             #if m['ellips'] == '':
             #    print(line)
         elif line != '':
-            names = line.split(':')
-            if len(names) == 2:
-                m[names[0]] = names[1]
-            elif len(names)> 2:
-                m[names[0]] = names[1: len(names)]#makes a list type
+            if line.find(':')>0:
+                names = line.split(':')
+                if len(names) == 2:
+                    m[names[0]] = names[1]
+                elif len(names)> 2:
+                    m[names[0]] = names[1: len(names)]#makes a list type
+                else:
+                    m[names[0]] = ''
             else:
-                m[names[0]] = ''
+                other_lines.append(line)
+                if len(other_lines_str )== 0:
+                    other_lines_str = line
+                else:
+                    other_lines_str  =  other_lines_str + ',' + line
+    #other_lines_str=convert_list_to_str(other_lines)            
+    m['other_xml_metadata'] = other_lines_str    
     return m
+
+def convert_list_to_str(other_lines):
+    other_lines_str = ''
+    for x in other_lines:
+        if len(other_lines_str )== 0:
+          other_lines_str = x
+        else:
+           other_lines_str  =  other_lines_str + ',' + x
+    return other_lines_str
                     
 def convert_meta_to_input(m):
     """

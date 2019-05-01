@@ -120,17 +120,13 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
         if xml_data.version == 'USACE_FGDC':
             meta_xml = xml_data._extract_meta_USACE_FGDC()#CEMVN()
         elif xml_data.version == 'ISO-8859-1':
-                meta_xml = xml_data._extract_meta_USACE_ISO()                
+            meta_xml = xml_data._extract_meta_USACE_ISO()  
+            if 'ISO_xml' not in meta_xml:
+                meta_xml = xml_data._extract_meta_USACE_FGDC(override = 'Y')#xml_data._extract_meta_ISOlabel_USACE_FGDC()
         else:
             meta_xml = xml_data.convert_xml_to_dict2()
-        try:
-            ext_dict = xml_data.extended_xml_fgdc()            
-        except:
-            ext_dict = {}
-            err_file = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\CESAJ\metadata\Error_file_if_extdict_checkfail.txt"
-            with open(err_file,'a') as error:
-                error.write(f + ' : extra dict call fail \n')
-
+        ext_dict = xml_data.extended_xml_fgdc()
+        ext_dict =  p_usace_xml.ext_xml_map_enddate(ext_dict)            
     else:
         ext_dict = {}
         meta_xml = {}
