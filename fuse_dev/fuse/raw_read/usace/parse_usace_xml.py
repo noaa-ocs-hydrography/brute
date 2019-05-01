@@ -192,7 +192,7 @@ class XML_Meta(object):
         for ch in self.xml_tree:
             grandchildren = ch.getchildren()
             for ss in grandchildren:
-                print(ss.tag, ss.text)
+                #print(ss.tag, ss.text)#may wish to use to debug new/unsual formats
                 tag1=ss.tag
                 key=tag1
                 value1=ss.text
@@ -235,7 +235,7 @@ class XML_Meta(object):
             #pulling in Z units from attrs
             if x.text == 'Z_depth':
                 my_etree_dict1['Z_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-                print(self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text + ' Z units')
+                #use to debug#print(self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text + ' Z units')
                 if my_etree_dict1['Z_units'].upper() == 'usSurveyFoot'.upper():
                     my_etree_dict1['from_vert_units'] = 'US Survey Foot'
         for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
@@ -309,13 +309,20 @@ class XML_Meta(object):
             else:
                 my_etree_dict1['from_vert_key'] = ''
             my_etree_dict1['script: from_vert_key'] = my_etree_dict1['from_vert_key']
+        for x in self.xml_tree.findall('.//ellips'):
+            if self.xml_tree.findall('.//ellips') is None:
+                my_etree_dict1['ISO_ellips'] = ''
+            else:
+                my_etree_dict1['ISO_ellips'] = 'Exists'
+                my_etree_dict1['ISO_xml'] = 'True'            
         self.my_etree_dict1 = my_etree_dict1
         return my_etree_dict1
     
     
     def extended_xml_fgdc(self):
         """
-        testing just the extra attribute paths found in the older CESAJ metadata, but may be in other files
+        extra attribute paths found in the older CESAJ metadata, but may be in other files
+        less conistently as part of the fgdc xml format
         """
         my_etree_dict1={}
         len_root_name_to_remove = len(self.xml_tree.tag)  
@@ -438,11 +445,17 @@ class XML_Meta(object):
         return s57
     
     #--------------------------------------------------------------------------
-    def _extract_meta_USACE_FGDC(self):
+    def _extract_meta_USACE_FGDC(self, override = None):
         """
         retrieves USACE e-hydro metadata that follows the FGDC format 
         and returns a dictionary
         """
+        if override != None:
+            override = 'Y'
+            meta_xml = self.convert_xml_to_dict2()
+            meta = {}
+            m={}
+            meta_all_fields = {**meta_xml, **meta, **m}
         if self.version =='USACE_FGDC':
             meta_xml = self.convert_xml_to_dict2()
             #if self.metadataformat_check == 'fail':#Do we need this check yet?
@@ -470,11 +483,11 @@ class XML_Meta(object):
             if self.metadataformat_check == 'fail':
                 meta = {}
             else:
-                meta_xml = parse_xml_info_text_ISO(self.xml_txt, meta_xml)
+                meta = parse_xml_info_text_ISO(self.xml_txt, meta_xml)
                 meta_xml = extract_from_iso_meta(meta_xml)
                 meta={}
             try:
-                m = convert_meta_to_input(meta)
+                m = convert_meta_to_input(meta_xml)
             except:
                 print('still debugging')
                 m={}
@@ -527,8 +540,7 @@ class XML_Meta(object):
             self.data['SORDAT'] = text_date
         else:
             self.data['SORDAT'] = tm_date
-            
-                
+                            
     def _read_survey_authority(self):
         """ 
         Read the survey authority name and store it in the object 'data'
@@ -992,7 +1004,6 @@ def convert_tofips(SOURCEPROJECTION_dict, SPCS):
     FIPS = SOURCEPROJECTION_dict[SPCS]
     return FIPS
 
-
 SOURCEPROJECTION_dict = {}
 SOURCEPROJECTION_dict = {
      'Alabama East' : '0101',
@@ -1191,6 +1202,193 @@ SOURCEPROJECTION_dict = {
      'Wisconsin South Zone' : '4803'}
 #------------------------------------------------------------------------------
 
+def parse_abstract_iso_ex(abstract):
+    m={}
+    if  abstract.find(' Elevations are referenced to ') >= 0:
+        line = abstract.split(' Elevations are referenced to ')[-1]
+        name = line.split('reported by the National Oceanic and Atmospheric Administration (NOAA).')[0]
+        if name.find('Tidal Datum from the latest tidal epoch') >0:
+            name = line.split('Tidal Datum from the latest tidal epoch')[0]
+            epoch = 'Tidal Datum from the latest tidal epoch '
+            m['Vertical Datum Description'] = name + epoch
+        else: m['Vertical Datum Description'] = name
+        if name.find('Mean Lower Low Water') >= 0:
+            m['VERTDAT'] = 'MLLW'
+        elif name.find('MLLW') >= 0:#CESAM
+            m['VERTDAT'] = 'MLLW'
+        elif name.find('MLW') >= 0:#CESAM
+            m['VERTDAT'] = 'Mean Low Water'
+        elif name.find('MLW') >= 0:
+            m['VERTDAT'] = 'MLW'
+        elif name.find('National Geodetic Vertical Datum (NGVD) of 1929') >=0:#CESAM
+            m['VERTDAT'] = 'NGVD29'
+        elif name.find('LWRP') >= 0:
+            m['VERTDAT'] = 'LWRP'
+        elif name.find('Low Water Reference Plane 2007 (LWRP07)') >= 0:
+            m['VERTDAT'] = 'LWRP'
+        elif name.find('MLG') >= 0:
+            m['VERTDAT'] = 'MLG'
+        elif name.find('National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
+            m['VERTDAT'] = 'NGVD29'
+        if name.find('Soundings are shown in feet') >= 0:
+            m['script: from_vert_units'] = 'US Survey Foot'
+    if abstract.find('Elevations are in ') >= 0:
+        line = abstract.split('Elevations are in ')[-1]
+        name = line.split('Plane coordinates ')[0]
+        m['Vertical Datum Description'] = name
+        if name.find('Mean Lower Low Water') >= 0:
+            m['VERTDAT'] = 'MLLW'
+        elif name.find('MLLW') >= 0:#CESAM
+            m['VERTDAT'] = 'MLLW'
+        elif name.find('MLW') >= 0:
+            m['VERTDAT'] = 'Mean Low Water'
+        elif name.find('MLW') >= 0:
+            m['VERTDAT'] = 'MLW'
+        elif name.find('National Geodetic Vertical Datum (NGVD) of 1929') >=0:#CESAM
+            m['VERTDAT'] = 'NGVD29'
+        elif name.find('LWRP') >= 0:
+            m['VERTDAT'] = 'LWRP'
+        elif name.find('Low Water Reference Plane 2007 (LWRP07)') >= 0:
+            m['VERTDAT'] = 'LWRP'
+        elif name.find('MLG') >= 0:
+            m['VERTDAT'] = 'MLG'
+        elif name.find('National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
+            m['VERTDAT'] = 'NGVD29'
+    return m
+
+def VERDAT_iso_check(xml_meta):
+    m={}
+    if 'depthdn' in xml_meta:
+        if xml_meta['depthdn'] != None and xml_meta['depthdn'] != '':
+            if xml_meta['depthdn'].find('Mean Lower Low Water') >= 0:
+                m['VERTDAT'] = 'MLLW'
+            elif xml_meta['depthdn'].find('MLLW') >= 0:
+                m['VERTDAT'] = 'MLLW'
+            elif xml_meta['depthdn'].find('MLW') >= 0:
+                m['VERTDAT'] = 'Mean Low Water'
+            elif xml_meta['depthdn'].find('MLW') >= 0:
+                m['VERTDAT'] = 'MLW'
+            elif xml_meta['depthdn'].find('LWRP') >= 0:
+                m['VERTDAT'] = 'LWRP'
+            elif xml_meta['depthdn'].find('MLG') >= 0:
+                m['VERTDAT'] = 'MLG'
+            elif xml_meta['depthdn'].find('MLT') >= 0:
+                m['VERTDAT'] = 'MLT'
+            elif xml_meta['depthdn'].find('LWD') >= 0:
+                m['VERTDAT'] = 'LWD'    
+    for k in m:
+        xml_meta[k] = m[k]
+    return xml_meta
+
+def extract_from_iso_meta(xml_meta):
+    """
+    mapping out more attributes from the example USACE iso metadata xml files
+    """
+    
+    if 'abstract' in xml_meta:
+        if xml_meta['abstract'] != '' and xml_meta['abstract'] != None:
+            #pull vertical datum information
+            m = parse_abstract_iso_ex(xml_meta['abstract'])
+            for k in m:
+                xml_meta[k] = m[k]
+            #date information
+            m = date_iso_abstract(xml_meta['abstract'])
+            for k in m:
+                xml_meta[k] = m[k]
+    #vertical units
+    if 'altunits' in xml_meta:
+        if xml_meta['altunits'] != '':
+            xml_meta ['from_vert_units'] = xml_meta['altunits']
+        elif 'depthdu' in xml_meta:
+            xml_meta['from_vert_units'] = xml_meta['depthdu']
+    elif 'depthdu' in xml_meta:
+        xml_meta['from_vert_units'] = xml_meta['depthdu']        
+    #vertical datum (#vert_key is later)
+    if 'altdatum' in xml_meta:
+        if xml_meta['altdatum'] != '' and xml_meta['altdatum'] != None:
+            xml_meta['from_vert_datum'] = xml_meta['altdatum']
+    if 'depthdn' in xml_meta:
+        if xml_meta['depthdn'] != '' and xml_meta['depthdn'] != None:
+            if 'from_vert_datum' in xml_meta:
+                xml_meta['from_vert_datum'] = xml_meta['from_vert_datum'] + ':' + xml_meta['depthdn']
+            else:
+                xml_meta['from_vert_datum'] = xml_meta['depthdn']
+    if 'VERTDAT' not in xml_meta:
+         xml_meta = VERDAT_iso_check(xml_meta)
+    if 'Vertical Datum Description' in xml_meta:
+        if 'VERTDAT' in xml_meta:
+            if 'from_vert_datum' in xml_meta:
+                xml_meta['from_vert_datum'] = xml_meta['from_vert_datum'] + ':' + xml_meta['Vertical Datum Description'] +  ':' + xml_meta['VERTDAT']
+            else:
+                xml_meta['from_vert_datum'] = xml_meta['Vertical Datum Description']
+    #horizontal units
+    if 'Units' in xml_meta:
+        xml_meta ['from_horiz_units'] = xml_meta['Units']
+    if 'Implied_Horizontal_Accuracy' in xml_meta:
+        Hor_unc = xml_meta['Implied_Horizontal_Accuracy']
+        Vert_unc = xml_meta['Implied_Vertical_Accuracy']
+        Hor_unc = Hor_unc.strip('+/- ')
+        Vert_unc = Vert_unc.strip('+/- ')
+        if 'Feet' in Hor_unc:
+            Hor_unc = Hor_unc.rstrip('Feet').strip().rstrip('.')
+            Hor_unc = float(Hor_unc)
+            Hor_unc = Hor_unc * _ussft2m
+            xml_meta['from_horiz_unc'] = str(Hor_unc)
+        if 'Feet' in Vert_unc:
+            Vert_unc = Vert_unc.rstrip('Feet').strip().rstrip('.')
+            Vert_unc = float(Vert_unc)
+            Vert_unc = Vert_unc * _ussft2m
+            xml_meta['from_vert_unc'] = str(Vert_unc)
+        if xml_meta['System'] == 'single beam':
+            xml_meta['TECSOU'] = '1'
+        elif  xml_meta['System'] == 'multibeam beam':
+            xml_meta['TECSOU'] = '3'
+        elif  xml_meta['System'].find('sweep') >=0 or xml_meta['System'].find('SmartSweep') >=0:
+            xml_meta['TECSOU'] = '8'#could also consider it just multiple single beams in this water depth range#Ross SmartSweep example modle
+            #see _print_TECSOU_defs() for more TECSOU definitions
+        xml_meta ['from_horiz_datum'] = xml_meta['Projected_Coordinate_System'] + ',' + xml_meta['Horizontal_Zone'] + ',' + xml_meta['Units']
+        if len(xml_meta['Horizontal_Zone']) >0 :        
+            code = xml_meta['Horizontal_Zone'].split(' ')[1]
+            print(code)
+            for key in SOURCEPROJECTION_dict:
+                if key.upper() in xml_meta['Horizontal_Zone']:#print(key)
+                    xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
+    return xml_meta
+
+def date_iso_abstract(abstract):
+    """
+    extracting a date range
+    """
+    m = {}       
+    datestr1 = abstract.split('Date:')[-1].split('.')[0]
+    datestr2 = datestr1.split('Field data was acquired ')[-1].split(' Survey was performed ')[-1]
+    #(Format DD TEXTMONTH, YYYY)( DD TEXTMONTH YYYY) or (DD-DD, TEXTMONTH, YYYY)#We care about the range of dates only
+    if datestr2.find('-') > 0:
+        m['abstr_dates'] = datestr2
+        m['daterange'] = datestr2
+    return m
+        
+def ext_xml_map_enddate(xml_meta):
+    """
+    retreiving attributes found in the extended list of attributes
+    namely end_date
+    
+    #xml_meta = self.my_etree_dict2
+    #Location for END DATES in some files!                
+    # 'metadata/idinfo/timeperd/timeinfo/rngdates': 'rngdates',
+    # 'metadata/dataqual/lineage/srcinfo/srctime/timeinfo/rngdates': 'rngdates',
+    # 'metadata/distinfo/availabl/timeinfo/rngdates': 'rngdates',
+    """
+
+    #place holder would more be needed?
+    #if 'rngdate' in xml_meta:
+    #    if  xml_meta['rngdate'] != '' and xml_meta['rngdate'] != None:
+    #        print(xml_meta['rngdate'])
+    if 'enddate' in xml_meta:
+        if xml_meta['enddate'] != '' and xml_meta['enddate'] != None:
+            xml_meta['end_date'] = xml_meta['enddate']
+    return xml_meta           
+#------------------------------------------------------------------------------
 def parsing_xml_FGDC_attributes_s57(meta_xml):
     """
     #PARSING XML attributes
@@ -1250,16 +1448,13 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         m['vert_acc'] = '0.3'# 1 ft =   0.30480060960121924 m 
     elif vertaccr.find('+/- 0.03 meter (0.1 foot)')  >= 0:
         m['vert_acc'] = '0.03'#
-    
-
                 
     if procdesc.find():
     procdesc
         -> to coverage single beam (Cat B type coverage)
         'SonarSystem', 'SonarManufacturer',
          if =='Odom MKIII echosounder':
-             'single beam'
-             
+             'single beam'           
     """
     #------------------------------------------------------------------------------
 
@@ -1341,12 +1536,10 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                     m['VERTDAT'] = 'LWRP'
                 elif abstract.find('MLG') >= 0:
                     m['VERTDAT'] = 'MLG'
-                    print(abstract)
                 elif abstract.find('Values are based on the National Geodetic Vertical Datum (NGVD) of 1929') >=0:#CESAM
                     m['VERTDAT'] = 'NGVD29'
                 elif abstract.find('depths below National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
                     m['VERTDAT'] = 'NGVD29'
-                    print(abstract)
             else:
                 m['VERTDAT'] = ''
     procdesc =  meta_xml['procdesc']
@@ -1376,67 +1569,58 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         m['vert_acc'] = '0.03'#        
     return m
 
-def find_ISO_xml_bottom(xml_txt):         
+def find_ISO_xml_bottom(xml_txt):  
+    """
+    Finds lines for parsing of metadata not part of traditional xml format
+    as found in ISO example from CESAJ and other districts
+    """      
     #handlingof ISO xml USACE format information not proper children of the root 'metadata':           
     xml_i_bottom = xml_txt.split('</metainfo>')[1]
     xml_i_bottom = xml_i_bottom.rstrip('</metadata>\n')
     return xml_i_bottom
 
 def parse_xml_info_text_ISO(xml_txt, m):
+    """
+    Parsing of metadata not part of traditional xml format
+    as found in ISO example from CESAJ and other districts
+    Section passed from find_ISO_xml_bottom(xml_txt)
+    """
     xml_i_bottom = find_ISO_xml_bottom(xml_txt)
     lines = xml_i_bottom.split('\n')
+    other_lines = []
+    other_lines_str = ''
     for line in lines:
         if line.find('ellips')>0:
             print(line)
             #if m['ellips'] == '':
             #    print(line)
         elif line != '':
-            names = line.split(':')
-            if len(names) == 2:
-                m[names[0]] = names[1]
-            elif len(names)> 2:
-                m[names[0]] = names[1: len(names)]#makes a list type
+            if line.find(':')>0:
+                names = line.split(':')
+                if len(names) == 2:
+                    m[names[0]] = names[1]
+                elif len(names)> 2:
+                    m[names[0]] = names[1: len(names)]#makes a list type
+                else:
+                    m[names[0]] = ''
             else:
-                m[names[0]] = ''
+                other_lines.append(line)
+                if len(other_lines_str )== 0:
+                    other_lines_str = line
+                else:
+                    other_lines_str  =  other_lines_str + ',' + line
+    #other_lines_str=convert_list_to_str(other_lines)            
+    m['other_xml_metadata'] = other_lines_str    
     return m
 
-def extract_from_iso_meta(xml_meta):
-    xml_meta['from_vert_units'] = xml_meta['altunits']
-    if 'altdatum' in xml_meta:
-        xml_meta['from_vert_datum'] =xml_meta['altdatum']
-    xml_meta['from_vert_units'] = xml_meta['altunits']
-    if 'Implied_Horizontal_Accuracy' in xml_meta:
-        Hor_unc = xml_meta['Implied_Horizontal_Accuracy']
-        Vert_unc = xml_meta['Implied_Vertical_Accuracy']
-        Hor_unc = Hor_unc.strip('+/- ')
-        Vert_unc = Vert_unc.strip('+/- ')
-        if 'Feet' in Hor_unc:
-            Hor_unc = Hor_unc.rstrip('Feet')
-            Hor_unc = float(Hor_unc)
-            Hor_unc = Hor_unc * _ussft2m
-            xml_meta['from_horiz_unc'] = str(Hor_unc)
-        if 'Feet' in Vert_unc:
-            Vert_unc = Vert_unc.rstrip('Feet')
-            Vert_unc = float(Vert_unc)
-            Vert_unc = Vert_unc * _ussft2m
-            xml_meta['from_vert_unc'] = str(Vert_unc)
-        if xml_meta['System'] == 'single beam':
-            xml_meta['TECSOU'] = '1'
-        elif  xml_meta['System'] == 'multibeam beam':
-            xml_meta['TECSOU'] = '3'
-        elif  xml_meta['System'].find('sweep') >=0 or xml_meta['System'].find('SmartSweep') >=0:
-            xml_meta['TECSOU'] = '8'#could also consider it just multiple single beams in this water depth range#Ross SmartSweep example modle
-            #see _print_TECSOU_defs() for more TECSOU definitions
-        xml_meta ['from_horiz_datum'] = xml_meta['Projected_Coordinate_System'] + ',' + xml_meta['Horizontal_Zone'] + ',' + xml_meta['Units']
-        xml_meta ['from_horiz_units'] = xml_meta['Units']
-        if len(xml_meta['Horizontal_Zone']) >0 :        
-            code = xml_meta['Horizontal_Zone'].split(' ')[1]
-            print(code)
-            for key in SOURCEPROJECTION_dict:
-                if key.upper() in xml_meta['Horizontal_Zone']:
-                    print(key)
-                    xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
-    return xml_meta
+def convert_list_to_str(other_lines):
+    other_lines_str = ''
+    for x in other_lines:
+        if len(other_lines_str )== 0:
+          other_lines_str = x
+        else:
+           other_lines_str  =  other_lines_str + ',' + x
+    return other_lines_str
                     
 def convert_meta_to_input(m):
     """
@@ -1464,6 +1648,12 @@ def convert_meta_to_input(m):
         m['from_vert_unc'] = m['vert_acc']
     if 'from_horiz_unc' not in m and 'horiz_uncert' in m:        
         m['from_horiz_unc'] = m['horiz_uncert']
+    if 'begdate' in m:
+        if  m['begdate'] != '' and  m['begdate'] != None:
+            m['start_date'] = m['begdate']
+    if 'enddate' in m:
+        if  m['enddate'] != '' and  m['enddate'] != None:
+            m['end_date'] = m['enddate']
     return m
 
 

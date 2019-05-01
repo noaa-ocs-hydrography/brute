@@ -120,16 +120,22 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
         if xml_data.version == 'USACE_FGDC':
             meta_xml = xml_data._extract_meta_USACE_FGDC()#CEMVN()
         elif xml_data.version == 'ISO-8859-1':
-                meta_xml = xml_data._extract_meta_USACE_ISO()                
+            meta_xml = xml_data._extract_meta_USACE_ISO()  
+            if 'ISO_xml' not in meta_xml:
+                meta_xml = xml_data._extract_meta_USACE_FGDC(override = 'Y')#xml_data._extract_meta_ISOlabel_USACE_FGDC()
         else:
             meta_xml = xml_data.convert_xml_to_dict2()
+        ext_dict = xml_data.extended_xml_fgdc()
+        ext_dict =  p_usace_xml.ext_xml_map_enddate(ext_dict)            
     else:
+        ext_dict = {}
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CESAJ', default_meta = '')#
     list_keys_empty =[]
     combined_row = {}
     subset_row = {}
     subset_no_overlap = {}
+    subset_dict ={}
     for key in meta:
         if meta[key] == 'unknown' or  meta[key] == '':
             list_keys_empty.append(key)
@@ -146,9 +152,25 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
                     combined_row[key] = meta[key] + ' , ' + meta_xml[key]
             else:
                 subset_no_overlap[key] = meta[key]
+                
+    for key in ext_dict:
+        if ext_dict[key] == 'unknown' or  ext_dict[key] == '' or ext_dict[key] == None:
+            list_keys_empty.append(key)
+        else:
+            if key in meta_xml:
+                if meta_xml[key] == ext_dict[key]:
+                    combined_row[key] = ext_dict[key]
+                    """
+                    only make list within cell if values from different sources are different
+                    """
+                else:
+                    combined_row[key] = ext_dict[key] + ' , ' + meta_xml[key]
+            else:
+                subset_dict[key] = ext_dict[key]
+            
     merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row } #this one excluded 'unknown' keys, and 
     #in merging sources from the text file and xml it will show any values that do not match as a list.
-    merged_meta = { **meta, **meta_from_ehydro,**meta_xml }#this method overwrites
+    merged_meta = { **meta, **meta_from_ehydro, **meta_xml }#this method overwrites
     return merged_meta
 
 ###---------------------------------------------------------------------------- 

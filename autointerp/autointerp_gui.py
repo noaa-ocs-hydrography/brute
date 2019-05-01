@@ -60,7 +60,7 @@ class Form(autointerp_ui.Form):
         '''
         st = 'Started - ' + str(_dt.now())
         self.bar_status.SetStatusText(st)
-#        self.progressBar.Pulse()
+        self.progressBar.Pulse()
         bagPath = self.picker_bag.GetPath()
         self.gettifList()
         tifPath = self.tifList

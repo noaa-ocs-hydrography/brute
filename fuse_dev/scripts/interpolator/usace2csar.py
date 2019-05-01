@@ -10,12 +10,15 @@ import os
 import sys
 import re as _re
 import numpy as _np
+import datetime as _dt
 import matplotlib.pyplot as _plt
 import matplotlib.mlab as _mlab
-import matplotlib
+import astropy.convolution as _apc
 import scipy as _scipy
-
-print(matplotlib.__version__)
+from osgeo import gdal as _gdal
+from osgeo import ogr as _ogr
+from osgeo import osr as _osr
+from osgeo import gdalconst as _gdalconst
 
 #import fuse.proc_io.proc_io.proc_io as _io
 #import fuse.interpolator.point_interpolator.point_interpolator as _pi
@@ -27,8 +30,84 @@ _ussft2m = 0.30480060960121924 # US survey feet to meters
 
 #path = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\scripts\\interpolator\\GR_LD_GR1_20180817_CS_15_16_SORT.DAT'
 #path = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\scripts\\interpolator\\GR_LD_GR1_20180817_CS_15_16_SORT_A.XYZ'
-#path = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\scripts\\interpolator\\MR_54_NO1_20190108_CS_10X10_A.xyz'
-path = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\scripts\\interpolator\\MR_54_NO1_20190108_CS_10X10.dat'
+path = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\scripts\\interpolator\\MR_54_NO1_20190108_CS_10X10_A.xyz'
+#path = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\scripts\\interpolator\\MR_54_NO1_20190108_CS_10X10.dat'
+
+def write_raster(raster_array, gt, data_obj, outputpath, dtype=_gdal.GDT_UInt32,
+                 options=0, color_table=0, nbands=1, nodata=False):
+    """Directly From:
+    "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
+    (https://gis.stackexchange.com/a/278965)]
+
+    Parameters
+    ----------
+    raster_array : numpy.array
+        Array to be written to a GeoTiff file
+    gt : tuple, gdal.GeoTransform
+        Norhtern extent, resolution, 0.0, Western extent, 0.0, -resolution)
+    data_obj : gdal.RasterBand
+        gdal.RasterBand
+    outputpath : string
+        Folder to save the GeoTiff raster
+
+    """
+    print('write_raster')
+
+    height, width = raster_array.shape
+
+    # Prepare destination file
+    driver = _gdal.GetDriverByName("GTiff")
+    if options != 0:
+        dest = driver.Create(outputpath, width, height, nbands, dtype, options)
+    else:
+        dest = driver.Create(outputpath, width, height, nbands, dtype)
+
+    # Write output raster
+    if color_table != 0:
+        dest.GetRasterBand(1).SetColorTable(color_table)
+
+    dest.GetRasterBand(1).WriteArray(raster_array)
+
+    if nodata is not False:
+        dest.GetRasterBand(1).SetNoDataValue(nodata)
+
+    # Set transform and projection
+    dest.SetGeoTransform(gt)
+    wkt = data_obj.GetProjection()
+    srs = _osr.SpatialReference()
+    srs.ImportFromWkt(wkt)
+    dest.SetProjection(srs.ExportToWkt())
+
+    # Close output raster dataset
+    dest = None
+
+def _dat2gdal(self, infilename, dest_epsg):
+    """
+    Read a dat file and turn it into a GDAL point cloud.
+    """
+    points = _np.loadtxt(infilename, delimiter = ' ')
+    # datum and unit conversion function declaration
+    dest = _osr.SpatialReference()
+    dest.ImportFromEPSG(dest_epsg)
+    # turn numpy points into ogr points in a gdal dataset
+    dataset = _gdal.GetDriverByName('Memory').Create('', 0, 0, 0, _gdal.GDT_Unknown)
+    layer = dataset.CreateLayer('pts', dest, geom_type=_ogr.wkbPoint)
+    for p in points:
+        newp = _ogr.Geometry(_ogr.wkbPoint)
+        newp.AddPoint(p[0], p[1], p[2])
+        feature = _ogr.Feature(layer.GetLayerDefn())
+        feature.SetGeometry(newp)
+        layer.CreateFeature(feature)
+    return dataset
+
+
+def _zone2epsg(self, zone):
+    """
+    Assume the EPSG code for a UTM zone is 3707 + the zone number.  This should
+    work for zones 1 through 19 for NSRS2007.
+    http://spatialreference.org/ref/?search=nad83+utm+zone
+    """
+    return int(zone) + 3707
 
 def _start_xyz(infilename):
     """
@@ -135,87 +214,121 @@ def make_grid(data):
     maxVal = 1000000.0
     x = data[:,0]
     y = data[:,1]
-    z = data[:,2]
+    z = data[:,2] * _ussft2m
     e, n = _np.amax(x), _np.amax(y)
     w, s = _np.amin(x), _np.amin(y)
     shape = (int(_np.round(n-s)), int(_np.round(e-w)))
     extents = (n, w), (s, e)
-    mdx = _np.min(abs(_np.diff(x)))
-    mdy = _np.min(abs(_np.diff(y)))
-#    dx = _np.median(mdx[_np.where(mdx>0.0)[0]]) * _ussft2m
-#    dy = _np.median(mdy[_np.where(mdy>0.0)[0]]) * _ussft2m
-    dx = 1
-    dy = 1
+    mdx = abs(_np.diff(x))
+    mdy = abs(_np.diff(y))
+    diffx = _np.median(mdx[_np.where(mdx>0.0)[0]])
+    diffy = _np.median(mdy[_np.where(mdy>0.0)[0]])
+    diff = _np.round(_np.amax([diffx, diffy]))
+    print ((diffx, diffy),diff)
+    dx = 5
+    dy = 5
     res = _np.round(dx), _np.round(dy)
 #    res = 1, 1
-    print (res, (mdx, mdy))
-    xi= _np.arange(w,e+1,1)
-    yi= _np.arange(s,n+1,1)
-    zi= _np.ones((len(yi),len(xi)))*maxVal
-    print (_np.shape(zi), zi)
-    
+#    print (res)
+#    xi= _np.arange(w,e+1,1)
+#    yi= _np.arange(s,n+1,1)
+#    zi= _np.ones((len(yi),len(xi)))*maxVal
+#    print (_np.shape(zi), zi)
+
     # calculate indices in full grid (zi) to stick the input z values
-    ix = _np.round((x-w)/dx).astype(int)
-    iy = _np.round((y-s)/dy).astype(int)
-    zi[iy,ix] = z
-    
-    zi = _np.flipud(zi)
-    ziShape = zi.shape
-    
-    _plt.figure()
-    _plt.imshow(zi)
-    _plt.show()
-    
-    points = tupleGrid(zi, maxVal)
-    
-    comb = points
+#    ix = _np.round((x-w)/dx).astype(int)
+#    iy = _np.round((y-s)/dy).astype(int)
+#    zi[iy,ix] = z
+#
+#    zi = _np.flipud(zi)
+    zi = ''
+#    ziShape = zi.shape
+    ziShape = int(_np.round((n - s)/5)), int(_np.round((e - w)/5))
+#    _plt.figure()
+#    _plt.imshow(zi)
+#    _plt.show()
+#
+#    points = tupleGrid(zi, maxVal)
+
+    comb = data
     comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
     grid = _np.hsplit(comb, [2, 4])
     vals = grid[1].squeeze()
     grid = grid[0]
-    
-    print (grid, vals)
-    
-    xyz_data = xyz_grid(grid, vals, extents, ziShape, res)
-    return xyz_data
 
-def natInterp(xy, z, shape):
+    xyz_data = xyz_grid(data, vals, extents, ziShape, res, diff)
+    return zi, xyz_data
+
+def natInterp(grid, xy, z, shape, diff):
+    """Applies natural neighbor interpolation to data and then trims it based
+    on a mask genereated via the convolution of a binary grid derived from
+    original data
+
+    Parameters
+    ----------
+    grid : np.array
+        The complete grid of original data
+    xy : np.array
+        x and y points for data within the grid
+    z : np.array
+        z values of the provided data points
+    shape : tuple
+        Shape of the grid
+    diff : int
+        Median of the difference of distance between points in the grid
+
+    Returns
+    -------
+    mask_int : np.array
+        The interpolated result
+
+    """
     print ('natInterp')
-    print (shape)
+    print (shape, diff)
     maxVal = 1000000.0
-    a = xy[:,0]
-    b = xy[:,1]
+#    a = xy[:,0]
+#    b = xy[:,1]
 #    shape = xy.shape, z.shape
 #    print (shape)
     x, y = _np.arange(shape[1]), _np.arange(shape[0])
-    print (a, b, z)
     xi, yi = _np.meshgrid(x, y)
+    print ('try tri', _dt.datetime.now())
 #    interp = _mlab.griddata(a, b, z, xi, yi)
     interp = _scipy.interpolate.griddata(xy, z, (xi, yi),
-                                            method='linear', fill_value=_np.nan)
-    
-    print ('interp done')
-    
+                                         method='linear', fill_value=_np.nan)
     _plt.figure()
     _plt.imshow(interp)
     _plt.show()
-    
-    return interp
+    print ('done')
+    print ('interp', _dt.datetime.now())
+#    kernel = _apc.Gaussian2DKernel(3)
+    kernel = _apc.Tophat2DKernel(diff)
+    mask_bin = (interp < maxVal).astype(_np.int)
+    mask_con = _apc.convolve(mask_bin,kernel)
+    mask = (mask_con > 0).astype(_np.int)
+    mask_int = _np.where(mask, interp, _np.nan)
+    _plt.figure()
+    _plt.imshow(mask_int)
+    _plt.show()
+    print ('interp done', _dt.datetime.now())
+
+    return mask_int
 
 class xyz_grid():
-    
-    def __init__(self, grid, vals, extents, shape, res):
+
+    def __init__(self, grid, vals, extents, shape, res, diff):
         self.grid = grid
         self.vals = vals
         self.extents = extents
         self.shape = shape
         self.res = res
+        self.diff = diff
 
 ext = os.path.splitext(path)[1].lower()
 if ext == '.xyz':
     data = read_bathymetry_xyz(path)
 elif ext == '.dat':
     data = read_bathymetry_dat(path)
-d = make_grid(data)
-interp = natInterp(d.grid,d.vals,d.shape)
-#print (data)
+print (ext, data)
+#grid, d = make_grid(data)
+#interp = natInterp(grid, d.grid, d.vals, d.shape, d.diff)
