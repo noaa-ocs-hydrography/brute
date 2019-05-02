@@ -81,7 +81,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         Set up the datum transformation engine. 
         """
-        self._transform = _trans.transform(self._config)
+        self._transform = _trans.transform(self._config, self._reader)
         
     def _set_data_interpolator(self):
         """
