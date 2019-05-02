@@ -14,12 +14,13 @@ class transform:
     An object for abstracting the datum transformation API.  This should allow
     for different transformation machines and versions.
     """
-    def __init__(self, config):
+    def __init__(self, config, reader):
         """
         Provided a key and a config file, get the method to use for datum
         conversion.
         """
         self._config = config
+        self._reader = reader
         self._setup()
         
     def _setup(self):
@@ -28,7 +29,7 @@ class transform:
         provided in the configruation file.
         """
         if 'vdatum_path' in self._config:
-            self._engine = uv.vdatum(self._config)
+            self._engine = uv.vdatum(self._config, self._reader)
         else:
             raise ValueError('No java path provided')
             
@@ -39,7 +40,7 @@ class transform:
         """
         self._meta = metadata
         in_fips = int(self._meta['from_fips'])
-        in_verdat = self._meta['from_vert_datum']
+        in_verdat = self._meta['from_vert_key']
         out_epsg = int(self._meta['to_horiz_datum'])
         out_verdat = self._meta['to_vert_datum']
         return self._engine.translate(infilename, 
