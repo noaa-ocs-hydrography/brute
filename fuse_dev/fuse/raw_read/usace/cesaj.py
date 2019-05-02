@@ -173,6 +173,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row } #this one excluded 'unknown' keys, and 
     #in merging sources from the text file and xml it will show any values that do not match as a list.
     merged_meta = { **meta, **meta_from_ehydro, **meta_xml }#this method overwrites
+    merged_meta = check_date_order(merged_meta, merged_meta)
     return merged_meta
 
 ###---------------------------------------------------------------------------- 
@@ -621,27 +622,81 @@ def _parse_Survey_Number(line):
     metadata = {'Survey_Number==':line.split('Survey_Number==')[1]}
     return metadata
 
-def check_date_order(m):
+def check_date_order(m, mm):
     """
     ingest dates from e-hydro file name, and xml if available
     do a date check.
     
     """
+    date_list = []#date_list = [begdate, enddate,filename_date]
     if 'begdate' in m:
         #parser.parse(text_date, dayfirst=False)
         if  m['begdate'] != '' and  m['begdate'] != None:
             begdate = datetime.date(datetime.strptime(m['begdate'],'%Y%m%d'))
+            date_list.append(begdate)
             #m['start_date'] = m['begdate']
     if 'enddate' in m:
         if  m['enddate'] != '' and  m['enddate'] != None:
             #m['end_date'] = 
             enddate = datetime.date(datetime.strptime(m['enddate'],'%Y%m%d'))
-    filename_date = datetime.date(datetime.strptime(m['filename_date'],'%Y%m%d'))
-    date_list = [begdate, enddate,filename_date]
+            date_list.append(enddate)
+    filename_date = datetime.date(datetime.strptime(mm['filename_date'],'%Y%m%d'))
+    date_list.append(filename_date) 
+    if 'daterange' in m:
+        next_date = check_abst_date(mm['filename_date'], m['daterange'])
+        for day in next_date:
+            date_list.append(day)
     date_list.sort()
-    m['start_date'] = date_list[0]
-    m['end_date'] = date_list[-1]
-    
+    date_list2 = []
+    for d in date_list:
+        date_list2.append(datetime.strftime(d,'%Y%m%d'))
+    m['start_date'] = date_list2[0]
+    m['end_date'] = date_list2[-1]    
     return m
+
+def check_abst_date(filename_date, daterange):
+    """
+    check_abst_date(filename_date, daterange)
+    Expecting values from:
+    #filename_date = m['filename_date']
+    #dateramge = xml_meta['daterange']
+    """
+    next_date=[]
+    XX=datetime.strptime(filename_date,'%Y%m%d')#Create default value based on filename date
+    if daterange != '' and daterange != None:
+        dates=[]
+        if '&' in daterange:
+            dates = daterange.split('&')
+        elif '-' in daterange:
+            dates = daterange.split('-')
+        elif 'thru' in daterange:
+            dates = daterange.split('thru')
+        elif 'through' in daterange:
+            dates = daterange.split('through')
+        if len(dates) > 0:
+            date1 = parser.parse(dates[-1],parser.parserinfo(dayfirst=True), default=XX)
+        if len(dates) >1:
+            next_date.append(date1)
+            for numday, day in enumerate(dates):
+                if numday< len(dates)-1:
+                    #test for number list#
+                    if ',' in day:
+                        days = day.split(',')
+                        for day in days:#try to reduce to calendar day integers for input
+                            day = day.strip('from').strip('on').strip('of').strip()
+                            if day != '':
+                                next_date.append(date1.replace(day=int(day)))
+                    else:
+                        next_date.append(date1.replace(day=int(dates[numday].strip('on').strip('of').strip())))
+    next_date = check_datelist(next_date)#convert from datetime to date format
+    return next_date
+
+def check_datelist(next_date):
+    dateonly_list =[]
+    for day in next_date:
+        day = datetime.date(day)
+        dateonly_list.append(day)
+    return dateonly_list
+            
 ##-----------------------------------------------------------------------------
 
