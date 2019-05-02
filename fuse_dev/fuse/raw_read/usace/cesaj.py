@@ -19,7 +19,9 @@ import pickle as _pickle
 import re as _re
 
 _ussft2m = 0.30480060960121924 # US survey feet to meters
-import datetime as _datetime
+#import datetime as _datetime
+import dateutil.parser as parser
+from datetime import datetime
 import numpy as _np 
 try:
     import fuse.raw_read.usace.parse_usace_xml as p_usace_xml
@@ -203,6 +205,8 @@ class Extract_Txt(object):
         the file metadata will take precidence.
         """
         name_meta = self.parse_ehydro_filename(infilename)
+        if 'start_date' in name_meta:
+            name_meta['filename_date'] = name_meta['start_date']
         if meta_source == 'xyz':
             file_meta = self.parse_xyz_header(infilename, version)
         #elif meta_source == 'xml':
@@ -482,13 +486,13 @@ def _xyztext2date(textdate):
     "20 March 2017" and return the format "YearMonthDay" as in "20170320".
     """
     try:
-        date = _datetime.strptime(textdate, '%d %B %Y')
-        numdate=date.strftime('%Y%m%d')
+        date = datetime.strptime(textdate, '%d %B %Y')
+        numdate = date.strftime('%Y%m%d')
         return numdate
     except:
         try:
-            date = _datetime.strptime(textdate, '%d\%B\%Y')
-            numdate=date.strftime('%Y%m%d')
+            date = datetime.strptime(textdate, '%d\%B\%Y')
+            numdate = date.strftime('%Y%m%d')
             return numdate
         except:
             return 'unknown'
@@ -616,5 +620,28 @@ def _parse_Survey_Number(line):
     """
     metadata = {'Survey_Number==':line.split('Survey_Number==')[1]}
     return metadata
+
+def check_date_order(m):
+    """
+    ingest dates from e-hydro file name, and xml if available
+    do a date check.
+    
+    """
+    if 'begdate' in m:
+        #parser.parse(text_date, dayfirst=False)
+        if  m['begdate'] != '' and  m['begdate'] != None:
+            begdate = datetime.date(datetime.strptime(m['begdate'],'%Y%m%d'))
+            #m['start_date'] = m['begdate']
+    if 'enddate' in m:
+        if  m['enddate'] != '' and  m['enddate'] != None:
+            #m['end_date'] = 
+            enddate = datetime.date(datetime.strptime(m['enddate'],'%Y%m%d'))
+    filename_date = datetime.date(datetime.strptime(m['filename_date'],'%Y%m%d'))
+    date_list = [begdate, enddate,filename_date]
+    date_list.sort()
+    m['start_date'] = date_list[0]
+    m['end_date'] = date_list[-1]
+    
+    return m
 ##-----------------------------------------------------------------------------
 

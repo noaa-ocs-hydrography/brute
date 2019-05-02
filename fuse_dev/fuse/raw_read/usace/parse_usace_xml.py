@@ -1359,13 +1359,13 @@ def date_iso_abstract(abstract):
     """
     extracting a date range
     """
-    m = {}       
-    datestr1 = abstract.split('Date:')[-1].split('.')[0]
-    datestr2 = datestr1.split('Field data was acquired ')[-1].split(' Survey was performed ')[-1]
-    #(Format DD TEXTMONTH, YYYY)( DD TEXTMONTH YYYY) or (DD-DD, TEXTMONTH, YYYY)#We care about the range of dates only
-    if datestr2.find('-') > 0:
-        m['abstr_dates'] = datestr2
+    m = {}
+    if abstract.find('Date')>= 0:
+        datestr1 = abstract.split('Date')[-1].split('.')[0]
+        datestr2 = datestr1.split('Field data was acquired ')[-1].split(' Survey was performed ')[-1]
+        datestr2 = datestr2.split(':')[-1]
         m['daterange'] = datestr2
+    #(Format DD TEXTMONTH, YYYY)( DD TEXTMONTH YYYY) or (DD-DD, TEXTMONTH, YYYY)#We care about the range of dates only
     return m
         
 def ext_xml_map_enddate(xml_meta):
