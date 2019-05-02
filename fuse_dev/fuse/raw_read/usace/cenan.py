@@ -43,7 +43,7 @@ class read_raw:
         xyz = self._parse_ehydro_xyz_bathy(infilename)
         return xyz
     
-    def read_bathymetry_point(self, infilename):
+    def read_bathymetry_by_point(self, infilename):
         """
         Read the bathymetry and return point by point.
         """
