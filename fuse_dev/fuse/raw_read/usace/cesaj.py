@@ -70,9 +70,9 @@ class read_raw:
         self.version = version
         first_instance = _start_xyz(infilename)
         if first_instance != '':    
-            xyz = _np.loadtext(infilename, delimeter = ',', skiprows = first_instance)
+            xyz = _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance)
         else:
-            xyz = _np.loadtext(infilename, delimeter = ',')
+            xyz = _np.loadtxt(infilename, delimiter = ',')
         return xyz        
 
 #------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     meta_from_ehydro={}
     e_t = Extract_Txt(f)
     # xml pull here.
-    xmlfilename = get_xml(f)
+    xmlfilename = get_xml_match(f)
     if os.path.isfile(xmlfilename):
         with open(xmlfilename, 'r') as xml_file:
             xml_txt = xml_file.read()
@@ -173,7 +173,13 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row } #this one excluded 'unknown' keys, and 
     #in merging sources from the text file and xml it will show any values that do not match as a list.
     merged_meta = { **meta, **meta_from_ehydro, **meta_xml }#this method overwrites
-    merged_meta = check_date_order(merged_meta, merged_meta)
+    try:
+        merged_meta = check_date_order(merged_meta, merged_meta)
+    except:
+        err_file = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\CESAJ\metadata\Error_file_if_date_checkfail.txt"
+        with open(err_file,'a') as error:
+            error.write(f + ' : extra dict END DATE SEARCH call fail \n')
+
     return merged_meta
 
 ###---------------------------------------------------------------------------- 
@@ -354,6 +360,24 @@ def get_xml_xt(filename, extension):
         basef = filename
     xml_name = basef + '.xml'
     return xml_name
+
+def get_xml_match(f):
+    """
+    input USACE .xyz/.XYZ filename or any last extension and return .xml
+    it will try to match the non-full survey to the full density survey
+    inorder to use the matching xml
+    """
+    if '_A.xyz' in f:
+        xmlfilename = get_xml_xt(f,'_A.xyz')
+    elif '_FULL.xyz' in f:
+        xmlfilename = get_xml_xt(f,'_FULL.xyz')
+    elif '_FULL.XYZ' in f:
+        xmlfilename = get_xml_xt(f,'_FULL.XYZ')
+    elif '_A.XYZ' in f:
+        xmlfilename = get_xml_xt(f,'_A.XYZ')
+    else:
+        xmlfilename = get_xml(f)
+    return xmlfilename
 ##-----------------------------------------------------------------------------        
 
 def _start_xyz(infilename):
@@ -363,7 +387,7 @@ def _start_xyz(infilename):
     """
     first_instance = ''
     numberofrows = []
-    pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
+    pattern_coordinates = '[\d][\d][\d][\d][\d][\d]'#at least six digits# should be seven then . plus two digits
     with open(infilename, 'r') as infile:
         for (index1, line) in enumerate (infile):
             if _re.match(pattern_coordinates, line) is not None:
@@ -376,7 +400,7 @@ def _is_header2(line, version = None):
     if version == None:
         version = ''
     if version == 'CESAJ':
-        pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
+        pattern_coordinates = '[\d][\d][\d][\d][\d][\d]'#at least six digits# should be seven then . plus two digits
         if _re.match(pattern_coordinates, line) is not None:
             return False
         else:
@@ -677,6 +701,17 @@ def check_abst_date(filename_date, daterange):
             date1 = parser.parse(dates[-1],parser.parserinfo(dayfirst=True), default=XX)
         if len(dates) >1:
             next_date.append(date1)
+            splitters =['&', '-', 'thru', 'through']
+            dates2=[]
+            for split1 in splitters:
+                if split1 in dates[-1]:
+                    date1 = parser.parse(dates[-1].split(split1)[-1],parser.parserinfo(dayfirst=True), default=XX)
+                for days in dates:
+                    if split1 in days:
+                        #recalculate date1!
+                            dates2.append(days.split(split1))
+            #if len(dates2)>0:
+            #    dates=dates2
             for numday, day in enumerate(dates):
                 if numday< len(dates)-1:
                     #test for number list#
@@ -698,5 +733,7 @@ def check_datelist(next_date):
         dateonly_list.append(day)
     return dateonly_list
             
+#Check for other months
+
 ##-----------------------------------------------------------------------------
 

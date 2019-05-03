@@ -50,12 +50,12 @@ class read_raw:
         Read the bathymetry from the .dat file. The dat file is less precise,
         but had no header and is in a standardized format
         """
-        # get the dat file for CESAM# Mobile
+        # get the dat file for CESAJ# Jacksonville
         stub, ext = os.path.splitext(infilename)
         bathyfilename = stub + '.dat'
         xyz = _np.loadtxt(bathyfilename, delimiter = ' ')
         self.xyz
-        return xyz
+        return xyz    
 
     def read_bathymetry(self, infilename):
         """
@@ -68,11 +68,18 @@ class read_raw:
         self.version = version
         first_instance = _start_xyz(infilename)
         if first_instance != '':    
-            xyz = _np.loadtext(infilename, delimeter = ',', skiprows = first_instance)
+            xyz = _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance)
         else:
-            xyz = _np.loadtext(infilename, delimeter = ',')
-        return xyz        
-
+            xyz = _np.loadtxt(infilename, delimiter = ',')
+        return xyz 
+       
+    def read_bathymetry_by_point(self, infilename):
+        """
+        Read the bathymetry and return point by point.
+        """
+        xyz = self.read_bathymetry(infilename)
+        for n in xyz:
+            yield n
 #------------------------------------------------------------------------------
 def return_surveyid(filenamepath, ex_string):
     """
@@ -372,7 +379,7 @@ def _start_xyz(infilename):
     """
     first_instance = ''
     numberofrows = []
-    pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
+    pattern_coordinates = '[\d][\d][\d][\d][\d][\d]'#at least six digits# should be seven then . plus two digits
     with open(infilename, 'r') as infile:
         for (index1, line) in enumerate (infile):
             if _re.match(pattern_coordinates, line) is not None:
@@ -385,7 +392,7 @@ def _is_header2(line, version = None):
     if version == None:
         version = ''
     if version == 'CESAM':
-        pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
+        pattern_coordinates = '[\d][\d][\d][\d][\d][\d]'#at least six digits# should be seven then . plus two digits
         if _re.match(pattern_coordinates, line) is not None:
             return False
         else:

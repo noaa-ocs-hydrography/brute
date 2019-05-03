@@ -56,7 +56,7 @@ class read_raw:
         xyz = _np.loadtxt(bathyfilename, delimiter = ' ')
         self.xyz
         return xyz
-
+    
     def read_bathymetry(self, infilename):
         """
         Read the bathymetry from the xyz files, this tells it to not include
@@ -68,9 +68,9 @@ class read_raw:
         self.version = version
         first_instance = _start_xyz(infilename)
         if first_instance != '':    
-            xyz = _np.loadtext(infilename, delimeter = ',', skiprows = first_instance)
+            xyz = _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance)
         else:
-            xyz = _np.loadtext(infilename, delimeter = ',')
+            xyz = _np.loadtxt(infilename, delimiter = ',')
         return xyz        
 
 #------------------------------------------------------------------------------
@@ -391,7 +391,7 @@ def _start_xyz(infilename):
     """
     first_instance = ''
     numberofrows = []
-    pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
+    pattern_coordinates = '[\d][\d][\d][\d][\d][\d]'#at least six digits# should be seven then . plus two digits
     with open(infilename, 'r') as infile:
         for (index1, line) in enumerate (infile):
             if _re.match(pattern_coordinates, line) is not None:
@@ -404,7 +404,7 @@ def _is_header2(line, version = None):
     if version == None:
         version = ''
     if version == 'CEMVN':
-        pattern_coordinates = '[\d\][\d\][\d\][\d\][\d\][\d\]'#at least six digits# should be seven then . plus two digits
+        pattern_coordinates = '[\d][\d][\d][\d][\d][\d]'#at least six digits# should be seven then . plus two digits
         if _re.match(pattern_coordinates, line) is not None:
             return False
         else:

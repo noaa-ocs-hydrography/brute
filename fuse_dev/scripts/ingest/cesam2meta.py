@@ -21,3 +21,5 @@ for path in cesam.rawdata_path:
     flist = glob(os.path.join(path,'*.xyz'))
     for f in flist:
         cesam.read(f)
+        cesam.process(f)
+
