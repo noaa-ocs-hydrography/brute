@@ -52,6 +52,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
                                                 fuse_ehydro._cols)
         self._set_data_reader()
         self._set_data_transform()
+        self._set_data_interpolator()
         self._set_data_writer()
         self._meta = {} # initialize the metadata holder
         
@@ -87,9 +88,10 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         Set up the interpolator engine.
         """
-        res = self._config['to_resolution']
+        engine = self._config['interpolation_engine']
+        res = float(self._config['to_resolution'])
         method = self._config['interpolation_method']
-        self._interpolator = _interp.interpolator(method, res)
+        self._interpolator = _interp.interpolator(engine, method, res)
         
     def _set_data_writer(self):
         """
