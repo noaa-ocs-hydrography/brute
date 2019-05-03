@@ -25,7 +25,7 @@ Sources:
 from osgeo import gdal
 import numpy as np
 import matplotlib as mpl
-from mpl_toolkits import natgrid as _nn
+import astropy.convolution as _apc
 
 class point_interpolator:
     """
@@ -118,21 +118,16 @@ class point_interpolator:
         Return a gdal raster that has nodes where data should be populated with
         1, and all other nodes populated with the "no data" value.
         """
-        # Find the bounds of the provided data
-#        xmin,xmax,ymin,ymax = np.nan,np.nan,np.nan,np.nan
-#        lyr = dataset.GetLayerByIndex(0)
-#        count = lyr.GetFeatureCount()
-#        for n in np.arange(count):
-#            f = lyr.GetFeature(n)
-#            x,y,z = f.geometry().GetPoint()
-#            xmin, xmax = self._compare_vals(x,xmin,xmax)
-#            ymin, ymax = self._compare_vals(y,ymin,ymax)
-#        numrows, numcolumns, bounds = self._get_nodes3(resolution, [xmin,ymin,xmax,ymax])
         # casiano's process for figuring out which nodes are to be populated
-        # make a grid with the no data value
-        # populate the nodes that should have data with one
+        maxVal = 1000000.0
         # turn the array into a gdal dataset
-        mask = self._gdal_invdist_interp_points(dataset, resolution, window)
+        grid = self._gdal_linear_interp_points(dataset, resolution)
+        # populate the nodes that should have data with one
+        mask_bin = (grid < maxVal).astype(np.int)
+        kernel = _apc.Tophat2DKernel(window)
+        mask_con = _apc.convolve(mask_bin,kernel)
+        mask = (mask_con > 0).astype(np.int)
+#        mask_int = np.where(mask, grid, np.nan)
         return mask
 
     def _gdal_linear_interp_points(self, dataset, resolution, nodata = 1000000):
