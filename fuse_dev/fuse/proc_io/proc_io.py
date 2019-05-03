@@ -22,7 +22,7 @@ def maxValue(arr):
     returns the most used value in the array as an integer
     '''
     print ('maxValue')
-    nums, counts = np.unique(arr, return_counts =True)
+    nums, counts = np.unique(arr, return_counts=True)
     index = np.where(counts==np.amax(counts))
     print (index, nums[index])
     return int(nums[index])
@@ -94,6 +94,7 @@ class proc_io:
         wrapper around the csar writer.
         """
         # save the provided dataset and metadata to a file
+        print ('write_csar')
         if os.path.exists(self._work_dir):
             pass
         else:
@@ -115,8 +116,17 @@ class proc_io:
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
                     '"' + metafilename.replace("&", "^&") + '"',  # metadata path
                     ]
-
-            subprocess.Popen(' '.join(args), creationflags=subprocess.CREATE_NEW_CONSOLE)
+            args = ' '.join(args)
+            print (args)
+            try:
+                proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            except:
+                print('Error executing: ' + args)
+            try:
+                stdout, stderr = proc.communicate()
+                print (stdout, stderr)    
+            except:
+                print('Error in handling error output')
         else:
             print("Unable to create %s" % metadata['outfilename'])
             
