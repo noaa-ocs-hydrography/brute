@@ -94,6 +94,7 @@ class proc_io:
         wrapper around the csar writer.
         """
         # save the provided dataset and metadata to a file
+        print ('write_csar')
         if os.path.exists(self._work_dir):
             pass
         else:
@@ -116,16 +117,13 @@ class proc_io:
                     '"' + metafilename.replace("&", "^&") + '"',  # metadata path
                     ]
             args = ' '.join(args)
+            print (args)
             try:
                 proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
             except:
-                print('Error executing: ' + args + '\nat: ' + self._vdatum_path)
-                raise
-            try:
-                (stdout, stderr) = proc.communicate()
-            except:
-                print(stdout)
-                print(stderr)
+                print('Error executing: ' + args)
+                stdout, stderr = proc.communicate()
+                print (stdout, stderr)
         else:
             print("Unable to create %s" % metadata['outfilename'])
             
