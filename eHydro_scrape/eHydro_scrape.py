@@ -373,12 +373,12 @@ def downloadAndCheck(rows, pb=None, to=None):
                     except socket.timeout:
                         urllib.request.urlretrieve(link, saved)
                     except urllib.error.HTTPError as e:
-                        print ('e \n' + link)
+                        print ('e \n' + link, e)
                         row.append('No')
                         row.append('BadURL')
                         break
                     except urllib.error.URLError as e:
-                        print ('e \n' + link)
+                        print ('e \n' + link, e)
                         row.append('No')
                         row.append('BadURL')
                         break
@@ -407,7 +407,7 @@ def downloadAndCheck(rows, pb=None, to=None):
                     row.append('BadZip')
                 print ('o', end=' ')
                 if to != None:
-                    to.write(agency + '\\' + name  + '\n')
+                    to.write('\t\t' + agency + '\\' + name  + '\n')
                 row.append('Yes')
             else:
                 try:

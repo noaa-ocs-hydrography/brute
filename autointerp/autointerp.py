@@ -212,7 +212,7 @@ def getBndRast(files):
 
         if ext == '.tiff' or ext == '.tif':
             rast, name = getTifElev(item, y)
-        elif ext == '.shp':
+        elif ext == '.shp' or ext == '.gpkg':
             rast, name = getShpRast(item, y)
         bndRasts.append(rast)
         names.append(name)
@@ -282,20 +282,22 @@ def getBagLyrs(fileObj):
                                       namespaces=ns)[0].text.split()
             a = 1
         except (_et.Error, IndexError) as e:
+            print("Unable to read corners SW and NE: %s" % e, 
+                  '\nAttempting to read via a different namespace')
             try:
                 ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
                                           'cornerPoints/gml:Point/gml:coordinates',
                                           namespaces=ns2)[0].text.split()
                 a = 2
             except (_et.Error, IndexError) as e:
-                print("unable to read corners SW and NE: %s" % e)
+                print("Unable to read corners SW and NE: %s" % e)
                 return
 
         try:
             sw = [float(c) for c in ret[0].split(',')]
             ne = [float(c) for c in ret[1].split(',')]
         except (ValueError, IndexError) as e:
-            print("unable to read corners SW and NE: %s" % e)
+            print("Unable to parse corners SW and NE from xml: %s" % e)
             return
         print (a, ret, sw, ne)
         sx,sy = sw
@@ -478,21 +480,22 @@ def concatGrid(grids, maxVal, shape):
     bpts = tupleGrid(grids[1], maxVal)
     print ('done', _dt.now())
     print ('combo1', _dt.now())
-    if len(tpts) == 0 and len(bpts) != 0:
-        comb = bpts
-        comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
-        print (comb)
-        grid = _np.hsplit(comb, [2, 4])
-        vals = grid[1].squeeze()
-        grid = grid[0]
-    elif len(bpts) == 0 and len(tpts) != 0:
-        comb = tpts
-        comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
-        print (comb)
-        grid = _np.hsplit(comb, [2, 4])
-        vals = grid[1].squeeze()
-        grid = grid[0]
-    elif len(tpts) == 0 and len(bpts) == 0:
+#    if len(tpts) == 0 and len(bpts) != 0:
+#        comb = bpts
+#        comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
+#        print (comb)
+#        grid = _np.hsplit(comb, [2, 4])
+#        vals = grid[1].squeeze()
+#        grid = grid[0]
+#    elif len(bpts) == 0 and len(tpts) != 0:
+#        comb = tpts
+#        comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
+#        print (comb)
+#        grid = _np.hsplit(comb, [2, 4])
+#        vals = grid[1].squeeze()
+#        grid = grid[0]
+#    elif len(tpts) == 0 and len(bpts) == 0:
+    if len(bpts) == 0 or len(bpts) == 0:
         grid, vals = [], []
     else:
         comb = _np.concatenate([tpts, bpts])
@@ -854,8 +857,8 @@ def alignGrids(bag, tif, maxVal, targs):
         bagRes = int(bagRes[0])
         zres = tifRes/bagRes
     print (bagRes, zres)
-    _plt.imshow(tif[-1][::100,::100])
-    _plt.show()
+#    _plt.imshow(tif[-1][::100,::100])
+#    _plt.show()
     ## 4
     print (tif[-1])
     if zres == 1:
@@ -864,15 +867,15 @@ def alignGrids(bag, tif, maxVal, targs):
         print ('_zoom', _dt.now())
         newarr = _zoom(tif[-1], zoom=[zres, zres], order=3, prefilter=False)
         print ('zoomed', _dt.now())
-    _plt.imshow(newarr[::100,::100])
-    _plt.show()
+#    _plt.imshow(newarr[::100,::100])
+#    _plt.show()
 
     ## 5
     newarr = newarr.astype('float64')
     newarr[newarr > 0] = _np.nan
     newarr[newarr < 1] = float(maxVal)
-    _plt.imshow(newarr[::100,::100])
-    _plt.show()
+#    _plt.imshow(newarr[::100,::100])
+#    _plt.show()
     print (newarr)
     print (tif[-1].shape, newarr.shape)
 
@@ -939,8 +942,8 @@ def alignGrids(bag, tif, maxVal, targs):
         print ('rollz', up, left, down, right)
         temp = newarr[up:,left:]
         print (temp.shape)
-        _plt.imshow(temp[::100,::100])
-        _plt.show()
+#        _plt.imshow(temp[::100,::100])
+#        _plt.show()
         ay[down:temp.shape[0]+down,right:temp.shape[1]+right] = temp[:,:]
         temp = None
     else:
@@ -1365,8 +1368,8 @@ def interp(grids, size, res, shape, uval, ioVal):
         unitedUncr = _np.empty_like(bagObjras)
         unitedPre = _np.empty_like(bagObjras)
         bagShape = bagObjras.shape
-        _plt.imshow(tifObjras[::100,::100])
-        _plt.show()
+#        _plt.imshow(tifObjras[::100,::100])
+#        _plt.show()
         for ySlice in range(chunkGrid.shape[0]):
             for xSlice in range(chunkGrid.shape[1]):
                 ts = _dt.now()
@@ -1458,8 +1461,8 @@ def main(bagPath, bndPaths, desPath, catzoc, ioVal):
         print (tifGrids)
         extent = tifGrids[0][2]
     comboTif, name, nameh5, targs = polyTifVals(tifGrids, desPath, names, extent)
-    _plt.imshow(comboTif[::100,::100])
-    _plt.show()
+#    _plt.imshow(comboTif[::100,::100])
+#    _plt.show()
 #    tifGrids = None
     comboArr = [0, nameh5, extent, comboTif]
     print ('\ndone with tif section\n')
