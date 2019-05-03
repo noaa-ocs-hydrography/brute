@@ -35,7 +35,7 @@ class point_interpolator:
         """
         Set some of the precondition, but make them over writable.
         """
-        self.win_scal = window_scalar
+        self.window_scale = window_scalar
     
     def interpolate(self, dataset, interpolation_type, resolution):
         """
@@ -57,7 +57,7 @@ class point_interpolator:
             raise ValueError('interpolation type not implemented.')
         data_array = self._gdal2vector(dataset)
         minrad, meanrad, maxrad = self._get_point_spacing(data_array)
-        window = maxrad * self.window_scal
+        window = maxrad * self.window_scale
         if linear:
             # do the triangulation interpolation
             ds2 = self._gdal_linear_interp_points(dataset, resolution)
