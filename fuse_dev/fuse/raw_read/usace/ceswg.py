@@ -114,7 +114,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     meta_from_ehydro={}
     e_t = Extract_Txt(f)
     # xml pull here.
-    xmlfilename = get_xml(f)
+    xmlfilename = get_xml_match(f)
     if os.path.isfile(xmlfilename):
         with open(xmlfilename, 'r') as xml_file:
             xml_txt = xml_file.read()
@@ -344,6 +344,24 @@ def get_xml_xt(filename, extension):
         basef = filename
     xml_name = basef + '.xml'
     return xml_name
+
+def get_xml_match(f):
+    """
+    input USACE .xyz/.XYZ filename or any last extension and return .xml
+    it will try to match the non-full survey to the full density survey
+    inorder to use the matching xml
+    """
+    if '_A.xyz' in f:
+        xmlfilename = get_xml_xt(f,'_A.xyz')
+    elif '_FULL.xyz' in f:
+        xmlfilename = get_xml_xt(f,'_FULL.xyz')
+    elif '_FULL.XYZ' in f:
+        xmlfilename = get_xml_xt(f,'_FULL.XYZ')
+    elif '_A.XYZ' in f:
+        xmlfilename = get_xml_xt(f,'_A.XYZ')
+    else:
+        xmlfilename = get_xml(f)
+    return xmlfilename
 ##-----------------------------------------------------------------------------        
 
 def _start_xyz(infilename):
@@ -638,4 +656,36 @@ def _parse_ReviewedBy(line):
     return metadata
 
 ##-----------------------------------------------------------------------------
-
+def check_date_order(m, mm):
+    """
+    ingest dates from e-hydro file name, and xml if available
+    do a date check.
+    
+    """
+    date_list = []#date_list = [begdate, enddate,filename_date]
+    if 'begdate' in m:
+        #parser.parse(text_date, dayfirst=False)
+        if  m['begdate'] != '' and  m['begdate'] != None:
+            begdate = datetime.date(datetime.strptime(m['begdate'],'%Y%m%d'))
+            date_list.append(begdate)
+            #m['start_date'] = m['begdate']
+    if 'enddate' in m:
+        if  m['enddate'] != '' and  m['enddate'] != None:
+            #m['end_date'] = 
+            enddate = datetime.date(datetime.strptime(m['enddate'],'%Y%m%d'))
+            date_list.append(enddate)
+    filename_date = datetime.date(datetime.strptime(mm['filename_date'],'%Y%m%d'))
+    date_list.append(filename_date) 
+    #if 'daterange' in m:
+    #    next_date = check_abst_date(mm['filename_date'], m['daterange'])
+    #    for day in next_date:
+    #        date_list.append(day)
+    date_list.sort()
+    date_list2 = []
+    for d in date_list:
+        date_list2.append(datetime.strftime(d,'%Y%m%d'))
+    m['start_date'] = date_list2[0]
+    m['end_date'] = date_list2[-1]    
+    return m
+##-----------------------------------------------------------------------------
+    

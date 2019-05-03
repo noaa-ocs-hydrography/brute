@@ -1209,6 +1209,7 @@ def parse_abstract_iso_ex(abstract):
         name = line.split('reported by the National Oceanic and Atmospheric Administration (NOAA).')[0]
         if name.find('Tidal Datum from the latest tidal epoch') >0:
             name = line.split('Tidal Datum from the latest tidal epoch')[0]
+            name = name.replace('\n', ' ')
             epoch = 'Tidal Datum from the latest tidal epoch '
             m['Vertical Datum Description'] = name + epoch
         else: m['Vertical Datum Description'] = name
