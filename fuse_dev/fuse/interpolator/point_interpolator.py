@@ -118,14 +118,18 @@ class point_interpolator:
         Return a gdal raster that has nodes where data should be populated with
         1, and all other nodes populated with the "no data" value.
         """
-        # casiano's process for figuring out which nodes are to be populated
         maxVal = 1000000.0
         # turn the array into a gdal dataset
-        grid = self._gdal_linear_interp_points(dataset, resolution)
+        grid = self._gdal_linear_interp_points(dataset, resolution, nodata=maxVal)
         # populate the nodes that should have data with one
         mask_bin = (grid < maxVal).astype(np.int)
+        # casiano's process for figuring out which nodes are to be populated
+        # binary grid is convolved so that nodes with one are widened to the 
+        # window given via a tophat (circular and single value) kernel
         kernel = _apc.Tophat2DKernel(window)
         mask_con = _apc.convolve(mask_bin,kernel)
+        # all values created via convolution above 0 are made one to represent
+        # the extended coverage used by the mask
         mask = (mask_con > 0).astype(np.int)
 #        mask_int = np.where(mask, grid, np.nan)
         return mask
