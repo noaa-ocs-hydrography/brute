@@ -122,8 +122,11 @@ class proc_io:
                 proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
             except:
                 print('Error executing: ' + args)
+            try:
                 stdout, stderr = proc.communicate()
-                print (stdout, stderr)
+                print (stdout, stderr)    
+            except:
+                print('Error in handling error output')
         else:
             print("Unable to create %s" % metadata['outfilename'])
             
