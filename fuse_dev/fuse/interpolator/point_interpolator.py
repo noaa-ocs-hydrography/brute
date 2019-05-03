@@ -24,7 +24,6 @@ Sources:
 
 from osgeo import gdal
 import numpy as np
-import matplotlib as mpl
 import astropy.convolution as _apc
 
 class point_interpolator:
