@@ -18,3 +18,4 @@ for path in cenan.rawdata_path:
     flist = glob(os.path.join(path,'*.xyz'))
     for f in flist:
         cenan.read(f)
+        cenan.process(f)
