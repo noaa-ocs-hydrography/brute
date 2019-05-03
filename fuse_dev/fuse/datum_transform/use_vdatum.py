@@ -67,13 +67,15 @@ class vdatum:
         bathy = self._reader.read_bathymetry(infilename)
         d = tempdir()
         outfilename = _os.path.join(d.name,'outfile.txt')
+        vd_dir = tempdir()
+        vdfilename = _os.path.join(vd_dir.name,'outfile.txt')
         _np.savetxt(outfilename, bathy, delimiter = ',')
         # set up vdatum
         self._setup_vdatum(in_hordat, in_verdat, out_epsg, out_verdat)
         # run vdatum
-        self._convert_file(outfilename, d.name)
-        bathy = _np.loadtxt(outfilename, delimiter = ',')
-        return bathy
+        self._convert_file(outfilename, vd_dir.name)
+        new_bathy = _np.loadtxt(vdfilename, delimiter = ',')
+        return new_bathy
         
     def _setup_vdatum(self, in_fips, in_verdat, out_epsg, out_verdat):
         """
@@ -111,7 +113,6 @@ class vdatum:
             raise
         try:
             (stdout, stderr) = proc.communicate()
-            print(stdout)
         except:
             print(stdout)
             print(stderr)
