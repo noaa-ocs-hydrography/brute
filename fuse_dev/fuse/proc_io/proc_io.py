@@ -110,7 +110,7 @@ class proc_io:
         activate_file = _retrieve_activate_batch()
 
         if os.path.exists(write_csar):
-            args = ["cmd.exe", "/K", "set pythonpath=", "&&",  # run shell (/K: leave open (debugging), /C close the shell)
+            args = ["cmd.exe", '/C', "set pythonpath=", "&&",  # run shell (/K: leave open (debugging), /C close the shell)
                     activate_file, "NBS35", "&&",  # activate the Caris 3.5 virtual environment
                     'python', write_csar,  # call the script
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
@@ -119,14 +119,16 @@ class proc_io:
             args = ' '.join(args)
             print (args)
             try:
-                proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                proc = subprocess.Popen(' '.join(args), creationflags=subprocess.CREATE_NEW_CONSOLE)
             except:
-                print('Error executing: ' + args)
+                raise RuntimeError("Error executing: %s" % args)
             try:
                 stdout, stderr = proc.communicate()
                 print (stdout, stderr)    
             except:
-                print('Error in handling error output')
+                raise RuntimeError("Error in handling error output")
+            if not os.path.exists(metadata['outfilename']):
+                raise RuntimeError("Output not present: %s" % metadata['outfilename'])
         else:
             print("Unable to create %s" % metadata['outfilename'])
             

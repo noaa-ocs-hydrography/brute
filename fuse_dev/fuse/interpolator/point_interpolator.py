@@ -121,6 +121,7 @@ class point_interpolator:
         # turn the array into a gdal dataset
         data = self._gdal_linear_interp_points(dataset, resolution, nodata=maxVal)
         grid = data.ReadAsArray()
+        grid_rb = data.GetRasterBand(1)
         # populate the nodes that should have data with one
         mask_bin = (grid < maxVal).astype(np.int)
         # casiano's process for figuring out which nodes are to be populated
@@ -132,7 +133,7 @@ class point_interpolator:
         # the extended coverage used by the mask
         mask = (mask_con > 0).astype(np.int)
 #        mask_int = np.where(mask, grid, np.nan)
-        data.WriteArray(mask)
+        grid_rb.WriteArray(mask)
         return data
 
     def _gdal_linear_interp_points(self, dataset, resolution, nodata = 1000000):
