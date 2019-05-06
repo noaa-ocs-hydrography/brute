@@ -13,6 +13,7 @@ import fuse.meta_review.meta_review_ehydro as _mre
 import fuse.raw_read.usace as _usace
 import fuse.datum_transform.transform as _trans
 import fuse.interpolator.interpolator as _interp
+from fuse.proc_io.proc_io import proc_io
 
 class fuse_ehydro(_fbc.fuse_base_class):
     _cols = ['from_filename',
@@ -98,7 +99,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         Set up the location and method to write tranformed and interpolated
         data.
         """
-        pass
+        self._writer = proc_io('gdal','csar')
         
     def read(self, infilename):
         """
