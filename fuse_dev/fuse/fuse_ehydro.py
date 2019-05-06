@@ -154,7 +154,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         Set the object logging object and file.
         """
-        metapath = self._config['metapath']
+        metapath, metafile = _os.path.split(self._config['metapath'])
         filepath, filename = _os.path.split(infilename)
         fname, ext = _os.path.splitext(filename)
         logname = _os.path.join(metapath, fname + '.log')
