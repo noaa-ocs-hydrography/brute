@@ -112,8 +112,17 @@ class proc_io:
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
                     '"' + metafilename.replace("&", "^&") + '"',  # metadata path
                     ]
-
-            subprocess.Popen(' '.join(args), creationflags=subprocess.CREATE_NEW_CONSOLE)
+            args = ' '.join(args)
+            print (args)
+            try:
+                proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            except:
+                print('Error executing: ' + args)
+            try:
+                stdout, stderr = proc.communicate()
+                print (stdout, stderr)    
+            except:
+                print('Error in handling error output')
         else:
             print("Unable to create %s" % metadata['outfilename'])
             

@@ -24,8 +24,7 @@ Sources:
 
 from osgeo import gdal
 import numpy as np
-import matplotlib as mpl
-from mpl_toolkits import natgrid as _nn
+import astropy.convolution as _apc
 
 class point_interpolator:
     """
@@ -36,11 +35,11 @@ class point_interpolator:
         Set some of the precondition, but make them over writable.
         """
         self.window_scale = window_scalar
-    
+
     def interpolate(self, dataset, interpolation_type, resolution):
         """
         Interpolate the provided dataset.
-        
+
         Currently this is assumed to be a gdal dataset.  At some point perhaps
         this should become something more native to python.
         """

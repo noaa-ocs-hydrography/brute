@@ -71,7 +71,7 @@ class Form(autointerp_ui.Form):
         ioOut = self.radio_data.GetSelection()
         returned = autointerp.main(bagPath, tifPath, desPath, catzoc, ioOut)
         self.bar_status.SetStatusText(returned)
-#        self.progressBar.SetValue(100)
+        self.progressBar.SetValue(100)
             
     def programProg(self, event):
         '''Collects the GUI field values for use in running the main

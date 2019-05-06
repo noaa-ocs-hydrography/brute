@@ -20,3 +20,5 @@ for path in ceswg.rawdata_path:
     flist = glob(os.path.join(path,'*.xyz'))
     for f in flist:
         ceswg.read(f)
+        ceswg.process(f)
+
