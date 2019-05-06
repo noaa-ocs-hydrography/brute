@@ -35,7 +35,7 @@ def write_csar(dataset, m):
     dimensions = [m['dimx'], m['dimy']]
 
     crs = m['crs']
-    name = m['outfilename']
+    name = m['outfilename'] + '.csar'
     
     bands = [band_info]
     raster = cc.create_raster(name, crs, origin, resolution, dimensions, bands)
