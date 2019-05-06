@@ -132,7 +132,8 @@ class point_interpolator:
         # the extended coverage used by the mask
         mask = (mask_con > 0).astype(np.int)
 #        mask_int = np.where(mask, grid, np.nan)
-        return mask
+        data.WriteArray(mask)
+        return data
 
     def _gdal_linear_interp_points(self, dataset, resolution, nodata = 1000000):
         """
