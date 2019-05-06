@@ -10,6 +10,7 @@ import sys, os
 import pickle
 import subprocess
 from tempfile import TemporaryDirectory as tempdir
+import logging
 import numpy as np
 from osgeo import gdal, osr
 gdal.UseExceptions()
@@ -39,6 +40,7 @@ class proc_io:
         self._in_data_type = in_data_type
         self._out_data_type = out_data_type
         self._work_dir = tempdir()
+        self._logger = logging.getLogger('fuse')
     
     def write(self, dataset, outfilename, z_up = True):
         """
@@ -104,23 +106,27 @@ class proc_io:
         start = os.path.realpath(os.path.dirname(__file__))
         write_csar = os.path.join(start, 'wrap_csar.py')
         activate_file = _retrieve_activate_batch()
-
+        logfilename = self._get_logfilename()
         if os.path.exists(write_csar):
-            args = ["cmd.exe", "/K", "set pythonpath=", "&&",  # run shell (/K: leave open (debugging), /C close the shell)
+            args = ["cmd.exe", "set pythonpath=", "&&",  # run shell (/K: leave open (debugging), /C close the shell)
                     activate_file, "NBS35", "&&",  # activate the Caris 3.5 virtual environment
                     'python', write_csar,  # call the script
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
                     '"' + metafilename.replace("&", "^&") + '"',  # metadata path
-                    ]
+                    logfilename]
             args = ' '.join(args)
-            print (args)
-            try:
-                proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
-            except:
-                print('Error executing: ' + args)
+            self.logger.log(logging.DEBUG, args)
+            self._stop_logfile()
+#            try:
+            proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
+#            except:
+#                print('Error executing: ' + args)
+            self._start_logfile(logfilename)
             try:
                 stdout, stderr = proc.communicate()
-                print (stdout, stderr)    
+                print (stdout, stderr)
+                self.logger.log(logging.DEBUG, stdout)
+                self.logger.log(logging.DEBUG, stderr)
             except:
                 print('Error in handling error output')
             if not os.path.exists(metadata['outfilename']):
@@ -176,6 +182,33 @@ class proc_io:
 #    
 #        # Close output raster dataset
 #        dest = None
+    def _get_logfilename(self):
+        """
+        Return the log filename.
+        """
+        if len(self.logger.handlers) > 1:
+            raise ValueError('Not sure which hanlder to use for logging csar work. Using first')
+        h = self.logger.handlers[0]
+        handlefilename = h.baseFilename
+        return handlefilename
+    
+    def _stop_logfile(self):
+        """
+        Get the logger filename, stop logging to it, and return the filename.
+        """
+        # remove handlers that might have existed from previous files
+        h = self.logger.handlers[0]
+        self.logger.removeHandler(h)
+    
+    def _start_logfile(self, handlefilename):
+        """
+        Add a handler to the logger at the provided filename.
+        """
+        # create file handler for this filename
+        fh = logging.FileHandler(handlefilename)
+        fh.setLevel(logging.DEBUG)
+        self.logger.addHandler(fh)
+        
 
 # helper function to retrieve the path to the "Scripts" folder in PydroXL
 def _retrieve_scripts_folder():
