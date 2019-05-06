@@ -119,7 +119,8 @@ class point_interpolator:
         """
         maxVal = 1000000.0
         # turn the array into a gdal dataset
-        grid = self._gdal_linear_interp_points(dataset, resolution, nodata=maxVal)
+        data = self._gdal_linear_interp_points(dataset, resolution, nodata=maxVal)
+        grid = data.ReadAsArray()
         # populate the nodes that should have data with one
         mask_bin = (grid < maxVal).astype(np.int)
         # casiano's process for figuring out which nodes are to be populated
@@ -178,12 +179,6 @@ class point_interpolator:
                                 outputBounds = bounds,
                                 algorithm=algorithm)
         return interp_data
-
-    def _get_natural_interp(self, dataset):
-        lyr = dataset.GetLayerByIndex(0)
-        count = lyr.GetFeatureCount()
-        data = np.zeros((count,3))
-        print (lyr, count, data)
 
     def _compare_vals(self, val, valmin, valmax):
         """
