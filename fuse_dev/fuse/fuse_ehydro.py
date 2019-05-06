@@ -99,7 +99,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
         Set up the location and method to write tranformed and interpolated
         data.
         """
-        self._writer = proc_io('gdal','csar')
+        ext = self._config['bathymetry_intermediate_file']
+        self._writer = proc_io('gdal', ext)
         
     def read(self, infilename):
         """
@@ -140,6 +141,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
                 datfilename = _os.path.join(infilepath, infileroot + '.dat')
             else:
                 datfilename = _os.path.join(infilepath, infileroot + '.DAT')
+            new_ext = self._config['bathymetry_intermediate_file']
+            outfilename = outfilename + '.' + new_ext 
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
             dataset = self._transform.translate(datfilename, self._meta)
