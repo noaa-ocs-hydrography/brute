@@ -123,6 +123,8 @@ class proc_io:
                 print (stdout, stderr)    
             except:
                 print('Error in handling error output')
+            if not os.path.exists(metadata['outfilename']):
+                raise RuntimeError("Unable to create %s" % metadata['outfilename'])
         else:
             print("Unable to create %s" % metadata['outfilename'])
             
