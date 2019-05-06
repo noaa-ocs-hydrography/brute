@@ -33,13 +33,13 @@ class proc_io:
     """
     A class to abstract the reading and writing of bathymetry.
     """
-    def __init__(self, in_data_type, out_data_type, work_dir = ''):
+    def __init__(self, in_data_type, out_data_type, work_dir = None):
         """
         Initialize with the data type to be worked.
         """
         self._in_data_type = in_data_type
         self._out_data_type = out_data_type
-        if len(work_dir) == 0:
+        if work_dir == None:
             self._work_dir = tempdir()
             self._work_dir_name = self._work_dir.name
         else:
