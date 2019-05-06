@@ -8,6 +8,7 @@ Created on Thu Jan 31 10:30:11 2019
 """
 
 import os as _os
+import logging as _logging
 import fuse.fuse_base_class as _fbc
 import fuse.meta_review.meta_review_ehydro as _mre
 import fuse.raw_read.usace as _usace
@@ -56,6 +57,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._set_data_interpolator()
         self._set_data_writer()
         self._meta = {} # initialize the metadata holder
+        self.logger = _logging.getLogger('fuse')
+        self.logger.setLevel(_logging.DEBUG)
         
     def _set_data_reader(self):
         """
@@ -108,17 +111,16 @@ class fuse_ehydro(_fbc.fuse_base_class):
         to the specified metadata file.  The bathymetry will be interpolated and
         writen to a CSAR file in the specificed csarpath.
         """
-        # get the default metadata
-        
+        self._meta = {}
+        self._set_log(infilename)
         # get the metadata
         meta = self._reader.read_metadata(infilename)
-        
         meta['to_horiz_datum'] = self._config['to_horiz_datum']
         meta['to_vert_datum'] = self._config['to_vert_datum']
         meta['to_vert_units'] = 'metres'
         meta['interpolated'] = 'True'
         #meta['script_version'] = meta['script_version'] #+ ',' + __version__ + i2c.__version__
-        self._meta = meta
+        self._meta.update(meta)
         # write the metadata
         self._meta_obj.write_meta_record(meta)
         if 'from_fips' in self._meta:
@@ -131,25 +133,40 @@ class fuse_ehydro(_fbc.fuse_base_class):
         Do the datum transformtion and interpolation.
         """
         self._get_stored_meta(infilename)
+        self._set_log(infilename)
         if 'from_fips' in self._meta:
             # convert the bathy
             outpath = self._config['outpath']
             infilepath, infilebase = _os.path.split(infilename)
             infileroot, ext = _os.path.splitext(infilebase)
             outfilename = _os.path.join(outpath, infileroot)
-            if ext.islower():
-                datfilename = _os.path.join(infilepath, infileroot + '.dat')
-            else:
-                datfilename = _os.path.join(infilepath, infileroot + '.DAT')
             new_ext = self._config['bathymetry_intermediate_file']
             outfilename = outfilename + '.' + new_ext 
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
-            dataset = self._transform.translate(datfilename, self._meta)
+            dataset = self._transform.translate(infilename, self._meta)
             # take a gdal dataset for interpolation and return a gdal dataset
             dataset = self._interpolator.interpolate(dataset)
             self._writer.write(dataset, outfilename)
             self._meta['to_filename'] = outfilename
+            
+    def _set_log(self, infilename):
+        """
+        Set the object logging object and file.
+        """
+        metapath = self._config['metapath']
+        filepath, filename = _os.path.split(infilename)
+        fname, ext = _os.path.splitext(filename)
+        logname = _os.path.join(metapath, fname + '.log')
+        self._meta['logfilename'] = logname
+        # remove handlers that might have existed from previous files
+        for h in self.logger.handlers:
+            self.logger.removeHandler(h)
+        # create file handler for this filename
+        fh = _logging.FileHandler(logname)
+        fh.setLevel(_logging.DEBUG)
+        self.logger.addHandler(fh)
+        
             
     def _get_stored_meta(self, infilename):
         """
