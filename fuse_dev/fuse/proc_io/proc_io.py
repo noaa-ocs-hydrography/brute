@@ -113,9 +113,10 @@ class proc_io:
                     'python', write_csar,  # call the script
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
                     '"' + metafilename.replace("&", "^&") + '"',  # metadata path
-                    logfilename]
+                    '"' + logfilename.replace("&", "^&") + '"',
+                    ]
             args = ' '.join(args)
-            self.logger.log(logging.DEBUG, args)
+            self._logger.log(logging.DEBUG, args)
             self._stop_logfile()
 #            try:
             proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
@@ -125,8 +126,8 @@ class proc_io:
             try:
                 stdout, stderr = proc.communicate()
                 print (stdout, stderr)
-                self.logger.log(logging.DEBUG, stdout)
-                self.logger.log(logging.DEBUG, stderr)
+                self._logger.log(logging.DEBUG, stdout)
+                self._logger.log(logging.DEBUG, stderr)
             except:
                 print('Error in handling error output')
             if not os.path.exists(metadata['outfilename']):
@@ -186,9 +187,9 @@ class proc_io:
         """
         Return the log filename.
         """
-        if len(self.logger.handlers) > 1:
+        if len(self._logger.handlers) > 1:
             raise ValueError('Not sure which hanlder to use for logging csar work. Using first')
-        h = self.logger.handlers[0]
+        h = self._logger.handlers[0]
         handlefilename = h.baseFilename
         return handlefilename
     
@@ -197,8 +198,8 @@ class proc_io:
         Get the logger filename, stop logging to it, and return the filename.
         """
         # remove handlers that might have existed from previous files
-        h = self.logger.handlers[0]
-        self.logger.removeHandler(h)
+        h = self._logger.handlers[0]
+        self._logger.removeHandler(h)
     
     def _start_logfile(self, handlefilename):
         """
@@ -207,7 +208,7 @@ class proc_io:
         # create file handler for this filename
         fh = logging.FileHandler(handlefilename)
         fh.setLevel(logging.DEBUG)
-        self.logger.addHandler(fh)
+        self._logger.addHandler(fh)
         
 
 # helper function to retrieve the path to the "Scripts" folder in PydroXL
