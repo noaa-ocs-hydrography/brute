@@ -9,6 +9,7 @@ Created on Thu Feb 14 15:13:52 2019
 import sys, os
 import pickle
 import subprocess
+from tempfile import TemporaryDirectory as tempdir
 import numpy as np
 from osgeo import gdal, osr
 gdal.UseExceptions()
@@ -31,13 +32,13 @@ class proc_io:
     """
     A class to abstract the reading and writing of bathymetry.
     """
-    def __init__(self, in_data_type, out_data_type, work_dir):
+    def __init__(self, in_data_type, out_data_type):
         """
         Initialize with the data type to be worked.
         """
         self._in_data_type = in_data_type
         self._out_data_type = out_data_type
-        self._work_dir = work_dir
+        self._work_dir = tempdir()
     
     def write(self, dataset, outfilename, z_up = True):
         """
@@ -94,13 +95,9 @@ class proc_io:
         wrapper around the csar writer.
         """
         # save the provided dataset and metadata to a file
-        if os.path.exists(self._work_dir):
-            pass
-        else:
-            os.mkdir(self._work_dir)
-        datafilename = os.path.join(self._work_dir, 'rasterdata.npy')
+        datafilename = os.path.join(self._work_dir.name, 'rasterdata.npy')
         np.save(datafilename, data)
-        metafilename = os.path.join(self._work_dir, 'metadata')
+        metafilename = os.path.join(self._work_dir.name, 'metadata')
         with open(metafilename, 'wb') as metafile:
             pickle.dump(metadata, metafile)
         # set the locations for running the wrap_csar script
