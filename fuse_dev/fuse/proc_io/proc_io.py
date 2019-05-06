@@ -33,13 +33,17 @@ class proc_io:
     """
     A class to abstract the reading and writing of bathymetry.
     """
-    def __init__(self, in_data_type, out_data_type):
+    def __init__(self, in_data_type, out_data_type, work_dir = ''):
         """
         Initialize with the data type to be worked.
         """
         self._in_data_type = in_data_type
         self._out_data_type = out_data_type
-        self._work_dir = tempdir()
+        if len(work_dir) == 0:
+            self._work_dir = tempdir()
+            self._work_dir_name = self.work_dir.name
+        else:
+            self._work_dir_name = work_dir
         self._logger = logging.getLogger('fuse')
     
     def write(self, dataset, outfilename, z_up = True):
@@ -97,9 +101,9 @@ class proc_io:
         wrapper around the csar writer.
         """
         # save the provided dataset and metadata to a file
-        datafilename = os.path.join(self._work_dir.name, 'rasterdata.npy')
+        datafilename = os.path.join(self._work_dir_name, 'rasterdata.npy')
         np.save(datafilename, data)
-        metafilename = os.path.join(self._work_dir.name, 'metadata')
+        metafilename = os.path.join(self._work_dir_name, 'metadata')
         with open(metafilename, 'wb') as metafile:
             pickle.dump(metadata, metafile)
         # set the locations for running the wrap_csar script
@@ -108,8 +112,7 @@ class proc_io:
         activate_file = _retrieve_activate_batch()
         logfilename = self._get_logfilename()
         if os.path.exists(write_csar):
-            args = ["cmd.exe", "set pythonpath=", "&&",  # run shell (/K: leave open (debugging), /C close the shell)
-                    activate_file, "NBS35", "&&",  # activate the Caris 3.5 virtual environment
+            args = ["cmd.exe", "set pythonpath=", activate_file, "NBS35", "&&",  # activate the Caris 3.5 virtual environment
                     'python', write_csar,  # call the script
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
                     '"' + metafilename.replace("&", "^&") + '"',  # metadata path
