@@ -66,11 +66,13 @@ class read_raw:
         """
         version='CEMVN'
         self.version = version
+        print(infilename)
         first_instance = _start_xyz(infilename)
         if first_instance != '':    
-            xyz = _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance)
+            xyz = _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance, usecols=(0,1,2))
+            #xyz = xyz = _np.genfromtxt(infilename, delimiter = ',', skip_header = first_instance, usecols=(0,1,2))
         else:
-            xyz = _np.loadtxt(infilename, delimiter = ',')
+            _np.loadtxt(infilename, delimiter = ',', usecols=(0,1,2))
         return xyz        
 
 #------------------------------------------------------------------------------
