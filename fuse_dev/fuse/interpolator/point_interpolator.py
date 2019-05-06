@@ -17,7 +17,7 @@ Sources:
     ogr data set to gdal for gridding: http://osgeo-org.1560.x6.nabble.com/gdal-dev-DataSource-Dataset-using-gdal-Grid-td5322689.html
     GDAL gridding information: http://www.gdal.org/grid_tutorial.html#grid_tutorial_interpolation
     gdal_grid: http://www.gdal.org/gdal_grid.html
-    
+
 """
 
 # __version__ = 'point_interpolator 0.0.1'
@@ -50,8 +50,6 @@ class point_interpolator:
             linear = True
         elif interpolation_type == 'invdist':
             invdist = True
-        elif interpolation_type == 'natural':
-            natural = True
         else:
             raise ValueError('interpolation type not implemented.')
         data_array = self._gdal2vector(dataset)
@@ -67,19 +65,19 @@ class point_interpolator:
             ds3 = self._gdal_invdist_interp_points(dataset, resolution, window)
             # shrink the coverage back on the edges and in the holidays on the inv dist
             ds4 = self._shrink_coverage(ds3, resolution, window)
-        if linear or natural:
+        if linear:
             # trim the triangulated interpolation back using the inv dist as a mask
             ds3 = self._get_mask(dataset, resolution, window)
             ds4 = self._shrink_coverage(ds3, resolution, window)
             ds5 = self._mask_with_raster(ds2, ds4)
         # write the files out using the above function
-        if linear or natural:
+        if linear:
             return ds5
         elif invdist:
             return ds4
         else:
             raise ValueError('Interpolation type not understood')
-    
+
     def _gdal2vector(self, dataset):
         """
         Take a gdal vector xyz point cloud and return a numpy array.
@@ -92,12 +90,12 @@ class point_interpolator:
             f = lyr.GetFeature(n)
             data[n,:] = f.geometry().GetPoint()
         return data
-            
+
     def _get_point_spacing(self, dataset):
         """
         Take a numpy xyz array and return the min, mean, and max spacing
-        between different points in the XY direction for interpolation without 
-        holes.  The returned units will be the same as the provided horizontal 
+        between different points in the XY direction for interpolation without
+        holes.  The returned units will be the same as the provided horizontal
         coordinate system.
         """
         count = len(dataset)
@@ -110,32 +108,34 @@ class point_interpolator:
             if len(idx) > 0:
                 min_dist[idx] = dist[idx]
         return min_dist.min(), min_dist.mean(), min_dist.max()
-    
+
     def _get_mask(self, dataset, resolution, window):
         """
         This is a hack to compute the mask.  Casiano will make this better some
         day.
-        
+
         Return a gdal raster that has nodes where data should be populated with
         1, and all other nodes populated with the "no data" value.
         """
-        # Find the bounds of the provided data
-#        xmin,xmax,ymin,ymax = np.nan,np.nan,np.nan,np.nan
-#        lyr = dataset.GetLayerByIndex(0)
-#        count = lyr.GetFeatureCount()
-#        for n in np.arange(count):
-#            f = lyr.GetFeature(n)
-#            x,y,z = f.geometry().GetPoint()
-#            xmin, xmax = self._compare_vals(x,xmin,xmax)
-#            ymin, ymax = self._compare_vals(y,ymin,ymax)
-#        numrows, numcolumns, bounds = self._get_nodes3(resolution, [xmin,ymin,xmax,ymax])
-        # casiano's process for figuring out which nodes are to be populated
-        # make a grid with the no data value
-        # populate the nodes that should have data with one
+        maxVal = 1000000.0
         # turn the array into a gdal dataset
-        mask = self._gdal_invdist_interp_points(dataset, resolution, window)
-        return mask
-    
+        data = self._gdal_linear_interp_points(dataset, resolution, nodata=maxVal)
+        grid = data.ReadAsArray()
+        grid_rb = data.GetRasterBand(1)
+        # populate the nodes that should have data with one
+        mask_bin = (grid < maxVal).astype(np.int)
+        # casiano's process for figuring out which nodes are to be populated
+        # binary grid is convolved so that nodes with one are widened to the 
+        # window given via a tophat (circular and single value) kernel
+        kernel = _apc.Tophat2DKernel(window)
+        mask_con = _apc.convolve(mask_bin,kernel)
+        # all values created via convolution above 0 are made one to represent
+        # the extended coverage used by the mask
+        mask = (mask_con > 0).astype(np.int)
+#        mask_int = np.where(mask, grid, np.nan)
+        grid_rb.WriteArray(mask)
+        return data
+
     def _gdal_linear_interp_points(self, dataset, resolution, nodata = 1000000):
         """
         Interpolate the provided gdal vector points and return the interpolated
@@ -158,7 +158,7 @@ class point_interpolator:
                                 outputBounds = bounds,
                                 algorithm=algorithm)
         return interp_data
-    
+
     def _gdal_invdist_interp_points(self, dataset, resolution, radius, nodata = 1000000):
         """
         Interpolate the provided gdal vector points and return the interpolated
@@ -175,19 +175,13 @@ class point_interpolator:
             ymin, ymax = self._compare_vals(y,ymin,ymax)
         numrows, numcolumns, bounds = self._get_nodes3(resolution, [xmin,ymin,xmax,ymax])
         algorithm = "invdist:power=2.0:smoothing=0.0:radius1=" + str(radius)+":radius2="+str(radius)+":angle=0.0:max_points=0:min_points=1:nodata=" + str(int(nodata))
-        interp_data = gdal.Grid('', dataset, format='MEM', 
+        interp_data = gdal.Grid('', dataset, format='MEM',
                                 width = numcolumns,
                                 height = numrows,
                                 outputBounds = bounds,
                                 algorithm=algorithm)
         return interp_data
-    
-    def _get_natural_interp(self, dataset):
-        lyr = dataset.GetLayerByIndex(0)
-        count = lyr.GetFeatureCount()
-        data = np.zeros((count,3))
-        print (lyr, count, data)
-    
+
     def _compare_vals(self, val, valmin, valmax):
         """
         This is a small utility for inspecting values and seeing they contribute
@@ -197,18 +191,18 @@ class point_interpolator:
             valmin = val
         elif val < valmin:
             valmin = val
-            
+
         if np.isnan(valmax):
             valmax = val
         elif val > valmax:
             valmax = val
-            
+
         return valmin, valmax
-    
+
     def _get_nodes(self, resolution, bounds):
         """
         Get the bounds and number of rows and columns. The desired resolution and
-        the data max and min in X and Y are required.  This algorithm uses the 
+        the data max and min in X and Y are required.  This algorithm uses the
         average of the data min and max and centers the grid on this location.
         """
         xmin, ymin, xmax, ymax = bounds
@@ -221,11 +215,11 @@ class point_interpolator:
         ynmin = ymean - numrows/ 2. * resolution
         ynmax = ymean + numrows/ 2. * resolution
         return numrows, numcolumns, [xnmin,ynmin,xnmax,ynmax]
-    
+
     def _get_nodes2(self, resolution, bounds):
         """
         Get the bounds and number of rows and columns. The desired resolution and
-        the data max and min in X and Y are required.  This algorithm uses the 
+        the data max and min in X and Y are required.  This algorithm uses the
         data min as the anchor for the rows and columns, thus the max data values
         may contain sparse data.
         """
@@ -237,11 +231,11 @@ class point_interpolator:
         ynmin = ymin
         ynmax = ymin + 1. * numrows * resolution
         return numrows, numcolumns, [xnmin,ynmin,xnmax,ynmax]
-    
+
     def _get_nodes3(self, resolution, bounds):
         """
         Get the bounds and number of rows and columns. The desired resolution and
-        the data max and min in X and Y are required.  This algorithm uses the 
+        the data max and min in X and Y are required.  This algorithm uses the
         data min as the anchor for the rows and columns, but floored to the nearest
         multiple of the resolution.
         """
@@ -255,7 +249,7 @@ class point_interpolator:
         ynmin = ymin - yrem
         ynmax = ynmin + 1. * numrows * resolution
         return numrows, numcolumns, [xnmin,ynmin,xnmax,ynmax]
-    
+
     def _mask_with_raster(self, dataset, maskraster):
         """
         Read two rasters and use the nodata values from one to mask the other.
@@ -272,7 +266,7 @@ class point_interpolator:
         data[idx] = data_nd
         data_rb.WriteArray(data)
         return dataset
-    
+
     def _shrink_coverage(self, dataset, resolution, radius):
         """
         Shrink coverage of a dataset by the original coverage radius.
@@ -283,7 +277,7 @@ class point_interpolator:
         idx = np.nonzero(data == nodata)
         data[idx] = np.nan
         # divide the window size by the resolution to get the number of cells
-        rem_cells = int(np.round(radius / resolution)) 
+        rem_cells = int(np.round(radius / resolution))
         # print ('Shrinking coverage back ' + str(rem_cells) + ' cells.')
         for n in np.arange(rem_cells):
             ew = np.diff(data, axis = 0)
