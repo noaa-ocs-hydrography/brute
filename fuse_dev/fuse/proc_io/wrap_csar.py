@@ -9,6 +9,7 @@ Created on Thu Feb 14 15:11:39 2019
 import sys
 import pickle
 import numpy as np
+import logging
 import caris.coverage as cc
 
 def write_csar(dataset, m):
@@ -76,14 +77,24 @@ def main():
     """
     Parse the arguments and send them to the write method.
     """
+    logger = logging.getLogger('csar')
+    logname = sys.argv[3]
+    fh = logging.FileHandler(logname)
+    fh.setLevel(logging.DEBUG)
+    logger.addHandler(fh)
+    logger.log(logging.DEBUG, 'Log opened')
     # check to make sure the file exists
     data = np.load(sys.argv[1])
+    logger.log(logging.DEBUG, 'data loaded')
     # check to make sure the metadata file exists
     with open(sys.argv[2], 'rb') as metafile:
         metadata = pickle.load(metafile)
+    logger.log(logging.DEBUG, 'metadata loaded')
     # read the metadata into variables and send to the write method
     check_metadata(metadata)
+    logger.log(logging.DEBUG, 'metadata checked')
     write_csar(data, metadata)
+    logger.log(logging.DEBUG, 'writing of csar complete')
     
     
 if __name__ == '__main__':
