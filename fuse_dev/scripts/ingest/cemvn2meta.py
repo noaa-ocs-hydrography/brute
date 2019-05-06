@@ -20,3 +20,5 @@ for path in cemvn.rawdata_path:
     flist = glob(os.path.join(path,'*.xyz'))
     for f in flist:
         cemvn.read(f)
+        cemvn.process(f)
+
