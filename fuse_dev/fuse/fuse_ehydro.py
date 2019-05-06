@@ -149,6 +149,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
             dataset = self._interpolator.interpolate(dataset)
             self._writer.write(dataset, outfilename)
             self._meta['to_filename'] = outfilename
+        else:
+            self.logger.log(_logging.DEBUG, 'No fips code found')
             
     def _set_log(self, infilename):
         """
