@@ -41,7 +41,7 @@ class proc_io:
         self._out_data_type = out_data_type
         if len(work_dir) == 0:
             self._work_dir = tempdir()
-            self._work_dir_name = self.work_dir.name
+            self._work_dir_name = self._work_dir.name
         else:
             self._work_dir_name = work_dir
         self._logger = logging.getLogger('fuse')
@@ -186,14 +186,18 @@ class proc_io:
 #    
 #        # Close output raster dataset
 #        dest = None
+        
     def _get_logfilename(self):
         """
         Return the log filename.
         """
         if len(self._logger.handlers) > 1:
             raise ValueError('Not sure which hanlder to use for logging csar work. Using first')
-        h = self._logger.handlers[0]
-        handlefilename = h.baseFilename
+        elif len(self._logger.handlers) <1:
+            handlefilename = 'casiano.log'
+        else:
+            h = self._logger.handlers[0]
+            handlefilename = h.baseFilename
         return handlefilename
     
     def _stop_logfile(self):
@@ -201,8 +205,11 @@ class proc_io:
         Get the logger filename, stop logging to it, and return the filename.
         """
         # remove handlers that might have existed from previous files
-        h = self._logger.handlers[0]
-        self._logger.removeHandler(h)
+        if len(self._logger.handlers) <1:
+            pass
+        else:
+            h = self._logger.handlers[0]
+            self._logger.removeHandler(h)
     
     def _start_logfile(self, handlefilename):
         """
