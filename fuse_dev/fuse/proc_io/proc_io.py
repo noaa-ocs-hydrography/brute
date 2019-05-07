@@ -112,7 +112,7 @@ class proc_io:
         activate_file = _retrieve_activate_batch()
         logfilename = self._get_logfilename()
         if os.path.exists(write_csar):
-            args = ["cmd.exe", "set pythonpath=", activate_file, "NBS35", "&&",  # activate the Caris 3.5 virtual environment
+            args = ["cmd.exe", "/C", "set pythonpath= &&", activate_file, "NBS35", "&&",  # activate the Caris 3.5 virtual environment
                     'python', write_csar,  # call the script
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
                     '"' + metafilename.replace("&", "^&") + '"',  # metadata path
