@@ -92,7 +92,7 @@ class proc_io:
         meta['nodata'] = maxVal
         return data, meta
             
-    def _write_csar(self, data, metadata):
+    def _write_csar(self, data, metadata, conda_env_name = 'NBS35'):
         """
         Convert the provided numpy array into a csar file using the provided
         metadata.
@@ -100,6 +100,8 @@ class proc_io:
         The data and metadata are saved out to a file and then loaded into the
         wrapper around the csar writer.
         """
+        conda_env_path = _retrieve_env_path(conda_env_name)
+        python_path = os.path.join(conda_env_path, 'python')
         # save the provided dataset and metadata to a file
         datafilename = os.path.join(self._work_dir_name, 'rasterdata.npy')
         np.save(datafilename, data)
@@ -112,8 +114,9 @@ class proc_io:
         activate_file = _retrieve_activate_batch()
         logfilename = self._get_logfilename()
         if os.path.exists(write_csar):
-            args = ["cmd.exe", "/K", "set pythonpath= &&", activate_file, "NBS35", "&&",  # activate the Caris 3.5 virtual environment
-                    '%conda_prefix%\\..\\NBS35\\python', write_csar,  # call the script
+            args = ["cmd.exe", "/C", "set pythonpath= &&", # setup the commandline
+                    activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
+                    python_path, write_csar,  # call the script
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
                     '"' + metafilename.replace("&", "^&") + '"',  # metadata path
                     '"' + logfilename.replace("&", "^&") + '"',
@@ -121,14 +124,13 @@ class proc_io:
             args = ' '.join(args)
             self._logger.log(logging.DEBUG, args)
             self._stop_logfile()
-#            try:
-            proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
-#            except:
-#                print('Error executing: ' + args)
+            try:
+                proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            except:
+                print('Error executing: ' + args)
             self._start_logfile(logfilename)
             try:
                 stdout, stderr = proc.communicate()
-                print (stdout, stderr)
                 self._logger.log(logging.DEBUG, stdout)
                 self._logger.log(logging.DEBUG, stderr)
             except:
@@ -220,7 +222,6 @@ class proc_io:
         fh.setLevel(logging.DEBUG)
         self._logger.addHandler(fh)
         
-
 # helper function to retrieve the path to the "Scripts" folder in PydroXL
 def _retrieve_scripts_folder():
     install_prefix = sys.exec_prefix
@@ -238,21 +239,14 @@ def _retrieve_activate_batch():
         raise RuntimeError("The activate file does not exist at: %s" % file_path)
     return file_path
 
-def _retrieve_env(env_name):
+def _retrieve_env_path(env_name):
     """
     Given a conda environement name, find the environment.
     """
-    scripts_prefix = _retrieve_activate_batch()
-    conda = os.path.join(scripts_prefix, os.pardir, 'conda')
-    args = ["cmd.exe", "/C", conda, 'env list']
-    args = ' '.join(args)
-    try:
-        proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
-    except:
-        print('Error executing: ' + args)
-    try:
-        output, outerr = proc.communicate()
-        print (output)
-        print (outerr)
-    except:
-        print('Error in handling error output')
+    current_env_loc = os.environ['conda_prefix']
+    desired_env_loc = os.path.join(current_env_loc, os.pardir, env_name)
+    if os.path.exists(desired_env_loc):
+        return desired_env_loc
+    else:
+        raise ValueError('{} environment does not exist in current conda installation'.format(env_name))
+        
