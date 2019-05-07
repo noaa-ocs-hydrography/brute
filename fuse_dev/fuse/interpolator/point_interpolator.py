@@ -24,7 +24,6 @@ Sources:
 
 from osgeo import gdal
 import numpy as np
-import astropy.convolution as _apc
 
 class point_interpolator:
     """
@@ -45,7 +44,6 @@ class point_interpolator:
         """
         linear = False
         invdist = False
-        natural = False
         if interpolation_type == 'linear':
             linear = True
         elif interpolation_type == 'invdist':
@@ -58,18 +56,17 @@ class point_interpolator:
         if linear:
             # do the triangulation interpolation
             ds2 = self._gdal_linear_interp_points(dataset, resolution)
-        elif natural:
-            ds2 = self._get_natural_interp(dataset)
         elif invdist:
             # do the inverse distance interpolation
             ds3 = self._gdal_invdist_interp_points(dataset, resolution, window)
             # shrink the coverage back on the edges and in the holidays on the inv dist
             ds4 = self._shrink_coverage(ds3, resolution, window)
+        else:
+            print('No interpolation method recognized')
         if linear:
             # trim the triangulated interpolation back using the inv dist as a mask
             ds3 = self._get_mask(dataset, resolution, window)
-            ds4 = self._shrink_coverage(ds3, resolution, window)
-            ds5 = self._mask_with_raster(ds2, ds4)
+            ds5 = self._mask_with_raster(ds2, ds3)
         # write the files out using the above function
         if linear:
             return ds5
@@ -111,30 +108,11 @@ class point_interpolator:
 
     def _get_mask(self, dataset, resolution, window):
         """
-        This is a hack to compute the mask.  Casiano will make this better some
-        day.
-
-        Return a gdal raster that has nodes where data should be populated with
-        1, and all other nodes populated with the "no data" value.
+        Currently using the shrunk invdist method as a mask.
         """
-        maxVal = 1000000.0
-        # turn the array into a gdal dataset
-        data = self._gdal_linear_interp_points(dataset, resolution, nodata=maxVal)
-        grid = data.ReadAsArray()
-        grid_rb = data.GetRasterBand(1)
-        # populate the nodes that should have data with one
-        mask_bin = (grid < maxVal).astype(np.int)
-        # casiano's process for figuring out which nodes are to be populated
-        # binary grid is convolved so that nodes with one are widened to the 
-        # window given via a tophat (circular and single value) kernel
-        kernel = _apc.Tophat2DKernel(window)
-        mask_con = _apc.convolve(mask_bin,kernel)
-        # all values created via convolution above 0 are made one to represent
-        # the extended coverage used by the mask
-        mask = (mask_con > 0).astype(np.int)
-#        mask_int = np.where(mask, grid, np.nan)
-        grid_rb.WriteArray(mask)
-        return data
+        data = self._gdal_invdist_interp_points(dataset, resolution, window)
+        mask = self._shrink_coverage(data, resolution, window)
+        return mask
 
     def _gdal_linear_interp_points(self, dataset, resolution, nodata = 1000000):
         """
