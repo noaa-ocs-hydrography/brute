@@ -11,6 +11,7 @@ __version__ = 'use_vdatum 0.0.1'
 
 import subprocess as _subprocess
 import os as _os
+import logging as _logging
 import numpy as _np
 from osgeo import gdal,ogr,osr
 from tempfile import TemporaryDirectory as tempdir
@@ -23,6 +24,7 @@ class vdatum:
         self._config = config
         self._reader = reader
         self._setup()
+        self._logger = _logging.getLogger('fuse')
         
     def _setup(self):
         """
@@ -52,9 +54,11 @@ class vdatum:
         
         NSRS2007 is assumed for the out EPSG code. 
         """
+        self._logger.log(_logging.DEBUG, 'Begin datum transformation')
         outxyz =  self._translatexyz(infilename, in_hordat, in_verdat, 
                                 out_epsg, out_verdat)
         out_gdal = self._xyz2gdal(outxyz, out_epsg, out_verdat)
+        self._logger.log(_logging.DEBUG, 'Datum transformation complete')
         return out_gdal
     
     def _translatexyz(self, infilename, in_hordat, in_verdat, out_epsg, 
@@ -106,16 +110,24 @@ class vdatum:
         _setup_vdatum_point_converstion method.
         """
         command = self._shell.format(vdinfilename, vdoutdir)
+        self._logger.log(_logging.DEBUG, command)
         try:
             proc = _subprocess.Popen(command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, cwd=self._vdatum_path)
         except:
             print('Error executing: ' + command + '\nat: ' + self._vdatum_path)
             raise
         try:
-            (stdout, stderr) = proc.communicate()
+            (output, outerr) = proc.communicate()
+            output_str = output.decode('utf-8')
+            outerr_str = outerr.decode('utf-8')
+            self._logger.log(_logging.DEBUG, output_str)
+            if len(outerr_str) > 0:
+                self._logger.log(_logging.DEBUG, outerr_str)
+            else:
+                self._logger.log(_logging.DEBUG, 'No datum transformation errors reported')
         except:
-            print(stdout)
-            print(stderr)
+            print(output)
+            print(outerr)
             
     def _xyz2gdal(self, outxyz, out_epsg, out_verdat):
         """
