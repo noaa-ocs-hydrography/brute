@@ -112,8 +112,8 @@ class proc_io:
         activate_file = _retrieve_activate_batch()
         logfilename = self._get_logfilename()
         if os.path.exists(write_csar):
-            args = ["cmd.exe", "/C", "set pythonpath= &&", activate_file, "NBS35", "&&",  # activate the Caris 3.5 virtual environment
-                    'python', write_csar,  # call the script
+            args = ["cmd.exe", "/K", "set pythonpath= &&", activate_file, "NBS35", "&&",  # activate the Caris 3.5 virtual environment
+                    '%conda_prefix%\\..\\NBS35\\python', write_csar,  # call the script
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
                     '"' + metafilename.replace("&", "^&") + '"',  # metadata path
                     '"' + logfilename.replace("&", "^&") + '"',
@@ -237,3 +237,22 @@ def _retrieve_activate_batch():
     if not os.path.exists(file_path):
         raise RuntimeError("The activate file does not exist at: %s" % file_path)
     return file_path
+
+def _retrieve_env(env_name):
+    """
+    Given a conda environement name, find the environment.
+    """
+    scripts_prefix = _retrieve_activate_batch()
+    conda = os.path.join(scripts_prefix, os.pardir, 'conda')
+    args = ["cmd.exe", "/C", conda, 'env list']
+    args = ' '.join(args)
+    try:
+        proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
+    except:
+        print('Error executing: ' + args)
+    try:
+        output, outerr = proc.communicate()
+        print (output)
+        print (outerr)
+    except:
+        print('Error in handling error output')
