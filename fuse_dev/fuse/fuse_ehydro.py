@@ -167,6 +167,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
         # create file handler for this filename
         fh = _logging.FileHandler(logname)
         fh.setLevel(_logging.DEBUG)
+        formatter = _logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
         self.logger.addHandler(fh)
         
             
