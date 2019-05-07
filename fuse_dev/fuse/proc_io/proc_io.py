@@ -53,7 +53,7 @@ class proc_io:
         if self._in_data_type =='gdal':
             data, metadata = self._convert_gdal(dataset)
         elif self._in_data_type =='bag':
-            data, metadata = self._convert_gdal(dataset)
+            data, metadata = self._grab_gdal(dataset)
         else:
             raise ValueError('input data type unknown: ' + 
                              str(self._in_data_type))
@@ -62,7 +62,7 @@ class proc_io:
         if self._out_data_type == 'csar':
             self._write_csar(data, metadata)
         elif self._out_data_type == 'bag':
-            self._write_bag(data, metadata)
+            self._write_bag(dataset, data, metadata, nodata=100000.0)
         else:
             raise ValueError('writer type unknown: ' + 
                              str(self._out_data_type))
@@ -90,6 +90,21 @@ class proc_io:
         data = np.flipud(rb.ReadAsArray())
         maxVal = maxValue(data)
         meta['nodata'] = maxVal
+        return data, meta
+    
+    def _grab_gdal(self, dataset):
+        """
+        Convert the gdal dataset into a numpy array and a dictionary and
+        return.
+        """
+        meta = {}
+        # get the logisitics for converting the gdal dataset to csar
+        gt = dataset.GetGeoTransform()
+        meta['gt'] = gt
+        rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
+        # get the gdal data raster
+        data = np.flipud(rb.ReadAsArray())
+        print (meta)
         return data, meta
             
     def _write_csar(self, data, metadata, conda_env_name = 'NBS35'):
@@ -140,54 +155,57 @@ class proc_io:
         else:
             print("Unable to create %s" % metadata['outfilename'])
             
-    def _write_bag(data, metadata, dtype=gdal.GDT_UInt32,
+    def _write_bag(self, dataset, data, metadata, dtype=gdal.GDT_UInt32,
                  options=0, color_table=0, nbands=1, nodata=False):
-        pass
-#        """Directly From:
-#        "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
-#        (https://gis.stackexchange.com/a/278965)]
-#    
-#        Parameters
-#        ----------
-#        raster_array : numpy.array
-#            Array to be written to a GeoTiff file
-#        gt : tuple, gdal.GeoTransform
-#            Norhtern extent, resolution, 0.0, Western extent, 0.0, -resolution)
-#        data_obj : gdal.RasterBand
-#            gdal.RasterBand
-#        outputpath : string
-#            Folder to save the GeoTiff raster
-#    
-#        """
-#        print('write_raster')
-#    
-#        height, width = data.shape
-#    
-#        # Prepare destination file
-#        driver = gdal.GetDriverByName("BAG")
-#        if options != 0:
-#            dest = driver.Create(metadata['outfilename'], width, height, nbands, dtype, options)
-#        else:
-#            dest = driver.Create(metadata['outfilename'], width, height, nbands, dtype)
-#    
-#        # Write output raster
-#        if color_table != 0:
-#            dest.GetRasterBand(1).SetColorTable(color_table)
-#    
-#        dest.GetRasterBand(1).WriteArray(data)
-#    
-#        if nodata is not False:
-#            dest.GetRasterBand(1).SetNoDataValue(nodata)
-#    
-#        # Set transform and projection
-#        dest.SetGeoTransform(gt)
-#        wkt = data_obj.GetProjection()
-#        srs = osr.SpatialReference()
-#        srs.ImportFromWkt(wkt)
-#        dest.SetProjection(srs.ExportToWkt())
-#    
-#        # Close output raster dataset
-#        dest = None
+        """Directly From:
+        "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
+        (https://gis.stackexchange.com/a/278965)]
+    
+        Parameters
+        ----------
+        raster_array : numpy.array
+            Array to be written to a GeoTiff file
+        gt : tuple, gdal.GeoTransform
+            Norhtern extent, resolution, 0.0, Western extent, 0.0, -resolution)
+        data_obj : gdal.RasterBand
+            gdal.RasterBand
+        outputpath : string
+            Folder to save the GeoTiff raster
+    
+        """
+        print('write_raster')
+    
+        height, width = data.shape
+    
+        # Prepare destination file
+        driver = gdal.GetDriverByName("BAG")
+#        gdal.Driver.HelpTopic
+#        gdal.Driver.__getattr__
+        print(driver.LongName, driver.HelpTopic, driver.__getattr__)
+        if options != 0:
+            dest = driver.Create(metadata['outfilename'], width, height, nbands, dtype, options)
+        else:
+            dest = driver.Create(metadata['outfilename'], width, height, nbands, dtype)
+    
+        # Write output raster
+        if color_table != 0:
+            dest.GetRasterBand(1).SetColorTable(color_table)
+    
+        dest.GetRasterBand(1).WriteArray(data)
+    
+        if nodata is not False:
+            dest.GetRasterBand(1).SetNoDataValue(nodata)
+    
+        # Set transform and projection
+        dest.SetGeoTransform(metadata['gt'])
+        wkt = dataset.GetProjection()
+        srs = osr.SpatialReference()
+        srs.ImportFromWkt(wkt)
+        dest.SetProjection(srs.ExportToWkt())
+    
+        # Close output raster dataset
+        dest = None
+        print ('it is written')
         
     def _get_logfilename(self):
         """
