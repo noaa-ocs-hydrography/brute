@@ -69,10 +69,12 @@ class read_raw:
         version='CESAJ'
         self.version = version
         first_instance = _start_xyz(infilename)
+        print(infilename)#remove later
         if first_instance != '':    
-            xyz = _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance)
+            xyz = _np.loadtxt(infilename, delimiter = ' ', skiprows = first_instance, usecols=(0,1,2))
         else:
-            xyz = _np.loadtxt(infilename, delimiter = ',')
+            xyz = _np.loadtxt(infilename, delimiter = ' ', usecols=(0,1,2))#ignoring anything after the first 3 columns on import
+            #other option from np.loadtxt(infilename, converters={4:datestr2num})
         return xyz        
 
 #------------------------------------------------------------------------------

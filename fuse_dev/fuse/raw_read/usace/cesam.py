@@ -68,9 +68,9 @@ class read_raw:
         self.version = version
         first_instance = _start_xyz(infilename)
         if first_instance != '':    
-            xyz = _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance)
+            xyz = xyz = _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance, usecols=(0,1,2))
         else:
-            xyz = _np.loadtxt(infilename, delimiter = ',')
+            xyz = _np.loadtxt(infilename, delimiter = ',', usecols=(0,1,2))
         return xyz 
        
     def read_bathymetry_by_point(self, infilename):
