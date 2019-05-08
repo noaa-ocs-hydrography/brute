@@ -1213,7 +1213,7 @@ def parse_abstract_iso_ex(abstract):
             epoch = 'Tidal Datum from the latest tidal epoch '
             m['Vertical Datum Description'] = name + epoch
         else: m['Vertical Datum Description'] = name
-        if name.find('Mean Lower Low Water') >= 0:
+        if name.upper().find('MEAN LOWER LOW WATER') >= 0:
             m['VERTDAT'] = 'MLLW'
         elif name.find('MLLW') >= 0:#CESAM
             m['VERTDAT'] = 'MLLW'
@@ -1237,7 +1237,7 @@ def parse_abstract_iso_ex(abstract):
         line = abstract.split('Elevations are in ')[-1]
         name = line.split('Plane coordinates ')[0]
         m['Vertical Datum Description'] = name
-        if name.find('Mean Lower Low Water') >= 0:
+        if name.upper().find('MEAN LOWER LOW WATER') >= 0:
             m['VERTDAT'] = 'MLLW'
         elif name.find('MLLW') >= 0:#CESAM
             m['VERTDAT'] = 'MLLW'
@@ -1261,7 +1261,7 @@ def VERDAT_iso_check(xml_meta):
     m={}
     if 'depthdn' in xml_meta:
         if xml_meta['depthdn'] != None and xml_meta['depthdn'] != '':
-            if xml_meta['depthdn'].find('Mean Lower Low Water') >= 0:
+            if xml_meta['depthdn'].upper().find('MEAN LOWER LOW WATER') >= 0:
                 m['VERTDAT'] = 'MLLW'
             elif xml_meta['depthdn'].find('MLLW') >= 0:
                 m['VERTDAT'] = 'MLLW'
