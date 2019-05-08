@@ -17,10 +17,12 @@ gdal.UseExceptions()
 
 __version__ = 'Test'
 
+print ('GDAL:', gdal.__version__)
+
 def maxValue(arr):
-    '''Takes an input array and finds the most used value in the array, this 
+    '''Takes an input array and finds the most used value in the array, this
     value is used by the program to assume the array's nodata value
-    
+
     returns the most used value in the array as an integer
     '''
     print ('maxValue')
@@ -45,7 +47,7 @@ class proc_io:
         else:
             self._work_dir_name = work_dir
         self._logger = logging.getLogger('fuse')
-    
+
     def write(self, dataset, outfilename, z_up = True):
         """
         Write the provided data to the predefined data type.
@@ -55,7 +57,7 @@ class proc_io:
         elif self._in_data_type =='bag':
             data, metadata = self._grab_gdal(dataset)
         else:
-            raise ValueError('input data type unknown: ' + 
+            raise ValueError('input data type unknown: ' +
                              str(self._in_data_type))
         metadata['outfilename'] = outfilename
         metadata['z_up'] = z_up
@@ -64,9 +66,9 @@ class proc_io:
         elif self._out_data_type == 'bag':
             self._write_bag(dataset, data, metadata, nodata=100000.0)
         else:
-            raise ValueError('writer type unknown: ' + 
+            raise ValueError('writer type unknown: ' +
                              str(self._out_data_type))
-            
+
     def _convert_gdal(self, dataset):
         """
         Convert the gdal dataset into a numpy array and a dictionary and
@@ -91,7 +93,7 @@ class proc_io:
         maxVal = maxValue(data)
         meta['nodata'] = maxVal
         return data, meta
-    
+
     def _grab_gdal(self, dataset):
         """
         Convert the gdal dataset into a numpy array and a dictionary and
@@ -106,12 +108,12 @@ class proc_io:
         data = np.flipud(rb.ReadAsArray())
         print (meta)
         return data, meta
-            
+
     def _write_csar(self, data, metadata, conda_env_name = 'NBS35'):
         """
         Convert the provided numpy array into a csar file using the provided
         metadata.
-        
+
         The data and metadata are saved out to a file and then loaded into the
         wrapper around the csar writer.
         """
@@ -154,13 +156,13 @@ class proc_io:
                 raise RuntimeError("Unable to create %s" % metadata['outfilename'])
         else:
             print("Unable to create %s" % metadata['outfilename'])
-            
+
     def _write_bag(self, dataset, data, metadata, dtype=gdal.GDT_UInt32,
                  options=0, color_table=0, nbands=1, nodata=False):
         """Directly From:
         "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
         (https://gis.stackexchange.com/a/278965)]
-    
+
         Parameters
         ----------
         raster_array : numpy.array
@@ -171,12 +173,20 @@ class proc_io:
             gdal.RasterBand
         outputpath : string
             Folder to save the GeoTiff raster
-    
+
         """
-        print('write_raster')
-    
+        print('_write_bag')
+
         height, width = data.shape
-    
+
+#        fileformat = "BAG"
+#        driver = gdal.GetDriverByName(fileformat)
+#        metadata = driver.GetMetadata()
+#        if metadata.get(gdal.DCAP_CREATE) == "YES":
+#            print("Driver {} supports Create() method.".format(fileformat))
+#        else:
+#            print("Driver {} does not support Create() method.".format(fileformat))
+
         # Prepare destination file
         driver = gdal.GetDriverByName("BAG")
 #        gdal.Driver.HelpTopic
@@ -186,27 +196,27 @@ class proc_io:
             dest = driver.Create(metadata['outfilename'], width, height, nbands, dtype, options)
         else:
             dest = driver.Create(metadata['outfilename'], width, height, nbands, dtype)
-    
+
         # Write output raster
         if color_table != 0:
             dest.GetRasterBand(1).SetColorTable(color_table)
-    
+
         dest.GetRasterBand(1).WriteArray(data)
-    
+
         if nodata is not False:
             dest.GetRasterBand(1).SetNoDataValue(nodata)
-    
+
         # Set transform and projection
         dest.SetGeoTransform(metadata['gt'])
         wkt = dataset.GetProjection()
         srs = osr.SpatialReference()
         srs.ImportFromWkt(wkt)
         dest.SetProjection(srs.ExportToWkt())
-    
+
         # Close output raster dataset
         dest = None
         print ('it is written')
-        
+
     def _get_logfilename(self):
         """
         Return the log filename.
@@ -219,7 +229,7 @@ class proc_io:
             h = self._logger.handlers[0]
             handlefilename = h.baseFilename
         return handlefilename
-    
+
     def _stop_logfile(self):
         """
         Get the logger filename, stop logging to it, and return the filename.
@@ -230,7 +240,7 @@ class proc_io:
         else:
             h = self._logger.handlers[0]
             self._logger.removeHandler(h)
-    
+
     def _start_logfile(self, handlefilename):
         """
         Add a handler to the logger at the provided filename.
@@ -239,7 +249,7 @@ class proc_io:
         fh = logging.FileHandler(handlefilename)
         fh.setLevel(logging.DEBUG)
         self._logger.addHandler(fh)
-        
+
 # helper function to retrieve the path to the "Scripts" folder in PydroXL
 def _retrieve_scripts_folder():
     install_prefix = sys.exec_prefix
@@ -267,4 +277,3 @@ def _retrieve_env_path(env_name):
         return desired_env_loc
     else:
         raise ValueError('{} environment does not exist in current conda installation'.format(env_name))
-        

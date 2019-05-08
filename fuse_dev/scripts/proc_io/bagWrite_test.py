@@ -10,7 +10,6 @@ import numpy as np
 from osgeo import gdal
 from proc_io import proc_io
 
-proc_io.proc_io
 progLoc = os.getcwd()
 fileLoc = 'R:\\Scripts\\vlab-nbs\\fuse_dev\\fuse'
 
@@ -67,7 +66,7 @@ bag_data = gdal.Open(fileName)
 
 #print (gdal.Info(bag_data))
 
-bagWrite = proc_io.proc_io('gdal', 'csar', fileLoc + '\\rasterdata')
+bagWrite = proc_io('gdal', 'csar', fileLoc + '\\rasterdata')
 #print (bagWrite)
 x = 0
 while True:

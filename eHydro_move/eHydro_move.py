@@ -6,7 +6,9 @@ Created on Wed Apr 17 17:19:27 2019
 """
 
 import os as _os
+import re as _re
 import csv as _csv
+import zipfile as _zf
 import shutil as _shutil
 import configparser as _cp
 
@@ -14,6 +16,18 @@ import configparser as _cp
 progLoc = _os.getcwd()
 """progLoc is the program's own file location / current working directory (cwd)
 obtained by :func:`os.getcwd()`"""
+xyz = _re.compile(r'.xyz', _re.IGNORECASE)
+"""regex object for searching zipfile contents for data ending in
+``.xyz``
+"""
+xml = _re.compile(r'.xml', _re.IGNORECASE)
+"""regex object for searching zipfile contents for data ending in
+``.xml``
+"""
+pfile = _re.compile(r'.pickle', _re.IGNORECASE)
+"""regex object for searching zipfile contents for data ending in
+``.pickle``
+"""
 config = _cp.ConfigParser(interpolation = _cp.ExtendedInterpolation())
 config.read('config.ini')
 
@@ -140,6 +154,48 @@ def eHydroZIPs(regions):
     hold = dict(hold)
     return hold
 
+def contentSearch(contents):
+    """This funtion takes a list of zipfile contents.
+
+    Using the zipfile contents, it parses the files for any file containing the
+    full string '.xyz', '.xml', or '.pickle'.  If a file name contains this
+    string, it is added to a list of found files.
+
+    Parameters
+    ----------
+    contents : list
+        A list of file names
+
+    Returns
+    -------
+    list
+        Returns the list of files that met the correct conditions
+
+    """
+    files = []
+    for content in contents:
+        ext = _os.path.splitext(content)[1].lower()
+#        if xyz.search(contents) or xml.search(contents) or pfile.search(contents):
+        if ext == '.xyz' or ext == '.xml' or ext == '.pickle':
+            files.append(content)
+    return files
+
+def zipManipulate(path, name):
+
+    _os.chdir(path)
+    try:
+        zipped = _zf.ZipFile(name)
+        contents = zipped.namelist()
+        files = contentSearch(contents)
+        for item in files:
+            zipped.extract(item)
+        zipped.close()
+
+        _os.remove(name)
+    except _zf.BadZipfile:
+        _os.remove(name)
+    _os.chdir(progLoc)
+
 
 def fileMove(regionFiles, destination, method, text_region=None,
              progressBar=None, text_output=None):
@@ -199,12 +255,13 @@ def fileMove(regionFiles, destination, method, text_region=None,
             if item != None:
                 splits = _os.path.split(item)
                 name = splits[-1]
+                surname = _os.path.splitext(name)[0]
                 district_code = splits[-2].split('\\')[-1]
 #                print (k, district_code, item)
                 district_abbr = district_code[-3:]
                 district_full = district_name[district_abbr] + '_' + district_code
                 eHydro_folder = 'USACE\\eHydro_' + district_full + '\\original'
-                newerPath = _os.path.join(destination, k, eHydro_folder)
+                newerPath = _os.path.join(destination, k, eHydro_folder, surname)
                 if _os.path.isdir(newerPath):
                     pass
                 else:
@@ -217,6 +274,7 @@ def fileMove(regionFiles, destination, method, text_region=None,
                         _shutil.copy2(item, newName)
                     elif method == True:
                         _shutil.move(item, newName)
+                    zipManipulate(newerPath, newName)
                 if progressBar!= None:
                     pbv += 1
                     progressBar.SetValue(pbv)

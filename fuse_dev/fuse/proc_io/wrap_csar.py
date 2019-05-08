@@ -6,6 +6,7 @@ Created on Thu Feb 14 15:11:39 2019
 
 @author: grice
 """
+import os
 import sys
 import pickle
 import numpy as np
@@ -34,13 +35,15 @@ def write_csar(dataset, m):
     origin = [m['originx'],m['originy']]
 #    origin = [0,0]
     dimensions = [m['dimx'], m['dimy']]
-
     crs = m['crs']
     name = m['outfilename']
-    
     bands = [band_info]
+
+    if os.path.exists(name):
+        os.remove(name)
+        os.remove(name+'0')
     raster = cc.create_raster(name, crs, origin, resolution, dimensions, bands)
-    
+
     idx = (dataset < m['nodata']).astype(np.int)
 #    idx = np.nonzero(dataset == m['nodata'])
     dataset = np.where(idx, dataset, raster.band_info['Elevation'].ndv)
@@ -49,7 +52,7 @@ def write_csar(dataset, m):
     area = ((0,0),(dimensions[0],dimensions[1]))
     raster.write("Elevation", area, dataset.astype(band_dtype))
     raster = None
-    
+
 def check_metadata(meta):
     """
     Check to make sure the required metadata keys are available in the
@@ -72,7 +75,7 @@ def check_metadata(meta):
             mkeys = mkeys + key + ', '
     if len(mkeys) > 0:
         raise ValueError('Metadata missing to write csar %s' % mkeys)
-    
+
 def main():
     """
     Parse the arguments and send them to the write method.
@@ -95,8 +98,7 @@ def main():
     logger.log(logging.DEBUG, 'metadata checked')
     write_csar(data, metadata)
     logger.log(logging.DEBUG, 'writing of csar complete')
-    
-    
+
+
 if __name__ == '__main__':
     main()
-    

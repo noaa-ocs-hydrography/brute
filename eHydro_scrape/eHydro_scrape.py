@@ -10,12 +10,16 @@ Last Modified: Apr 19 12:12:42 2019
 import os
 import re
 import csv
+import pickle
 import socket
 import urllib
 import zipfile
 import datetime
 import requests
 import configparser
+
+
+__version__ = '1.0.0'
 
 """Known global constants"""
 # print (datetime.datetime.now().strftime('%b %d %X %Y'))
@@ -62,7 +66,8 @@ running = progLoc + '\\runs\\'
 attributes = [ "OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
               "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION",
               "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
-              "SURVEYTYPE", "PROJECTEDAREA"]
+              "SURVEYTYPE", "PROJECTEDAREA", "SOURCEDATAFORMAT",
+              "Shape__Area", "Shape__Length"]
 """The specific attributes queried for each survey in :func:`surveyCompile`"""
 
 # check to see if the downloaded data folder exists, will create it if not
@@ -222,6 +227,10 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     - SOURCEPROJECTION.
     - SURVEYJOBIDPK.
     - PROJECTEDAREA.
+    - SURVEYTYPE.
+    - SOURCEDATAFORMAT.
+    - Shape__Area.
+    - Shape__Length.
 
     Parameters
     ----------
@@ -245,29 +254,40 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
         print (x, end=' ')
         query = ('https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID%20%3D%20'
                  + str(surveyIDs[x])
-                 + '&outFields=OBJECTID,SDSFEATURENAME,SURVEYTYPE,CHANNELAREAIDFK,SURVEYAGENCY,SURVEYDATEUPLOADED,SURVEYDATESTART,SURVEYDATEEND,SOURCEDATALOCATION,SOURCEPROJECTION,SURVEYJOBIDPK,PROJECTEDAREA&returnGeometry=false&outSR=&f=json')
+                 + '&outFields=*&returnGeometry=true&outSR=&f=json')
         response = requests.get(query)
         page = response.json()
         row = []
+        metadata = {}
         for attribute in attributes:
             try:
                 if page['features'][0]['attributes'][attribute] == None:
                     row.append('null')
+                    metadata[attribute] = 'null'
                 elif (attribute == "SURVEYDATEUPLOADED"
                     or attribute == "SURVEYDATEEND"
                     or attribute == "SURVEYDATESTART"):
                         if page['features'][0]['attributes'][attribute] == None:
                             row.append('null')
+                            metadata[attribute] = 'null'
                         else:
                             date = (page['features'][0]['attributes'][attribute])
                             date = datetime.datetime.utcfromtimestamp(date/1000)
                             row.append(str(date.strftime('%Y-%m-%d')))
+                            metadata[attribute] = str(date.strftime('%Y-%m-%d'))
                 else:
                     row.append(str(page['features'][0]['attributes'][attribute]))
+                    metadata[attribute] = str(page['features'][0]['attributes'][attribute])
             except KeyError as e:
                 print (e, page)
                 row.append('error')
+                metadata[attribute] = 'error'
+        row.append(page['features'][0]['geometry'])
+        metadata['geometry'] = page['features'][0]['geometry']['rings']
         rows.append(row)
+        metafilename = os.path.join(holding + '\\' + row[2] , row[1] + '.pickle')
+        with open(metafilename, 'wb') as metafile:
+            pickle.dump(metadata, metafile)
         x += 1
         if pb!= None:
             pb.SetValue(x)
@@ -276,9 +296,7 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     return rows
 
 def contentSearch(contents):
-    """This funtion takes a list of zipfile contents, the download link the
-    contents came from and the current local file location where the downloaded
-    data resides.
+    """This funtion takes a list of zipfile contents.
 
     Using the zipfile contents, it parses the files for any file containing the
     full string '_FULL.xyz'.  If a file name contains this string, it returns a
@@ -361,7 +379,10 @@ def downloadAndCheck(rows, pb=None, to=None):
         else:
             os.mkdir(holding + '/' + agency)
         saved = os.path.normpath(saved)
-        print  (x, agency,  end=' ')
+        if os.path.exists(saved):
+            os.remove(saved)
+        pfile = os.path.relpath(row[1] + '.pickle')
+        print  (x, agency, end=' ')
         while True:
             if os.path.exists(saved):
                 print ('x', end=' ')
@@ -390,7 +411,11 @@ def downloadAndCheck(rows, pb=None, to=None):
         if os.path.exists(saved):
             if config['Resolutions']['Override'] == 'yes' and (agency in agencies or agencies == ''):
                 try:
-                    zipped = zipfile.ZipFile(saved)
+                    zipped = zipfile.ZipFile(saved, mode='a')
+                    os.chdir(holding + '/' + agency + '/')
+                    zipped.write(pfile)
+                    os.remove(pfile)
+                    os.chdir(progLoc)
                     contents = zipped.namelist()
                     if contentSearch(contents) != True:
                         print ('n', end=' ')
@@ -411,7 +436,11 @@ def downloadAndCheck(rows, pb=None, to=None):
                 row.append('Yes')
             else:
                 try:
-                    zipped = zipfile.ZipFile(saved)
+                    zipped = zipfile.ZipFile(saved, mode='a')
+                    os.chdir(holding + '/' + agency + '/')
+                    zipped.write(pfile)
+                    os.remove(pfile)
+                    os.chdir(progLoc)
                     contents = zipped.namelist()
                     if contentSearch(contents) != True:
                         print ('n', end=' ')
@@ -466,7 +495,7 @@ def csvCompare(rows, csvFile, newSurveysNum, pb=None):
         Changes'
 
     """
-    
+
     print(len(rows), end = ' ')
     before = str(len(rows))
     if pb != None:
@@ -544,7 +573,6 @@ def csvWriter(csvFile, csvLocation, pb=None):
         Complete file path string for a text file to be created
 
     """
-    
     csvOpen = open(csvLocation, 'w', newline='')
     save = csv.writer(csvOpen, delimiter = ',')
     if pb != None:
@@ -552,7 +580,9 @@ def csvWriter(csvFile, csvLocation, pb=None):
         pb.SetValue(0)
         x = 0
     for row in csvFile:
-        save.writerow(row)
+        truncate = row[:12]
+        truncate.extend(row[-2:])
+        save.writerow(truncate)
         if pb != None:
             x += 1
             pb.SetValue(x)
@@ -684,7 +714,7 @@ def main(pb=None,to=None):
     logType = config['Output Log']['Log Type']
     fileLog, nameLog = logOpen(logType, to)
     try:
-        surveyIDs, newSurveysNum, paramString = query()        
+        surveyIDs, newSurveysNum, paramString = query()
         logWriter(fileLog, '\tSurvey IDs queried from eHydro\n' + paramString)
         logWriter(fileLog, '\tCompiling survey objects from Survey IDs')
         rows = surveyCompile(surveyIDs, newSurveysNum, pb)
@@ -718,7 +748,7 @@ def main(pb=None,to=None):
                 logWriter(fileLog, '\tNew Survey Details:')
                 for row in checked:
                     txt = ''
-                    for i in [1,4,5,6,12]:
+                    for i in [1,4,5,6,-2]:
                         txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
                     logWriter(fileLog, '\t\t' + txt)
             logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
