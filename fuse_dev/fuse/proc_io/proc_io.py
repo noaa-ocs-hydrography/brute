@@ -48,14 +48,14 @@ class proc_io:
             self._work_dir_name = work_dir
         self._logger = logging.getLogger('fuse')
 
-    def write(self, dataset, outfilename, z_up = True):
+    def write(self, dataset, outfilename, z_up = True, nodata=100000.0):
         """
         Write the provided data to the predefined data type.
         """
         if self._in_data_type =='gdal':
             data, metadata = self._convert_gdal(dataset)
         elif self._in_data_type =='bag':
-            data, metadata = self._grab_gdal(dataset)
+            dataset, metadata = self._grab_gdal(dataset, nodata)
         else:
             raise ValueError('input data type unknown: ' +
                              str(self._in_data_type))
@@ -64,7 +64,7 @@ class proc_io:
         if self._out_data_type == 'csar':
             self._write_csar(data, metadata)
         elif self._out_data_type == 'bag':
-            self._write_bag(dataset, data, metadata, nodata=100000.0)
+            self._write_bag(dataset, metadata, nodata)
         else:
             raise ValueError('writer type unknown: ' +
                              str(self._out_data_type))
@@ -94,7 +94,7 @@ class proc_io:
         meta['nodata'] = maxVal
         return data, meta
 
-    def _grab_gdal(self, dataset):
+    def _grab_gdal(self, dataset, nodata):
         """
         Convert the gdal dataset into a numpy array and a dictionary and
         return.
@@ -105,9 +105,13 @@ class proc_io:
         meta['gt'] = gt
         rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
         # get the gdal data raster
-        data = np.flipud(rb.ReadAsArray())
+        data = rb.ReadAsArray()
         print (meta)
-        return data, meta
+        maxVal = maxValue(data)
+        if maxVal != nodata:
+            data = np.where(data==maxVal, nodata, data)
+            dataset.GetRasterBand(1).WriteArray(data)
+        return dataset, meta
 
     def _write_csar(self, data, metadata, conda_env_name = 'NBS35'):
         """
@@ -157,7 +161,7 @@ class proc_io:
         else:
             print("Unable to create %s" % metadata['outfilename'])
 
-    def _write_bag(self, dataset, data, metadata, dtype=gdal.GDT_UInt32,
+    def _write_bag(self, dataset, metadata, dtype=gdal.GDT_UInt32,
                  options=0, color_table=0, nbands=1, nodata=False):
         """Directly From:
         "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
@@ -176,42 +180,24 @@ class proc_io:
 
         """
         print('_write_bag')
-
-        height, width = data.shape
-
-#        fileformat = "BAG"
-#        driver = gdal.GetDriverByName(fileformat)
-#        metadata = driver.GetMetadata()
-#        if metadata.get(gdal.DCAP_CREATE) == "YES":
-#            print("Driver {} supports Create() method.".format(fileformat))
-#        else:
-#            print("Driver {} does not support Create() method.".format(fileformat))
+        print (metadata)
 
         # Prepare destination file
         driver = gdal.GetDriverByName("BAG")
-#        gdal.Driver.HelpTopic
-#        gdal.Driver.__getattr__
-        print(driver.LongName, driver.HelpTopic, driver.__getattr__)
+        if os.path.exists(metadata['outfilename']):
+            os.remove(metadata['outfilename'])
+            os.remove(metadata['outfilename']+'.aux.xml')
         if options != 0:
-            dest = driver.Create(metadata['outfilename'], width, height, nbands, dtype, options)
+            dest = driver.CreateCopy(metadata['outfilename'], dataset)
         else:
-            dest = driver.Create(metadata['outfilename'], width, height, nbands, dtype)
+            dest = driver.CreateCopy(metadata['outfilename'], dataset)
 
         # Write output raster
         if color_table != 0:
             dest.GetRasterBand(1).SetColorTable(color_table)
 
-        dest.GetRasterBand(1).WriteArray(data)
-
         if nodata is not False:
             dest.GetRasterBand(1).SetNoDataValue(nodata)
-
-        # Set transform and projection
-        dest.SetGeoTransform(metadata['gt'])
-        wkt = dataset.GetProjection()
-        srs = osr.SpatialReference()
-        srs.ImportFromWkt(wkt)
-        dest.SetProjection(srs.ExportToWkt())
 
         # Close output raster dataset
         dest = None
