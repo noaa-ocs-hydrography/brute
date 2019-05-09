@@ -39,24 +39,28 @@ class proc_io:
         else:
             self._work_dir_name = work_dir
         self._logger = logging.getLogger('fuse')
+        if self._out_data_type == "carisbdb51":
+            self._bdb51 = bdb51()
 
-    def write(self, dataset, outfilename, metadata = None):
+    def write(self, dataset, instruction, metadata = None):
         """
         Write the provided data to the predefined data type.
         """
         self._logger.log(logging.DEBUG, 
                          'Begin {} write'.format(self._out_data_type))
-        if os.path.exists(outfilename) and self.overwrite:
-            self._logger.log(logging.DEBUG, 'Overwriting ' + outfilename)
-            os.remove(outfilename)
+        if os.path.exists(instruction) and self.overwrite:
+            self._logger.log(logging.DEBUG, 'Overwriting ' + instruction)
+            os.remove(instruction)
             if self._out_data_type == 'bag':
-                caris_xml = outfilename +'.aux.xml'
+                caris_xml = instruction +'.aux.xml'
                 if os.path.exists(caris_xml):
                     os.remove(caris_xml)
         if self._out_data_type == 'csar':
-            self._write_csar(dataset, outfilename)
+            self._write_csar(dataset, instruction)
         elif self._out_data_type == 'bag':
-            self._write_bag(dataset, outfilename, metadata)
+            self._write_bag(dataset, instruction, metadata)
+        elif self._out_data_type == 'carisbdb51':
+            self._send2bdb51(dataset, instruction)
         else:
             raise ValueError('writer type unknown: ' +
                              str(self._out_data_type))
@@ -256,3 +260,4 @@ def _retrieve_env_path(env_name):
         return desired_env_loc
     else:
         raise ValueError('{} environment does not exist in current conda installation'.format(env_name))
+        
