@@ -284,10 +284,8 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
                 metadata[attribute] = 'error'
         row.append(page['features'][0]['geometry'])
         metadata['geometry'] = page['features'][0]['geometry']['rings']
+        row.append(metadata)
         rows.append(row)
-        metafilename = os.path.join(holding + '\\' + row[2] , row[1] + '.pickle')
-        with open(metafilename, 'wb') as metafile:
-            pickle.dump(metadata, metafile)
         x += 1
         if pb!= None:
             pb.SetValue(x)
@@ -381,6 +379,9 @@ def downloadAndCheck(rows, pb=None, to=None):
         saved = os.path.normpath(saved)
         if os.path.exists(saved):
             os.remove(saved)
+        metafilename = os.path.join(holding + '\\' + agency, row[1] + '.pickle')
+        with open(metafilename, 'wb') as metafile:
+            pickle.dump(row[-1], metafile)
         pfile = os.path.relpath(row[1] + '.pickle')
         print  (x, agency, end=' ')
         while True:
@@ -737,25 +738,25 @@ def main(pb=None,to=None):
     elif runType == 'yes':
         csvFile = []
         changes = rows
-    try:
-        logWriter(fileLog, '\tParsing new entries for resolution:')
-        attributes.append('Hi-Res?')
-        attributes.append('Override?')
-        if changes != 'No Changes':
-            checked, hiRes = downloadAndCheck(changes, pb, to)
-            csvFile.extend(checked)
-            if config['Output Log']['Query List'] == 'yes':
-                logWriter(fileLog, '\tNew Survey Details:')
-                for row in checked:
-                    txt = ''
-                    for i in [1,4,5,6,-2]:
-                        txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
-                    logWriter(fileLog, '\t\t' + txt)
-            logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
-        else:
-            logWriter(fileLog, '\t\t' + changes)
-    except:
-        logWriter(fileLog, '\tParsing for resolution failed')
+#    try:
+    logWriter(fileLog, '\tParsing new entries for resolution:')
+    attributes.append('Hi-Res?')
+    attributes.append('Override?')
+    if changes != 'No Changes':
+        checked, hiRes = downloadAndCheck(changes, pb, to)
+        csvFile.extend(checked)
+        if config['Output Log']['Query List'] == 'yes':
+            logWriter(fileLog, '\tNew Survey Details:')
+            for row in checked:
+                txt = ''
+                for i in [1,4,5,6,-2]:
+                    txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
+                logWriter(fileLog, '\t\t' + txt)
+        logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
+    else:
+        logWriter(fileLog, '\t\t' + changes)
+#    except:
+#        logWriter(fileLog, '\tParsing for resolution failed')
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
