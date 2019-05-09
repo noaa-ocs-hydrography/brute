@@ -152,7 +152,6 @@ class proc_io:
         driver = gdal.GetDriverByName("BAG")
         # write and close output raster dataset
         dest = driver.CreateCopy(outfilename, dataset)
-        dest.GetRasterBand(1).SetColorTable(0) # what is this?
         dest = None
         self._logger.log(logging.DEBUG, 'BAG file created')
 
