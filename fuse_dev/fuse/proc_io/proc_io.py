@@ -17,26 +17,13 @@ gdal.UseExceptions()
 
 __version__ = 'Test'
 
-print ('GDAL:', gdal.__version__)
-
-def maxValue(arr):
-    '''Takes an input array and finds the most used value in the array, this
-    value is used by the program to assume the array's nodata value
-
-    returns the most used value in the array as an integer
-    '''
-    print ('maxValue')
-    nums, counts = np.unique(arr, return_counts =True)
-    index = np.where(counts==np.amax(counts))
-    print (index, nums[index])
-    return int(nums[index])
-
 class proc_io:
     """
     A class to abstract the reading and writing of bathymetry.
     """
     def __init__(self, in_data_type, out_data_type, work_dir = None,
-                 z_up = True, nodata=100000.0):
+                 z_up = True, nodata=100000.0, caris_env_name = 'NBS35',
+                 overwrite = True):
         """
         Initialize with the data type to be worked.
         """
@@ -44,6 +31,8 @@ class proc_io:
         self._out_data_type = out_data_type
         self._z_up = z_up
         self._write_nodata = nodata
+        self._caris_environment_name = caris_env_name
+        self.overwrite = overwrite
         if work_dir == None:
             self._work_dir = tempdir()
             self._work_dir_name = self._work_dir.name
@@ -51,27 +40,38 @@ class proc_io:
             self._work_dir_name = work_dir
         self._logger = logging.getLogger('fuse')
 
-    def write(self, dataset, outfilename):
+    def write(self, dataset, outfilename, metadata = None):
         """
         Write the provided data to the predefined data type.
         """
+        self._logger.log(logging.DEBUG, 
+                         'Begin {} write'.format(self._out_data_type))
+        if os.path.exists(outfilename) and self.overwrite:
+            self._logger.log(logging.DEBUG, 'Overwriting ' + outfilename)
+            os.remove(outfilename)
+            if self._out_data_type == 'bag':
+                caris_xml = outfilename +'.aux.xml'
+                if os.path.exists(caris_xml):
+                    os.remove(caris_xml)
         if self._out_data_type == 'csar':
             self._write_csar(dataset, outfilename)
         elif self._out_data_type == 'bag':
-            self._write_bag(dataset, outfilename)
+            self._write_bag(dataset, outfilename, metadata)
         else:
             raise ValueError('writer type unknown: ' +
                              str(self._out_data_type))
             
-    def _write_csar(self, dataset, outfilename, conda_env_name = 'NBS35'):
+    def _write_csar(self, dataset, outfilename):
         """
         Convert the provided gdal dataset into a csar file.
 
         The data and metadata are saved out to a file and then loaded into the
         wrapper around the csar writer.
         """
+        conda_env_name = self.caris_environment_name
         # put the provided data into the right form for the csar conversion.
         if self._in_data_type =='gdal':
+            dataset = self._set_gdalndv(dataset)
             data, metadata = self._gdal2array(dataset)
         else:
             raise ValueError('input data type unknown: ' +
@@ -105,20 +105,28 @@ class proc_io:
             try:
                 proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
             except:
-                print('Error executing: ' + args)
+                err = 'Error executing: {}'.foramt(args)
+                print(err)
+                self._logger.log(logging.DEBUG, err)
             self._start_logfile(logfilename)
             try:
                 stdout, stderr = proc.communicate()
                 self._logger.log(logging.DEBUG, stdout)
                 self._logger.log(logging.DEBUG, stderr)
             except:
-                print('Error in handling error output')
+                err = 'Error in handling error output'
+                print(err)
+                self._logger.log(logging.DEBUG, err)
             if not os.path.exists(metadata['outfilename']):
-                raise RuntimeError("Unable to create %s" % metadata['outfilename'])
+                err = "Unable to create {}".format(metadata['outfilename'])
+                self._logger.log(logging.DEBUG, err)
+                raise RuntimeError(err)
         else:
-            print("Unable to create %s" % metadata['outfilename'])
+            err = "Unable to overwrite {}".format(metadata['outfilename'])
+            self._logger.log(logging.DEBUG, err)
+            raise RuntimeError(err)
 
-    def _write_bag(self, dataset, outfilename):
+    def _write_bag(self, dataset, outfilename, metadata = None):
         """
         Parameters
         ----------
@@ -126,27 +134,25 @@ class proc_io:
         
         outfilename : A string defining the path and filename of the file to be
             written.
+        
+        Kwarg
+        -----
+        metadata : A dictionary containing the metadata to be written to to
+            the standard gdal bag xml.  Keys to the written must corrispond to
+            the standard xml tags.  Defaults to None which writes nothing.
         """
         if self._in_data_type =='gdal':
-            pass
+            dataset = self._set_gdalndv(dataset)
         else:
             raise ValueError('input data type unknown: ' +
                              str(self._in_data_type))
-        # check the no data value
-        rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
-        ndv = rb.GetNoDataValue()
-        if self._write_nodata != ndv:
-            data = rb.ReadAsArray()
-            data = np.where(data==ndv, self._write_nodata, data)
-            dataset.GetRasterBand(1).WriteArray(data)
+        if metadata is not None:
+            raise NotImplementedError('bag xml metadata write has not been implemented')
         # Prepare destination file
         driver = gdal.GetDriverByName("BAG")
-        if os.path.exists(outfilename):
-            os.remove(outfilename)
-            os.remove(outfilename +'.aux.xml')
         # write and close output raster dataset
         dest = driver.CreateCopy(outfilename, dataset)
-        dest.GetRasterBand(1).SetColorTable(0)
+        dest.GetRasterBand(1).SetColorTable(0) # what is this?
         dest = None
         self._logger.log(logging.DEBUG, 'BAG file created')
 
@@ -154,6 +160,8 @@ class proc_io:
         """
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
+        
+        The gdal dataset should have he no data value set appropriately.
         """
         meta = {}
         # get the logisitics for converting the gdal dataset to csar
@@ -168,12 +176,24 @@ class proc_io:
         print (meta)
         meta['crs'] = dataset.GetProjection()
         rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
-#        meta['nodata'] = rb.GetNoDataValue()
+        meta['nodata'] = rb.GetNoDataValue()
         # get the gdal data raster
         data = np.flipud(rb.ReadAsArray())
-        maxVal = maxValue(data)
-        meta['nodata'] = maxVal
         return data, meta
+    
+    def _set_gdalndv(self, dataset):
+        """
+        Update the gdal raster object no data value and the raster no data
+        values in to corrispond with the object no data value.
+        """
+        # check the no data value
+        rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
+        ndv = rb.GetNoDataValue()
+        if self._write_nodata != ndv:
+            data = rb.ReadAsArray()
+            data = np.where(data==ndv, self._write_nodata, data)
+            dataset.GetRasterBand(1).WriteArray(data)
+        return dataset
 
     def _get_logfilename(self):
         """
