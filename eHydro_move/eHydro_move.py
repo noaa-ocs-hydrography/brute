@@ -188,7 +188,8 @@ def zipManipulate(path, name):
         contents = zipped.namelist()
         files = contentSearch(contents)
         for item in files:
-            zipped.extract(item)
+            if not _os.path.exists(item):
+                zipped.extract(item)
         zipped.close()
 
         _os.remove(name)
@@ -267,7 +268,7 @@ def fileMove(regionFiles, destination, method, text_region=None,
                 else:
                     _os.makedirs(newerPath)
                 newName = _os.path.join(newerPath, name)
-                if _os.path.exists(item) and not _os.path.exists(newName):
+                if _os.path.exists(item):
                     if text_output != None:
                         text_output.write(eHydro_folder +'\\'+ name + '\n')
                     if method == False:
