@@ -28,6 +28,10 @@ pfile = _re.compile(r'.pickle', _re.IGNORECASE)
 """regex object for searching zipfile contents for data ending in
 ``.pickle``
 """
+gpkg = _re.compile(r'.gpkg', _re.IGNORECASE)
+"""regex object for searching zipfile contents for data ending in
+``.gpkg``
+"""
 config = _cp.ConfigParser(interpolation = _cp.ExtendedInterpolation())
 config.read('config.ini')
 
@@ -175,8 +179,11 @@ def contentSearch(contents):
     files = []
     for content in contents:
         ext = _os.path.splitext(content)[1].lower()
-#        if xyz.search(contents) or xml.search(contents) or pfile.search(contents):
-        if ext == '.xyz' or ext == '.xml' or ext == '.pickle':
+        if (xyz.search(content) 
+            or xml.search(content) 
+            or pfile.search(content)
+            or gpkg.search(content)):
+#        if ext == '.xyz' or ext == '.xml' or ext == '.pickle':
             files.append(content)
     return files
 

@@ -130,7 +130,7 @@ def getTifElev(file, y):
 
     return tifFile, name
 
-def getShpRast(y, file, pixel_size=1, nodata=255):
+def getShpRast(file, y, pixel_size=1, nodata=255):
     """Import shapefile
 
     Parameters
@@ -147,10 +147,11 @@ def getShpRast(y, file, pixel_size=1, nodata=255):
         Name of the shapefile file
 
     """
-    print ('getShpRast')
+    print ('getShpRast', file)
     fName = _os.path.split(file)[-1]
-    splits = fName.split('_')
-    name = '_'.join([x for x in splits[:2]])
+    splits = _os.path.splitext(fName)
+    name = splits[0]
+    tif = splits[0] + '.tif'
 
     # Open the data source and read in the extent
     source_ds = _ogr.Open(file)
@@ -163,7 +164,8 @@ def getShpRast(y, file, pixel_size=1, nodata=255):
     x_res = int((x_max - x_min) / pixel_size)
     y_res = int((y_max - y_min) / pixel_size)
     target_ds = _gdal.GetDriverByName('MEM').Create('', x_res, y_res, _gdal.GDT_Byte)
-    target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+    gt = (x_min, pixel_size, 0, y_max, 0, -pixel_size)
+    target_ds.SetGeoTransform(gt)
     band = target_ds.GetRasterBand(1)
     band.SetNoDataValue(nodata)
 
@@ -172,11 +174,13 @@ def getShpRast(y, file, pixel_size=1, nodata=255):
 
     # Read as array
     arr = band.ReadAsArray()
+    
+    write_raster(arr,gt,target_ds,tif)
 
     band=None
     source_ds=None
 
-    shpRast = [y, file, meta, arr]
+    shpRast = [y, tif, meta, arr]
 
     return shpRast, name
 
@@ -495,7 +499,7 @@ def concatGrid(grids, maxVal, shape):
 #        vals = grid[1].squeeze()
 #        grid = grid[0]
 #    elif len(tpts) == 0 and len(bpts) == 0:
-    if len(bpts) == 0 or len(bpts) == 0:
+    if len(bpts) == 0 or len(tpts) == 0:
         grid, vals = [], []
     else:
         comb = _np.concatenate([tpts, bpts])
@@ -852,10 +856,11 @@ def alignGrids(bag, tif, maxVal, targs):
     ## 3
     if bagRes[-1] == 'cm':
         bagRes = int(bagRes[0]) / 100
-        zres = tifRes/bagRes
     elif bagRes[-1] =='m':
         bagRes = int(bagRes[0])
-        zres = tifRes/bagRes
+    else:
+        bagRes = 5
+    zres = tifRes/bagRes
     print (bagRes, zres)
 #    _plt.imshow(tif[-1][::100,::100])
 #    _plt.show()
@@ -955,7 +960,11 @@ def alignGrids(bag, tif, maxVal, targs):
     ay = None
 
     ## 9
-    gd_obj = _gdal.Open(targs[1])
+    ext = _os.path.splitext(targs[1])[1].lower()
+    if ext == '.tiff' or ext == '.tif':
+        gd_obj = _gdal.Open(targs[1])
+#    elif ext == '.gpkg':
+#        gd_obj = _ogr.Open(targs[1])
     tif.pop()
     print (tif)
     tif.append(ax)

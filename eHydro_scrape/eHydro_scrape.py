@@ -10,6 +10,7 @@ Last Modified: Apr 19 12:12:42 2019
 import os
 import re
 import csv
+import time
 import pickle
 import socket
 import urllib
@@ -17,6 +18,8 @@ import zipfile
 import datetime
 import requests
 import configparser
+import numpy as np
+from osgeo import gdal, osr, ogr
 
 
 __version__ = '1.0.0'
@@ -204,6 +207,50 @@ def query():
 
     return (surveyIDs, newSurveysNum, paramString)
 
+def create_polygon(coords):
+    """
+    https://gis.stackexchange.com/q/217165
+    """
+    ring = ogr.Geometry(ogr.wkbLinearRing)
+    for coord in coords:
+        ring.AddPoint(coord[0], coord[1])
+    # Create polygon
+    poly = ogr.Geometry(ogr.wkbPolygon)
+    poly.AddGeometry(ring)
+    return poly
+
+def create_multipolygon(polys):
+    """
+    https://gis.stackexchange.com/q/217165
+    with considerations from:
+    https://pcjericks.github.io/py-gdalogr-cookbook/geometry.html#create-a-multipolygon
+    """
+    multipolygon = ogr.Geometry(ogr.wkbMultiPolygon)
+    for poly in polys:
+        multipolygon.AddGeometry(poly)
+    return multipolygon.ExportToWkt()
+
+
+def geometryToShape(coordinates):
+    """
+    """
+    polys = []
+    bounds = []
+    for item in coordinates:
+        item = np.array(item)
+        x = item[:,0]
+        y = item[:,1]
+        bound = [[np.amin(x), np.amax(y)], [np.amax(x), np.amin(y)]]
+        bounds.extend(bound)
+        poly = create_polygon(item)
+        polys.append(poly)
+    multipoly = create_multipolygon(polys)
+    bounds = np.array(bounds)
+    xb = bounds[:,0]
+    yb = bounds[:,1]
+    bounds = (np.amin(xb), np.amax(yb)), (np.amax(xb), np.amin(yb))
+    return bounds, multipoly
+
 def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     """Uses the json object return of the each queried survey id and the total
     number of surveys included to compile a list of complete returned survey
@@ -282,8 +329,13 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
                 print (e, page)
                 row.append('error')
                 metadata[attribute] = 'error'
-        row.append(page['features'][0]['geometry'])
-        metadata['geometry'] = page['features'][0]['geometry']['rings']
+        try:
+            coords = page['features'][0]['geometry']['rings']
+            metadata['bounds'], metadata['poly']  = geometryToShape(coords)
+        except KeyError as e:
+            print (e, page)
+            metadata['bounds'] = 'error'
+            metadata['poly'] = 'error'
         row.append(metadata)
         rows.append(row)
         x += 1
@@ -292,6 +344,41 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     print (len(rows))
     print ('rows complete')
     return rows
+
+def write_shapefile(out_shp, name, poly):
+    """
+    https://gis.stackexchange.com/a/52708/8104
+    via
+    https://gis.stackexchange.com/q/217165
+    """
+
+    # Reference
+    proj = osr.SpatialReference()
+    proj.ImportFromEPSG(3395)
+
+    # Now convert it to a shapefile with OGR
+    driver = ogr.GetDriverByName('GPKG')
+    ds = driver.CreateDataSource(out_shp)
+    layer = ds.CreateLayer(name, proj, ogr.wkbMultiPolygon)
+    # Add one attribute
+    layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
+    defn = layer.GetLayerDefn()
+
+    ## If there are multiple geometries, put the "for" loop here
+
+    # Create a new feature (attribute and geometry)
+    feat = ogr.Feature(defn)
+    feat.SetField('id', 123)
+
+    # Make a geometry, from Shapely object
+    geom = ogr.CreateGeometryFromWkt(poly)
+    feat.SetGeometry(geom)
+
+    layer.CreateFeature(feat)
+    feat = geom = None  # destroy these
+
+    # Save and close everything
+    ds = layer = feat = geom = None
 
 def contentSearch(contents):
     """This funtion takes a list of zipfile contents.
@@ -369,7 +456,10 @@ def downloadAndCheck(rows, pb=None, to=None):
         pb.SetValue(i)
     for row in rows:
         link = row[6]
+        surname = row[1]
         agency = row[2]
+        meta = row[-1]
+        poly = meta['poly']
         name = link.split('/')[-1]
         saved = holding + '/' + agency + '/' + name
         if os.path.exists(holding + '/' + agency):
@@ -379,11 +469,19 @@ def downloadAndCheck(rows, pb=None, to=None):
         saved = os.path.normpath(saved)
         if os.path.exists(saved):
             os.remove(saved)
-        metafilename = os.path.join(holding + '\\' + agency, row[1] + '.pickle')
+
+        metafilename = os.path.join(holding + '\\' + agency, surname + '.pickle')
         with open(metafilename, 'wb') as metafile:
-            pickle.dump(row[-1], metafile)
-        pfile = os.path.relpath(row[1] + '.pickle')
+            pickle.dump(meta, metafile)
+        pfile = os.path.relpath(surname + '.pickle')
+
+        if poly != 'error':
+            shpfilename = os.path.join(holding + '\\' + agency, surname + '.gpkg')
+            write_shapefile(shpfilename, surname, poly)
+            sfile = os.path.relpath(surname + '.gpkg')
+
         print  (x, agency, end=' ')
+        dwntime = datetime.datetime.now()
         while True:
             if os.path.exists(saved):
                 print ('x', end=' ')
@@ -404,6 +502,11 @@ def downloadAndCheck(rows, pb=None, to=None):
                         row.append('No')
                         row.append('BadURL')
                         break
+                elif time.time() - dwntime > 295:
+                    print ('e \n' + link)
+                    row.append('No')
+                    row.append('TimeOut')
+                    break
                 else:
                     print ('e \n' + link)
                     row.append('No')
@@ -416,6 +519,9 @@ def downloadAndCheck(rows, pb=None, to=None):
                     os.chdir(holding + '/' + agency + '/')
                     zipped.write(pfile)
                     os.remove(pfile)
+                    if poly != 'error':
+                        zipped.write(sfile)
+                        os.remove(sfile)
                     os.chdir(progLoc)
                     contents = zipped.namelist()
                     if contentSearch(contents) != True:
@@ -441,6 +547,9 @@ def downloadAndCheck(rows, pb=None, to=None):
                     os.chdir(holding + '/' + agency + '/')
                     zipped.write(pfile)
                     os.remove(pfile)
+                    if poly != 'error':
+                        zipped.write(sfile)
+                        os.remove(sfile)
                     os.chdir(progLoc)
                     contents = zipped.namelist()
                     if contentSearch(contents) != True:
@@ -714,14 +823,14 @@ def main(pb=None,to=None):
     runType = config['Data Checking']['Override']
     logType = config['Output Log']['Log Type']
     fileLog, nameLog = logOpen(logType, to)
-    try:
-        surveyIDs, newSurveysNum, paramString = query()
-        logWriter(fileLog, '\tSurvey IDs queried from eHydro\n' + paramString)
-        logWriter(fileLog, '\tCompiling survey objects from Survey IDs')
-        rows = surveyCompile(surveyIDs, newSurveysNum, pb)
-        logWriter(fileLog, '\tSurvey objects compiled from eHydro')
-    except:
-        logWriter(fileLog, '\teHydro query failed')
+#    try:
+    surveyIDs, newSurveysNum, paramString = query()
+    logWriter(fileLog, '\tSurvey IDs queried from eHydro\n' + paramString)
+    logWriter(fileLog, '\tCompiling survey objects from Survey IDs')
+    rows = surveyCompile(surveyIDs, newSurveysNum, pb)
+    logWriter(fileLog, '\tSurvey objects compiled from eHydro')
+#    except:
+#        logWriter(fileLog, '\teHydro query failed')
     if runType == 'no':
         try:
             csvFile = csvOpen()
@@ -738,25 +847,25 @@ def main(pb=None,to=None):
     elif runType == 'yes':
         csvFile = []
         changes = rows
-#    try:
-    logWriter(fileLog, '\tParsing new entries for resolution:')
-    attributes.append('Hi-Res?')
-    attributes.append('Override?')
-    if changes != 'No Changes':
-        checked, hiRes = downloadAndCheck(changes, pb, to)
-        csvFile.extend(checked)
-        if config['Output Log']['Query List'] == 'yes':
-            logWriter(fileLog, '\tNew Survey Details:')
-            for row in checked:
-                txt = ''
-                for i in [1,4,5,6,-2]:
-                    txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
-                logWriter(fileLog, '\t\t' + txt)
-        logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
-    else:
-        logWriter(fileLog, '\t\t' + changes)
-#    except:
-#        logWriter(fileLog, '\tParsing for resolution failed')
+    try:
+        logWriter(fileLog, '\tParsing new entries for resolution:')
+        attributes.append('Hi-Res?')
+        attributes.append('Override?')
+        if changes != 'No Changes':
+            checked, hiRes = downloadAndCheck(changes, pb, to)
+            csvFile.extend(checked)
+            if config['Output Log']['Query List'] == 'yes':
+                logWriter(fileLog, '\tNew Survey Details:')
+                for row in checked:
+                    txt = ''
+                    for i in [1,4,5,6,-2]:
+                        txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
+                    logWriter(fileLog, '\t\t' + txt)
+            logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
+        else:
+            logWriter(fileLog, '\t\t' + changes)
+    except:
+        logWriter(fileLog, '\tParsing for resolution failed')
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
