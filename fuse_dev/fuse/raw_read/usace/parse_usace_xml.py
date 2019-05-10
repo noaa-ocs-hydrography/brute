@@ -1517,6 +1517,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 elif name.find('depths below National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
                     m['VERTDAT'] = 'NGVD29'
                 if name.find('Soundings are shown in feet') >= 0:
+                    m['script: from_vert_units'] = 'Feet'
                     m['script: from_vert_units'] = 'US Survey Foot'
         except:
             #Other way to split abstract, in case format changed over time
@@ -1556,11 +1557,15 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         if m['Horizontal_Units'] == '':
             if  meta_xml['plandu'].upper() == 'FOOT_US': #plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
                 m['Horizontal_Units'] = 'U.S. Survey Feet'
+            if  meta_xml['plandu'].upper() =='INTL FOOT':
+                m['from_horiz_units']='ft'#international feet code for vdatum
     horizpar = meta_xml['horizpar']
     if horizpar.find('DGPS, 1 Meter') >= 0:        
         m['horiz_uncert']='1'# (POSACC) DGPS, 1 Meter
     elif horizpar.find('DGPS, +/-1.0 Meter (3.28 feet)') >= 0:
         m['horiz_uncert']='1'# (POSACC) DGPS, 1 Meter
+    elif horizpar.find('International Feet') >= 0:
+        m['from_horiz_units']='ft'#international feet code for vdatum
     vertaccr = meta_xml['vertaccr']
     if vertaccr.find('Expected values 0.5 -1.0 Foot')  >= 0:
         m['vert_acc'] = '0.3'# 1 ft =   0.30480060960121924 m
