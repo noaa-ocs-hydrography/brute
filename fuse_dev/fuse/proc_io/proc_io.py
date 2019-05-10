@@ -22,7 +22,7 @@ class proc_io:
     A class to abstract the reading and writing of bathymetry.
     """
     def __init__(self, in_data_type, out_data_type, work_dir = None,
-                 z_up = True, nodata=100000.0, caris_env_name = 'NBS35',
+                 z_up = True, nodata=1000000.0, caris_env_name = 'NBS35',
                  overwrite = True):
         """
         Initialize with the data type to be worked.
