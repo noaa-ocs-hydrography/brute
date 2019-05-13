@@ -72,7 +72,7 @@ class proc_io:
         The data and metadata are saved out to a file and then loaded into the
         wrapper around the csar writer.
         """
-        conda_env_name = self.caris_environment_name
+        conda_env_name = self._caris_environment_name
         # put the provided data into the right form for the csar conversion.
         if self._in_data_type =='gdal':
             dataset = self._set_gdalndv(dataset)
