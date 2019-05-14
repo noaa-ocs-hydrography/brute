@@ -22,7 +22,7 @@ import numpy as np
 from osgeo import gdal, osr, ogr
 
 
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 
 """Known global constants"""
 # print (datetime.datetime.now().strftime('%b %d %X %Y'))
@@ -208,8 +208,21 @@ def query():
     return (surveyIDs, newSurveysNum, paramString)
 
 def create_polygon(coords):
-    """
+    """Creates an ogr.Geometry/wkbLinearRing object from a list of coordinates.
+
+    with considerations from:
     https://gis.stackexchange.com/q/217165
+
+    Parameters
+    ----------
+    coords : list
+        A list of [x, y] points to be made into an ogr.Geometry/wkbLinearRing
+        object
+
+    Returns
+    -------
+    poly : ogr.Geometry/wkbLinearRing object
+
     """
     ring = ogr.Geometry(ogr.wkbLinearRing)
     for coord in coords:
@@ -220,10 +233,25 @@ def create_polygon(coords):
     return poly
 
 def create_multipolygon(polys):
-    """
-    https://gis.stackexchange.com/q/217165
+    """Creates an ogr.Geometry/wkbMultiPolygon object from a list of
+    ogr.Geometry/wkbLinearRing objects.  The ogr.Geometry/wkbMultiPolygon is
+    transelated and returned as a WTK Multipolygon object.
+
     with considerations from:
+    https://gis.stackexchange.com/q/217165
+    and:
     https://pcjericks.github.io/py-gdalogr-cookbook/geometry.html#create-a-multipolygon
+
+    Parameters
+    ----------
+    polys : list
+        A list of ogr.Geometry/wkbLinearRing objects
+
+    Returns
+    -------
+    str :
+        WTK Multipolygon object
+
     """
     multipolygon = ogr.Geometry(ogr.wkbMultiPolygon)
     for poly in polys:
@@ -232,17 +260,44 @@ def create_multipolygon(polys):
 
 
 def geometryToShape(coordinates):
-    """
+    """Uses a list of coordinate point 'rings' and creates a WTK Multipolygon
+    object from them.  This object represents the survey outline.
+
+    eHydro data object geometries are returned as a list of lists/'rings'
+    meaning that a survey may have one or many polygons included in it's
+    geometry.
+
+    This function takes each 'ring' and determines it's extents and creates a
+    ogr.Geometry object for it using func:`create_polygon`
+
+    The polygons for each 'ring' are then combined into a single WTK Multipolygon
+    object using func:`create_multipolygon`
+
+    The total extent of the geometry and the WTK Multipolygon object are returned
+
+    Parameters
+    ----------
+    coordinates : list
+        A list of coordinate point 'rings' returned by an eHydro survey query
+        in the Geometry attribute
+
+    Returns
+    -------
+    bounds : tuple
+        The maximum extents of the survey outline
+    multipoly : WTK Multipolygon object
+        A WTK Multipolygon object representing the survey outline
+
     """
     polys = []
     bounds = []
-    for item in coordinates:
-        item = np.array(item)
-        x = item[:,0]
-        y = item[:,1]
+    for ring in coordinates:
+        ring = np.array(ring)
+        x = ring[:,0]
+        y = ring[:,1]
         bound = [[np.amin(x), np.amax(y)], [np.amax(x), np.amin(y)]]
         bounds.extend(bound)
-        poly = create_polygon(item)
+        poly = create_polygon(ring)
         polys.append(poly)
     multipoly = create_multipolygon(polys)
     bounds = np.array(bounds)
@@ -278,6 +333,11 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     - SOURCEDATAFORMAT.
     - Shape__Area.
     - Shape__Length.
+
+    Added to the end of this list but not included in the list for csv export
+    is a dictionary of the same information and the survey outline/shape as a
+    WTK Multipolygon object. This data is used to writa a metadata pickle
+    output and a geopackage shapefile in func:`downloadAndCheck`
 
     Parameters
     ----------
@@ -346,12 +406,24 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     return rows
 
 def write_shapefile(out_shp, name, poly):
-    """
+    """Writes out a geopackage shapefile containing the bounding geometry of
+    of the given query.
+
+    Derived from:
     https://gis.stackexchange.com/a/52708/8104
     via
     https://gis.stackexchange.com/q/217165
-    """
 
+    Parameters
+    ----------
+    out_shp : str
+        String representing the complete file path for the output shapefile
+    name : str
+        String representing the name of the survey; Used to name the layer
+    poly : str, WTK Multipolygon object
+        The WTK Multipolygon object that holds the survey bounding data
+
+    """
     # Reference
     proj = osr.SpatialReference()
     proj.ImportFromEPSG(3395)
@@ -409,7 +481,11 @@ def contentSearch(contents):
 
 def downloadAndCheck(rows, pb=None, to=None):
     """This function takes a list of complete survey data as provided by the
-    query response ('rows').
+    query response `rows`.
+
+    For each survey object in rows, along with the list of arrtibute values, a
+    dictionary of the same values is inlcuded as well as a WTK Multipolygon
+    object
 
     For each link provided, it saves the returned data localy. All downloaded
     files are expected to be zip files.  The funtion attempts to open the files
@@ -894,5 +970,6 @@ def main(pb=None,to=None):
 
 if __name__ == '__main__':
     """Function call to initiate program"""
+    print (__version__)
     main()
 

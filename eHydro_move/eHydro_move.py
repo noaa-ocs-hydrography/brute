@@ -11,6 +11,10 @@ import csv as _csv
 import zipfile as _zf
 import shutil as _shutil
 import configparser as _cp
+from osgeo import gdal as _gdal
+from osgeo import ogr as _ogr
+from osgeo import osr as _osr
+from osgeo import gdalconst as _gdalconst
 
 """Known global constants"""
 progLoc = _os.getcwd()
@@ -88,11 +92,12 @@ def regionPath(root, folder):
         districts = [i.strip() for i in row[2].split(',')]
         for i in districts:
              dwnlds.append(repo + _os.path.join(downloads, i))
-        regions.append((regionName, dwnlds))
+        bounds = row[-1]
+        regions.append((regionName, [dwnlds, bounds]))
     regions = dict(regions)
     return regions
 
-def fileCollect(path):
+def fileCollect(path, bounds):
     """Given a folder path, this function will return the complete list of
     files in that folder.
 
@@ -115,10 +120,43 @@ def fileCollect(path):
 
     """
     zips = []
+    bfile = _os.path.join(progLoc, bounds)
+#    print (path, bfile)
+#    meta_ds = _ogr.Open(bfile)
+#    meta_layer = meta_ds.GetLayer()
+#    meta_geom = meta_layer.GetFeature()
+#    print(meta_layer, meta_geom)
     if _os.path.exists(path):
         for root, folders, files in _os.walk(path):
-            for file in files:
-                zips.append(_os.path.join(root, file))
+            for item in files:
+                zips.append(_os.path.join(root, item))
+    for zfile in zips:
+        root = _os.path.split(zfile)[0]
+        _os.chdir(root)
+        try:
+            zipped = _zf.ZipFile(zfile)
+            contents = zipped.namelist()
+            for name in contents:
+                if gpkg.search(name):
+                    path = _os.path.join(root, name)
+                    print (root, path)
+                    zipped.extract(name)
+##                    try:f
+#                    source_ds = _ogr.Open(path)
+#                    source_layer = source_ds.GetLayer()
+#                    source_geom = source_layer.GetFeature()
+#                    intersection = meta_geom.Intersection(source_geom)
+#                    print (intersection)
+#                    if intersection != None:
+#                        pass
+#                    else:
+#                        zips.remove(zfile)
+                    _os.remove(path)
+#                    except:
+#                        raise RuntimeError('Unable to open file using OGR')
+        except _zf.BadZipfile:
+            zips.remove(zfile)
+        _os.chdir(progLoc)
     if len(zips) > 0:
         return zips
     else:
@@ -151,10 +189,11 @@ def eHydroZIPs(regions):
     hold = []
     for k, v in regions.items():
         zips = []
-        for folder in v:
-            zips.extend(fileCollect(folder))
+        for meta in v[0]:
+            zips.extend(fileCollect(meta,v[1]))
         num = len(zips)
         hold.append((k,(zips,num)))
+        break
     hold = dict(hold)
     return hold
 
@@ -179,8 +218,8 @@ def contentSearch(contents):
     files = []
     for content in contents:
         ext = _os.path.splitext(content)[1].lower()
-        if (xyz.search(content) 
-            or xml.search(content) 
+        if (xyz.search(content)
+            or xml.search(content)
             or pfile.search(content)
             or gpkg.search(content)):
 #        if ext == '.xyz' or ext == '.xml' or ext == '.pickle':
@@ -198,7 +237,6 @@ def zipManipulate(path, name):
             if not _os.path.exists(item):
                 zipped.extract(item)
         zipped.close()
-
         _os.remove(name)
     except _zf.BadZipfile:
         _os.remove(name)
@@ -265,7 +303,6 @@ def fileMove(regionFiles, destination, method, text_region=None,
                 name = splits[-1]
                 surname = _os.path.splitext(name)[0]
                 district_code = splits[-2].split('\\')[-1]
-#                print (k, district_code, item)
                 district_abbr = district_code[-3:]
                 district_full = district_name[district_abbr] + '_' + district_code
                 eHydro_folder = 'USACE\\eHydro_' + district_full + '\\original'
