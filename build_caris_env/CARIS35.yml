@@ -1,0 +1,18 @@
+# This file may be used to create an environment using:
+# $ conda create --name <env> --file <this file>
+# platform: win-64
+@EXPLICIT
+https://conda.anaconda.org/conda-forge/noarch/llvm-meta-5.0.0-0.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.0.25420-0.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/vc-14-0.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/openmp-5.0.0-vc14_1.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/python-3.5.5-he025d50_2.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/certifi-2018.8.24-py35_1001.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/libflang-5.0.0-h6538335_20180525.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/wincertstore-0.2-py35_1002.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/openblas-0.2.20-vc14_8.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/setuptools-40.4.3-py35_0.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/blas-1.1-openblas.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/wheel-0.32.0-py35_1000.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/numpy-1.15.2-py35_blas_openblash8d851b4_0.tar.bz2
+https://conda.anaconda.org/conda-forge/win-64/pip-18.0-py35_1001.tar.bz2
