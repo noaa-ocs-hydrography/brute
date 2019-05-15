@@ -1486,19 +1486,6 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 name = name.split('. Distance units in ')
                 m['Horizontal_Units'] = name[1].split('Vertical Datum:')[0].rstrip().rstrip('.') 
                 m['SPCS'] = name[0]#written description of state plane coordinate system
-                if len(m['SPCS']) > 0:
-                    m['FIPS'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(m['SPCS'].split()))#conversion to SPCS/ FIPS code using a dictionary
-                #remove extra white spaces,but not all spaces. " ".join(string_var.split())
-            elif 'spcszone' in meta_xml:
-                if len(meta_xml['spcszone']) >0:
-                    m['FIPS'] = meta_xml['spcszone']
-            else:#WARNING CEMVN did not have this attribute correct, it was still the value for Oregon
-                if 'mapprojn' in meta_xml:
-                    if len(meta_xml['mapprojn']) > 0:
-                            m['FIPS'] = meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip()
-                            m['CHECK_FIPS']= 'CHECK_IF_EXPECTED'
-                            #it does not always specify US Survey Feet, only Feet here thus we pull horizontal units from another entry
-                            #print may need qc check to see if this coming in correctly                                 
             if  line.find('Vertical Datum:') >= 0:
                 name = line.split('Vertical Datum:')[-1]
                 m['Vertical Datum Description']= name
@@ -1552,7 +1539,20 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
              m['TECSOU']= '1'#'single beam'
         elif procdesc.find('multibeam')>= 0 or  procdesc.find('multi beam')>= 0:
              m['TECSOU']= '3'#'multibeam'
-        
+    if 'SPCS' in m:  
+        if len(m['SPCS']) > 0:
+            m['FIPS'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(m['SPCS'].split()))#conversion to SPCS/ FIPS code using a dictionary
+            #remove extra white spaces,but not all spaces. " ".join(string_var.split())
+    elif 'spcszone' in meta_xml:
+        if len(meta_xml['spcszone']) >0:
+            m['FIPS'] = meta_xml['spcszone']
+    else:#WARNING CEMVN did not have this attribute correct, it was still the value for Oregon
+        if 'mapprojn' in meta_xml:
+            if len(meta_xml['mapprojn']) > 0:
+                    m['FIPS'] = meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip()
+                    m['CHECK_FIPS']= 'CHECK_IF_EXPECTED'
+                    #it does not always specify US Survey Feet, only Feet here thus we pull horizontal units from another entry
+                    #print may need qc check to see if this coming in correctly            
     if 'Horizontal_Units' in m:
         if m['Horizontal_Units'] == '':
             if  meta_xml['plandu'].upper() == 'FOOT_US': #plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
