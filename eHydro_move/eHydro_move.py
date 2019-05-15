@@ -139,7 +139,7 @@ def fileCollect(path, bounds):
             for name in contents:
                 if gpkg.search(name):
                     path = _os.path.join(root, name)
-                    print (root, path)
+#                    print (root, path)
                     zipped.extract(name)
 ##                    try:f
 #                    source_ds = _ogr.Open(path)
@@ -193,7 +193,6 @@ def eHydroZIPs(regions):
             zips.extend(fileCollect(meta,v[1]))
         num = len(zips)
         hold.append((k,(zips,num)))
-        break
     hold = dict(hold)
     return hold
 
