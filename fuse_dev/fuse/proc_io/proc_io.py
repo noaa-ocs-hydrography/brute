@@ -164,24 +164,26 @@ class proc_io:
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
         
-        The gdal dataset should have he no data value set appropriately.
+        The gdal dataset should have the no data value set appropriately.
+        
+        The origin of the metadata is set to the lower left hand corner of the
+        array.
         """
         meta = {}
         # get the logisitics for converting the gdal dataset to csar
         gt = dataset.GetGeoTransform()
         print (gt)
         meta['resx'] = gt[1]
-        meta['resy'] = gt[1]
+        meta['resy'] = -gt[5]
         meta['originx'] = gt[0]
-        meta['originy'] = gt[3] - dataset.RasterYSize
+        meta['originy'] = gt[3] + dataset.RasterYSize * gt[5]
         meta['dimx'] = dataset.RasterXSize
         meta['dimy'] = dataset.RasterYSize
         print (meta)
         meta['crs'] = dataset.GetProjection()
         rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
         meta['nodata'] = rb.GetNoDataValue()
-        # get the gdal data raster
-        data = np.flipud(rb.ReadAsArray())
+        data = rb.ReadAsArray()
         return data, meta
     
     def _set_gdalndv(self, dataset):
