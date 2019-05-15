@@ -10,6 +10,7 @@ Last Modified: Apr 19 12:12:42 2019
 import os
 import re
 import csv
+import time
 import pickle
 import socket
 import urllib
@@ -17,9 +18,11 @@ import zipfile
 import datetime
 import requests
 import configparser
+import numpy as np
+from osgeo import gdal, osr, ogr
 
 
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 
 """Known global constants"""
 # print (datetime.datetime.now().strftime('%b %d %X %Y'))
@@ -204,6 +207,105 @@ def query():
 
     return (surveyIDs, newSurveysNum, paramString)
 
+def create_polygon(coords):
+    """Creates an ogr.Geometry/wkbLinearRing object from a list of coordinates.
+
+    with considerations from:
+    https://gis.stackexchange.com/q/217165
+
+    Parameters
+    ----------
+    coords : list
+        A list of [x, y] points to be made into an ogr.Geometry/wkbLinearRing
+        object
+
+    Returns
+    -------
+    poly : ogr.Geometry/wkbLinearRing object
+
+    """
+    ring = ogr.Geometry(ogr.wkbLinearRing)
+    for coord in coords:
+        ring.AddPoint(coord[0], coord[1])
+    # Create polygon
+    poly = ogr.Geometry(ogr.wkbPolygon)
+    poly.AddGeometry(ring)
+    return poly
+
+def create_multipolygon(polys):
+    """Creates an ogr.Geometry/wkbMultiPolygon object from a list of
+    ogr.Geometry/wkbLinearRing objects.  The ogr.Geometry/wkbMultiPolygon is
+    transelated and returned as a WTK Multipolygon object.
+
+    with considerations from:
+    https://gis.stackexchange.com/q/217165
+    and:
+    https://pcjericks.github.io/py-gdalogr-cookbook/geometry.html#create-a-multipolygon
+
+    Parameters
+    ----------
+    polys : list
+        A list of ogr.Geometry/wkbLinearRing objects
+
+    Returns
+    -------
+    str :
+        WTK Multipolygon object
+
+    """
+    multipolygon = ogr.Geometry(ogr.wkbMultiPolygon)
+    for poly in polys:
+        multipolygon.AddGeometry(poly)
+    return multipolygon.ExportToWkt()
+
+
+def geometryToShape(coordinates):
+    """Uses a list of coordinate point 'rings' and creates a WTK Multipolygon
+    object from them.  This object represents the survey outline.
+
+    eHydro data object geometries are returned as a list of lists/'rings'
+    meaning that a survey may have one or many polygons included in it's
+    geometry.
+
+    This function takes each 'ring' and determines it's extents and creates a
+    ogr.Geometry object for it using func:`create_polygon`
+
+    The polygons for each 'ring' are then combined into a single WTK Multipolygon
+    object using func:`create_multipolygon`
+
+    The total extent of the geometry and the WTK Multipolygon object are returned
+
+    Parameters
+    ----------
+    coordinates : list
+        A list of coordinate point 'rings' returned by an eHydro survey query
+        in the Geometry attribute
+
+    Returns
+    -------
+    bounds : tuple
+        The maximum extents of the survey outline
+    multipoly : WTK Multipolygon object
+        A WTK Multipolygon object representing the survey outline
+
+    """
+    polys = []
+    bounds = []
+    for ring in coordinates:
+        ring = np.array(ring)
+        x = ring[:,0]
+        y = ring[:,1]
+        bound = [[np.amin(x), np.amax(y)], [np.amax(x), np.amin(y)]]
+        bounds.extend(bound)
+        poly = create_polygon(ring)
+        polys.append(poly)
+    multipoly = create_multipolygon(polys)
+    bounds = np.array(bounds)
+    xb = bounds[:,0]
+    yb = bounds[:,1]
+    bounds = (np.amin(xb), np.amax(yb)), (np.amax(xb), np.amin(yb))
+    return bounds, multipoly
+
 def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     """Uses the json object return of the each queried survey id and the total
     number of surveys included to compile a list of complete returned survey
@@ -231,6 +333,11 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     - SOURCEDATAFORMAT.
     - Shape__Area.
     - Shape__Length.
+
+    Added to the end of this list but not included in the list for csv export
+    is a dictionary of the same information and the survey outline/shape as a
+    WTK Multipolygon object. This data is used to writa a metadata pickle
+    output and a geopackage shapefile in func:`downloadAndCheck`
 
     Parameters
     ----------
@@ -282,8 +389,13 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
                 print (e, page)
                 row.append('error')
                 metadata[attribute] = 'error'
-        row.append(page['features'][0]['geometry'])
-        metadata['geometry'] = page['features'][0]['geometry']['rings']
+        try:
+            coords = page['features'][0]['geometry']['rings']
+            metadata['bounds'], metadata['poly']  = geometryToShape(coords)
+        except KeyError as e:
+            print (e, page)
+            metadata['bounds'] = 'error'
+            metadata['poly'] = 'error'
         row.append(metadata)
         rows.append(row)
         x += 1
@@ -292,6 +404,53 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     print (len(rows))
     print ('rows complete')
     return rows
+
+def write_shapefile(out_shp, name, poly):
+    """Writes out a geopackage shapefile containing the bounding geometry of
+    of the given query.
+
+    Derived from:
+    https://gis.stackexchange.com/a/52708/8104
+    via
+    https://gis.stackexchange.com/q/217165
+
+    Parameters
+    ----------
+    out_shp : str
+        String representing the complete file path for the output shapefile
+    name : str
+        String representing the name of the survey; Used to name the layer
+    poly : str, WTK Multipolygon object
+        The WTK Multipolygon object that holds the survey bounding data
+
+    """
+    # Reference
+    proj = osr.SpatialReference()
+    proj.ImportFromEPSG(3395)
+
+    # Now convert it to a shapefile with OGR
+    driver = ogr.GetDriverByName('GPKG')
+    ds = driver.CreateDataSource(out_shp)
+    layer = ds.CreateLayer(name, proj, ogr.wkbMultiPolygon)
+    # Add one attribute
+    layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
+    defn = layer.GetLayerDefn()
+
+    ## If there are multiple geometries, put the "for" loop here
+
+    # Create a new feature (attribute and geometry)
+    feat = ogr.Feature(defn)
+    feat.SetField('id', 123)
+
+    # Make a geometry, from Shapely object
+    geom = ogr.CreateGeometryFromWkt(poly)
+    feat.SetGeometry(geom)
+
+    layer.CreateFeature(feat)
+    feat = geom = None  # destroy these
+
+    # Save and close everything
+    ds = layer = feat = geom = None
 
 def contentSearch(contents):
     """This funtion takes a list of zipfile contents.
@@ -322,7 +481,11 @@ def contentSearch(contents):
 
 def downloadAndCheck(rows, pb=None, to=None):
     """This function takes a list of complete survey data as provided by the
-    query response ('rows').
+    query response `rows`.
+
+    For each survey object in rows, along with the list of arrtibute values, a
+    dictionary of the same values is inlcuded as well as a WTK Multipolygon
+    object
 
     For each link provided, it saves the returned data localy. All downloaded
     files are expected to be zip files.  The funtion attempts to open the files
@@ -369,7 +532,10 @@ def downloadAndCheck(rows, pb=None, to=None):
         pb.SetValue(i)
     for row in rows:
         link = row[6]
+        surname = row[1]
         agency = row[2]
+        meta = row[-1]
+        poly = meta['poly']
         name = link.split('/')[-1]
         saved = holding + '/' + agency + '/' + name
         if os.path.exists(holding + '/' + agency):
@@ -379,11 +545,19 @@ def downloadAndCheck(rows, pb=None, to=None):
         saved = os.path.normpath(saved)
         if os.path.exists(saved):
             os.remove(saved)
-        metafilename = os.path.join(holding + '\\' + agency, row[1] + '.pickle')
+
+        metafilename = os.path.join(holding + '\\' + agency, surname + '.pickle')
         with open(metafilename, 'wb') as metafile:
-            pickle.dump(row[-1], metafile)
-        pfile = os.path.relpath(row[1] + '.pickle')
+            pickle.dump(meta, metafile)
+        pfile = os.path.relpath(surname + '.pickle')
+
+        if poly != 'error':
+            shpfilename = os.path.join(holding + '\\' + agency, surname + '.gpkg')
+            write_shapefile(shpfilename, surname, poly)
+            sfile = os.path.relpath(surname + '.gpkg')
+
         print  (x, agency, end=' ')
+        dwntime = datetime.datetime.now()
         while True:
             if os.path.exists(saved):
                 print ('x', end=' ')
@@ -404,6 +578,11 @@ def downloadAndCheck(rows, pb=None, to=None):
                         row.append('No')
                         row.append('BadURL')
                         break
+                elif time.time() - dwntime > 295:
+                    print ('e \n' + link)
+                    row.append('No')
+                    row.append('TimeOut')
+                    break
                 else:
                     print ('e \n' + link)
                     row.append('No')
@@ -416,6 +595,9 @@ def downloadAndCheck(rows, pb=None, to=None):
                     os.chdir(holding + '/' + agency + '/')
                     zipped.write(pfile)
                     os.remove(pfile)
+                    if poly != 'error':
+                        zipped.write(sfile)
+                        os.remove(sfile)
                     os.chdir(progLoc)
                     contents = zipped.namelist()
                     if contentSearch(contents) != True:
@@ -441,6 +623,9 @@ def downloadAndCheck(rows, pb=None, to=None):
                     os.chdir(holding + '/' + agency + '/')
                     zipped.write(pfile)
                     os.remove(pfile)
+                    if poly != 'error':
+                        zipped.write(sfile)
+                        os.remove(sfile)
                     os.chdir(progLoc)
                     contents = zipped.namelist()
                     if contentSearch(contents) != True:
@@ -609,7 +794,7 @@ def logOpen(logType, to=None):
         File path for the output log object
 
     """
-    timestamp = time()
+    timestamp = ntime()
     message = timestamp + ' - Program Initiated, Log Opened'
     if logType == 'False' or False:
         fo = open(logLocation, 'a')
@@ -660,12 +845,12 @@ def logClose(fileLog):
 
     """
     fo = fileLog[0]
-    timestamp = time()
+    timestamp = ntime()
     message = timestamp +' - Program Finished, Log Closed\n'
     logWriter(fileLog, message)
     fo.close()
 
-def time():
+def ntime():
     """Creates and returns a string 'timestamp' that contains a
     formated current date and time at the time of calling.  Generated by
     :obj:`datetime.now` and formated using
@@ -714,14 +899,14 @@ def main(pb=None,to=None):
     runType = config['Data Checking']['Override']
     logType = config['Output Log']['Log Type']
     fileLog, nameLog = logOpen(logType, to)
-    try:
-        surveyIDs, newSurveysNum, paramString = query()
-        logWriter(fileLog, '\tSurvey IDs queried from eHydro\n' + paramString)
-        logWriter(fileLog, '\tCompiling survey objects from Survey IDs')
-        rows = surveyCompile(surveyIDs, newSurveysNum, pb)
-        logWriter(fileLog, '\tSurvey objects compiled from eHydro')
-    except:
-        logWriter(fileLog, '\teHydro query failed')
+#    try:
+    surveyIDs, newSurveysNum, paramString = query()
+    logWriter(fileLog, '\tSurvey IDs queried from eHydro\n' + paramString)
+    logWriter(fileLog, '\tCompiling survey objects from Survey IDs')
+    rows = surveyCompile(surveyIDs, newSurveysNum, pb)
+    logWriter(fileLog, '\tSurvey objects compiled from eHydro')
+#    except:
+#        logWriter(fileLog, '\teHydro query failed')
     if runType == 'no':
         try:
             csvFile = csvOpen()
@@ -738,25 +923,25 @@ def main(pb=None,to=None):
     elif runType == 'yes':
         csvFile = []
         changes = rows
-#    try:
-    logWriter(fileLog, '\tParsing new entries for resolution:')
-    attributes.append('Hi-Res?')
-    attributes.append('Override?')
-    if changes != 'No Changes':
-        checked, hiRes = downloadAndCheck(changes, pb, to)
-        csvFile.extend(checked)
-        if config['Output Log']['Query List'] == 'yes':
-            logWriter(fileLog, '\tNew Survey Details:')
-            for row in checked:
-                txt = ''
-                for i in [1,4,5,6,-2]:
-                    txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
-                logWriter(fileLog, '\t\t' + txt)
-        logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
-    else:
-        logWriter(fileLog, '\t\t' + changes)
-#    except:
-#        logWriter(fileLog, '\tParsing for resolution failed')
+    try:
+        logWriter(fileLog, '\tParsing new entries for resolution:')
+        attributes.append('Hi-Res?')
+        attributes.append('Override?')
+        if changes != 'No Changes':
+            checked, hiRes = downloadAndCheck(changes, pb, to)
+            csvFile.extend(checked)
+            if config['Output Log']['Query List'] == 'yes':
+                logWriter(fileLog, '\tNew Survey Details:')
+                for row in checked:
+                    txt = ''
+                    for i in [1,4,5,6,-2]:
+                        txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
+                    logWriter(fileLog, '\t\t' + txt)
+            logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
+        else:
+            logWriter(fileLog, '\t\t' + changes)
+    except:
+        logWriter(fileLog, '\tParsing for resolution failed')
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
@@ -785,5 +970,6 @@ def main(pb=None,to=None):
 
 if __name__ == '__main__':
     """Function call to initiate program"""
+    print (__version__)
     main()
 

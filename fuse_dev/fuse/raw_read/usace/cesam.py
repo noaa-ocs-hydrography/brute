@@ -19,7 +19,7 @@ import pickle as _pickle
 import re as _re
 
 _ussft2m = 0.30480060960121924 # US survey feet to meters
-import datetime as _datetime
+from datetime import datetime
 import numpy as _np 
 try:
     import fuse.raw_read.usace.parse_usace_xml as p_usace_xml
@@ -66,11 +66,19 @@ class read_raw:
         """
         version='CESAM'
         self.version = version
-        first_instance = _start_xyz(infilename)
-        if first_instance != '':    
-            xyz = xyz = _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance, usecols=(0,1,2))
+        first_instance, commas_present = _start_xyz(infilename)
+        print(infilename)#remove debugging
+        if first_instance != '':
+            if commas_present == ',':
+                xyz =  _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance, usecols=(0,1,2))
+            else:
+                xyz =  _np.loadtxt(infilename, delimiter = ' ', skiprows = first_instance, usecols=(0,1,2))
+
         else:
-            xyz = _np.loadtxt(infilename, delimiter = ',', usecols=(0,1,2))
+            if commas_present == ',':
+                xyz = _np.loadtxt(infilename, delimiter = ',', usecols=(0,1,2))
+            else:
+                xyz = _np.loadtxt(infilename, delimiter = ' ', usecols=(0,1,2))
         return xyz 
        
     def read_bathymetry_by_point(self, infilename):
@@ -128,15 +136,21 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
             meta_xml = xml_data._extract_meta_USACE_FGDC() #xml_data._extract_meta_CEMVN() is the version it is pulling#xml_data.my_etree_dict1# 
         elif xml_data.version == 'ISO-8859-1':
             meta_xml = xml_data._extract_meta_USACE_ISO()# is the version it is pulling  #xml_data.my_etree_dict1#     
+            if 'ISO_xml' not in meta_xml:
+                meta_xml = xml_data._extract_meta_USACE_FGDC(override = 'Y')#xml_data._extract_meta_ISOlabel_USACE_FGDC()
         else:
             meta_xml = xml_data.convert_xml_to_dict2()#specify how to handle
+        ext_dict = xml_data.extended_xml_fgdc()
+        ext_dict =  p_usace_xml.ext_xml_map_enddate(ext_dict)
     else:
+        ext_dict = {}
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source = 'xyz', version='CESAM', default_meta = '')#
     list_keys_empty =[]
     combined_row = {}
     subset_row = {}
     subset_no_overlap = {}
+    subset_dict ={}
     for key in meta:
         if meta[key] == 'unknown' or  meta[key] == '':
             list_keys_empty.append(key)
@@ -153,9 +167,24 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
                     combined_row[key] = meta[key] + ' , ' + meta_xml[key]
             else:
                 subset_no_overlap[key] = meta[key]
+    for key in ext_dict:
+        if ext_dict[key] == 'unknown' or  ext_dict[key] == '' or ext_dict[key] == None:
+            list_keys_empty.append(key)
+        else:
+            if key in meta_xml:
+                if meta_xml[key] == ext_dict[key]:
+                    combined_row[key] = ext_dict[key]
+                    """
+                    only make list within cell if values from different sources are different
+                    """
+                else:
+                    combined_row[key] = ext_dict[key] + ' , ' + meta_xml[key]
+            else:
+                subset_dict[key] = ext_dict[key]
     merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row } #this one excluded 'unknown' keys, and 
     #in merging sources from the text file and xml it will show any values that do not match as a list.
     merged_meta = { **meta, **meta_from_ehydro,**meta_xml }#this method overwrites
+    merged_meta = check_date_order(merged_meta, merged_meta)
     return merged_meta
 
 ###---------------------------------------------------------------------------- 
@@ -188,6 +217,8 @@ class Extract_Txt(object):
         the file metadata will take precidence.
         """
         name_meta = self.parse_ehydro_filename(infilename)
+        if 'start_date' in name_meta:
+            name_meta['filename_date'] = name_meta['start_date']
         if meta_source == 'xyz':
             file_meta = self.parse_xyz_header(infilename, version)
         #elif meta_source == 'xml':
@@ -379,14 +410,17 @@ def _start_xyz(infilename):
     """
     first_instance = ''
     numberofrows = []
+    commas_present = ''
     pattern_coordinates = '[\d][\d][\d][\d][\d][\d]'#at least six digits# should be seven then . plus two digits
     with open(infilename, 'r') as infile:
         for (index1, line) in enumerate (infile):
             if _re.match(pattern_coordinates, line) is not None:
                 numberofrows.append(index1)
+                if line.find(',')>0:
+                    commas_present=','
         first_instance = numberofrows[0]
-        return first_instance
-    return first_instance
+        return first_instance, commas_present
+    return first_instance, commas_present
 
 def _is_header2(line, version = None):
     if version == None:
@@ -542,13 +576,13 @@ def _xyztext2date(textdate):
     "20 March 2017" and return the format "YearMonthDay" as in "20170320".
     """
     try:
-        date = _datetime.strptime(textdate, '%d %B %Y')
-        numdate=date.strftime('%Y%m%d')
+        date = datetime.strptime(textdate, '%d %B %Y')
+        numdate = date.strftime('%Y%m%d')
         return numdate
     except:
         try:
-            date = _datetime.strptime(textdate, '%d\%B\%Y')
-            numdate=date.strftime('%Y%m%d')
+            date = datetime.strptime(textdate, '%d\%B\%Y')
+            numdate = date.strftime('%Y%m%d')
             return numdate
         except:
             return 'unknown'
@@ -687,20 +721,26 @@ def check_date_order(m, mm):
     if 'begdate' in m:
         #parser.parse(text_date, dayfirst=False)
         if  m['begdate'] != '' and  m['begdate'] != None:
-            begdate = datetime.date(datetime.strptime(m['begdate'],'%Y%m%d'))
-            date_list.append(begdate)
-            #m['start_date'] = m['begdate']
+            est_begdate, ans1 = check_date_format_hasday(m['begdate'])
+            if ans1 == 'yes':
+                begdate = datetime.date(datetime.strptime(m['begdate'],'%Y%m%d'))
+                date_list.append(begdate)
+                #m['start_date'] = m['begdate']
     if 'enddate' in m:
         if  m['enddate'] != '' and  m['enddate'] != None:
-            #m['end_date'] = 
-            enddate = datetime.date(datetime.strptime(m['enddate'],'%Y%m%d'))
-            date_list.append(enddate)
+            est_enddate, ans1 = check_date_format_hasday(m['begdate'],int('30'))#may want better logic here other date modules can handle this better once situation flagged
+            if ans1 == 'yes':
+                enddate = datetime.date(datetime.strptime(m['enddate'],'%Y%m%d'))
+                date_list.append(enddate)
     filename_date = datetime.date(datetime.strptime(mm['filename_date'],'%Y%m%d'))
     date_list.append(filename_date) 
-    #if 'daterange' in m:
-    #    next_date = check_abst_date(mm['filename_date'], m['daterange'])
-    #    for day in next_date:
-    #        date_list.append(day)
+    if 'daterange' in m:
+        try:#catches ValueError returns if daterange ends up being unexpected
+            next_date = check_abst_date(mm['filename_date'], m['daterange'])
+            for day in next_date:
+                date_list.append(day)        
+        except:
+            print('unusual date format')
     date_list.sort()
     date_list2 = []
     for d in date_list:
@@ -708,4 +748,118 @@ def check_date_order(m, mm):
     m['start_date'] = date_list2[0]
     m['end_date'] = date_list2[-1]    
     return m
+##-----------------------------------------------------------------------------
+
+def check_abst_date(filename_date, daterange):
+    """
+    check_abst_date(filename_date, daterange)
+    Expecting values from:
+    #filename_date = m['filename_date']
+    #dateramge = xml_meta['daterange']
+    """
+    next_date = []
+    mnum = ''
+    XX=datetime.strptime(filename_date,'%Y%m%d')#Create default value based on filename date
+    if daterange != '' and daterange != None:
+        dates=[]
+        if '&' in daterange:
+            dates = daterange.split('&')
+        elif 'thru' in daterange:
+            dates = daterange.split('thru')
+        elif 'through' in daterange:
+            dates = daterange.split('through')
+        elif '-' in daterange:
+            dates = daterange.split('-')
+        if len(dates) > 0:
+            date1 = parser.parse(dates[-1],parser.parserinfo(dayfirst=True), default=XX)
+        if len(dates) >1:
+            #next_date.append(date1)
+            splitters =['&', '-', 'thru', 'through']
+            dates2=[]
+            for split1 in splitters:
+                if split1 in dates[-1]:
+                    date1 = parser.parse(dates[-1].split(split1)[-1],parser.parserinfo(dayfirst=True), default=XX)
+                for days in dates:
+                    if split1 in days:
+                        #recalculate date1!
+                            dates2.append(days.split(split1))
+            for numday, day_ in enumerate(dates):
+                if len(dates2)>1:
+                    if numday< len(dates)-1:
+                            #test for number list#
+                            for m in months:
+                                if m in day_.lower():
+                                    mnum=months_d[m]
+                                    temp_date = date1.replace(month=int(mnum))#changed month
+                                    #day_.replace(m,'')
+                                    #month is keyword for funciton, as is day, year
+                    if numday< len(dates)-1:
+                        for day_ in dates2[numday]:
+    
+                                m1 = months_bynum_d[temp_date.strftime('%m')]
+                                day_ = day_.lower().replace(m1, '')
+                                if ',' in day_:
+                                    days = day_.split(',')
+                                    for day_ in days:#try to reduce to calendar day integers for input
+                                        day_ = day_.strip('on').replace('from', '').replace('of', '').strip()
+                                        if day_ != '':
+                                            if len(mnum)>0:
+                                                next_date.append(temp_date.replace(day=int(day_)))
+                                            else:
+                                                next_date.append(date1.replace(day=int(day_)))
+                                else:
+                                    day_ = day_.strip('on').replace('from', '').replace('of', '').strip()
+                                    if len(mnum)>0:
+                                        t=temp_date.replace(day=int(day_))
+                                        next_date.append(t)
+                                    else:
+                                        next_date.append(date1.replace(day=int(day_)))                                        
+                    else:#last section
+                        for i, day_ in enumerate(dates2[numday]):
+                            if i< len(dates2[-1])-1:
+                                if ',' in day_:
+                                    days = day_.split(',')
+                                    for day_ in days:#try to reduce to calendar day integers for input
+                                        day_ = day_.replace('on', '').replace('from', '').replace('of', '').strip()
+                                        if day_ != '':
+                                            next_date.append(date1.replace(day=int(day_)))
+                                else:
+                                     next_date.append(date1.replace(day=int(day_.replace('on', '').replace('from', '').replace('of', '').strip())))
+                            else:
+                                next_date.append(date1)
+
+    next_date = check_datelist(next_date)#convert from datetime to date format
+    return next_date
+
+def check_datelist(next_date):
+    dateonly_list =[]
+    for day in next_date:
+        day = datetime.date(day)
+        dateonly_list.append(day)
+    return dateonly_list
+
+def check_date_format_hasday(date_string, b_or_e =None):
+    pattern_missing_valid_day='[\d][\d][\d][\d][\d][\d][0][0]'
+
+    if b_or_e == None:
+        day = '1'
+    elif type(b_or_e) == int:
+        day = str(b_or_e)
+    else:
+        day = '1'
+    if _re.match(pattern_missing_valid_day, date_string) is not None:
+        args= _re.search(pattern_missing_valid_day, date_string)
+        end_position=args.endpos
+        d_l = list(date_string)
+        d_l[end_position-1]=day#'1' default value
+        date_st1 ="".join(d_l)
+        ans1= 'no'
+    else:
+        date_st1 = date_string
+        ans1 ='yes'
+    return date_st1, ans1
+
+months=['jan', 'january', 'feb', 'february', 'mar', 'march', 'apr', 'april', 'may', 'jun', 'june', 'jul', 'july', 'aug', 'august', 'sep', 'september', 'oct', 'october', 'nov', 'november', 'dec', 'december']#Check for other months
+months_d={'jan':'01',  'january':'01',  'feb':'02',  'february':'02',  'mar':'03',  'march':'03',  'apr':'04',  'april':'04',  'may':'05',  'jun':'06',  'june':'06',  'jul':'07',  'july':'07',  'aug':'08',  'august':'08',  'sep':'09',  'september':'09',  'oct':'10',  'october':'10',  'nov':'11',  'november':'11',  'dec':'12',  'december':'12'}
+months_bynum_d={val1:key1 for (key1, val1) in months_d.items()}#swap keys and values to new dictionary
 ##-----------------------------------------------------------------------------

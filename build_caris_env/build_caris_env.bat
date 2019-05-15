@@ -1,1 +1,1 @@
-conda create -q -y -n CARIS35 python=3.5 numpy
+conda create --name CARIS35 --file CARIS35.yml
