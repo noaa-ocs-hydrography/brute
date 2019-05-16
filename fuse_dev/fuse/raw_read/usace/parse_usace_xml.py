@@ -1032,6 +1032,8 @@ SOURCEPROJECTION_dict = {
      'Alaska 8 Zone' : '5008',
      'Alaska 9 Zone' : '5009',
      'Alaska 10 Zone' : '5010',
+     'Arkansas North' : '0301',
+     'Arkansas South' : '0302',
      'California I' : '0401',
      'California II' : '0402',
      'California III' : '0403',
@@ -1082,6 +1084,7 @@ SOURCEPROJECTION_dict = {
      'Indiana West' : '1302',
      'Indiana East Zone' : '1301',
      'Indiana West Zone' : '1302',
+     'Iowa North' : '1401',
      'Iowa_North' : '1401',
      'Iowa_South' : '1402',
      'Iowa_North Zone' : '1401',
@@ -1165,7 +1168,9 @@ SOURCEPROJECTION_dict = {
      'Oregon North' : '3601',
      'Oregon South' : '3602',
      'Oregon North Zone' : '3601',
-     'Oregon South Zone' : '3602',     
+     'Oregon South Zone' : '3602', 
+     'Pennsylvania North' : '3701',
+     'Pennsylvania South' : '3702',
      'Puerto Rico Virgin Islands' : '5200',
      'Puerto Rico Virgin Islands Zone' : '5200',
      'Rhode Island' : '3800',
@@ -1200,6 +1205,7 @@ SOURCEPROJECTION_dict = {
      'Wisconsin Central Zone' : '4802',
      'Wisconsin North Zone' : '4801',
      'Wisconsin South Zone' : '4803'}
+#     'Puerto Rice': '5201'
 #------------------------------------------------------------------------------
 
 def parse_abstract_iso_ex(abstract):
