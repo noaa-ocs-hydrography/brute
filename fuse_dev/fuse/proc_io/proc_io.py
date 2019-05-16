@@ -96,7 +96,7 @@ class proc_io:
         activate_file = _retrieve_activate_batch()
         logfilename = self._get_logfilename()
         if os.path.exists(write_csar):
-            args = ["cmd.exe", "/C", "set pythonpath= &&", # setup the commandline
+            args = ["cmd.exe", "/K", "set pythonpath= &&", # setup the commandline
                     activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
                     python_path, write_csar,  # call the script
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
@@ -171,9 +171,9 @@ class proc_io:
         gt = dataset.GetGeoTransform()
         print (gt)
         meta['resx'] = gt[1]
-        meta['resy'] = gt[1]
+        meta['resy'] = gt[5]
         meta['originx'] = gt[0]
-        meta['originy'] = gt[3] - dataset.RasterYSize
+        meta['originy'] = gt[3]
         meta['dimx'] = dataset.RasterXSize
         meta['dimy'] = dataset.RasterYSize
         print (meta)

@@ -1032,6 +1032,8 @@ SOURCEPROJECTION_dict = {
      'Alaska 8 Zone' : '5008',
      'Alaska 9 Zone' : '5009',
      'Alaska 10 Zone' : '5010',
+     'Arkansas North' : '0301',
+     'Arkansas South' : '0302',
      'California I' : '0401',
      'California II' : '0402',
      'California III' : '0403',
@@ -1082,6 +1084,7 @@ SOURCEPROJECTION_dict = {
      'Indiana West' : '1302',
      'Indiana East Zone' : '1301',
      'Indiana West Zone' : '1302',
+     'Iowa North' : '1401',
      'Iowa_North' : '1401',
      'Iowa_South' : '1402',
      'Iowa_North Zone' : '1401',
@@ -1165,7 +1168,9 @@ SOURCEPROJECTION_dict = {
      'Oregon North' : '3601',
      'Oregon South' : '3602',
      'Oregon North Zone' : '3601',
-     'Oregon South Zone' : '3602',     
+     'Oregon South Zone' : '3602', 
+     'Pennsylvania North' : '3701',
+     'Pennsylvania South' : '3702',
      'Puerto Rico Virgin Islands' : '5200',
      'Puerto Rico Virgin Islands Zone' : '5200',
      'Rhode Island' : '3800',
@@ -1200,6 +1205,7 @@ SOURCEPROJECTION_dict = {
      'Wisconsin Central Zone' : '4802',
      'Wisconsin North Zone' : '4801',
      'Wisconsin South Zone' : '4803'}
+#     'Puerto Rice': '5201'
 #------------------------------------------------------------------------------
 
 def parse_abstract_iso_ex(abstract):
@@ -1486,19 +1492,6 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 name = name.split('. Distance units in ')
                 m['Horizontal_Units'] = name[1].split('Vertical Datum:')[0].rstrip().rstrip('.') 
                 m['SPCS'] = name[0]#written description of state plane coordinate system
-                if len(m['SPCS']) > 0:
-                    m['FIPS'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(m['SPCS'].split()))#conversion to SPCS/ FIPS code using a dictionary
-                #remove extra white spaces,but not all spaces. " ".join(string_var.split())
-            elif 'spcszone' in meta_xml:
-                if len(meta_xml['spcszone']) >0:
-                    m['FIPS'] = meta_xml['spcszone']
-            else:#WARNING CEMVN did not have this attribute correct, it was still the value for Oregon
-                if 'mapprojn' in meta_xml:
-                    if len(meta_xml['mapprojn']) > 0:
-                            m['FIPS'] = meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip()
-                            m['CHECK_FIPS']= 'CHECK_IF_EXPECTED'
-                            #it does not always specify US Survey Feet, only Feet here thus we pull horizontal units from another entry
-                            #print may need qc check to see if this coming in correctly                                 
             if  line.find('Vertical Datum:') >= 0:
                 name = line.split('Vertical Datum:')[-1]
                 m['Vertical Datum Description']= name
@@ -1552,7 +1545,20 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
              m['TECSOU']= '1'#'single beam'
         elif procdesc.find('multibeam')>= 0 or  procdesc.find('multi beam')>= 0:
              m['TECSOU']= '3'#'multibeam'
-        
+    if 'SPCS' in m:  
+        if len(m['SPCS']) > 0:
+            m['FIPS'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(m['SPCS'].split()))#conversion to SPCS/ FIPS code using a dictionary
+            #remove extra white spaces,but not all spaces. " ".join(string_var.split())
+    elif 'spcszone' in meta_xml:
+        if len(meta_xml['spcszone']) >0:
+            m['FIPS'] = meta_xml['spcszone']
+    else:#WARNING CEMVN did not have this attribute correct, it was still the value for Oregon
+        if 'mapprojn' in meta_xml:
+            if len(meta_xml['mapprojn']) > 0:
+                    m['FIPS'] = meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip()
+                    m['CHECK_FIPS']= 'CHECK_IF_EXPECTED'
+                    #it does not always specify US Survey Feet, only Feet here thus we pull horizontal units from another entry
+                    #print may need qc check to see if this coming in correctly            
     if 'Horizontal_Units' in m:
         if m['Horizontal_Units'] == '':
             if  meta_xml['plandu'].upper() == 'FOOT_US': #plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'

@@ -249,8 +249,7 @@ def create_multipolygon(polys):
 
     Returns
     -------
-    str :
-        WTK Multipolygon object
+    str : WTK Multipolygon object
 
     """
     multipolygon = ogr.Geometry(ogr.wkbMultiPolygon)
@@ -420,13 +419,13 @@ def write_shapefile(out_shp, name, poly):
         String representing the complete file path for the output shapefile
     name : str
         String representing the name of the survey; Used to name the layer
-    poly : str, WTK Multipolygon object
-        The WTK Multipolygon object that holds the survey bounding data
+    poly : WTK Multipolygon object
+        The WTK Multipolygon object that holds the survey's bounding data
 
     """
     # Reference
     proj = osr.SpatialReference()
-    proj.ImportFromEPSG(3395)
+    proj.ImportFromEPSG(4326)
 
     # Now convert it to a shapefile with OGR
     driver = ogr.GetDriverByName('GPKG')
@@ -899,14 +898,14 @@ def main(pb=None,to=None):
     runType = config['Data Checking']['Override']
     logType = config['Output Log']['Log Type']
     fileLog, nameLog = logOpen(logType, to)
-#    try:
-    surveyIDs, newSurveysNum, paramString = query()
-    logWriter(fileLog, '\tSurvey IDs queried from eHydro\n' + paramString)
-    logWriter(fileLog, '\tCompiling survey objects from Survey IDs')
-    rows = surveyCompile(surveyIDs, newSurveysNum, pb)
-    logWriter(fileLog, '\tSurvey objects compiled from eHydro')
-#    except:
-#        logWriter(fileLog, '\teHydro query failed')
+    try:
+        surveyIDs, newSurveysNum, paramString = query()
+        logWriter(fileLog, '\tSurvey IDs queried from eHydro\n' + paramString)
+        logWriter(fileLog, '\tCompiling survey objects from Survey IDs')
+        rows = surveyCompile(surveyIDs, newSurveysNum, pb)
+        logWriter(fileLog, '\tSurvey objects compiled from eHydro')
+    except:
+        logWriter(fileLog, '\teHydro query failed')
     if runType == 'no':
         try:
             csvFile = csvOpen()
