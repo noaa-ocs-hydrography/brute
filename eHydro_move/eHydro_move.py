@@ -121,42 +121,47 @@ def fileCollect(path, bounds):
     """
     zips = []
     bfile = _os.path.join(progLoc, bounds)
-#    print (path, bfile)
-#    meta_ds = _ogr.Open(bfile)
-#    meta_layer = meta_ds.GetLayer()
-#    meta_geom = meta_layer.GetFeature()
-#    print(meta_layer, meta_geom)
+#    print (bfile)
+#    meta_geom = open_ogr(bfile)
+#    print (meta_geom)
     if _os.path.exists(path):
         for root, folders, files in _os.walk(path):
             for item in files:
+#                if zreg.search(item):
                 zips.append(_os.path.join(root, item))
-    for zfile in zips:
-        root = _os.path.split(zfile)[0]
-        _os.chdir(root)
-        try:
-            zipped = _zf.ZipFile(zfile)
-            contents = zipped.namelist()
-            for name in contents:
-                if gpkg.search(name):
-                    path = _os.path.join(root, name)
-#                    print (root, path)
-                    zipped.extract(name)
-##                    try:f
-#                    source_ds = _ogr.Open(path)
-#                    source_layer = source_ds.GetLayer()
-#                    source_geom = source_layer.GetFeature()
-#                    intersection = meta_geom.Intersection(source_geom)
-#                    print (intersection)
+#    print (zips)
+#    for zfile in zips:
+#        print (zfile)
+#        root = _os.path.split(zfile)[0]
+#        _os.chdir(root)
+#        try:
+#            zipped = _zf.ZipFile(zfile)
+#            contents = zipped.namelist()
+#            for name in contents:
+#                if gpkg.search(name):
+#                    path = _os.path.join(root, name)
+#                    print (path)
+#                    zipped.extract(name)
+##                    try:
+#                    ehyd_geom = open_ogr(path)
+##                    print (ehyd_geom)
+#                    try:
+#                        intersection = meta_geom.Intersection(ehyd_geom)
+#                        print ('it Intersected?!')
+#                    except AttributeError as e:
+#                        intersection = None
+#                        print (e, bfile, path, meta_geom, ehyd_geom)
+##                    except:
+##                        intersection = None
+##                        raise Warning('Unable to open file using OGR')
 #                    if intersection != None:
 #                        pass
 #                    else:
 #                        zips.remove(zfile)
-                    _os.remove(path)
-#                    except:
-#                        raise RuntimeError('Unable to open file using OGR')
-        except _zf.BadZipfile:
-            zips.remove(zfile)
-        _os.chdir(progLoc)
+#                    _os.remove(path)
+#        except _zf.BadZipfile:
+#            zips.remove(zfile)
+#        _os.chdir(progLoc)
     if len(zips) > 0:
         return zips
     else:

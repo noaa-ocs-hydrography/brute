@@ -80,7 +80,44 @@ if not os.path.exists(logging):
     os.mkdir(logging)
 if not os.path.exists(running):
     os.mkdir(running)
-
+    
+def convert_tofips(spcs):
+    if '_' in spcs:
+        pass
+    else:
+        splits = spcs.split(' ')
+        spcs = '_'.join(splits)
+#    print (spcs)
+    nad = '1927'
+    harn = 'HARN'
+    feet = 'Feet'
+    
+    fips = None
+    
+    path = r'C:\PydroXL_19\pkgs\FromWheels\py36\extracted_wheels\GDAL2.4.0_dev\osgeo\data\gdal\esri_StatePlane_extra.wkt'
+    fileOpened = open(path, 'r', newline='')
+    for line in fileOpened:
+        idx = line.find(',') + 1
+        fip = line[:idx-1]
+        prj = line[idx:]
+#        print (fip, prj)
+        srs = osr.SpatialReference(wkt=prj)
+        if srs.IsProjected:
+            crs = srs.GetAttrValue('projcs')
+            split_crs = crs.split('_')
+#            print (split_crs)
+            if nad in crs or harn in crs:
+                pass
+            else:
+                if spcs in crs and feet in crs:
+                    print (spcs, fip, crs)
+                    fips = prj
+                    break
+    if fips == None:
+        print ('FIPS not found for:', spcs)
+        return 4326
+    else:
+        return prj
 
 def query():
     """Holds the Queries for the eHydro REST API, asks for responses, and uses
@@ -391,6 +428,7 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
         try:
             coords = page['features'][0]['geometry']['rings']
             metadata['bounds'], metadata['poly']  = geometryToShape(coords)
+#            print (coords)
         except KeyError as e:
             print (e, page)
             metadata['bounds'] = 'error'
@@ -404,7 +442,7 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     print ('rows complete')
     return rows
 
-def write_shapefile(out_shp, name, poly):
+def write_shapefile(out_shp, name, poly, spcs):
     """Writes out a geopackage shapefile containing the bounding geometry of
     of the given query.
 
@@ -421,16 +459,22 @@ def write_shapefile(out_shp, name, poly):
         String representing the name of the survey; Used to name the layer
     poly : WTK Multipolygon object
         The WTK Multipolygon object that holds the survey's bounding data
+    proj : str, int
+        The ESPG code for the data
 
     """
     # Reference
-    proj = osr.SpatialReference()
-    proj.ImportFromEPSG(4326)
+    if type(spcs) == str: 
+        proj = osr.SpatialReference(wkt=spcs)
+    else:
+        proj = osr.SpatialReference()
+        proj.ImportFromEPSG(spcs)
 
     # Now convert it to a shapefile with OGR
     driver = ogr.GetDriverByName('GPKG')
     ds = driver.CreateDataSource(out_shp)
     layer = ds.CreateLayer(name, proj, ogr.wkbMultiPolygon)
+#    layer = ds.CreateLayer(name, None, ogr.wkbMultiPolygon)
     # Add one attribute
     layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
     defn = layer.GetLayerDefn()
@@ -534,6 +578,8 @@ def downloadAndCheck(rows, pb=None, to=None):
         surname = row[1]
         agency = row[2]
         meta = row[-1]
+        spcs = convert_tofips(row[5])
+#        spcs = row[5]
         poly = meta['poly']
         name = link.split('/')[-1]
         saved = holding + '/' + agency + '/' + name
@@ -552,7 +598,7 @@ def downloadAndCheck(rows, pb=None, to=None):
 
         if poly != 'error':
             shpfilename = os.path.join(holding + '\\' + agency, surname + '.gpkg')
-            write_shapefile(shpfilename, surname, poly)
+            write_shapefile(shpfilename, surname, poly, spcs)
             sfile = os.path.relpath(surname + '.gpkg')
 
         print  (x, agency, end=' ')
@@ -922,25 +968,25 @@ def main(pb=None,to=None):
     elif runType == 'yes':
         csvFile = []
         changes = rows
-    try:
-        logWriter(fileLog, '\tParsing new entries for resolution:')
-        attributes.append('Hi-Res?')
-        attributes.append('Override?')
-        if changes != 'No Changes':
-            checked, hiRes = downloadAndCheck(changes, pb, to)
-            csvFile.extend(checked)
-            if config['Output Log']['Query List'] == 'yes':
-                logWriter(fileLog, '\tNew Survey Details:')
-                for row in checked:
-                    txt = ''
-                    for i in [1,4,5,6,-2]:
-                        txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
-                    logWriter(fileLog, '\t\t' + txt)
-            logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
-        else:
-            logWriter(fileLog, '\t\t' + changes)
-    except:
-        logWriter(fileLog, '\tParsing for resolution failed')
+#    try:
+    logWriter(fileLog, '\tParsing new entries for resolution:')
+    attributes.append('Hi-Res?')
+    attributes.append('Override?')
+    if changes != 'No Changes':
+        checked, hiRes = downloadAndCheck(changes, pb, to)
+        csvFile.extend(checked)
+        if config['Output Log']['Query List'] == 'yes':
+            logWriter(fileLog, '\tNew Survey Details:')
+            for row in checked:
+                txt = ''
+                for i in [1,4,5,6,-2]:
+                    txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
+                logWriter(fileLog, '\t\t' + txt)
+        logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
+    else:
+        logWriter(fileLog, '\t\t' + changes)
+#    except:
+#        logWriter(fileLog, '\tParsing for resolution failed')
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
