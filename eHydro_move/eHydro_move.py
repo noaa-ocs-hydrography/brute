@@ -72,13 +72,6 @@ def regionPath(root, folder):
 
     """
     regions = []
-#    for k, v in dict(config.items('Regions')).items():
-#        dwnlds = []
-#        districts = [i.strip() for i in v.split(',')]
-#        for i in districts:
-#            dwnlds.append(repo + _os.path.join(downloads, i))
-#        regions.append((k, dwnlds))
-#    regions = dict(regions)
     fileName = open(config['CSVs']['NBS'], 'r')
     opened = _csv.reader(fileName,delimiter=',')
     temp = []
@@ -133,49 +126,10 @@ def fileCollect(path, bounds):
 
     """
     zips = []
-    bfile = _os.path.join(progLoc, bounds)
-    print (bfile)
-    meta_geom, meta_proj = open_ogr(bfile)
-    print (meta_geom)
-    print (path)
     if _os.path.exists(path):
         for root, folders, files in _os.walk(path):
             for item in files:
-#                if zreg.search(item):
                 zips.append(_os.path.join(root, item))
-    print (zips)
-    for zfile in zips:
-        print (zfile)
-        root = _os.path.split(zfile)[0]
-        _os.chdir(root)
-        try:
-            zipped = _zf.ZipFile(zfile)
-            contents = zipped.namelist()
-            for name in contents:
-                if gpkg.search(name):
-                    path = _os.path.join(root, name)
-                    print (path)
-                    zipped.extract(name)
-#                    try:
-                    ehyd_geom, ehyd_proj = open_ogr(path)
-#                    print (ehyd_geom)
-#                    try:
-#                        intersection = meta_geom.Intersection(ehyd_geom)
-#                        print ('it Intersected?!')
-#                    except AttributeError as e:
-#                        intersection = None
-#                        print (e, bfile, path, meta_geom, ehyd_geom)
-#                    except:
-#                        intersection = None
-#                        raise Warning('Unable to open file using OGR')
-#                    if intersection != None:
-#                        pass
-#                    else:
-#                        zips.remove(zfile)
-                    _os.remove(path)
-        except _zf.BadZipfile:
-            zips.remove(zfile)
-        _os.chdir(progLoc)
     if len(zips) > 0:
         return zips
     else:
@@ -363,8 +317,8 @@ def _main(text_region=None, progressBar=None, text_output=None):
         progressBar.Pulse()
     regions = regionPath(repo, downloads)
     regionFiles = eHydroZIPs(regions)
-#    fileMove(regionFiles, destination, method, text_region,
-#             progressBar, text_output)
+    fileMove(regionFiles, destination, method, text_region,
+             progressBar, text_output)
 
 if __name__ == '__main__':
     _main()
