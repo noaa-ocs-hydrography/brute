@@ -181,7 +181,6 @@ class proc_io:
         rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
         meta['nodata'] = rb.GetNoDataValue()
         # get the gdal data raster
-        #data = np.flipud(rb.ReadAsArray())
         data = rb.ReadAsArray()
         return data, meta
     
