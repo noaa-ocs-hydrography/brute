@@ -72,13 +72,6 @@ def regionPath(root, folder):
 
     """
     regions = []
-#    for k, v in dict(config.items('Regions')).items():
-#        dwnlds = []
-#        districts = [i.strip() for i in v.split(',')]
-#        for i in districts:
-#            dwnlds.append(repo + _os.path.join(downloads, i))
-#        regions.append((k, dwnlds))
-#    regions = dict(regions)
     fileName = open(config['CSVs']['NBS'], 'r')
     opened = _csv.reader(fileName,delimiter=',')
     temp = []
