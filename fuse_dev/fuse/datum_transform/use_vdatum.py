@@ -93,10 +93,9 @@ class vdatum:
         The output epsg code is converted to a NSRS2007 zone using a dumb
         conversion.
         """
-        out_zone = self._epsg2zone(out_epsg)
         ihorz = r'ihorz:NAD83:spc:us_ft:' + str(in_fips)
         ivert = ' ivert:' + in_verdat.lower() + ':us_ft:sounding'
-        ohorz = ' ohorz:NAD83:utm:m:' + str(out_zone)
+        ohorz = ' ohorz:NAD83:utm:m:'
         overt = ' overt:' + out_verdat.lower()  + ':m:sounding'
         georef = ihorz + ivert + ohorz + overt
         java_str = _os.path.join(self._java_path,'java')
@@ -146,18 +145,3 @@ class vdatum:
             layer.CreateFeature(feature)
         return dataset
             
-    def _zone2epsg(self, zone):
-        """
-        Assume the EPSG code for a UTM zone is 3707 + the zone number.  This should
-        work for zones 1 through 19 for NSRS2007.
-        http://spatialreference.org/ref/?search=nad83+utm+zone
-        """
-        return int(zone) + 3707
-    
-    def _epsg2zone(self, epsg):
-        """
-        Assume the EPSG code for a UTM zone is 3707 + the zone number.  This should
-        work for zones 1 through 19 for NSRS2007.
-        http://spatialreference.org/ref/?search=nad83+utm+zone
-        """
-        return epsg - 3707
