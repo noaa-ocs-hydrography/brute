@@ -9,6 +9,8 @@ import os as _os
 import re as _re
 import csv as _csv
 import zipfile as _zf
+#from shapely.geometry import Polygon, MultiPolygon, shape, mapping
+#import fiona as fiona
 import shutil as _shutil
 import configparser as _cp
 from osgeo import gdal as _gdal
@@ -36,6 +38,7 @@ gpkg = _re.compile(r'.gpkg', _re.IGNORECASE)
 """regex object for searching zipfile contents for data ending in
 ``.gpkg``
 """
+zreg = _re.compile(r'.zip', _re.IGNORECASE)
 config = _cp.ConfigParser(interpolation = _cp.ExtendedInterpolation())
 config.read('config.ini')
 
@@ -49,13 +52,15 @@ def regionPath(root, folder):
     """Uses repo path derived from the program's location to find the downloads
     folder of eHydro_scrape.
 
-    This function relies on the associated ``config.ini`` having defined
-    regions in the **[Regions]** section.  It uses the region's included
-    districts to compile a list of the district download folders to be
-    associated with the region.
-
-    A region defined as ``NorthEast = CENAN`` would include an eHydro_scrape
-    dowload folder like ``root\\eHydro_scrape\\downloads\\CENAN``
+    This function uses the the NBS region definitions file defined in the 
+    provided ``config.ini`` under the header **[CSVs]** and name 'NBS ='.
+    Each region within the definitions file is made up of the region name, 
+    processing branch, list of USACE districts included, and the relative 
+    location of a shapefile containing the geographic boundaries of the region
+    
+    Each region's information is assigned to a dictionary with the 
+    [Region]_[ProcessingBranch] as the key and the subseqent districts and
+    shapefile location are assigned as the value as a list
 
     Parameters
     ----------
@@ -68,7 +73,7 @@ def regionPath(root, folder):
     -------
     regions : dict
         A dictionary with keys of region names and values of a list of district
-        downloads folders for that region
+        downloads folders and relative path for the shapfile for that region
 
     """
     regions = []
@@ -97,10 +102,9 @@ def open_ogr(path):
     for feature in ds_layer:
         if feature != None:
             geom = feature.GetGeometryRef()
-            ds_geom = geom.ExportToWkt()
+            ds_geom = _ogr.CreateGeometryFromWkt(geom.ExportToWkt())
             break
     ds_proj = ds_layer.GetSpatialRef()
-    print (ds_geom, ds_proj)
     return ds_geom, ds_proj
 
 def fileCollect(path, bounds):
@@ -127,18 +131,16 @@ def fileCollect(path, bounds):
     """
     zips = []
     bfile = _os.path.join(progLoc, bounds)
-    print (bfile)
     meta_geom, meta_proj = open_ogr(bfile)
-    print (meta_geom)
-    print (path)
     if _os.path.exists(path):
         for root, folders, files in _os.walk(path):
             for item in files:
-#                if zreg.search(item):
-                zips.append(_os.path.join(root, item))
-    print (zips)
+                if zreg.search(item):
+                    zips.append(_os.path.join(root, item))
+    slen = len(zips)
+    print (zips, slen)
     for zfile in zips:
-        print (zfile)
+#        print ('\n',zfile)
         root = _os.path.split(zfile)[0]
         _os.chdir(root)
         try:
@@ -149,26 +151,33 @@ def fileCollect(path, bounds):
                     path = _os.path.join(root, name)
                     print (path)
                     zipped.extract(name)
-#                    try:
-                    ehyd_geom, ehyd_proj = open_ogr(path)
-#                    print (ehyd_geom)
-#                    try:
-#                        intersection = meta_geom.Intersection(ehyd_geom)
-#                        print ('it Intersected?!')
-#                    except AttributeError as e:
-#                        intersection = None
-#                        print (e, bfile, path, meta_geom, ehyd_geom)
-#                    except:
-#                        intersection = None
-#                        raise Warning('Unable to open file using OGR')
-#                    if intersection != None:
-#                        pass
-#                    else:
-#                        zips.remove(zfile)
+                    try:
+                        ehyd_geom, ehyd_proj = open_ogr(path)
+                        coordTrans = _osr.CoordinateTransformation(meta_proj, ehyd_proj)
+                        meta_geom.Transform(coordTrans)
+                        try:
+#                            print (meta_proj, ehyd_proj, sep='\n')
+                            intersection = meta_geom.Intersection(ehyd_geom)
+                            flag = intersection.ExportToWkt()
+                        except AttributeError as e:
+                            intersection = None
+                            print (e, bfile, path, meta_geom, ehyd_geom, sep='\n')
+                    except TypeError as e:
+                        print (e, meta_proj, ehyd_proj, sep='\n')
+                        flag = 'GEOMETRYCOLLECTION EMPTY'
+                    if flag != 'GEOMETRYCOLLECTION EMPTY':
+                        print ('They did Intersect')
+                        pass
+                    else:
+                        print ('They did not Intersect')
+                        zips.remove(zfile)
                     _os.remove(path)
         except _zf.BadZipfile:
+            print ('BadZip')
             zips.remove(zfile)
+        zipped.close()
         _os.chdir(progLoc)
+    print (slen, len(zips))
     if len(zips) > 0:
         return zips
     else:
@@ -359,5 +368,5 @@ def _main(text_region=None, progressBar=None, text_output=None):
 #    fileMove(regionFiles, destination, method, text_region,
 #             progressBar, text_output)
 
-if __name__ == '__main__':
-    _main()
+#if __name__ == '__main__':
+#    _main()

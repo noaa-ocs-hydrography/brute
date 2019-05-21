@@ -98,19 +98,19 @@ def convert_tofips(spcs):
     fileOpened = open(path, 'r', newline='')
     for line in fileOpened:
         idx = line.find(',') + 1
-        fip = line[:idx-1]
+#        fip = line[:idx-1]
         prj = line[idx:]
 #        print (fip, prj)
         srs = osr.SpatialReference(wkt=prj)
         if srs.IsProjected:
             crs = srs.GetAttrValue('projcs')
-            split_crs = crs.split('_')
+#            split_crs = crs.split('_')
 #            print (split_crs)
             if nad in crs or harn in crs:
                 pass
             else:
                 if spcs in crs and feet in crs:
-                    print (spcs, fip, crs)
+#                    print (spcs, fip, crs)
                     fips = prj
                     break
     if fips == None:
@@ -466,6 +466,7 @@ def write_shapefile(out_shp, name, poly, spcs):
     # Reference
     if type(spcs) == str: 
         proj = osr.SpatialReference(wkt=spcs)
+        proj.MorphFromESRI()
     else:
         proj = osr.SpatialReference()
         proj.ImportFromEPSG(spcs)
