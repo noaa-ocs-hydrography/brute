@@ -9,6 +9,8 @@ import os as _os
 import re as _re
 import csv as _csv
 import zipfile as _zf
+#from shapely.geometry import Polygon, MultiPolygon, shape, mapping
+#import fiona as fiona
 import shutil as _shutil
 import configparser as _cp
 from osgeo import gdal as _gdal
@@ -36,6 +38,7 @@ gpkg = _re.compile(r'.gpkg', _re.IGNORECASE)
 """regex object for searching zipfile contents for data ending in
 ``.gpkg``
 """
+zreg = _re.compile(r'.zip', _re.IGNORECASE)
 config = _cp.ConfigParser(interpolation = _cp.ExtendedInterpolation())
 config.read('config.ini')
 
@@ -49,13 +52,15 @@ def regionPath(root, folder):
     """Uses repo path derived from the program's location to find the downloads
     folder of eHydro_scrape.
 
-    This function relies on the associated ``config.ini`` having defined
-    regions in the **[Regions]** section.  It uses the region's included
-    districts to compile a list of the district download folders to be
-    associated with the region.
+    This function uses the the NBS region definitions file defined in the
+    provided ``config.ini`` under the header **[CSVs]** and name 'NBS ='.
+    Each region within the definitions file is made up of the region name,
+    processing branch, list of USACE districts included, and the relative
+    location of a shapefile containing the geographic boundaries of the region
 
-    A region defined as ``NorthEast = CENAN`` would include an eHydro_scrape
-    dowload folder like ``root\\eHydro_scrape\\downloads\\CENAN``
+    Each region's information is assigned to a dictionary with the
+    [Region]_[ProcessingBranch] as the key and the subseqent districts and
+    shapefile location are assigned as the value as a list
 
     Parameters
     ----------
@@ -68,7 +73,7 @@ def regionPath(root, folder):
     -------
     regions : dict
         A dictionary with keys of region names and values of a list of district
-        downloads folders for that region
+        downloads folders and relative path for the shapfile for that region
 
     """
     regions = []
@@ -97,11 +102,68 @@ def open_ogr(path):
     for feature in ds_layer:
         if feature != None:
             geom = feature.GetGeometryRef()
-            ds_geom = geom.ExportToWkt()
+            ds_geom = _ogr.CreateGeometryFromWkt(geom.ExportToWkt())
             break
     ds_proj = ds_layer.GetSpatialRef()
-    print (ds_geom, ds_proj)
-    return ds_geom, ds_proj
+    if ds_proj.IsProjected:
+        proj_name = ds_proj.GetAttrValue('projcs')
+    else:
+        proj_name = ds_proj.GetAttrValue('geogcs')
+    return ds_geom, ds_proj#, proj_name
+
+def write_shapefile(out_shp, name, geom, spcs):
+    """Writes out a geopackage shapefile containing the bounding geometry of
+    of the given query.
+
+    Derived from:
+    https://gis.stackexchange.com/a/52708/8104
+    via
+    https://gis.stackexchange.com/q/217165
+
+    Parameters
+    ----------
+    out_shp : str
+        String representing the complete file path for the output shapefile
+    name : str
+        String representing the name of the survey; Used to name the layer
+    poly : WTK Multipolygon object
+        The WTK Multipolygon object that holds the survey's bounding data
+    proj : str, int
+        The ESPG code for the data
+
+    """
+    # Reference
+    if type(spcs) == str:
+        proj = _osr.SpatialReference(wkt=spcs)
+        proj.MorphFromESRI()
+    else:
+        proj = _osr.SpatialReference()
+        proj.ImportFromEPSG(spcs)
+
+    # Now convert it to a shapefile with OGR
+    driver = _ogr.GetDriverByName('GPKG')
+    ds = driver.CreateDataSource(out_shp)
+    layer = ds.CreateLayer(name, proj, _ogr.wkbPolygon)
+#    layer = ds.CreateLayer(name, None, ogr.wkbMultiPolygon)
+    # Add one attribute
+    layer.CreateField(_ogr.FieldDefn('id', _ogr.OFTInteger))
+    defn = layer.GetLayerDefn()
+
+    ## If there are multiple geometries, put the "for" loop here
+
+    # Create a new feature (attribute and geometry)
+    feat = _ogr.Feature(defn)
+    feat.SetField('id', 123)
+
+    # Make a geometry, from Shapely object
+#    geom = _ogr.CreateGeometryFromWkt(poly)
+    feat.SetGeometry(geom)
+
+    layer.CreateFeature(feat)
+    feat = geom = None  # destroy these
+
+    # Save and close everything
+    ds = layer = feat = geom = None
 
 def fileCollect(path, bounds):
     """Given a folder path, this function will return the complete list of
@@ -126,10 +188,70 @@ def fileCollect(path, bounds):
 
     """
     zips = []
+    bfile = _os.path.join(progLoc, bounds)
+    bpath = _os.path.join(progLoc, bounds.split('\\')[0])
+    bname = _os.path.splitext(bounds.split('\\')[1])[0]
+    spath = _os.path.join(bpath, bname)
+    print (bname)
+    meta_geom, meta_proj = open_ogr(bfile)
     if _os.path.exists(path):
         for root, folders, files in _os.walk(path):
             for item in files:
-                zips.append(_os.path.join(root, item))
+                if zreg.search(item):
+                    zips.append(_os.path.join(root, item))
+    slen = len(zips)
+    print (zips, slen)
+    x = 1
+#    for path in zips:
+#        print (x, path)
+#        x += 1
+    for zfile in zips:
+#        print (x, zfile)
+        root = _os.path.split(zfile)[0]
+        _os.chdir(root)
+        try:
+            zipped = _zf.ZipFile(zfile)
+            contents = zipped.namelist()
+            for name in contents:
+                if gpkg.search(name):
+                    path = _os.path.join(root, name)
+                    print (x, path)
+                    zipped.extract(name)
+                    try:
+                        ehyd_geom, ehyd_proj = open_ogr(path)
+#                        coordTrans = _osr.CoordinateTransformation(meta_proj, ehyd_proj)
+#                        meta_geom.Transform(coordTrans)
+#                        fpath = spath + '_2_' + ehyd_name + '.gpkg'
+#                        fname = bname + '_2_' + ehyd_name
+#                        if not _os.path.exists(fpath):
+##                            print (fpath)
+#                            ehyd_tproj = ehyd_proj.ExportToWkt()
+#                            write_shapefile(fpath, fname, meta_geom, ehyd_tproj)
+#                        print (fpath)
+                        try:
+#                            print (meta_proj, ehyd_proj, sep='\n')
+                            intersection = meta_geom.Intersection(ehyd_geom)
+                            flag = intersection.ExportToWkt()
+                        except AttributeError as e:
+                            flag = 'GEOMETRYCOLLECTION EMPTY'
+                            print (e, bfile, path, meta_geom, ehyd_geom, sep='\n')
+                    except TypeError as e:
+                        print (e, meta_proj, ehyd_proj, sep='\n')
+                        flag = 'GEOMETRYCOLLECTION EMPTY'
+                    if flag != 'GEOMETRYCOLLECTION EMPTY':
+                        print ('They did Intersect')
+                        pass
+                    else:
+                        print ('They did not Intersect')
+                        zips.remove(zfile)
+                    _os.remove(path)
+        except _zf.BadZipfile:
+            print ('BadZip')
+            zips.remove(zfile)
+        zipped.close()
+        _os.chdir(progLoc)
+        x += 1
+    print (zips, slen, len(zips))
     if len(zips) > 0:
         return zips
     else:
