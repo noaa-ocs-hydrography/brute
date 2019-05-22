@@ -46,7 +46,7 @@ class proc_io:
         """
         Write the provided data to the predefined data type.
         """
-        self._logger.log(logging.DEBUG, 
+        self._logger.log(logging.DEBUG,
                          'Begin {} write'.format(self._out_data_type))
         if os.path.exists(instruction) and self.overwrite:
             self._logger.log(logging.DEBUG, 'Overwriting ' + instruction)
@@ -64,7 +64,7 @@ class proc_io:
         else:
             raise ValueError('writer type unknown: ' +
                              str(self._out_data_type))
-            
+
     def _write_csar(self, dataset, outfilename):
         """
         Convert the provided gdal dataset into a csar file.
@@ -135,10 +135,10 @@ class proc_io:
         Parameters
         ----------
         dataset : A georeferenced gdal raster object.
-        
+
         outfilename : A string defining the path and filename of the file to be
             written.
-        
+
         Kwarg
         -----
         metadata : A dictionary containing the metadata to be written to to
@@ -163,7 +163,7 @@ class proc_io:
         """
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
-        
+
         The gdal dataset should have he no data value set appropriately.
         """
         meta = {}
@@ -183,7 +183,7 @@ class proc_io:
         # get the gdal data raster
         data = rb.ReadAsArray()
         return data, meta
-    
+
     def _set_gdalndv(self, dataset):
         """
         Update the gdal raster object no data value and the raster no data
@@ -260,4 +260,3 @@ def _retrieve_env_path(env_name):
         return desired_env_loc
     else:
         raise ValueError('{} environment does not exist in current conda installation'.format(env_name))
-        

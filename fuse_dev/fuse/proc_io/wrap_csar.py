@@ -22,9 +22,11 @@ def write_csar(dataset, m):
     dataset = np.array(dataset)
     print (m, dataset, dataset.shape)
     z_dir = cc.Direction.HEIGHT
-    if m['z_up']:
+    layerName = "Elevation"
+    if not m['z_up']:
         z_dir = cc.Direction.DEPTH
-    band_info = cc.BandInfo(name="Elevation",
+        layerName = "Depth"
+    band_info = cc.BandInfo(name=layerName,
                      type = cc.DataType.FLOAT32,
                      tuple_length = 1,
                      direction = z_dir,
@@ -46,11 +48,19 @@ def write_csar(dataset, m):
 
     idx = (dataset < m['nodata']).astype(np.int)
 #    idx = np.nonzero(dataset == m['nodata'])
-    dataset = np.where(idx, dataset, raster.band_info['Elevation'].ndv)
-#    # write the data into the csar container
-    band_dtype = raster.band_info['Elevation'].numpy_dtype
-    area = ((0,0),(dimensions[0],dimensions[1]))
-    raster.write("Elevation", area, dataset.astype(band_dtype))
+    if not m['z_up']:
+        dataset = np.where(idx, dataset, raster.band_info['Depth'].ndv)
+    #    # write the data into the csar container
+        band_dtype = raster.band_info['Depth'].numpy_dtype
+        area = ((0,0),(dimensions[0],dimensions[1]))
+        raster.write("Depth", area, dataset.astype(band_dtype))
+    else:
+        dataset = np.where(idx, dataset, raster.band_info['Elevation'].ndv)
+    #    # write the data into the csar container
+        band_dtype = raster.band_info['Elevation'].numpy_dtype
+        area = ((0,0),(dimensions[0],dimensions[1]))
+        raster.write("Elevation", area, dataset.astype(band_dtype))
+
     raster = None
 
 def check_metadata(meta):
