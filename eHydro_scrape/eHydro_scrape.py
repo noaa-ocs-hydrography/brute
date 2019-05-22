@@ -22,7 +22,7 @@ import numpy as np
 from osgeo import gdal, osr, ogr
 
 
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 
 """Known global constants"""
 # print (datetime.datetime.now().strftime('%b %d %X %Y'))
@@ -80,44 +80,42 @@ if not os.path.exists(logging):
     os.mkdir(logging)
 if not os.path.exists(running):
     os.mkdir(running)
-    
+
 def convert_tofips(spcs):
-    if '_' in spcs:
-        pass
-    else:
-        splits = spcs.split(' ')
-        spcs = '_'.join(splits)
-#    print (spcs)
-    nad = '1927'
-    harn = 'HARN'
-    feet = 'Feet'
-    
+#    if '_' in spcs:
+#        pass
+#    else:
+#        splits = spcs.split(' ')
+#        spcs = '_'.join(splits)
+##    print (spcs)
+#    nad = '1927'
+#    harn = 'HARN'
+#    feet = 'Feet'
     fips = None
-    
-    path = r'C:\PydroXL_19\pkgs\FromWheels\py36\extracted_wheels\GDAL2.4.0_dev\osgeo\data\gdal\esri_StatePlane_extra.wkt'
-    fileOpened = open(path, 'r', newline='')
-    for line in fileOpened:
-        idx = line.find(',') + 1
-#        fip = line[:idx-1]
-        prj = line[idx:]
-#        print (fip, prj)
-        srs = osr.SpatialReference(wkt=prj)
-        if srs.IsProjected:
-            crs = srs.GetAttrValue('projcs')
-#            split_crs = crs.split('_')
-#            print (split_crs)
-            if nad in crs or harn in crs:
-                pass
-            else:
-                if spcs in crs and feet in crs:
-#                    print (spcs, fip, crs)
-                    fips = prj
-                    break
+#    path = r'C:\PydroXL_19\pkgs\FromWheels\py36\extracted_wheels\GDAL2.4.0_dev\osgeo\data\gdal\esri_StatePlane_extra.wkt'
+#    fileOpened = open(path, 'r', newline='')
+#    for line in fileOpened:
+#        idx = line.find(',') + 1
+##        fip = line[:idx-1]
+#        prj = line[idx:]
+##        print (fip, prj)
+#        srs = osr.SpatialReference(wkt=prj)
+#        if srs.IsProjected:
+#            crs = srs.GetAttrValue('projcs')
+##            split_crs = crs.split('_')
+##            print (split_crs)
+#            if nad in crs or harn in crs:
+#                pass
+#            else:
+#                if spcs in crs and feet in crs:
+##                    print (spcs, fip, crs)
+#                    fips = prj
+#                    break
     if fips == None:
-        print ('FIPS not found for:', spcs)
+#        print ('FIPS not found for:', spcs)
         return 4326
-    else:
-        return prj
+#    else:
+#        return prj
 
 def query():
     """Holds the Queries for the eHydro REST API, asks for responses, and uses
@@ -340,7 +338,7 @@ def geometryToShape(coordinates):
     xb = bounds[:,0]
     yb = bounds[:,1]
     bounds = (np.amin(xb), np.amax(yb)), (np.amax(xb), np.amin(yb))
-    return bounds, multipoly
+    return multipoly
 
 def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     """Uses the json object return of the each queried survey id and the total
@@ -397,7 +395,7 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
         print (x, end=' ')
         query = ('https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID%20%3D%20'
                  + str(surveyIDs[x])
-                 + '&outFields=*&returnGeometry=true&outSR=&f=json')
+                 + '&outFields=*&returnGeometry=true&outSR=4326&f=json')
         response = requests.get(query)
         page = response.json()
         row = []
@@ -427,11 +425,12 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
                 metadata[attribute] = 'error'
         try:
             coords = page['features'][0]['geometry']['rings']
-            metadata['bounds'], metadata['poly']  = geometryToShape(coords)
+#            metadata['poly_name'] = metadata['SURVEYJOBIDPK'] + '.gpkg'
+            metadata['poly']  = geometryToShape(coords)
 #            print (coords)
         except KeyError as e:
             print (e, page)
-            metadata['bounds'] = 'error'
+#            metadata['poly_name'] = 'error'
             metadata['poly'] = 'error'
         row.append(metadata)
         rows.append(row)
@@ -464,7 +463,7 @@ def write_shapefile(out_shp, name, poly, spcs):
 
     """
     # Reference
-    if type(spcs) == str: 
+    if type(spcs) == str:
         proj = osr.SpatialReference(wkt=spcs)
         proj.MorphFromESRI()
     else:
@@ -592,15 +591,16 @@ def downloadAndCheck(rows, pb=None, to=None):
         if os.path.exists(saved):
             os.remove(saved)
 
+        if poly != 'error':
+            shpfilename = os.path.join(holding + '\\' + agency, surname + '.gpkg')
+            meta['poly_name'] = surname + '.gpkg'
+            write_shapefile(shpfilename, surname, poly, spcs)
+            sfile = os.path.relpath(surname + '.gpkg')
+
         metafilename = os.path.join(holding + '\\' + agency, surname + '.pickle')
         with open(metafilename, 'wb') as metafile:
             pickle.dump(meta, metafile)
         pfile = os.path.relpath(surname + '.pickle')
-
-        if poly != 'error':
-            shpfilename = os.path.join(holding + '\\' + agency, surname + '.gpkg')
-            write_shapefile(shpfilename, surname, poly, spcs)
-            sfile = os.path.relpath(surname + '.gpkg')
 
         print  (x, agency, end=' ')
         dwntime = datetime.datetime.now()

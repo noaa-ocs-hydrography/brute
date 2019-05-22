@@ -52,13 +52,13 @@ def regionPath(root, folder):
     """Uses repo path derived from the program's location to find the downloads
     folder of eHydro_scrape.
 
-    This function uses the the NBS region definitions file defined in the 
+    This function uses the the NBS region definitions file defined in the
     provided ``config.ini`` under the header **[CSVs]** and name 'NBS ='.
-    Each region within the definitions file is made up of the region name, 
-    processing branch, list of USACE districts included, and the relative 
+    Each region within the definitions file is made up of the region name,
+    processing branch, list of USACE districts included, and the relative
     location of a shapefile containing the geographic boundaries of the region
-    
-    Each region's information is assigned to a dictionary with the 
+
+    Each region's information is assigned to a dictionary with the
     [Region]_[ProcessingBranch] as the key and the subseqent districts and
     shapefile location are assigned as the value as a list
 
@@ -105,7 +105,65 @@ def open_ogr(path):
             ds_geom = _ogr.CreateGeometryFromWkt(geom.ExportToWkt())
             break
     ds_proj = ds_layer.GetSpatialRef()
-    return ds_geom, ds_proj
+    if ds_proj.IsProjected:
+        proj_name = ds_proj.GetAttrValue('projcs')
+    else:
+        proj_name = ds_proj.GetAttrValue('geogcs')
+    return ds_geom, ds_proj#, proj_name
+
+def write_shapefile(out_shp, name, geom, spcs):
+    """Writes out a geopackage shapefile containing the bounding geometry of
+    of the given query.
+
+    Derived from:
+    https://gis.stackexchange.com/a/52708/8104
+    via
+    https://gis.stackexchange.com/q/217165
+
+    Parameters
+    ----------
+    out_shp : str
+        String representing the complete file path for the output shapefile
+    name : str
+        String representing the name of the survey; Used to name the layer
+    poly : WTK Multipolygon object
+        The WTK Multipolygon object that holds the survey's bounding data
+    proj : str, int
+        The ESPG code for the data
+
+    """
+    # Reference
+    if type(spcs) == str:
+        proj = _osr.SpatialReference(wkt=spcs)
+        proj.MorphFromESRI()
+    else:
+        proj = _osr.SpatialReference()
+        proj.ImportFromEPSG(spcs)
+
+    # Now convert it to a shapefile with OGR
+    driver = _ogr.GetDriverByName('GPKG')
+    ds = driver.CreateDataSource(out_shp)
+    layer = ds.CreateLayer(name, proj, _ogr.wkbPolygon)
+#    layer = ds.CreateLayer(name, None, ogr.wkbMultiPolygon)
+    # Add one attribute
+    layer.CreateField(_ogr.FieldDefn('id', _ogr.OFTInteger))
+    defn = layer.GetLayerDefn()
+
+    ## If there are multiple geometries, put the "for" loop here
+
+    # Create a new feature (attribute and geometry)
+    feat = _ogr.Feature(defn)
+    feat.SetField('id', 123)
+
+    # Make a geometry, from Shapely object
+#    geom = _ogr.CreateGeometryFromWkt(poly)
+    feat.SetGeometry(geom)
+
+    layer.CreateFeature(feat)
+    feat = geom = None  # destroy these
+
+    # Save and close everything
+    ds = layer = feat = geom = None
 
 def fileCollect(path, bounds):
     """Given a folder path, this function will return the complete list of
@@ -131,6 +189,10 @@ def fileCollect(path, bounds):
     """
     zips = []
     bfile = _os.path.join(progLoc, bounds)
+    bpath = _os.path.join(progLoc, bounds.split('\\')[0])
+    bname = _os.path.splitext(bounds.split('\\')[1])[0]
+    spath = _os.path.join(bpath, bname)
+    print (bname)
     meta_geom, meta_proj = open_ogr(bfile)
     if _os.path.exists(path):
         for root, folders, files in _os.walk(path):
@@ -139,8 +201,12 @@ def fileCollect(path, bounds):
                     zips.append(_os.path.join(root, item))
     slen = len(zips)
     print (zips, slen)
+    x = 1
+#    for path in zips:
+#        print (x, path)
+#        x += 1
     for zfile in zips:
-#        print ('\n',zfile)
+#        print (x, zfile)
         root = _os.path.split(zfile)[0]
         _os.chdir(root)
         try:
@@ -149,18 +215,25 @@ def fileCollect(path, bounds):
             for name in contents:
                 if gpkg.search(name):
                     path = _os.path.join(root, name)
-                    print (path)
+                    print (x, path)
                     zipped.extract(name)
                     try:
                         ehyd_geom, ehyd_proj = open_ogr(path)
-                        coordTrans = _osr.CoordinateTransformation(meta_proj, ehyd_proj)
-                        meta_geom.Transform(coordTrans)
+#                        coordTrans = _osr.CoordinateTransformation(meta_proj, ehyd_proj)
+#                        meta_geom.Transform(coordTrans)
+#                        fpath = spath + '_2_' + ehyd_name + '.gpkg'
+#                        fname = bname + '_2_' + ehyd_name
+#                        if not _os.path.exists(fpath):
+##                            print (fpath)
+#                            ehyd_tproj = ehyd_proj.ExportToWkt()
+#                            write_shapefile(fpath, fname, meta_geom, ehyd_tproj)
+#                        print (fpath)
                         try:
 #                            print (meta_proj, ehyd_proj, sep='\n')
                             intersection = meta_geom.Intersection(ehyd_geom)
                             flag = intersection.ExportToWkt()
                         except AttributeError as e:
-                            intersection = None
+                            flag = 'GEOMETRYCOLLECTION EMPTY'
                             print (e, bfile, path, meta_geom, ehyd_geom, sep='\n')
                     except TypeError as e:
                         print (e, meta_proj, ehyd_proj, sep='\n')
@@ -177,7 +250,8 @@ def fileCollect(path, bounds):
             zips.remove(zfile)
         zipped.close()
         _os.chdir(progLoc)
-    print (slen, len(zips))
+        x += 1
+    print (zips, slen, len(zips))
     if len(zips) > 0:
         return zips
     else:
@@ -365,8 +439,8 @@ def _main(text_region=None, progressBar=None, text_output=None):
         progressBar.Pulse()
     regions = regionPath(repo, downloads)
     regionFiles = eHydroZIPs(regions)
-#    fileMove(regionFiles, destination, method, text_region,
-#             progressBar, text_output)
+    fileMove(regionFiles, destination, method, text_region,
+             progressBar, text_output)
 
-#if __name__ == '__main__':
-#    _main()
+if __name__ == '__main__':
+    _main()

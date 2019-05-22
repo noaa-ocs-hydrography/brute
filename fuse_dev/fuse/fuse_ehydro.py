@@ -8,6 +8,7 @@ Created on Thu Jan 31 10:30:11 2019
 """
 
 import os as _os
+import pickle as _pickle
 import logging as _logging
 import fuse.fuse_base_class as _fbc
 import fuse.meta_review.meta_review_ehydro as _mre
@@ -47,7 +48,13 @@ class fuse_ehydro(_fbc.fuse_base_class):
             'interpolated',
             'script_version',
             ]
-    
+
+    _eHyo = ["OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
+              "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION",
+              "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
+              "SURVEYTYPE", "PROJECTEDAREA", "SOURCEDATAFORMAT",
+              "Shape__Area", "Shape__Length", 'poly', 'poly_name']
+
     def __init__(self, config_filename):
         super().__init__(config_filename)
         self._meta_obj = _mre.meta_review_ehydro(self._config['metapath'],
@@ -57,9 +64,10 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._set_data_interpolator()
         self._set_data_writer()
         self._meta = {} # initialize the metadata holder
+        self._pickle_meta = {} # initialize the survey pickle object
         self.logger = _logging.getLogger('fuse')
         self.logger.setLevel(_logging.DEBUG)
-        
+
     def _set_data_reader(self):
         """
         Use information from the config file to set the reader to use for
@@ -81,13 +89,13 @@ class fuse_ehydro(_fbc.fuse_base_class):
                 raise ValueError('reader type not implemented')
         except:
             raise ValueError("No reader type found in the configuration file.")
-            
+
     def _set_data_transform(self):
         """
-        Set up the datum transformation engine. 
+        Set up the datum transformation engine.
         """
         self._transform = _trans.transform(self._config, self._reader)
-        
+
     def _set_data_interpolator(self):
         """
         Set up the interpolator engine.
@@ -96,7 +104,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         res = float(self._config['to_resolution'])
         method = self._config['interpolation_method']
         self._interpolator = _interp.interpolator(engine, method, res)
-        
+
     def _set_data_writer(self):
         """
         Set up the location and method to write tranformed and interpolated
@@ -104,7 +112,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         ext = self._config['bathymetry_intermediate_file']
         self._writer = proc_io('gdal', ext)
-        
+
     def read(self, infilename):
         """
         Extract metadata from the provided eHydro file path and write the metadata
@@ -127,7 +135,16 @@ class fuse_ehydro(_fbc.fuse_base_class):
             pass
             #self.process(infilename)
         # reading the bathymetry is not required > goes directly to datum trans
-                
+
+    def read_pickle(self, infilename):
+        froot, fname = _os.path.split(infilename)
+        fname, fext = _os.path.splitext(fname)
+        fpickle = _os.path.join(froot, fname + '.pickle')
+        fpickle = _os.path.normpath(fpickle)
+        opened = open(fpickle, 'rb')
+        self._pickle_meta = _pickle.load(opened)
+        opened.close()
+
     def process(self, infilename):
         """
         Do the datum transformtion and interpolation.
@@ -141,17 +158,22 @@ class fuse_ehydro(_fbc.fuse_base_class):
             infileroot, ext = _os.path.splitext(infilebase)
             outfilename = _os.path.join(outpath, infileroot)
             new_ext = self._config['bathymetry_intermediate_file']
-            outfilename = outfilename + '.' + new_ext 
+            outfilename = outfilename + '.' + new_ext
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
             dataset = self._transform.translate(infilename, self._meta)
             # take a gdal dataset for interpolation and return a gdal dataset
-            dataset = self._interpolator.interpolate(dataset)
+            if 'poly_name' in self._pickle_meta:
+                shapefile = self._pickle_meta['poly_name']
+                print ('shaped')
+#                dataset = self._interpolator.interpolate(dataset, shapefile)
+            else:
+                dataset = self._interpolator.interpolate(dataset)
             self._writer.write(dataset, outfilename)
             self._meta['to_filename'] = outfilename
         else:
             self.logger.log(_logging.DEBUG, 'No fips code found')
-            
+
     def _set_log(self, infilename):
         """
         Set the object logging object and file.
@@ -170,8 +192,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
         formatter = _logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         fh.setFormatter(formatter)
         self.logger.addHandler(fh)
-        
-            
+
+
     def _get_stored_meta(self, infilename):
         """
         Get the metadata in a local dictionary so that it can be used within
