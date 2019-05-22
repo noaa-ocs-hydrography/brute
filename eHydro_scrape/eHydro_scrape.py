@@ -933,25 +933,25 @@ def main(pb=None,to=None):
     elif runType == 'yes':
         csvFile = []
         changes = rows
-#    try:
-    logWriter(fileLog, '\tParsing new entries for resolution:')
-    attributes.append('Hi-Res?')
-    attributes.append('Override?')
-    if changes != 'No Changes':
-        checked, hiRes = downloadAndCheck(changes, pb, to)
-        csvFile.extend(checked)
-        if config['Output Log']['Query List'] == 'yes':
-            logWriter(fileLog, '\tNew Survey Details:')
-            for row in checked:
-                txt = ''
-                for i in [1,4,5,6,-2]:
-                    txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
-                logWriter(fileLog, '\t\t' + txt)
-        logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
-    else:
-        logWriter(fileLog, '\t\t' + changes)
-#    except:
-#        logWriter(fileLog, '\tParsing for resolution failed')
+    try:
+        logWriter(fileLog, '\tParsing new entries for resolution:')
+        attributes.append('Hi-Res?')
+        attributes.append('Override?')
+        if changes != 'No Changes':
+            checked, hiRes = downloadAndCheck(changes, pb, to)
+            csvFile.extend(checked)
+            if config['Output Log']['Query List'] == 'yes':
+                logWriter(fileLog, '\tNew Survey Details:')
+                for row in checked:
+                    txt = ''
+                    for i in [1,4,5,6,-2]:
+                        txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
+                    logWriter(fileLog, '\t\t' + txt)
+            logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
+        else:
+            logWriter(fileLog, '\t\t' + changes)
+    except:
+        logWriter(fileLog, '\tParsing for resolution failed')
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
