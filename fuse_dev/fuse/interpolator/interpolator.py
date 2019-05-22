@@ -33,7 +33,7 @@ class interpolator:
         else:
             raise ValueError('No interpolation engine type specified')
         
-    def interpolate(self, dataset, shapefile = None):
+    def interpolate(self, dataset, shapefile=None):
         """
         Take a gdal dataset and run the interpolation, returning a gdal raster.
         """

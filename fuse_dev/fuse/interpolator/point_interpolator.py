@@ -22,7 +22,7 @@ Sources:
 
 # __version__ = 'point_interpolator 0.0.1'
 
-from osgeo import gdal
+from osgeo import gdal, ogr, osr
 import numpy as np
 
 class point_interpolator:

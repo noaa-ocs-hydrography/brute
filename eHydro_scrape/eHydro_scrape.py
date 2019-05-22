@@ -81,42 +81,6 @@ if not os.path.exists(logging):
 if not os.path.exists(running):
     os.mkdir(running)
 
-def convert_tofips(spcs):
-#    if '_' in spcs:
-#        pass
-#    else:
-#        splits = spcs.split(' ')
-#        spcs = '_'.join(splits)
-##    print (spcs)
-#    nad = '1927'
-#    harn = 'HARN'
-#    feet = 'Feet'
-    fips = None
-#    path = r'C:\PydroXL_19\pkgs\FromWheels\py36\extracted_wheels\GDAL2.4.0_dev\osgeo\data\gdal\esri_StatePlane_extra.wkt'
-#    fileOpened = open(path, 'r', newline='')
-#    for line in fileOpened:
-#        idx = line.find(',') + 1
-##        fip = line[:idx-1]
-#        prj = line[idx:]
-##        print (fip, prj)
-#        srs = osr.SpatialReference(wkt=prj)
-#        if srs.IsProjected:
-#            crs = srs.GetAttrValue('projcs')
-##            split_crs = crs.split('_')
-##            print (split_crs)
-#            if nad in crs or harn in crs:
-#                pass
-#            else:
-#                if spcs in crs and feet in crs:
-##                    print (spcs, fip, crs)
-#                    fips = prj
-#                    break
-    if fips == None:
-#        print ('FIPS not found for:', spcs)
-        return 4326
-#    else:
-#        return prj
-
 def query():
     """Holds the Queries for the eHydro REST API, asks for responses, and uses
     the json library to make it readable by the program. Returns the json
@@ -578,7 +542,7 @@ def downloadAndCheck(rows, pb=None, to=None):
         surname = row[1]
         agency = row[2]
         meta = row[-1]
-        spcs = convert_tofips(row[5])
+        spcs = 4326
 #        spcs = row[5]
         poly = meta['poly']
         name = link.split('/')[-1]
