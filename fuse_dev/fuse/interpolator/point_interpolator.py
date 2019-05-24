@@ -38,7 +38,7 @@ class point_interpolator:
         """
         self.window_scale = window_scalar
 
-    def interpolate(self, dataset, interpolation_type, resolution, shapefile=None):
+    def interpolate(self, dataset, interpolation_type, resolution, shapefile=None, shrink=True):
         """
         Interpolate the provided dataset.
 
@@ -68,12 +68,14 @@ class point_interpolator:
             ds2 = self._gdal_natural_interp_points(dataset, resolution)
 #            ds2 = self._gdal_linear_interp_points(dataset, resolution)
 #            ds2 = self._gdal_invdist_interp_points(dataset, resolution, window)
-            ds4 = self._shrink_coverage(ds2, resolution, window)
+            if shrink != True:
+                ds4 = self._shrink_coverage(ds2, resolution, window)
         elif invdist:
             # do the inverse distance interpolation
             ds3 = self._gdal_invdist_interp_points(dataset, resolution, window)
             # shrink the coverage back on the edges and in the holidays on the inv dist
-            ds4 = self._shrink_coverage(ds3, resolution, window)
+            if shrink != True:
+                ds4 = self._shrink_coverage(ds3, resolution, window)
         else:
             print('No interpolation method recognized')
         if linear:
@@ -82,14 +84,20 @@ class point_interpolator:
             ds5 = self._mask_with_raster(ds2, ds3)
         elif natural:
             ds3 = self._get_shape_mask(ds2, shapefile, resolution)
-            ds5 = self._mask_with_raster(ds4, ds3)
+            if shrink != True:
+                ds5 = self._mask_with_raster(ds4, ds3)
+            else:
+                ds5 = self._mask_with_raster(ds2, ds3)
         # write the files out using the above function
         if linear:
             return ds5
         elif natural:
             return ds5
         elif invdist:
-            return ds4
+            if shrink != True:
+                return ds4
+            else:
+                return ds3
         else:
             raise ValueError('Interpolation type not understood')
 
@@ -131,10 +139,10 @@ class point_interpolator:
         data = self._gdal_invdist_interp_points(dataset, resolution, window)
         mask = self._shrink_coverage(data, resolution, window)
         return mask
-    
-    def _getShpRast(self, file, to_proj, to_gt, to_res, nodata=0):
+
+    def _getShpRast(self, file, to_proj, to_gt, to_res, to_y, to_x, nodata=0):
         """Import shapefile
-        
+
         Parameters
         ----------
         file : string
@@ -145,33 +153,33 @@ class point_interpolator:
            gdal.GeoTransform object of the interpolated dataset
         to_res : int
             Resolution of the input dataset
-            
+
         Keyword Args
         ------------
         nodata : int,float
             Nodata value for the ouput gdal.Dataset object
-        
+
         Returns
         -------
         target_ds :
-            Output gdal.Dataset object which represents the rasterized 
+            Output gdal.Dataset object which represents the rasterized
             shapefile that matches the origin and resolution of the
             interpolated dataset
         target_gt :
             Output gdal.GeoTransform object of the rasterized shapefile
-        
+
         """
         print ('getShpRast', file)
         fName = os.path.split(file)[-1]
         splits = os.path.splitext(fName)
         name = splits[0]
 #        tif = splits[0] + '.tif'
-        
+
         # Open the data source and read in the extent
         source_ds = ogr.Open(file)
         source_layer = source_ds.GetLayer()
         source_srs = source_layer.GetSpatialRef()
-        
+
         for feature in source_layer:
             if feature != None:
                 geom = feature.GetGeometryRef()
@@ -183,58 +191,131 @@ class point_interpolator:
                 driver = ogr.GetDriverByName('Memory')
                 ds = driver.CreateDataSource('temp')
                 layer = ds.CreateLayer(name, to_proj, ogr.wkbMultiPolygon)
-                
+
                 # Add one attribute
                 layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
                 defn = layer.GetLayerDefn()
-            
+
                 # Create a new feature (attribute and geometry)
                 feat = ogr.Feature(defn)
                 feat.SetField('id', 123)
-            
+
                 # Make a geometry, from Shapely object
                 feat.SetGeometry(ds_geom)
-            
+
                 layer.CreateFeature(feat)
                 feat = geom = None  # destroy these
                 break
 
-        
+
         x_min, x_max, y_min, y_max = ds_geom.GetEnvelope()
 #        meta = ([x_min,y_max],[x_max,y_min])
 #        print (meta)
-        
+
         # Create the destination data source
         x_dim = int((x_max - x_min) / to_res)
         y_dim = int((y_max - y_min) / to_res)
         print (x_dim, y_dim)
         target_ds = gdal.GetDriverByName('MEM').Create('', x_dim, y_dim, gdal.GDT_Byte)
-        temp_gt = (x_min, to_res, 0, y_min, 0, to_res)
-        print (temp_gt)
         x_orig, y_orig = to_gt[0], to_gt[3]
         target_gt = (x_orig, to_res, 0, y_orig, 0, to_res)
-        target_ds.SetGeoTransform(temp_gt)
+        target_ds.SetGeoTransform(target_gt)
         band = target_ds.GetRasterBand(1)
         band.SetNoDataValue(nodata)
-        
+
         # Rasterize
         gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[1])
-        
-        band = target_ds.GetRasterBand(1)
-        grid = band.ReadAsArray()
+
+        newarr = band.ReadAsArray()
         plt.figure()
-        plt.imshow(grid)
+        plt.imshow(newarr)
         plt.show()
-        
+
+        ## 6
+        print (x_orig, y_orig)
+        print (x_min,y_min)
+        oulx, ouly = x_orig, y_orig
+        rulx, ruly = x_min, y_min
+        dulx, duly = 0, 0
+        if oulx != rulx:
+            dulx = rulx - oulx
+            print (oulx, rulx, dulx)
+        if ouly != ruly:
+            duly = ouly - ruly
+            print (ouly, ruly, duly)
+        print (dulx, duly)
+
+        ## 7
+        oShape = (to_y, to_x)
+        oSy, oSx = oShape
+        rSy, rSx = newarr.shape
+        print (oSy, rSy)
+        print (oSx, rSx)
+        expx, expy = 0, 0
+        if newarr.shape != oShape:
+            print (oSy - rSy, oSx - rSx)
+            if rSy < oSy:
+                expy = int(np.abs(oSy - rSy))
+                print ('expy', expy)
+            if rSx < oSx:
+                expx = int(np.abs(oSx - rSx))
+                print ('expx', expx)
+        ay = np.full((rSy+expy,rSx+expx), nodata)
+        print ('expz', ay.shape, oShape)
+        rollx = int(dulx/to_res)
+        rolly = int(duly/to_res)
+
+        ## 8
+        up, left = 0, 0
+        down, right = 0, 0
+        if duly < 0:
+            up = -int(rolly)
+        elif duly > 0:
+            down = rolly
+            up = 0
+        if dulx < 0:
+            left = -int(rollx)
+        elif dulx > 0:
+            right = rollx
+            left = 0
+
+        if dulx != 0 or duly != 0:
+            print ('rollz', up, left, down, right)
+            temp = newarr[up:,left:]
+            print (temp.shape)
+            plt.imshow(temp)
+            plt.show()
+            ay[down:temp.shape[0]+down,right:temp.shape[1]+right] = temp[:,:]
+            temp = None
+        else:
+            ay[:] = newarr[:]
+        print ('expz', ay.shape)
+        ax = np.full(oShape, nodata)
+        ax[:] = ay[:oSy,:oSx]
+
+        newarr = None
+        ay = None
         band = None
         source_ds = None
-        
+        target_ds = None
+
+        ax_y, ax_x = ax.shape
+
+        target_ds = gdal.GetDriverByName('MEM').Create('', ax_x, ax_y, gdal.GDT_Byte)
+        x_orig, y_orig = to_gt[0], to_gt[3]
+        target_gt = (x_orig, to_res, 0, y_orig, 0, to_res)
+        target_ds.SetGeoTransform(target_gt)
+        band = target_ds.GetRasterBand(1)
+        band.WriteArray(ax)
+        band.SetNoDataValue(nodata)
+
         target_gt = target_ds.GetGeoTransform()
-        
+
         return target_ds, target_gt
-    
+
     def _get_shape_mask(self, grid, shapefile, resolution):
         band = grid.GetRasterBand(1)
+        bandy, bandx = grid.RasterYSize, grid.RasterXSize
         raster = band.ReadAsArray()
         plt.figure()
         plt.imshow(raster)
@@ -247,11 +328,11 @@ class point_interpolator:
         proj.MorphFromESRI()
         print (grid_ref, grid_gt)
 #        gdal.Dataset.GetGeoTransform
-        shape_ds, shape_gt = self._getShpRast(shapefile, proj, grid_gt, int(resolution))
+        shape_ds, shape_gt = self._getShpRast(shapefile, proj, grid_gt, int(resolution), bandy, bandx)
         print('transformed', shape_gt)
         return shape_ds
-        
-        
+
+
 
     def _gdal_linear_interp_points(self, dataset, resolution, nodata = 1000000):
         """
@@ -275,15 +356,17 @@ class point_interpolator:
                                 outputBounds = bounds,
                                 algorithm=algorithm)
         return interp_data
-    
+
     def _gdal_natural_interp_points(self, dataset, resolution, nodata = 1000000):
         """
         Interpolate the provided gdal vector points and return the interpolated
         data.
         """
+        print ('_gdal_natural_interp_points')
         # Find the bounds of the provided data
         xmin,xmax,ymin,ymax = np.nan,np.nan,np.nan,np.nan
         lyr = dataset.GetLayerByIndex(0)
+        proj = lyr.GetSpatialRef().ExportToWkt()
         count = lyr.GetFeatureCount()
         xvals, yvals, zvals = [], [], []
         for n in np.arange(count):
@@ -295,20 +378,24 @@ class point_interpolator:
             xmin, xmax = self._compare_vals(x,xmin,xmax)
             ymin, ymax = self._compare_vals(y,ymin,ymax)
         numrows, numcolumns, bounds = self._get_nodes3(resolution, [xmin,ymin,xmax,ymax])
-        
-        xi, yi = range(numrows), range(numcolumns)
+
+        print('start')
+        xi, yi = range(numcolumns), range(numrows)
         interp_grid = griddata(xvals,yvals,zvals,xi,yi,interp='nn')
-        
-        interp_data = gdal.GetDriverByName('MEM')
-        interp_data.Create('',numcolumns,numrows,resolution,gdal.GDT_CFloat32)
+        plt.figure()
+        plt.imshow(interp_grid)
+        plt.show()
+        print('stop')
+
+        interp_data = gdal.GetDriverByName('MEM').Create('',numcolumns,numrows,gdal.GDT_Float32)
         interp_gt = (xmin, resolution, 0, ymin, 0, -resolution)
         interp_data.SetGeoTransform(interp_gt)
         band = interp_data.GetRasterBand(1)
         band.WriteArray(interp_grid)
-        proj = osr.SpatialReference()
-        interp_data.SetProjection(proj)
+        band.SetNoDataValue(nodata)
+        proj = osr.SpatialReference(wkt=proj)
         band = None
-        
+
         return interp_data
 
     def _gdal_invdist_interp_points(self, dataset, resolution, radius, nodata = 1000000):
