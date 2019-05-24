@@ -162,11 +162,13 @@ class fuse_ehydro(_fbc.fuse_base_class):
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
             dataset = self._transform.translate(infilename, self._meta)
+            print (dataset.GetProjection())
             # take a gdal dataset for interpolation and return a gdal dataset
             if 'poly_name' in self._pickle_meta:
-                shapefile = self._pickle_meta['poly_name']
-                print ('shaped')
-#                dataset = self._interpolator.interpolate(dataset, shapefile)
+                shapename = self._pickle_meta['poly_name']
+                shapepath = _os.path.join(infilepath,shapename)
+                print(shapepath)
+                dataset = self._interpolator.interpolate(dataset, shapepath)
             else:
                 dataset = self._interpolator.interpolate(dataset)
             self._writer.write(dataset, outfilename)

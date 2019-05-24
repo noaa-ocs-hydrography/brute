@@ -225,7 +225,7 @@ def create_polygon(coords):
     """
     ring = ogr.Geometry(ogr.wkbLinearRing)
     for coord in coords:
-        ring.AddPoint(coord[0], coord[1])
+        ring.AddPoint(coord[0], coord[1], 1)
     # Create polygon
     poly = ogr.Geometry(ogr.wkbPolygon)
     poly.AddGeometry(ring)
