@@ -94,25 +94,21 @@ class proc_io:
         start = os.path.realpath(os.path.dirname(__file__))
         write_csar = os.path.join(start, 'wrap_csar.py')
         activate_file = _retrieve_activate_batch()
-        logfilename = self._get_logfilename()
         if os.path.exists(write_csar):
             args = ["cmd.exe", "/K", "set pythonpath= &&", # setup the commandline
                     activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
                     python_path, write_csar,  # call the script
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
                     '"' + metafilename.replace("&", "^&") + '"',  # metadata path
-                    '"' + logfilename.replace("&", "^&") + '"',
                     ]
             args = ' '.join(args)
             self._logger.log(logging.DEBUG, args)
-            self._stop_logfile()
             try:
                 proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
             except:
                 err = 'Error executing: {}'.foramt(args)
                 print(err)
                 self._logger.log(logging.DEBUG, err)
-            self._start_logfile(logfilename)
             try:
                 stdout, stderr = proc.communicate()
                 self._logger.log(logging.DEBUG, stdout)
@@ -197,41 +193,6 @@ class proc_io:
             data = np.where(data==ndv, self._write_nodata, data)
             dataset.GetRasterBand(1).WriteArray(data)
         return dataset
-
-    def _get_logfilename(self):
-        """
-        Return the log filename.
-        """
-        if len(self._logger.handlers) > 1:
-            raise ValueError('Not sure which hanlder to use for logging csar work. Using first')
-        elif len(self._logger.handlers) <1:
-            handlefilename = 'casiano.log'
-        else:
-            h = self._logger.handlers[0]
-            handlefilename = h.baseFilename
-        return handlefilename
-
-    def _stop_logfile(self):
-        """
-        Get the logger filename, stop logging to it, and return the filename.
-        """
-        # remove handlers that might have existed from previous files
-        if len(self._logger.handlers) <1:
-            pass
-        else:
-            h = self._logger.handlers[0]
-            self._logger.removeHandler(h)
-
-    def _start_logfile(self, handlefilename):
-        """
-        Add a handler to the logger at the provided filename.
-        """
-        # create file handler for this filename
-        fh = logging.FileHandler(handlefilename)
-        fh.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        fh.setFormatter(formatter)
-        self._logger.addHandler(fh)
 
 # helper function to retrieve the path to the "Scripts" folder in PydroXL
 def _retrieve_scripts_folder():
