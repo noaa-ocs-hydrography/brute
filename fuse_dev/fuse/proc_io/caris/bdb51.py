@@ -11,8 +11,9 @@ Classes and methods for working with CARIS Bathy DataBASE 5.1.
 
 import subprocess
 import logging
-import os
+import os, sys
 import pickle
+import threading
 from fuse.proc_io.caris import helper
 
 class bdb51:
@@ -42,7 +43,12 @@ class bdb51:
         """
         self.caris_environment_name = caris_env_name
         self._logger = logging.getLogger('fuse')
-        self._start_bdb51_env()
+        if len(self._logger.handlers) == 0:
+            ch = logging.StreamHandler(sys.stdout)
+            ch.setLevel(logging.DEBUG)
+            self._logger.addHandler(ch)
+        self._env = threading.Thread(target = self._start_env())
+        self._env.start()
         
     def _start_env(self):
         """
@@ -55,7 +61,7 @@ class bdb51:
         python_path = os.path.join(conda_env_path, 'python')
         # set the location for running the database i/o object
         start = os.path.realpath(os.path.dirname(__file__))
-        db_obj = os.path.join(start, '_bdb51.py')
+        db_obj = os.path.join(start, 'wrap_bdb51.py')
         activate_file = helper.retrieve_activate_batch()
         args = ["cmd.exe", "/C", "set pythonpath= &&", # setup the commandline
                 activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
@@ -64,35 +70,73 @@ class bdb51:
         args = ' '.join(args)
         self._logger.log(logging.DEBUG, args)
         try:
-            self.db = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            self.db = subprocess.Popen(args,
+                                       stdin = subprocess.PIPE, 
+                                       stdout = subprocess.PIPE, 
+                                       stderr = subprocess.PIPE,
+                                       creationflags=subprocess.CREATE_NEW_CONSOLE)
         except:
             err = 'Error executing: {}'.foramt(args)
             print(err)
             self._logger.log(logging.DEBUG, err)
         try:
-            stdout, stderr = self.db.communicate()
-            self._logger.log(logging.DEBUG, stdout)
-            self._logger.log(logging.DEBUG, stderr)
-        except:
-            err = 'Error in handling error output'
+            out = self.db.stdout.read()
+            err = self.db.stderr.read()
+            if len(out) > 0:
+                msg = out.decode(encoding='UTF-8')
+                print(msg)
+                self._logger.log(logging.DEBUG, msg)
+            if len(err) > 0:
+                msg = err.decode(encoding='UTF-8')
+                print(msg)
+                self._logger.log(logging.DEBUG, msg)
+        except Exception as e:
+            err = 'Error in handling error output: {}'.format(e)
             print(err)
             self._logger.log(logging.DEBUG, err)
     
-    def _connect(self):
+    def connect(self):
         """
-        
+        Form and send the connect command to the BDB51 wapper.
         """
+        command = {'command':'connect'}
+        self._send_command(command)
     
-    def _status(self):
+    def status(self):
         """
         Check to see if the subprocess is still communicating and connected to
         the database.
         """
-        pass
+        command = {'command':'status'}
+        self._send_command(command)
         
-    def _upload(self, dataset, instruction):
+    def upload(self, dataset, instruction):
         """
         Send the BDB environment instructions on where data is and what to do
         with it.
         """
         pass
+    
+    def die(self, delay = 0):
+        """
+        Destroy the BDB51 wrapper object and environment.
+        """
+        command = {'command':'die'}
+        if delay == 0:
+            command['action'] = 'now'
+        else:
+            command['action'] = int(delay)
+        self._send_command(command)
+    
+    def _send_command(self, command):
+        """
+        Send a command to the BDB51 wrapper.
+        """
+        pc = pickle.dumps(command)
+        self.db.stdin.write(pc)
+        response = self.db.stout.read()
+        print(response.decode(encoding='UTF-8'))
+        
+        #self._logger.log(logging.DEBUG, pickle.loads(response))
+        #self._logger.log(logging.DEBUG, pickle.loads(err))
+        
