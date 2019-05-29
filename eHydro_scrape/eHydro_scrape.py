@@ -268,10 +268,11 @@ def geometryToShape(coordinates):
     This function takes each 'ring' and determines it's extents and creates a
     ogr.Geometry object for it using func:`create_polygon`
 
-    The polygons for each 'ring' are then combined into a single WTK Multipolygon
-    object using func:`create_multipolygon`
+    The polygons for each 'ring' are then combined into a single WTK
+    Multipolygon object using func:`create_multipolygon`
 
-    The total extent of the geometry and the WTK Multipolygon object are returned
+    The total extent of the geometry and the WTK Multipolygon object are
+    returned
 
     Parameters
     ----------
@@ -556,12 +557,14 @@ def downloadAndCheck(rows, pb=None, to=None):
             os.remove(saved)
 
         if poly != 'error':
-            shpfilename = os.path.join(holding + '\\' + agency, surname + '.gpkg')
+            shpfilename = os.path.join(holding + '\\' + agency,
+                                       surname + '.gpkg')
             meta['poly_name'] = surname + '.gpkg'
             write_shapefile(shpfilename, surname, poly, spcs)
             sfile = os.path.relpath(surname + '.gpkg')
 
-        metafilename = os.path.join(holding + '\\' + agency, surname + '.pickle')
+        metafilename = os.path.join(holding + '\\' + agency,
+                                    surname + '.pickle')
         with open(metafilename, 'wb') as metafile:
             pickle.dump(meta, metafile)
         pfile = os.path.relpath(surname + '.pickle')
@@ -599,7 +602,8 @@ def downloadAndCheck(rows, pb=None, to=None):
                     row.append('BadURL')
                     break
         if os.path.exists(saved):
-            if config['Resolutions']['Override'] == 'yes' and (agency in agencies or agencies == ''):
+            if (config['Resolutions']['Override'] == 'yes'
+                and (agency in agencies or agencies == '')):
                 try:
                     zipped = zipfile.ZipFile(saved, mode='a')
                     os.chdir(holding + '/' + agency + '/')
@@ -710,7 +714,8 @@ def csvCompare(rows, csvFile, newSurveysNum, pb=None):
                 pb.SetValue(x)
     print(len(rows))
     after = str(len(rows))
-    numstring = '\t\tSurveys in Query: ' + before + '\n\t\tNew Surveys: ' + after
+    numstring = ('\t\tSurveys in Query: ' + before
+                 + '\n\t\tNew Surveys: ' + after)
     if len(rows) != 0:
         return rows, numstring
     else:
@@ -929,29 +934,31 @@ def main(pb=None,to=None):
             changes, numstring = csvCompare(rows, csvFile, newSurveysNum)
             logWriter(fileLog, numstring)
         except:
-            logWriter(fileLog, '\t\tUnable to compare query results to eHydro_csv.txt')
+            logWriter(fileLog,
+                      '\t\tUnable to compare query results to eHydro_csv.txt')
     elif runType == 'yes':
         csvFile = []
         changes = rows
-#    try:
-    logWriter(fileLog, '\tParsing new entries for resolution:')
-    attributes.append('Hi-Res?')
-    attributes.append('Override?')
-    if changes != 'No Changes':
-        checked, hiRes = downloadAndCheck(changes, pb, to)
-        csvFile.extend(checked)
-        if config['Output Log']['Query List'] == 'yes':
-            logWriter(fileLog, '\tNew Survey Details:')
-            for row in checked:
-                txt = ''
-                for i in [1,4,5,6,-2]:
-                    txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
-                logWriter(fileLog, '\t\t' + txt)
-        logWriter(fileLog, '\t\tTotal High Resloution Surveys: ' + str(hiRes) + '/' + str(len(changes)) + '\n')
-    else:
-        logWriter(fileLog, '\t\t' + changes)
-#    except:
-#        logWriter(fileLog, '\tParsing for resolution failed')
+    try:
+        logWriter(fileLog, '\tParsing new entries for resolution:')
+        attributes.append('Hi-Res?')
+        attributes.append('Override?')
+        if changes != 'No Changes':
+            checked, hiRes = downloadAndCheck(changes, pb, to)
+            csvFile.extend(checked)
+            if config['Output Log']['Query List'] == 'yes':
+                logWriter(fileLog, '\tNew Survey Details:')
+                for row in checked:
+                    txt = ''
+                    for i in [1,4,5,6,-2]:
+                        txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
+                    logWriter(fileLog, '\t\t' + txt)
+            logWriter(fileLog, '\t\tTotal High Resloution Surveys: '
+                      + str(hiRes) + '/' + str(len(changes)) + '\n')
+        else:
+            logWriter(fileLog, '\t\t' + changes)
+    except:
+        logWriter(fileLog, '\tParsing for resolution failed')
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
@@ -962,7 +969,7 @@ def main(pb=None,to=None):
             x = 0
             datestamp = date()
             while True:
-                name = datestamp +'_' + str(x) + '_' + csvName
+                name = datestamp + '_' + str(x) + '_' + csvName
                 csvPath = running + name
 #                print (csvPath)
                 if os.path.exists(csvPath):

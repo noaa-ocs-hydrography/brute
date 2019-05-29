@@ -234,7 +234,8 @@ def fileCollect(path, bounds):
                             flag = intersection.ExportToWkt()
                         except AttributeError as e:
                             flag = 'GEOMETRYCOLLECTION EMPTY'
-                            print (e, bfile, path, meta_geom, ehyd_geom, sep='\n')
+                            print (e, bfile, path, meta_geom, ehyd_geom,
+                                   sep='\n')
                     except TypeError as e:
                         print (e, meta_proj, ehyd_proj, sep='\n')
                         flag = 'GEOMETRYCOLLECTION EMPTY'
@@ -398,9 +399,10 @@ def fileMove(regionFiles, destination, method, text_region=None,
                 surname = _os.path.splitext(name)[0]
                 district_code = splits[-2].split('\\')[-1]
                 district_abbr = district_code[-3:]
-                district_full = district_name[district_abbr] + '_' + district_code
+                district_full = district_name[district_abbr]+'_'+district_code
                 eHydro_folder = 'USACE\\eHydro_' + district_full + '\\original'
-                newerPath = _os.path.join(destination, k, eHydro_folder, surname)
+                newerPath = _os.path.join(destination, k, eHydro_folder,
+                                          surname)
                 if _os.path.isdir(newerPath):
                     pass
                 else:
