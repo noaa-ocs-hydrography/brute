@@ -12,6 +12,7 @@ Classes and methods for working with CARIS Bathy DataBASE 5.1.
 import subprocess
 import logging
 import os
+import pickle
 from fuse.proc_io.caris import helper
 
 class bdb51:
@@ -21,7 +22,7 @@ class bdb51:
     This class spawns a conda environment containing the CARIS python API and
     communicates with that environment over subprocess pipes.
     
-    The pipes will carry pickled python dictionaries.
+    The pipes carry pickled python dictionaries.
     
     General commands that are sent to the CARIS environment include:
         status : Is the system is connected to the server, what was the last
