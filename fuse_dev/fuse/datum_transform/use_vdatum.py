@@ -55,9 +55,9 @@ class vdatum:
         NSRS2007 is assumed for the out EPSG code. 
         """
         self._logger.log(_logging.DEBUG, 'Begin datum transformation')
-        outxyz =  self._translatexyz(infilename, in_hordat, in_verdat, 
+        outxyz, out_zone =  self._translatexyz(infilename, in_hordat, in_verdat, 
                                 out_epsg, out_verdat)
-        out_gdal = self._xyz2gdal(outxyz, out_epsg, out_verdat)
+        out_gdal = self._xyz2gdal(outxyz, out_zone, out_verdat)#passing UTM zone instead of EPSG code
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
         return out_gdal
     
@@ -73,13 +73,21 @@ class vdatum:
         outfilename = _os.path.join(d.name,'outfile.txt')
         vd_dir = tempdir()
         vdfilename = _os.path.join(vd_dir.name,'outfile.txt')
+        vdlogfilename = _os.path.join(vd_dir.name,'outfile.txt.log')
         _np.savetxt(outfilename, bathy, delimiter = ',')
         # set up vdatum
         self._setup_vdatum(in_hordat, in_verdat, out_epsg, out_verdat)
         # run vdatum
         self._convert_file(outfilename, vd_dir.name)
+        # read out UTM Zone from VDatum log file
+        with open (vdlogfilename, 'r') as vd_log:
+            for line in vd_log.readlines():
+                if line.startswith('Zone:'):
+                    Output = line[54:82]
+                    Inputzone = line[27:53]
+                    out_zone = Output.rstrip(' ')
         new_bathy = _np.loadtxt(vdfilename, delimiter = ',')
-        return new_bathy
+        return new_bathy, out_zone
         
     def _setup_vdatum(self, in_fips, in_verdat, out_epsg, out_verdat):
         """
@@ -128,13 +136,18 @@ class vdatum:
             print(output)
             print(outerr)
             
-    def _xyz2gdal(self, outxyz, out_epsg, out_verdat):
+    def _xyz2gdal(self, outxyz, out_zone, out_verdat):
         """
         Convert from numpy xyz array to a gdal dataset.
         """
         # setup the gdal bucket
         dest = osr.SpatialReference()
-        dest.ImportFromEPSG(out_epsg)
+        dest.SetWellKnownGeogCS('NAD83')
+        if int(out_zone) < 0:#if out_zone is positive it is in the northern hemisphere
+            hemisphere = '0'#0 = South
+        else:#if out_zone is negative it is in the southern hemisphere
+            hemisphere = '1'#1 =North#boolean test being passed to SetUTM
+        dest.SetUTM(int(out_zone),int(hemisphere))
         dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
         layer = dataset.CreateLayer('pts', dest, geom_type=ogr.wkbPoint)
         for p in outxyz:
@@ -144,4 +157,3 @@ class vdatum:
             feature.SetGeometry(newp)
             layer.CreateFeature(feature)
         return dataset
-            
