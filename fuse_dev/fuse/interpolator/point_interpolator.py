@@ -50,6 +50,7 @@ class point_interpolator:
         """
         linear = False
         natural = False
+        invlin = False
         invdist = False
         if interpolation_type == 'linear':
             linear = True
@@ -57,6 +58,10 @@ class point_interpolator:
             if shapefile == None:
                 raise ValueError('Supporting shapefile required')
             natural = True
+        elif interpolation_type == 'invdist_scilin':
+            if shapefile == None:
+                raise ValueError('Supporting shapefile required')
+            invlin = True
         elif interpolation_type == 'invdist':
             invdist = True
         else:
@@ -68,10 +73,11 @@ class point_interpolator:
             # do the triangulation interpolation
             ds2 = self._gdal_linear_interp_points(dataset, resolution)
         elif natural:
-#            ds2 = self._gdal_mlab_natural_interp_points(dataset, resolution)
-            ds2 = self._gdal_inno_natural_interp_points(dataset, resolution, window)
-#            ds2 = self._gdal_linear_interp_points(dataset, resolution)
-#            ds2 = self._gdal_invdist_interp_points(dataset, resolution, window)
+            ds2 = self._gdal_mlab_natural_interp_points(dataset, resolution)
+            if shrink == True:
+                ds4 = self._shrink_coverage(ds2, resolution, window)
+        elif invlin:
+            ds2 = self._gdal_invdist_scilin_interp_points(dataset, resolution, window)
             if shrink == True:
                 ds4 = self._shrink_coverage(ds2, resolution, window)
         elif invdist:
@@ -86,16 +92,14 @@ class point_interpolator:
             # trim the triangulated interpolation back using the inv dist as a mask
             ds3 = self._get_mask(dataset, resolution, window)
             ds5 = self._mask_with_raster(ds2, ds3)
-        elif natural:
+        elif natural or invlin:
             ds3 = self._get_shape_mask(ds2, shapefile, resolution)
             if shrink == True:
                 ds5 = self._mask_with_raster(ds4, ds3)
             else:
                 ds5 = self._mask_with_raster(ds2, ds3)
         # write the files out using the above function
-        if linear:
-            return ds5
-        elif natural:
+        if linear or natural or invlin:
             return ds5
         elif invdist:
             if shrink == True:
@@ -420,13 +424,13 @@ class point_interpolator:
 
         return interp_data
 
-    def _gdal_inno_natural_interp_points(self, dataset, resolution, radius,
+    def _gdal_invdist_scilin_interp_points(self, dataset, resolution, radius,
                                     nodata=1000000):
         """
         Interpolate the provided gdal vector points and return the interpolated
         data.
         """
-        print ('_gdal_inno_natural_interp_points')
+        print ('_gdal_invdist_scilin_interp_points')
         # Find the bounds of the provided data
         xmin,xmax,ymin,ymax = np.nan,np.nan,np.nan,np.nan
         lyr = dataset.GetLayerByIndex(0)
@@ -459,6 +463,7 @@ class point_interpolator:
                                                  (xi, yi), method='linear',
                                                  fill_value=nodata)
 #        interp_obj = mlab_griddata(xcoord,ycoord,zvals,xi,yi,interp='nn')
+#        interp_grid, interp_mask = interp_obj.data, interp_obj.mask
         interp_grid[np.isnan(interp_grid)]=nodata
         plt.figure()
         plt.imshow(interp_grid)
