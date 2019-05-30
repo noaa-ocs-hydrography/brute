@@ -14,6 +14,7 @@ import logging
 import numpy as np
 from osgeo import gdal
 gdal.UseExceptions()
+from fuse.proc_io.caris import helper
 
 __version__ = 'Test'
 
@@ -46,7 +47,7 @@ class proc_io:
         """
         Write the provided data to the predefined data type.
         """
-        self._logger.log(logging.DEBUG, 
+        self._logger.log(logging.DEBUG,
                          'Begin {} write'.format(self._out_data_type))
         if os.path.exists(instruction) and self.overwrite:
             self._logger.log(logging.DEBUG, 'Overwriting ' + instruction)
@@ -64,7 +65,7 @@ class proc_io:
         else:
             raise ValueError('writer type unknown: ' +
                              str(self._out_data_type))
-            
+
     def _write_csar(self, dataset, outfilename):
         """
         Convert the provided gdal dataset into a csar file.
@@ -82,7 +83,7 @@ class proc_io:
                              str(self._in_data_type))
         metadata['outfilename'] = outfilename
         metadata['z_up'] = self._z_up
-        conda_env_path = _retrieve_env_path(conda_env_name)
+        conda_env_path = helper.retrieve_env_path(conda_env_name)
         python_path = os.path.join(conda_env_path, 'python')
         # save the provided dataset and metadata to a file
         datafilename = os.path.join(self._work_dir_name, 'rasterdata.npy')
@@ -92,27 +93,23 @@ class proc_io:
             pickle.dump(metadata, metafile)
         # set the locations for running the wrap_csar script
         start = os.path.realpath(os.path.dirname(__file__))
-        write_csar = os.path.join(start, 'wrap_csar.py')
-        activate_file = _retrieve_activate_batch()
-        logfilename = self._get_logfilename()
+        write_csar = os.path.join(start, 'caris','wrap_csar.py')
+        activate_file = helper.retrieve_activate_batch()
         if os.path.exists(write_csar):
             args = ["cmd.exe", "/K", "set pythonpath= &&", # setup the commandline
                     activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
                     python_path, write_csar,  # call the script
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
                     '"' + metafilename.replace("&", "^&") + '"',  # metadata path
-                    '"' + logfilename.replace("&", "^&") + '"',
                     ]
             args = ' '.join(args)
             self._logger.log(logging.DEBUG, args)
-            self._stop_logfile()
             try:
                 proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
             except:
                 err = 'Error executing: {}'.foramt(args)
                 print(err)
                 self._logger.log(logging.DEBUG, err)
-            self._start_logfile(logfilename)
             try:
                 stdout, stderr = proc.communicate()
                 self._logger.log(logging.DEBUG, stdout)
@@ -135,10 +132,10 @@ class proc_io:
         Parameters
         ----------
         dataset : A georeferenced gdal raster object.
-        
+
         outfilename : A string defining the path and filename of the file to be
             written.
-        
+
         Kwarg
         -----
         metadata : A dictionary containing the metadata to be written to to
@@ -163,7 +160,7 @@ class proc_io:
         """
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
-        
+
         The gdal dataset should have he no data value set appropriately.
         """
         meta = {}
@@ -181,10 +178,9 @@ class proc_io:
         rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
         meta['nodata'] = rb.GetNoDataValue()
         # get the gdal data raster
-        #data = np.flipud(rb.ReadAsArray())
         data = rb.ReadAsArray()
         return data, meta
-    
+
     def _set_gdalndv(self, dataset):
         """
         Update the gdal raster object no data value and the raster no data
@@ -198,67 +194,3 @@ class proc_io:
             data = np.where(data==ndv, self._write_nodata, data)
             dataset.GetRasterBand(1).WriteArray(data)
         return dataset
-
-    def _get_logfilename(self):
-        """
-        Return the log filename.
-        """
-        if len(self._logger.handlers) > 1:
-            raise ValueError('Not sure which hanlder to use for logging csar work. Using first')
-        elif len(self._logger.handlers) <1:
-            handlefilename = 'casiano.log'
-        else:
-            h = self._logger.handlers[0]
-            handlefilename = h.baseFilename
-        return handlefilename
-
-    def _stop_logfile(self):
-        """
-        Get the logger filename, stop logging to it, and return the filename.
-        """
-        # remove handlers that might have existed from previous files
-        if len(self._logger.handlers) <1:
-            pass
-        else:
-            h = self._logger.handlers[0]
-            self._logger.removeHandler(h)
-
-    def _start_logfile(self, handlefilename):
-        """
-        Add a handler to the logger at the provided filename.
-        """
-        # create file handler for this filename
-        fh = logging.FileHandler(handlefilename)
-        fh.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        fh.setFormatter(formatter)
-        self._logger.addHandler(fh)
-
-# helper function to retrieve the path to the "Scripts" folder in PydroXL
-def _retrieve_scripts_folder():
-    install_prefix = sys.exec_prefix
-    folder_path = os.path.realpath(os.path.join(install_prefix, os.pardir, os.pardir, "Scripts"))
-    if not os.path.exists(folder_path):
-        raise RuntimeError("The Scripts folder does not exist at: %s" % folder_path)
-    return folder_path
-
-# helper function to retrieve the path to the "activate.bat" batch file in PydroXL
-def _retrieve_activate_batch():
-
-    scripts_prefix = _retrieve_scripts_folder()
-    file_path = os.path.realpath(os.path.join(scripts_prefix, "activate.bat"))
-    if not os.path.exists(file_path):
-        raise RuntimeError("The activate file does not exist at: %s" % file_path)
-    return file_path
-
-def _retrieve_env_path(env_name):
-    """
-    Given a conda environement name, find the environment.
-    """
-    current_env_loc = os.environ['conda_prefix']
-    desired_env_loc = os.path.join(current_env_loc, os.pardir, env_name)
-    if os.path.exists(desired_env_loc):
-        return desired_env_loc
-    else:
-        raise ValueError('{} environment does not exist in current conda installation'.format(env_name))
-        

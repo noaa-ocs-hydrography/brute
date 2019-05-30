@@ -234,8 +234,12 @@ def fileCollect(path, bounds):
                             flag = intersection.ExportToWkt()
                         except AttributeError as e:
                             flag = 'GEOMETRYCOLLECTION EMPTY'
+<<<<<<< HEAD
                             print (e, bfile, path, meta_geom, ehyd_geom,
                                    sep='\n')
+=======
+                            print (e, bfile, path, meta_geom, ehyd_geom, sep='\n')
+>>>>>>> 2f00087c6aeb268cca2b4e7e4709688be55c02ff
                     except TypeError as e:
                         print (e, meta_proj, ehyd_proj, sep='\n')
                         flag = 'GEOMETRYCOLLECTION EMPTY'
