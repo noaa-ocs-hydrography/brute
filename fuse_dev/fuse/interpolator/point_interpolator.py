@@ -214,8 +214,8 @@ class point_interpolator:
 
 
         x_min, x_max, y_min, y_max = ds_geom.GetEnvelope()
-#        meta = ([x_min,y_max],[x_max,y_min])
-#        print (meta)
+        meta = ([x_min,y_max],[x_max,y_min])
+        print (meta)
 
         # Create the destination data source
         x_dim = int((x_max - x_min) / to_res)
@@ -451,13 +451,14 @@ class point_interpolator:
         ycoord, xcoord = np.where(arr!=nodata)
         zvals = arr[ycoord[:], xcoord[:]]
         arr = None
+
         print('start')
         xa, ya = np.arange(numcolumns), np.arange(numrows)
         xi, yi = np.meshgrid(xa, ya)
-#        interp_grid = inno_griddata(xvals,yvals,zvals,xi,yi,interp='nn')
         interp_grid = scipy.interpolate.griddata((xcoord, ycoord), zvals,
                                                  (xi, yi), method='linear',
                                                  fill_value=nodata)
+#        interp_obj = mlab_griddata(xcoord,ycoord,zvals,xi,yi,interp='nn')
         interp_grid[np.isnan(interp_grid)]=nodata
         plt.figure()
         plt.imshow(interp_grid)

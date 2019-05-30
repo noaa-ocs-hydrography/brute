@@ -22,7 +22,7 @@ import numpy as np
 from osgeo import gdal, osr, ogr
 
 
-__version__ = '1.2.0'
+__version__ = '1.2'
 
 """Known global constants"""
 # print (datetime.datetime.now().strftime('%b %d %X %Y'))
@@ -41,15 +41,17 @@ full_a = re.compile(r'_A.xyz', re.IGNORECASE)
 # location of data items
 config = configparser.ConfigParser()
 config.read('config.ini')
-#txtName = 'eHydro_txt.txt'
-#txtLocation = os.path.join(progLoc, txtName)
+txtName = 'eHydro_txt.txt'
+txtLocation = os.path.join(progLoc, txtName)
 csvName = 'eHydro_csv.txt'
 """Default name for csv.txt output"""
 csvLocation = os.path.join(progLoc, csvName)
+#csvLocation = progLoc + '\\' + csvName
 """Default location for :attr:`csvName`"""
 logName = 'eHydro_log.txt'
 """Default name for log.txt output"""
 logLocation = os.path.join(progLoc, logName)
+#logLocation = progLoc + '\\' + logName
 """Default location for :attr:`logName`"""
 #"""Default location for """
 holding = progLoc + '\\downloads\\'
@@ -365,6 +367,7 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
         page = response.json()
         row = []
         metadata = {}
+        metadata['version'] = __version__
         for attribute in attributes:
             try:
                 if page['features'][0]['attributes'][attribute] == None:
@@ -390,12 +393,9 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
                 metadata[attribute] = 'error'
         try:
             coords = page['features'][0]['geometry']['rings']
-#            metadata['poly_name'] = metadata['SURVEYJOBIDPK'] + '.gpkg'
             metadata['poly']  = geometryToShape(coords)
-#            print (coords)
         except KeyError as e:
             print (e, page)
-#            metadata['poly_name'] = 'error'
             metadata['poly'] = 'error'
         row.append(metadata)
         rows.append(row)
@@ -820,7 +820,6 @@ def logOpen(logType, to=None):
         while True:
             name = datestamp +'_' + str(x) + '_' + logName
             logPath = logging + name
-#            print (logPath)
             if os.path.exists(logPath):
                 x += 1
             else:
@@ -971,7 +970,6 @@ def main(pb=None,to=None):
             while True:
                 name = datestamp + '_' + str(x) + '_' + csvName
                 csvPath = running + name
-#                print (csvPath)
                 if os.path.exists(csvPath):
                     x += 1
                 else:

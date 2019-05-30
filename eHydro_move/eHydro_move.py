@@ -400,7 +400,7 @@ def fileMove(regionFiles, destination, method, text_region=None,
                 district_code = splits[-2].split('\\')[-1]
                 district_abbr = district_code[-3:]
                 district_full = district_name[district_abbr]+'_'+district_code
-                eHydro_folder = 'USACE\\eHydro_' + district_full + '\\original'
+                eHydro_folder = 'USACE\\eHydro_' + district_full + '\\Original'
                 newerPath = _os.path.join(destination, k, eHydro_folder,
                                           surname)
                 if _os.path.isdir(newerPath):

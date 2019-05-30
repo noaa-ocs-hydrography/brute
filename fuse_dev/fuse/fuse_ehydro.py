@@ -113,6 +113,23 @@ class fuse_ehydro(_fbc.fuse_base_class):
         ext = self._config['bathymetry_intermediate_file']
         self._writer = proc_io('gdal', ext)
 
+    def read_pickle(self, infilename):
+        """
+        Attempts to open and read in the survey pickle
+
+        TODO: Move to the district reader level
+        """
+        froot, fname = _os.path.split(infilename)
+        fname, fext = _os.path.splitext(fname)
+        fpickle = _os.path.join(froot, fname + '.pickle')
+        fpickle = _os.path.normpath(fpickle)
+        if _os.path.exists(fpickle):
+            opened = open(fpickle, 'rb')
+            self._pickle_meta = _pickle.load(opened)
+            opened.close()
+        else:
+            pass
+
     def read(self, infilename):
         """
         Extract metadata from the provided eHydro file path and write the metadata
@@ -121,6 +138,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         self._meta = {}
         self._set_log(infilename)
+        self.read_pickle(infilename)
         # get the metadata
         meta = self._reader.read_metadata(infilename)
         meta['to_horiz_datum'] = self._config['to_horiz_datum']
@@ -135,15 +153,6 @@ class fuse_ehydro(_fbc.fuse_base_class):
             pass
             #self.process(infilename)
         # reading the bathymetry is not required > goes directly to datum trans
-
-    def read_pickle(self, infilename):
-        froot, fname = _os.path.split(infilename)
-        fname, fext = _os.path.splitext(fname)
-        fpickle = _os.path.join(froot, fname + '.pickle')
-        fpickle = _os.path.normpath(fpickle)
-        opened = open(fpickle, 'rb')
-        self._pickle_meta = _pickle.load(opened)
-        opened.close()
 
     def process(self, infilename):
         """
