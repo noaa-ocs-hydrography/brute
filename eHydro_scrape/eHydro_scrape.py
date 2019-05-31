@@ -41,8 +41,7 @@ full_a = re.compile(r'_A.xyz', re.IGNORECASE)
 # location of data items
 config = configparser.ConfigParser()
 config.read('config.ini')
-txtName = 'eHydro_txt.txt'
-txtLocation = os.path.join(progLoc, txtName)
+
 csvName = 'eHydro_csv.txt'
 """Default name for csv.txt output"""
 csvLocation = os.path.join(progLoc, csvName)
@@ -721,23 +720,6 @@ def csvCompare(rows, csvFile, newSurveysNum, pb=None):
     else:
         return 'No Changes', numstring
 
-def txtWriter(fileText, txtLocation):
-    """String "fileText" is writen to the "txtLocation" save path
-
-    Parameters
-    ----------
-    fileText : list
-        A list of strings each containing a line of text to be written in the
-        outputLog
-    txtLocation : string
-        Complete file path string for a text file to be created
-
-    """
-    save = open(txtLocation, 'w')
-    for row in fileText:
-        save.writelines(row)
-    save.close()
-
 def csvOpen():
     """Uses global variable csvLocation to open eHydro_csv.txt for use.
     Populates a list 'csvFile' with it's contents. Returns list and
@@ -770,7 +752,7 @@ def csvWriter(csvFile, csvLocation, pb=None):
     csvFile : list
         A list of survey attributes each containing a row of data to be written
         to eHydro_csv.txt
-    txtLocation : string
+    csvLocation : string
         Complete file path string for a text file to be created
 
     """
@@ -924,7 +906,6 @@ def main(pb=None,to=None):
     if runType == 'no':
         try:
             csvFile = csvOpen()
-            txtWriter(csvFile, csvLocation)
             logWriter(fileLog, '\teHydro_csv.txt opened for reading')
         except:
             logWriter(fileLog, '\teHydro_csv.txt unable to be opened')
