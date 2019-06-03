@@ -112,6 +112,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         ext = self._config['bathymetry_intermediate_file']
         self._writer = proc_io('gdal', ext)
+        self._points = proc_io('point', ext)
 
     def read_pickle(self, infilename):
         """
@@ -171,6 +172,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
             dataset = self._transform.translate(infilename, self._meta)
+            self._points.write(dataset, outfilename)
             print (dataset.GetProjection())
             # take a gdal dataset for interpolation and return a gdal dataset
             if 'poly_name' in self._pickle_meta:

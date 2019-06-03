@@ -63,27 +63,97 @@ def write_csar(dataset, m):
 
     raster = None
 
-def check_metadata(meta):
+def write_cloud(dataset, m):
+    """
+    Convert a set of GDAL points to a CSAR point cloud.  The provided data is
+    assumed to be a depth (positive down) and is converted to a height
+    (positive up).
+    """
+    print ('write_cloud')
+    print (m)
+    outfilename = m['outfilename']
+
+    if os.path.exists(outfilename):
+        os.remove(outfilename)
+        os.remove(outfilename+'0')
+
+    crs = m['crs']
+
+    # build CSAR bands
+    bandInfo = {} # Define our bands below
+    z_dir = cc.Direction.HEIGHT
+    layerName = "Height"
+    if not m['z_up']:
+        z_dir = cc.Direction.DEPTH
+        layerName = "Depth"
+    bandInfo[layerName] = cc.BandInfo(type = cc.DataType.FLOAT64,
+                                     tuple_length = 1,
+                                     name = layerName,
+                                     direction = z_dir,
+                                     units = 'm',
+                                     category = cc.Category.SCALAR,
+                                     ndv = -1.0)
+    bandInfo['Position'] = cc.BandInfo(type = cc.DataType.FLOAT64,
+                                       tuple_length = 3,
+                                       name = 'Position',
+                                       direction = cc.Direction.NAP,
+                                       units = '',
+                                       category = cc.Category.SCALAR,
+                                       ndv = (-1.0, -1.0, 0.0))
+    # set up the CSAR
+    opts = cc.Options();
+    opts.open_type = cc.OpenType.WRITE
+    opts.position_band_name = 'Position'
+    opts.band_info = bandInfo
+    opts.extents = ((dataset[:,0].min(),dataset[:,1].min(),dataset[:,2].min()),
+                    (dataset[:,0].max(),dataset[:,1].max(),dataset[:,2].max()))
+    opts.wkt_cosys = crs
+    # Create data for iterator
+    if not m['z_up']:
+        blocks = [ { 'Depth': list(dataset[:,2]), 'Position': list(dataset) } ]
+    else:
+        blocks = [ { 'Height': list(dataset[:,2]), 'Position': list(dataset) } ]
+    opts.iterator = lambda: iter(blocks)
+    # print(outfilename)
+    pc = cc.Cloud(filename = outfilename, options=opts)
+
+    pc = None
+
+def check_metadata(meta, meta_type):
     """
     Check to make sure the required metadata keys are available in the
     provided metadata dictionary.
     """
-    req_attrib = {'resx',
-                  'resy',
-                  'originx',
-                  'originy',
-                  'dimx',
-                  'dimy',
-                  'crs',
-                  'nodata',
-                  'outfilename',
-                  'z_up',
-                  }
-    mkeys = ''
-    for key in req_attrib:
-        if key not in meta:
-            mkeys = mkeys + key + ', '
-    if len(mkeys) > 0:
+    if meta_type == 'gdal':
+        req_attrib = {'resx',
+                      'resy',
+                      'originx',
+                      'originy',
+                      'dimx',
+                      'dimy',
+                      'crs',
+                      'nodata',
+                      'outfilename',
+                      'z_up',
+                      }
+        mkeys = ''
+        for key in req_attrib:
+            if key not in meta:
+                mkeys = mkeys + key + ', '
+        if len(mkeys) > 0:
+            raise ValueError('Metadata missing to write csar %s' % mkeys)
+    elif meta_type == 'point':
+        req_attrib = {'crs',
+                      'outfilename',
+                      'z_up',
+                      }
+        mkeys = ''
+        for key in req_attrib:
+            if key not in meta:
+                mkeys = mkeys + key + ', '
+        if len(mkeys) > 0:
+            raise ValueError('Metadata missing to write csar %s' % mkeys)
+    else:
         raise ValueError('Metadata missing to write csar %s' % mkeys)
 
 def main():
@@ -95,9 +165,14 @@ def main():
     # check to make sure the metadata file exists
     with open(sys.argv[2], 'rb') as metafile:
         metadata = pickle.load(metafile)
+    # write type argument
+    outfile_type = sys.argv[3]
     # read the metadata into variables and send to the write method
-    check_metadata(metadata)
-    write_csar(data, metadata)
+    check_metadata(metadata, outfile_type)
+    if outfile_type == 'gdal':
+        write_csar(data, metadata)
+    elif outfile_type == 'point':
+        write_cloud(data, metadata)
 
 
 if __name__ == '__main__':
