@@ -12,7 +12,7 @@ import subprocess
 from tempfile import TemporaryDirectory as tempdir
 import logging
 import numpy as np
-from osgeo import gdal
+from osgeo import gdal, ogr, osr
 gdal.UseExceptions()
 from fuse.proc_io.caris import helper
 
@@ -92,6 +92,8 @@ class proc_io:
             self._write_csar(dataset, instruction)
         elif self._out_data_type == 'bag':
             self._write_bag(dataset, instruction, metadata)
+        elif self._out_data_type == 'gpkg':
+            self._write_points(dataset, instruction)
         elif self._out_data_type == 'carisbdb51':
             self._send2bdb51(dataset, instruction)
         else:
@@ -202,11 +204,57 @@ class proc_io:
         dest = None
         self._logger.log(logging.DEBUG, 'BAG file created')
 
-    def _write_points(self, dataset, outfilename, metadata = None):
+    def _write_points(self, dataset, outfilename):
         """
+        Convert the provided gdal dataset into a geopackage file.
 
+        Parameters
+        ----------
+        dataset : A georeferenced gdal points object.
+        outfilename : str
+            A string defining the path and filename of the file to be
+            written.
         """
-        pass
+        points, meta = self._point2wkt(dataset)
+        crs = meta['crs']
+        proj = osr.SpatialReference(wkt=crs)
+
+        splits = os.path.splitext(outfilename)
+        outfilename = splits[0] + '_Points.gpkg'
+
+        if os.path.exists(outfilename):
+            os.remove(outfilename)
+
+        driver = ogr.GetDriverByName('GPKG')
+        ds = driver.CreateDataSource(outfilename)
+        layer = ds.CreateLayer(outfilename, proj, ogr.wkbMultiPoint)
+
+#        layer.CreateField(ogr.FieldDefn('X', ogr.OFT))
+#        layer.CreateField(ogr.FieldDefn('Y', ogr.OFTBinary))
+#        layer.CreateField(ogr.FieldDefn('Z', ogr.OFTBinary))
+#        layer.CreateField(ogr.FieldDefn('Elevation', ogr.OFTBinary))
+#        layer.CreateField(ogr.FieldDefn('Feature Type'), ogr.OFTString)
+        defn = layer.GetLayerDefn()
+
+        for point in points:
+            # Create a new feature (attribute and geometry)
+            feat = ogr.Feature(defn)
+#            feat.SetField('X', point['x'])
+#            feat.SetField('Y', point['y'])
+#            feat.SetField('Z', point['z'])
+#            feat.SetField('Elevation', point['z'])
+#            feat.SetField('Feature Type', 'Point')
+
+            # Make a geometry, from Shapely object
+            geom = ogr.CreateGeometryFromWkt(point['wkt'])
+            feat.SetGeometry(geom)
+
+            layer.CreateFeature(feat)
+            feat = geom = None  # destroy these
+
+        # Save and close everything
+        ds = layer = feat = geom = None
+
 
     def _gdal2array(self, dataset):
         """
@@ -284,6 +332,52 @@ class proc_io:
         print (meta)
 
         return data, meta
+
+    def _point2wkt(self, dataset):
+        """
+        Convert the gdal dataset into a WKT Points object and a dictionary of
+        metadata of the geotransform information and return.
+
+        The gdal dataset should have he no data value set appropriately.
+
+        Parameters
+        ----------
+        dataset : A georeferenced gdal/ogr points object.
+
+        Returns
+        -------
+        data : WKT Points object
+            WKT Points object holding the xyz point data from the input dataset
+        meta : dict
+            dictionary containing the needed definitions from the input dataset
+            object
+
+        """
+        meta = {}
+        points = []
+        lyr = dataset.GetLayerByIndex(0)
+        crs = lyr.GetSpatialRef().ExportToWkt()
+#        multipoint = ogr.Geometry(ogr.wkbMultiPoint)
+
+        # Read out of the GDAL data structure
+        lyr = dataset.GetLayerByIndex(0)
+        count = lyr.GetFeatureCount()
+        for n in np.arange(count):
+            info = {}
+            point = ogr.Geometry(ogr.wkbPoint)
+            f = lyr.GetFeature(n)
+            x,y,z = f.geometry().GetPoint()
+            point.AddPoint(x,y,z)
+            info['x'] = x
+            info['y'] = y
+            info['z'] = z
+            info['wkt'] = point.ExportToWkt()
+            points.append(info)
+
+        meta['crs'] = crs
+        print (meta)
+
+        return points, meta
 
     def _set_gdalndv(self, dataset):
         """

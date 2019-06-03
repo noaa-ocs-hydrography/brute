@@ -244,16 +244,16 @@ class point_interpolator:
         ## 6
         print (x_orig, y_orig)
         print (x_min,y_min)
-        oulx, ouly = x_orig, y_orig
-        rulx, ruly = x_min, y_min
-        dulx, duly = 0, 0
-        if oulx != rulx:
-            dulx = rulx - oulx
-            print (oulx, rulx, dulx)
-        if ouly != ruly:
-            duly = ouly - ruly
-            print (ouly, ruly, duly)
-        print (dulx, duly)
+        ollx, olly = x_orig, y_orig
+        rllx, rlly = x_min, y_min
+        dllx, dlly = 0, 0
+        if ollx != rllx:
+            dllx = rllx - ollx
+            print (ollx, rllx, dllx)
+        if olly != rlly:
+            dlly = olly - rlly
+            print (olly, rlly, dlly)
+        print (dllx, dlly)
 
         ## 7
         oShape = (to_y, to_x)
@@ -272,24 +272,24 @@ class point_interpolator:
                 print ('expx', expx)
         ay = np.full((rSy+expy,rSx+expx), nodata)
         print ('expz', ay.shape, oShape)
-        rollx = int(dulx/to_res)
-        rolly = int(duly/to_res)
+        rollx = int(dllx/to_res)
+        rolly = int(dlly/to_res)
 
         ## 8
         up, left = 0, 0
         down, right = 0, 0
-        if duly < 0:
-            up = -int(rolly)
-        elif duly > 0:
+        if dlly < 0:
             down = rolly
             up = 0
-        if dulx < 0:
+        elif dlly > 0:
+            up = -int(rolly)
+        if dllx < 0:
             left = -int(rollx)
-        elif dulx > 0:
+        elif dllx > 0:
             right = rollx
             left = 0
 
-        if dulx != 0 or duly != 0:
+        if dllx != 0 or dlly != 0:
             print ('rollz', up, left, down, right)
             temp = newarr[up:,left:]
             print (temp.shape)

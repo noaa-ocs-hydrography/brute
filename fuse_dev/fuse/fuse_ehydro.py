@@ -111,8 +111,12 @@ class fuse_ehydro(_fbc.fuse_base_class):
         data.
         """
         ext = self._config['bathymetry_intermediate_file']
+        if ext == 'bag':
+            ext2 = 'gpkg'
+        else:
+            ext2 = ext
         self._writer = proc_io('gdal', ext)
-        self._points = proc_io('point', ext)
+        self._points = proc_io('point', 'csar')
 
     def read_pickle(self, infilename):
         """
