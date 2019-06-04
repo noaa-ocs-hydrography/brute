@@ -23,7 +23,7 @@ class proc_io:
     A class to abstract the reading and writing of bathymetry.
     """
     def __init__(self, in_data_type, out_data_type, work_dir = None,
-                 z_up = True, nodata=1000000.0, caris_env_name = 'NBS35',
+                 z_up = True, nodata=1000000.0, caris_env_name = 'CARIS35',
                  overwrite = True):
         """
         Initialize with the data type to be worked.
@@ -227,23 +227,23 @@ class proc_io:
 
         driver = ogr.GetDriverByName('GPKG')
         ds = driver.CreateDataSource(outfilename)
-        layer = ds.CreateLayer(outfilename, proj, ogr.wkbMultiPoint)
+        layer = ds.CreateLayer('Point', proj, ogr.wkbMultiPoint)
 
-#        layer.CreateField(ogr.FieldDefn('X', ogr.OFT))
-#        layer.CreateField(ogr.FieldDefn('Y', ogr.OFTBinary))
-#        layer.CreateField(ogr.FieldDefn('Z', ogr.OFTBinary))
-#        layer.CreateField(ogr.FieldDefn('Elevation', ogr.OFTBinary))
-#        layer.CreateField(ogr.FieldDefn('Feature Type'), ogr.OFTString)
+        layer.CreateField(ogr.FieldDefn('X', ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn('Y', ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn('Z', ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn('Elevation', ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn('Feature Type', ogr.OFTString))
         defn = layer.GetLayerDefn()
 
         for point in points:
             # Create a new feature (attribute and geometry)
             feat = ogr.Feature(defn)
-#            feat.SetField('X', point['x'])
-#            feat.SetField('Y', point['y'])
-#            feat.SetField('Z', point['z'])
-#            feat.SetField('Elevation', point['z'])
-#            feat.SetField('Feature Type', 'Point')
+            feat.SetField('X', point['x'])
+            feat.SetField('Y', point['y'])
+            feat.SetField('Z', point['z'])
+            feat.SetField('Elevation', point['z'])
+            feat.SetField('Feature Type', 'Point')
 
             # Make a geometry, from Shapely object
             geom = ogr.CreateGeometryFromWkt(point['wkt'])
@@ -373,6 +373,9 @@ class proc_io:
             info['z'] = z
             info['wkt'] = point.ExportToWkt()
             points.append(info)
+#            multipoint.AddGeometry(point)
+#        info['wkt'] = multipoint.ExportToWkt()1
+#        points.append(info)
 
         meta['crs'] = crs
         print (meta)
