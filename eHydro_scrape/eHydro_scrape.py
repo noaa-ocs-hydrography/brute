@@ -440,14 +440,14 @@ def write_geopackage(out_path, name, poly, spcs):
     layer = ds.CreateLayer(name, proj, ogr.wkbMultiPolygon)
 #    layer = ds.CreateLayer(name, None, ogr.wkbMultiPolygon)
     # Add one attribute
-    layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
+    layer.CreateField(ogr.FieldDefn('Survey', ogr.OFTString))
     defn = layer.GetLayerDefn()
 
     ## If there are multiple geometries, put the "for" loop here
 
     # Create a new feature (attribute and geometry)
     feat = ogr.Feature(defn)
-    feat.SetField('id', 123)
+    feat.SetField('Survey', name)
 
     # Make a geometry, from Shapely object
     geom = ogr.CreateGeometryFromWkt(poly)

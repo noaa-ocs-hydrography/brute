@@ -41,9 +41,17 @@ def write_csar(dataset, m):
     name = m['outfilename']
     bands = [band_info]
 
-    if os.path.exists(name):
-        os.remove(name)
-        os.remove(name+'0')
+    print (name+'0')
+
+    while os.path.exists(name) and os.path.exists(name+'0'):
+        try:
+            os.remove(name)
+        except:
+            pass
+        try:
+            os.remove(name+'0')
+        except:
+            pass
     raster = cc.create_raster(name, crs, origin, resolution, dimensions, bands)
 
     idx = (dataset < m['nodata']).astype(np.int)
@@ -66,26 +74,44 @@ def write_csar(dataset, m):
 def write_cloud(dataset, m):
     """
     Convert a set of GDAL points to a CSAR point cloud.  The provided data is
-    assumed to be a depth (positive down) and is converted to a height
+    assumed to be a depth (positive down) and is assigned to a height
     (positive up).
+
+    Parameters
+    ----------
+    dataset : numpy.array
+        An array of [x,y,z] data points
+    m : dict
+        a dictionary containing the 'crs' info, 'outfilename', and 'z_up' to
+        determine directionality of the data
+
     """
     print ('write_cloud')
     print (m)
     outfilename = m['outfilename']
-
-    if os.path.exists(outfilename):
-        os.remove(outfilename)
-        os.remove(outfilename+'0')
+    print (outfilename+'0')
+    while os.path.exists(outfilename) and os.path.exists(outfilename+'0'):
+        try:
+            os.remove(outfilename)
+        except:
+            pass
+        try:
+            os.remove(outfilename+'0')
+        except:
+            pass
 
     crs = m['crs']
+
+    print(m['z_up'], type(m['z_up']))
 
     # build CSAR bands
     bandInfo = {} # Define our bands below
     z_dir = cc.Direction.HEIGHT
-    layerName = "Height"
+    layerName = "Elevation"
     if not m['z_up']:
         z_dir = cc.Direction.DEPTH
         layerName = "Depth"
+    print(m['z_up'], layerName, z_dir)
     bandInfo[layerName] = cc.BandInfo(type = cc.DataType.FLOAT64,
                                      tuple_length = 1,
                                      name = layerName,
@@ -110,9 +136,14 @@ def write_cloud(dataset, m):
     opts.wkt_cosys = crs
     # Create data for iterator
     if not m['z_up']:
-        blocks = [ { 'Depth': list(dataset[:,2]), 'Position': list(dataset) } ]
+        blocks = [ { layerName: list(dataset[:,2]), 'Position': list(dataset) } ]
     else:
-        blocks = [ { 'Height': list(dataset[:,2]), 'Position': list(dataset) } ]
+        x = dataset[:,0]
+        y = dataset[:,1]
+        z = -dataset[:,2]
+        blocks = [ { layerName: list(z), 'Position': list(zip(x,y,[0]*len(z)))} ]
+
+
     opts.iterator = lambda: iter(blocks)
     # print(outfilename)
     pc = cc.Cloud(filename = outfilename, options=opts)
