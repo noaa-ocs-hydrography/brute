@@ -9,11 +9,10 @@ Created on Thu May  9 15:46:49 2019
 Classes and methods for working with CARIS Bathy DataBASE 5.1.
 """
 
-import subprocess
+import asyncio as aio
 import logging
 import os, sys
 import pickle
-import threading
 from fuse.proc_io.caris import helper
 
 class bdb51:
@@ -41,14 +40,18 @@ class bdb51:
         Instantiate the object and connect to the database referenced, waiting
         until the database responds.
         """
+        # https://docs.python.org/3.6/library/asyncio-subprocess.html#asyncio-subprocess
+        if sys.platform == 'win32':
+            loop = aio.ProactorEventLoop()
+            aio.set_event_loop(loop)
+        
         self.caris_environment_name = caris_env_name
         self._logger = logging.getLogger('fuse')
         if len(self._logger.handlers) == 0:
             ch = logging.StreamHandler(sys.stdout)
             ch.setLevel(logging.DEBUG)
             self._logger.addHandler(ch)
-        self._env = threading.Thread(target = self._start_env())
-        self._env.start()
+        self._start_env()
         
     def _start_env(self):
         """
@@ -70,26 +73,27 @@ class bdb51:
         args = ' '.join(args)
         self._logger.log(logging.DEBUG, args)
         try:
-            self.db = subprocess.Popen(args,
-                                       stdin = subprocess.PIPE, 
-                                       stdout = subprocess.PIPE, 
-                                       stderr = subprocess.PIPE,
-                                       creationflags=subprocess.CREATE_NEW_CONSOLE)
+            self.db = aio.subprocess.create_subprocess_exec(
+                    args,
+                    stdin = aio.subprocess.PIPE, 
+                    stdout = aio.subprocess.PIPE, 
+                    stderr = aio.subprocess.PIPE,
+                    )
         except:
             err = 'Error executing: {}'.foramt(args)
             print(err)
             self._logger.log(logging.DEBUG, err)
         try:
-            out = self.db.stdout.read()
-            err = self.db.stderr.read()
-            if len(out) > 0:
-                msg = out.decode(encoding='UTF-8')
-                print(msg)
-                self._logger.log(logging.DEBUG, msg)
-            if len(err) > 0:
-                msg = err.decode(encoding='UTF-8')
-                print(msg)
-                self._logger.log(logging.DEBUG, msg)
+            await self.db.stdout.read()
+            print('standard error: {}'.format(await self.db.stderr.read()))
+#            if len(out) > 0:
+#                msg = out.decode(encoding='UTF-8')
+#                print(msg)
+#                self._logger.log(logging.DEBUG, msg)
+#            if len(err) > 0:
+#                msg = err.decode(encoding='UTF-8')
+#                print(msg)
+#                self._logger.log(logging.DEBUG, msg)
         except Exception as e:
             err = 'Error in handling error output: {}'.format(e)
             print(err)
@@ -134,7 +138,7 @@ class bdb51:
         """
         pc = pickle.dumps(command)
         self.db.stdin.write(pc)
-        response = self.db.stout.read()
+        response = self.db.stdout.read()
         print(response.decode(encoding='UTF-8'))
         
         #self._logger.log(logging.DEBUG, pickle.loads(response))
