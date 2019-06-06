@@ -48,4 +48,5 @@ class pickle_file:
             opened.close()
             return pickle_meta
         else:
-            return None
+            print(fpickle + ' not found')
+            return {}
