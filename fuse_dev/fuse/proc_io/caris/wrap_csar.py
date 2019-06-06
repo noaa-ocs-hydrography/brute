@@ -23,9 +23,6 @@ def write_csar(dataset, m):
     print (m, dataset, dataset.shape)
     z_dir = cc.Direction.HEIGHT
     layerName = "Elevation"
-    if not m['z_up']:
-        z_dir = cc.Direction.DEPTH
-        layerName = "Depth"
     band_info = cc.BandInfo(name=layerName,
                      type = cc.DataType.FLOAT32,
                      tuple_length = 1,
@@ -53,21 +50,15 @@ def write_csar(dataset, m):
         except:
             pass
     raster = cc.create_raster(name, crs, origin, resolution, dimensions, bands)
-
     idx = (dataset < m['nodata']).astype(np.int)
-#    idx = np.nonzero(dataset == m['nodata'])
     if not m['z_up']:
-        dataset = np.where(idx, dataset, raster.band_info['Depth'].ndv)
-    #    # write the data into the csar container
-        band_dtype = raster.band_info['Depth'].numpy_dtype
-        area = ((0,0),(dimensions[0],dimensions[1]))
-        raster.write("Depth", area, dataset.astype(band_dtype))
+        dataset = np.where(idx, -dataset, raster.band_info['Elevation'].ndv)
     else:
         dataset = np.where(idx, dataset, raster.band_info['Elevation'].ndv)
-    #    # write the data into the csar container
-        band_dtype = raster.band_info['Elevation'].numpy_dtype
-        area = ((0,0),(dimensions[0],dimensions[1]))
-        raster.write("Elevation", area, dataset.astype(band_dtype))
+    # write the data into the csar container
+    band_dtype = raster.band_info['Elevation'].numpy_dtype
+    area = ((0,0),(dimensions[0],dimensions[1]))
+    raster.write("Elevation", area, dataset.astype(band_dtype))
 
     raster = None
 
@@ -108,9 +99,6 @@ def write_cloud(dataset, m):
     bandInfo = {} # Define our bands below
     z_dir = cc.Direction.HEIGHT
     layerName = "Elevation"
-    if not m['z_up']:
-        z_dir = cc.Direction.DEPTH
-        layerName = "Depth"
     print(m['z_up'], layerName, z_dir)
     bandInfo[layerName] = cc.BandInfo(type = cc.DataType.FLOAT64,
                                      tuple_length = 1,
@@ -120,12 +108,12 @@ def write_cloud(dataset, m):
                                      category = cc.Category.SCALAR,
                                      ndv = -1.0)
     bandInfo['Position'] = cc.BandInfo(type = cc.DataType.FLOAT64,
-                                       tuple_length = 3,
+                                       tuple_length = 2,
                                        name = 'Position',
                                        direction = cc.Direction.NAP,
                                        units = '',
                                        category = cc.Category.SCALAR,
-                                       ndv = (-1.0, -1.0, 0.0))
+                                       ndv = (-1.0, -1.0))
     # set up the CSAR
     opts = cc.Options();
     opts.open_type = cc.OpenType.WRITE
@@ -136,12 +124,9 @@ def write_cloud(dataset, m):
     opts.wkt_cosys = crs
     # Create data for iterator
     if not m['z_up']:
-        blocks = [ { layerName: list(dataset[:,2]), 'Position': list(dataset) } ]
+        blocks = [ { layerName: list(-dataset[:,2]), 'Position': list(dataset[:,:2]) } ]
     else:
-        x = dataset[:,0]
-        y = dataset[:,1]
-        z = -dataset[:,2]
-        blocks = [ { layerName: list(z), 'Position': list(zip(x,y,[0]*len(z)))} ]
+        blocks = [ { layerName: list(dataset[:,2]), 'Position': list(dataset[:,:2]) } ]
 
 
     opts.iterator = lambda: iter(blocks)

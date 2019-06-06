@@ -269,7 +269,7 @@ class proc_io:
 
         Returns
         -------
-        data : np.array
+        data : numpy.array
             :obj:`np.array` holding raster data from the input dataset
         meta : dict
             dictionary containing the needed definitions from the input dataset
@@ -307,7 +307,7 @@ class proc_io:
 
         Returns
         -------
-        data : np.array
+        data : numpy.array
             :obj:`np.array` holding the xyz point data from the input dataset
         meta : dict
             dictionary containing the needed definitions from the input dataset

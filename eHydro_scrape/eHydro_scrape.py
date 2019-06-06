@@ -129,18 +129,21 @@ def query():
             areas += '('
             while i < len(agencies):
                 if i == 0:
-                    areas += ('UPPER(SURVEYAGENCY)%20like%20%27%25'
+                    # %27 is ' (Apostrophe); %25 is % (Percent sign)
+                    areas += ('UPPER(SURVEYAGENCY)+like+%27%25'
                               + agencies[0].strip()
                               + '%25%27')
                     i += 1
                 else:
-                    areas += ('%20OR%20UPPER(SURVEYAGENCY)%20like%20%27%25'
+                    # %27 is ' (Apostrophe); %25 is % (Percent sign)
+                    areas += ('+OR+UPPER(SURVEYAGENCY)+like+%27%25'
                               + agencies[i].strip()
                               + '%25%27')
                     i += 1
-            areas += ')%20'
+            areas += ')+'
         else:
-            areas = ('UPPER(SURVEYAGENCY)%20like%20%27%25'
+            # %27 is ' (Apostrophe); %25 is % (Percent sign)
+            areas = ('UPPER(SURVEYAGENCY)+like+%27%25'
                      + agencies[0].strip()
                      + '%25%27')
     else:
@@ -150,26 +153,30 @@ def query():
     # Survey Date Uploaded
     if config ['Timeframe']['Ignore Date'] == 'no' and areas != '':
         print ('\nStart:', start, '\nEnd:', end)
-        where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
+        # %27 is ' (Apostrophe)
+        where = ('SURVEYDATEUPLOADED+>=+%27'
                  + start
-                 + 'T00%3A01%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
+                 + 'T00:01:00.000Z%27+AND+SURVEYDATEUPLOADED+<=+%27'
                  + end
-                 + 'T11%3A59%3A00.000Z%27%20AND%20'
+                 + 'T11:59:00.000Z%27+AND+'
                  + areas)
     elif config ['Timeframe']['Ignore Date'] == 'no' and areas == '':
         print ('\nStart:', start, '\nEnd:', end)
-        where = ('SURVEYDATEUPLOADED%20%3E%3D%20%27'
+        # %27 is ' (Apostrophe)
+        where = ('SURVEYDATEUPLOADED+>=+%27'
                  + start
-                 + 'T00%3A01%3A00.000Z%27%20AND%20SURVEYDATEUPLOADED%20%3C%3D%20%27'
+                 + 'T00:01:00.000Z%27+AND+SURVEYDATEUPLOADED+<=+%27'
                  + end
-                 + 'T11%3A59%3A00.000Z%27')
+                 + 'T11:59:00.000Z%27')
     else:
         print ('\nStart: Ignored', '\nEnd: Ignored')
         start = 'Ignored'
         end = 'Ignored'
         if areas != '':
+            # areas
             where = areas
         else:
+            # 1 = 1; %3D is = (Equals sign)
             where = '1%3D1'
 
     # The query for determining how many responses will be returned
@@ -359,7 +366,7 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
         pb.SetValue(x)
     while x < newSurveysNum:
         print (x, end=' ')
-        query = ('https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID%20%3D%20'
+        query = ('https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID+=+'
                  + str(surveyIDs[x])
                  + '&outFields=*&returnGeometry=true&outSR=4326&f=json')
         response = requests.get(query)
@@ -559,7 +566,7 @@ def downloadAndCheck(rows, pb=None, to=None):
             shpfilename = os.path.join(holding + '\\' + agency,
                                        surname + '.gpkg')
             meta['poly_name'] = surname + '.gpkg'
-            write_shapefile(shpfilename, surname, poly, spcs)
+            write_geopackage(shpfilename, surname, poly, spcs)
             sfile = os.path.relpath(surname + '.gpkg')
 
         metafilename = os.path.join(holding + '\\' + agency,
