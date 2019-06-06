@@ -128,7 +128,7 @@ class meta_review_ehydro(mrb.meta_review_base):
         # update the metadata keys
         meta = self._scriptkeys(meta)
         # get all the metadata that is in the file already
-        with open(self._metafilename, 'r') as csvfile:
+        with open(self._metafilename, 'r', encoding='utf-8') as csvfile:
             reader = _csv.DictReader(csvfile, fieldnames = self._fieldnames)
             for row in reader:
                 orig.append(row)
@@ -166,7 +166,7 @@ class meta_review_ehydro(mrb.meta_review_base):
             meta = self._scriptkeys(meta)
         else:
             raise ValueError('Unknown meta data container provided')
-        with open(self._metafilename, 'w', newline='') as csvfile:
+        with open(self._metafilename, 'w', newline='', encoding='utf-8') as csvfile:
             writer = _csv.DictWriter(csvfile, 
                                      fieldnames = self._fieldnames,
                                      extrasaction = 'ignore')
