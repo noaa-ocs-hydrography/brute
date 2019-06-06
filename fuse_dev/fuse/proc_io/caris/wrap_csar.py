@@ -108,12 +108,12 @@ def write_cloud(dataset, m):
                                      category = cc.Category.SCALAR,
                                      ndv = -1.0)
     bandInfo['Position'] = cc.BandInfo(type = cc.DataType.FLOAT64,
-                                       tuple_length = 2,
+                                       tuple_length = 3,
                                        name = 'Position',
                                        direction = cc.Direction.NAP,
                                        units = '',
                                        category = cc.Category.SCALAR,
-                                       ndv = (-1.0, -1.0))
+                                       ndv = (-1.0, -1.0, 0.0))
     # set up the CSAR
     opts = cc.Options();
     opts.open_type = cc.OpenType.WRITE
@@ -124,9 +124,9 @@ def write_cloud(dataset, m):
     opts.wkt_cosys = crs
     # Create data for iterator
     if not m['z_up']:
-        blocks = [ { layerName: list(-dataset[:,2]), 'Position': list(dataset[:,:2]) } ]
+        blocks = [ { layerName: list(-dataset[:,2]), 'Position': list(dataset) } ]
     else:
-        blocks = [ { layerName: list(dataset[:,2]), 'Position': list(dataset[:,:2]) } ]
+        blocks = [ { layerName: list(dataset[:,2]), 'Position': list(dataset) } ]
 
 
     opts.iterator = lambda: iter(blocks)
