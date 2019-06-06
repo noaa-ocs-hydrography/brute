@@ -102,9 +102,9 @@ class vdatum:
         conversion.
         """
         ihorz = r'ihorz:NAD83:spc:us_ft:' + str(in_fips)
-        ivert = ' ivert:' + in_verdat.lower() + ':us_ft:sounding'
+        ivert = ' ivert:' + in_verdat.lower() + ':us_ft:height'
         ohorz = ' ohorz:NAD83:utm:m:'
-        overt = ' overt:' + out_verdat.lower()  + ':m:sounding'
+        overt = ' overt:' + out_verdat.lower()  + ':m:height'
         georef = ihorz + ivert + ohorz + overt
         java_str = _os.path.join(self._java_path,'java')
         file_str = ' -file:txt:comma,0,1,2,skip0:{};{}'
