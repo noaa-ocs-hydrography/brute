@@ -9,7 +9,7 @@ Created on Thu May  9 15:46:49 2019
 Classes and methods for working with CARIS Bathy DataBASE 5.1.
 """
 
-import asyncio as aio
+import subprocess
 import logging
 import os, sys
 import pickle
@@ -40,10 +40,6 @@ class bdb51:
         Instantiate the object and connect to the database referenced, waiting
         until the database responds.
         """
-        # https://docs.python.org/3.6/library/asyncio-subprocess.html#asyncio-subprocess
-        if sys.platform == 'win32':
-            loop = aio.ProactorEventLoop()
-            aio.set_event_loop(loop)
         
         self.caris_environment_name = caris_env_name
         self._logger = logging.getLogger('fuse')
@@ -62,30 +58,27 @@ class bdb51:
         conda_env_name = self.caris_environment_name
         conda_env_path = helper.retrieve_env_path(conda_env_name)
         python_path = os.path.join(conda_env_path, 'python')
+        self._port = 65505
         # set the location for running the database i/o object
         start = os.path.realpath(os.path.dirname(__file__))
         db_obj = os.path.join(start, 'wrap_bdb51.py')
         activate_file = helper.retrieve_activate_batch()
         args = ["cmd.exe", "/C", "set pythonpath= &&", # setup the commandline
                 activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
-                python_path, db_obj,  # call the script for the object
+                python_path, db_obj, str(self._port), # call the script for the object
                 ]
         args = ' '.join(args)
         self._logger.log(logging.DEBUG, args)
         try:
-            self.db = aio.subprocess.create_subprocess_exec(
+            self.db = subprocess.Popen(
                     args,
-                    stdin = aio.subprocess.PIPE, 
-                    stdout = aio.subprocess.PIPE, 
-                    stderr = aio.subprocess.PIPE,
                     )
         except:
             err = 'Error executing: {}'.foramt(args)
             print(err)
             self._logger.log(logging.DEBUG, err)
         try:
-            await self.db.stdout.read()
-            print('standard error: {}'.format(await self.db.stderr.read()))
+            pass
 #            if len(out) > 0:
 #                msg = out.decode(encoding='UTF-8')
 #                print(msg)
