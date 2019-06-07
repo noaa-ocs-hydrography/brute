@@ -4,7 +4,7 @@ Created on Thu Jun  6 15:29:05 2019
 
 @author: Casiano.Koprowski
 """
-
+import os as _os
 import numpy as _np
 from hyo2 import bag as _bag
 
@@ -38,6 +38,8 @@ class bag_file:
 
     """
     def __init__(self, filepath):
+        _fName = _os.path.split(filepath)[-1]
+        self.name = _os.path.splitext(_fName)[0]
         self.nodata = 1000000.0
         _bag_obj = _bag.BAGFile(filepath)
         _bag_obj.populate_metadata()
@@ -45,6 +47,7 @@ class bag_file:
         self.uncertainty = self._nan2ndv(_bag_obj.uncertainty(), self.nodata)
         self.shape = _bag_obj.elevation_shape()
         self.bounds = self._meta2bounds(_bag_obj.meta)
+        self.resolution = (_bag_obj.meta.res_x, _bag_obj.meta.res_y)
         self.wkt = _bag_obj.meta.wkt_srs
 
     def _nan2ndv(self, arr, nodata):

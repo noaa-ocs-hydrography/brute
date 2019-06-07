@@ -108,24 +108,24 @@ class linear:
 
     Takes input bathy and coverage arrays (tile or complete data) as well as
     the uncertainty array.  This data is used to inform the shape/size of the
-    resulting output of the interpolation function. 
-    
+    resulting output of the interpolation function.
+
     The input bathy and covrg arrays are passed to :func:`concatGrid` in order
     to gather the edges of the each of the arrays and combine them into a
-    single list of combined xy and z egde values. If xy and z are empty, the 
-    interpolation process is skipped and the original tile or complete data is 
+    single list of combined xy and z egde values. If xy and z are empty, the
+    interpolation process is skipped and the original tile or complete data is
     passed back from the function. Otherwise, the lists xy, z, and the shape of
     the BAG data input are passed to :func:`scipy.interpolate.griddata` an
-    output to the variable "grid_pre". The output of this function is also 
-    saved to a seperate variable "grid" while the original output is left 
-    untouched. The seperate output is then passed to 
+    output to the variable "grid_pre". The output of this function is also
+    saved to a seperate variable "grid" while the original output is left
+    untouched. The seperate output is then passed to
     :func:`astropy.convolution.convolve` to smooth the output.
 
     The uncertainty layer is calculated using catzoc and grid::
 
         >>> m, b = catzoc
         >>> uncrt = (grid*m)+b
-    
+
     Parameters
     ----------
     bathy : numpy.array
@@ -139,7 +139,7 @@ class linear:
     nodata : float, optional
         The default value is 1000000.0, the nodata value associated with the
         BAG format
-    
+
     Returns
     -------
     bathy : numpy.array
@@ -149,7 +149,7 @@ class linear:
         bathemetry
     unint : numpy.array
         The interpolated bathemetry before convolution is performed
-    
+
     """
     def __init__(self, bathy, uncrt, covrg, catzoc, nodata=1000000.0):
         x, y = _np.arange(bathy.shape[1]), _np.arange(bathy.shape[0])

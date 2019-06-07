@@ -157,7 +157,7 @@ class point_interpolator:
         file : string
             Shapefile file location
         to_proj : str
-            WKT object with destination combination
+            WKT object with destination spatial reference system
         to_gt : tuple
            gdal.GeoTransform object of the interpolated dataset
         to_res : int

@@ -156,7 +156,7 @@ def getShpRast(file, y, pixel_size=1, nodata=255):
     # Open the data source and read in the extent
     source_ds = _ogr.Open(file)
     source_layer = source_ds.GetLayer()
-    source_srs = source_layer.GetSpatialRef()
+    source_srs = source_layer.GetSpatialRef().ExportToWkt()
     x_min, x_max, y_min, y_max = source_layer.GetExtent()
     meta = ([x_min,y_max],[x_max,y_min])
 
@@ -166,6 +166,7 @@ def getShpRast(file, y, pixel_size=1, nodata=255):
     target_ds = _gdal.GetDriverByName('MEM').Create('', x_res, y_res, _gdal.GDT_Byte)
     gt = (x_min, pixel_size, 0, y_max, 0, -pixel_size)
     target_ds.SetGeoTransform(gt)
+    target_ds.SetProjection(source_srs)
     band = target_ds.GetRasterBand(1)
     band.SetNoDataValue(nodata)
 
