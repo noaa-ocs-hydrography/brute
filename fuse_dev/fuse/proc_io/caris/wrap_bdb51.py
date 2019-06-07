@@ -11,6 +11,8 @@ server from within the CARIS conda python environment.
 import os, sys
 import pickle
 import time
+import selectors
+import socket
 
 import caris.bathy.db as bdb
 import caris
@@ -21,10 +23,11 @@ class bdb51_io:
     """
     
     """
-    def __init__(self):
+    def __init__(self, port):
         """
         
         """
+        self.port = port
         self.alive = True
         self.connected = False
         self.node_manager = None
@@ -154,21 +157,48 @@ class bdb51_io:
             response = self.die(command_dict)
         self._response.append(response)
         return response
+    
+sel = selectors.DefaultSelector()
 
-def main():
-    db_io = bdb51_io()
-    sys.stdout.buffer.write(b'waiting for command')
-    sys.stdout.flush()
-    for pc in sys.stdin:
-        sys.stdout.buffer.write(b'#5 is alive!')
-        sys.stdout.flush()
-        command = pickle.loads(pc)
-        response = db_io.take_commands(command)
-        pr = pickle.dumps(response)
-        sys.stdout.buffer.write(pr)
+def accept(sock, mask):
+    conn, addr = sock.accept()  # Should be ready
+    print('accepted', conn, 'from', addr)
+    conn.setblocking(False)
+    sel.register(conn, selectors.EVENT_READ, read)
+
+def read(conn, mask):
+    data = conn.recv(1000)  # Should be ready
+    if data:
+        print('echoing', repr(data), 'to', conn)
+        conn.send(data)  # Hope it won't block
+    else:
+        print('closing', conn)
+        sel.unregister(conn)
+        conn.close()
+
+def main(port):
+    """
+    An event loop waiting for commands.
+    """
+    sock = socket.socket()
+    sock.bind(('localhost', port))
+    sock.listen(100)
+    sock.setblocking(False)
+    sel.register(sock, selectors.EVENT_READ, accept)
+    db_io = bdb51_io(port+1)
+    while True:
+        events = sel.select()
+        for key, mask in events:
+            callback = key.data
+            callback(key.fileobj, mask)
+            command = pickle.loads(pc)
+            response = db_io.take_commands(command)
         if not db_io.alive:
-            sys.stdout('Ending main loop in BDB51 environment.')
             break
+    sel.close()
+    sock.close()
+        
 
 if __name__ == '__main__':
-    main()
+    args = sys.argv
+    main(int(args[-1]))
