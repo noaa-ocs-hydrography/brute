@@ -37,6 +37,7 @@ class pickle_file:
         -------
         pickle_meta : dict
             Dictionary containing the contents a survey pickle file
+
         """
         froot, fname = _os.path.split(infilename)
         fname, fext = _os.path.splitext(fname)
