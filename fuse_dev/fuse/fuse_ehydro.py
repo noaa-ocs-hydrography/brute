@@ -8,7 +8,6 @@ Created on Thu Jan 31 10:30:11 2019
 """
 
 import os as _os
-import pickle as _pickle
 import logging as _logging
 import fuse.fuse_base_class as _fbc
 import fuse.meta_review.meta_review_ehydro as _mre
@@ -48,12 +47,6 @@ class fuse_ehydro(_fbc.fuse_base_class):
             'interpolated',
             'script_version',
             ]
-
-    _eHyo = ["OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
-              "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION",
-              "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
-              "SURVEYTYPE", "PROJECTEDAREA", "SOURCEDATAFORMAT",
-              "Shape__Area", "Shape__Length", 'poly', 'poly_name']
 
     def __init__(self, config_filename):
         super().__init__(config_filename)
@@ -117,23 +110,10 @@ class fuse_ehydro(_fbc.fuse_base_class):
             ext2 = ext
         self._writer = proc_io('gdal', ext)
         self._points = proc_io('point', 'csar')
-
-    def read_pickle(self, infilename):
-        """
-        Attempts to open and read in the survey pickle
-
-        TODO: Move to the district reader level
-        """
-        froot, fname = _os.path.split(infilename)
-        fname, fext = _os.path.splitext(fname)
-        fpickle = _os.path.join(froot, fname + '.pickle')
-        fpickle = _os.path.normpath(fpickle)
-        if _os.path.exists(fpickle):
-            opened = open(fpickle, 'rb')
-            self._pickle_meta = _pickle.load(opened)
-            opened.close()
-        else:
-            pass
+        
+    def _read_pickle(self,infilename):
+        pickle = _usace.parse_usace_pickle.pickle_file(infilename)
+        return pickle.pickle_meta
 
     def read(self, infilename):
         """
@@ -143,7 +123,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         self._meta = {}
         self._set_log(infilename)
-        self.read_pickle(infilename)
+        self._pickle_meta = self._read_pickle(infilename)
         # get the metadata
         meta = self._reader.read_metadata(infilename)
         meta['to_horiz_datum'] = self._config['to_horiz_datum']
