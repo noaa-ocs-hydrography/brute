@@ -225,9 +225,6 @@ class proc_io:
 
         outfilename = os.path.splitext(outfilename)[0] + '_Points.gpkg'
 
-        if os.path.exists(outfilename):
-            os.remove(outfilename)
-
         points, meta = self._point2wkt(dataset)
         crs = meta['crs']
 
