@@ -6,25 +6,30 @@ Created on Thu Feb 14 15:13:52 2019
 
 @author: grice
 """
-import sys, os
+import logging
+import os
 import pickle
 import subprocess
 from tempfile import TemporaryDirectory as tempdir
-import logging
+
+import fiona
 import numpy as np
-from osgeo import gdal, ogr, osr
+from osgeo import gdal, ogr
+
 gdal.UseExceptions()
 from fuse.proc_io.caris import helper
 
 __version__ = 'Test'
 
+
 class proc_io:
     """
     A class to abstract the reading and writing of bathymetry.
     """
-    def __init__(self, in_data_type, out_data_type, work_dir = None,
-                 z_up = True, nodata=1000000.0, caris_env_name = 'CARIS35',
-                 overwrite = True):
+
+    def __init__(self, in_data_type, out_data_type, work_dir=None,
+                 z_up=True, nodata=1000000.0, caris_env_name='CARIS35',
+                 overwrite=True):
         """
         Initialize with the data type to be worked.
 
@@ -64,7 +69,7 @@ class proc_io:
         if self._out_data_type == "carisbdb51":
             self._bdb51 = bdb51()
 
-    def write(self, dataset, instruction, metadata = None):
+    def write(self, dataset, instruction, metadata=None):
         """
         Write the provided data to the predefined data type.
 
@@ -85,7 +90,7 @@ class proc_io:
             self._logger.log(logging.DEBUG, 'Overwriting ' + instruction)
             os.remove(instruction)
             if self._out_data_type == 'bag':
-                caris_xml = instruction +'.aux.xml'
+                caris_xml = instruction + '.aux.xml'
                 if os.path.exists(caris_xml):
                     os.remove(caris_xml)
         if self._out_data_type == 'csar':
@@ -116,7 +121,7 @@ class proc_io:
         """
         conda_env_name = self._caris_environment_name
         # put the provided data into the right form for the csar conversion.
-        if self._in_data_type =='gdal':
+        if self._in_data_type == 'gdal':
             dataset = self._set_gdalndv(dataset)
             data, metadata = self._gdal2array(dataset)
             metadata['outfilename'] = outfilename
@@ -124,7 +129,7 @@ class proc_io:
             data, metadata = self._point2array(dataset)
             splits = os.path.splitext(outfilename)
             metadata['outfilename'] = splits[0] + '_Points' + splits[1]
-            print (metadata['outfilename'], outfilename)
+            print(metadata['outfilename'], outfilename)
         else:
             raise ValueError('input data type unknown: ' +
                              str(self._in_data_type))
@@ -139,18 +144,18 @@ class proc_io:
             pickle.dump(metadata, metafile)
         # set the locations for running the wrap_csar script
         start = os.path.realpath(os.path.dirname(__file__))
-        write_csar = os.path.join(start, 'caris','wrap_csar.py')
+        write_csar = os.path.join(start, 'caris', 'wrap_csar.py')
         activate_file = helper.retrieve_activate_batch()
         if os.path.exists(write_csar):
-            args = ["cmd.exe", "/K", "set pythonpath= &&", # setup the commandline
+            args = ["cmd.exe", "/K", "set pythonpath= &&",  # setup the commandline
                     activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
                     python_path, write_csar,  # call the script
                     '"' + datafilename.replace("&", "^&") + '"',  # surface path
                     '"' + metafilename.replace("&", "^&") + '"',  # metadata path
-                    '"' + self._in_data_type.replace("&", "^&") + '"', # data type
+                    '"' + self._in_data_type.replace("&", "^&") + '"',  # data type
                     ]
             args = ' '.join(args)
-            print (args)
+            print(args)
             self._logger.log(logging.DEBUG, args)
             try:
                 proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
@@ -175,7 +180,7 @@ class proc_io:
             self._logger.log(logging.DEBUG, err)
             raise RuntimeError(err)
 
-    def _write_bag(self, dataset, outfilename, metadata = None):
+    def _write_bag(self, dataset, outfilename, metadata=None):
         """
         Convert the provided gdal dataset into a bag file.
 
@@ -190,7 +195,7 @@ class proc_io:
             the standard gdal bag xml.  Keys to the written must corrispond to
             the standard xml tags.  Defaults to None which writes nothing.
         """
-        if self._in_data_type =='gdal':
+        if self._in_data_type == 'gdal':
             dataset = self._set_gdalndv(dataset)
         else:
             raise ValueError('input data type unknown: ' +
@@ -215,46 +220,46 @@ class proc_io:
             A string defining the path and filename of the file to be
             written.
         """
-        points, meta = self._point2wkt(dataset)
-        crs = meta['crs']
-        proj = osr.SpatialReference(wkt=crs)
 
-        splits = os.path.splitext(outfilename)
-        outfilename = splits[0] + '_Points.gpkg'
+        layer_name = 'Elevation'
+
+        outfilename = os.path.splitext(outfilename)[0] + '_Points.gpkg'
 
         if os.path.exists(outfilename):
             os.remove(outfilename)
 
-        driver = ogr.GetDriverByName('GPKG')
-        ds = driver.CreateDataSource(outfilename)
-        layer = ds.CreateLayer('Point', proj, ogr.wkbMultiPoint)
+        points, meta = self._point2wkt(dataset)
+        crs = meta['crs']
 
-        layer.CreateField(ogr.FieldDefn('X', ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn('Y', ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn('Z', ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn('Elevation', ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn('Feature Type', ogr.OFTString))
-        defn = layer.GetLayerDefn()
+        layer_schema = {
+            'geometry': 'Point',
+            'properties': {
+                'X': 'float',
+                'Y': 'float',
+                'Z': 'float',
+                'Elevation': 'float',
+                'Feature Type': 'str'
+            }
+        }
 
-        for point in points:
-            # Create a new feature (attribute and geometry)
-            feat = ogr.Feature(defn)
-            feat.SetField('X', point['x'])
-            feat.SetField('Y', point['y'])
-            feat.SetField('Z', point['z'])
-            feat.SetField('Elevation', point['z'])
-            feat.SetField('Feature Type', 'Point')
+        # in fiona features are input as dictionary "records"
+        point_records = [{
+            'geometry': {
+                'type': 'Point',
+                'coordinates': (float(point['x']), float(point['y']), float(point['z']))
+            },
+            'properties': {
+                'X': point['x'],
+                'Y': point['y'],
+                'Z': point['z'],
+                'Elevation': point['z'],
+                'Feature Type': 'Point'
+            }
+        } for point in points]
 
-            # Make a geometry, from Shapely object
-            geom = ogr.CreateGeometryFromWkt(point['wkt'])
-            feat.SetGeometry(geom)
-
-            layer.CreateFeature(feat)
-            feat = geom = None  # destroy these
-
-        # Save and close everything
-        ds = layer = feat = geom = None
-
+        with fiona.open(outfilename, 'w', 'GPKG', schema=layer_schema, crs=fiona.crs.from_string(crs),
+                        layer=layer_name) as output_file:
+            output_file.writerecords(point_records)
 
     def _gdal2array(self, dataset):
         """
@@ -279,16 +284,16 @@ class proc_io:
         meta = {}
         # get the logisitics for converting the gdal dataset to csar
         gt = dataset.GetGeoTransform()
-        print (gt)
+        print(gt)
         meta['resx'] = gt[1]
         meta['resy'] = gt[5]
         meta['originx'] = gt[0]
         meta['originy'] = gt[3]
         meta['dimx'] = dataset.RasterXSize
         meta['dimy'] = dataset.RasterYSize
-        print (meta)
+        print(meta)
         meta['crs'] = dataset.GetProjection()
-        rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
+        rb = dataset.GetRasterBand(1)  # should this be hardcoded for 1?
         meta['nodata'] = rb.GetNoDataValue()
         # get the gdal data raster
         data = rb.ReadAsArray()
@@ -322,14 +327,14 @@ class proc_io:
         # Read out of the GDAL data structure
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
-        data = np.zeros((count,3))
+        data = np.zeros((count, 3))
         for n in np.arange(count):
             f = lyr.GetFeature(n)
-            data[n,:] = f.geometry().GetPoint()
-        data[:,2] *= -1  # make these heights rather than depths
+            data[n, :] = f.geometry().GetPoint()
+        data[:, 2] *= -1  # make these heights rather than depths
 
         meta['crs'] = crs
-        print (meta)
+        print(meta)
 
         return data, meta
 
@@ -357,7 +362,7 @@ class proc_io:
         points = []
         lyr = dataset.GetLayerByIndex(0)
         crs = lyr.GetSpatialRef().ExportToWkt()
-#        multipoint = ogr.Geometry(ogr.wkbMultiPoint)
+        #        multipoint = ogr.Geometry(ogr.wkbMultiPoint)
 
         # Read out of the GDAL data structure
         lyr = dataset.GetLayerByIndex(0)
@@ -366,19 +371,19 @@ class proc_io:
             info = {}
             point = ogr.Geometry(ogr.wkbPoint)
             f = lyr.GetFeature(n)
-            x,y,z = f.geometry().GetPoint()
-            point.AddPoint(x,y,z)
+            x, y, z = f.geometry().GetPoint()
+            point.AddPoint(x, y, z)
             info['x'] = x
             info['y'] = y
             info['z'] = z
             info['wkt'] = point.ExportToWkt()
             points.append(info)
-#            multipoint.AddGeometry(point)
-#        info['wkt'] = multipoint.ExportToWkt()1
-#        points.append(info)
+        #            multipoint.AddGeometry(point)
+        #        info['wkt'] = multipoint.ExportToWkt()1
+        #        points.append(info)
 
         meta['crs'] = crs
-        print (meta)
+        print(meta)
 
         return points, meta
 
@@ -398,10 +403,10 @@ class proc_io:
 
         """
         # check the no data value
-        rb = dataset.GetRasterBand(1) # should this be hardcoded for 1?
+        rb = dataset.GetRasterBand(1)  # should this be hardcoded for 1?
         ndv = rb.GetNoDataValue()
         if self._write_nodata != ndv:
             data = rb.ReadAsArray()
-            data = np.where(data==ndv, self._write_nodata, data)
+            data = np.where(data == ndv, self._write_nodata, data)
             dataset.GetRasterBand(1).WriteArray(data)
         return dataset
