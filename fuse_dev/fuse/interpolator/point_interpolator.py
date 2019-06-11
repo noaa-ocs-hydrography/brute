@@ -28,6 +28,7 @@ from typing import Tuple, List
 import matplotlib.pyplot as plt
 import numpy
 import scipy
+import sklearn
 from matplotlib.mlab import griddata as mlab_griddata
 from osgeo import gdal, ogr, osr
 
@@ -74,6 +75,12 @@ class point_interpolator:
         elif interpolation_type == 'invdist':
             # do the inverse distance interpolation
             ds3 = self._gdal_invdist_interp_points(dataset, resolution, window)
+
+            # shrink the coverage back on the edges and in the holidays on the inv dist
+            if shrink:
+                ds4 = self._shrink_coverage(ds3, resolution, window)
+        elif interpolation_type == 'kriging':
+            ds3 = self._kriging_interp_points(dataset, resolution, window)
 
             # shrink the coverage back on the edges and in the holidays on the inv dist
             if shrink:
@@ -507,6 +514,35 @@ class point_interpolator:
                                 algorithm=algorithm)
 
         return interp_data
+
+    def _kriging_interp_points(self, dataset: gdal.Dataset, resolution: float, radius: float,
+                               nodata: float = 1000000) -> gdal.Dataset:
+        """
+        Interpolate the provided gdal vector points and return the interpolated
+        data.
+        """
+
+        # Find the bounds of the provided data
+        xmin, xmax, ymin, ymax = numpy.nan, numpy.nan, numpy.nan, numpy.nan
+        lyr = dataset.GetLayerByIndex(0)
+        count = lyr.GetFeatureCount()
+
+        for n in numpy.arange(count):
+            f = lyr.GetFeature(n)
+            x, y, z = f.geometry().GetPoint()
+            xmin, xmax = compare_values(x, xmin, xmax)
+            ymin, ymax = compare_values(y, ymin, ymax)
+
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
+
+        # do kriging on points
+        gp = sklearn.gaussian_process.GaussianProcessRegressor(kernel=sklearn.gaussian_process.kernels.ConstantKernel)
+
+        # TODO actually make this work
+        interpolated_data = gp.fit(x, y)
+
+        # TODO convert back to GDAL dataset
+        return interpolated_data
 
     def _get_nodes(self, resolution: float, bounds: Tuple[float, float, float, float]) -> Tuple[
         int, int, List[float, float, float, float]]:
