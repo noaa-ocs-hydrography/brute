@@ -134,8 +134,7 @@ class point_interpolator:
         # roll the array through, comparing all points and saving the minimum dist.
         for n in numpy.arange(1, count):
             tmp = numpy.roll(dataset, n, axis=0)
-            dist = (numpy.sqrt(numpy.square(dataset[:, 0] - tmp[:, 0])
-                               + numpy.square(dataset[:, 1] - tmp[:, 1])))
+            dist = (numpy.sqrt(numpy.square(dataset[:, 0] - tmp[:, 0]) + numpy.square(dataset[:, 1] - tmp[:, 1])))
             idx = numpy.nonzero(dist < min_dist)[0]
 
             if len(idx) > 0:
@@ -195,32 +194,31 @@ class point_interpolator:
         source_layer = source_ds.GetLayer()
         source_srs = source_layer.GetSpatialRef()
 
-        for feature in source_layer:
-            if feature != None:
-                geom = feature.GetGeometryRef()
-                #                print (geom.ExportToWkt())
-                ds_geom = ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-                #                print (source_srs, to_proj, sep='\n')
-                coordTrans = osr.CoordinateTransformation(source_srs, to_proj)
-                ds_geom.Transform(coordTrans)
-                driver = ogr.GetDriverByName('Memory')
-                ds = driver.CreateDataSource('temp')
-                layer = ds.CreateLayer(name, to_proj, ogr.wkbMultiPolygon)
+        for feature in filter(lambda feature: feature != None, source_layer):
+            geom = feature.GetGeometryRef()
+            #                print (geom.ExportToWkt())
+            ds_geom = ogr.CreateGeometryFromWkt(geom.ExportToWkt())
+            #                print (source_srs, to_proj, sep='\n')
+            coordTrans = osr.CoordinateTransformation(source_srs, to_proj)
+            ds_geom.Transform(coordTrans)
+            driver = ogr.GetDriverByName('Memory')
+            ds = driver.CreateDataSource('temp')
+            layer = ds.CreateLayer(name, to_proj, ogr.wkbMultiPolygon)
 
-                # Add one attribute
-                layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
-                defn = layer.GetLayerDefn()
+            # Add one attribute
+            layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
+            defn = layer.GetLayerDefn()
 
-                # Create a new feature (attribute and geometry)
-                feat = ogr.Feature(defn)
-                feat.SetField('id', 123)
+            # Create a new feature (attribute and geometry)
+            feat = ogr.Feature(defn)
+            feat.SetField('id', 123)
 
-                # Make a geometry, from Shapely object
-                feat.SetGeometry(ds_geom)
+            # Make a geometry, from Shapely object
+            feat.SetGeometry(ds_geom)
 
-                layer.CreateFeature(feat)
-                feat = geom = None  # destroy these
-                break
+            layer.CreateFeature(feat)
+            feat = geom = None  # destroy these
+            break
 
         x_min, x_max, y_min, y_max = ds_geom.GetEnvelope()
         meta = ([x_min, y_max], [x_max, y_min])
@@ -367,10 +365,10 @@ class point_interpolator:
         for n in numpy.arange(count):
             f = lyr.GetFeature(n)
             x, y, z = f.geometry().GetPoint()
-            xmin, xmax = self._compare_vals(x, xmin, xmax)
-            ymin, ymax = self._compare_vals(y, ymin, ymax)
+            xmin, xmax = compare_values(x, xmin, xmax)
+            ymin, ymax = compare_values(y, ymin, ymax)
 
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, [xmin, ymin, xmax, ymax])
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
         algorithm = f'linear:radius=0:nodata={int(nodata)}'
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
                                 algorithm=algorithm)
@@ -399,10 +397,10 @@ class point_interpolator:
             xvals.append(x)
             yvals.append(y)
             zvals.append(z)
-            xmin, xmax = self._compare_vals(x, xmin, xmax)
-            ymin, ymax = self._compare_vals(y, ymin, ymax)
+            xmin, xmax = compare_values(x, xmin, xmax)
+            ymin, ymax = compare_values(y, ymin, ymax)
 
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, [xmin, ymin, xmax, ymax])
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
         print(bounds)
         xbound, ybound = bounds[0], bounds[1]
         xvals, yvals, zvals = numpy.array(xvals), numpy.array(yvals), numpy.array(zvals)
@@ -451,10 +449,10 @@ class point_interpolator:
         for n in numpy.arange(count):
             f = lyr.GetFeature(n)
             x, y, z = f.geometry().GetPoint()
-            xmin, xmax = self._compare_vals(x, xmin, xmax)
-            ymin, ymax = self._compare_vals(y, ymin, ymax)
+            xmin, xmax = compare_values(x, xmin, xmax)
+            ymin, ymax = compare_values(y, ymin, ymax)
 
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, [xmin, ymin, xmax, ymax])
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
         algorithm = f'invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}:angle=0.0:max_points=0:' + \
                     f'min_points=1:nodata={int(nodata)}'
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
@@ -499,35 +497,16 @@ class point_interpolator:
         for n in numpy.arange(count):
             f = lyr.GetFeature(n)
             x, y, z = f.geometry().GetPoint()
-            xmin, xmax = self._compare_vals(x, xmin, xmax)
-            ymin, ymax = self._compare_vals(y, ymin, ymax)
+            xmin, xmax = compare_values(x, xmin, xmax)
+            ymin, ymax = compare_values(y, ymin, ymax)
 
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, [xmin, ymin, xmax, ymax])
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
         algorithm = f'invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}:angle=0.0:max_points=0:' + \
                     f'min_points=1:nodata={int(nodata)}'
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
                                 algorithm=algorithm)
 
         return interp_data
-
-    @staticmethod
-    def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, float]:
-        """
-        This is a small utility for inspecting values and seeing they
-        contribute to a min or max estimate.
-        """
-
-        if numpy.isnan(valmin):
-            valmin = val
-        elif val < valmin:
-            valmin = val
-
-        if numpy.isnan(valmax):
-            valmax = val
-        elif val > valmax:
-            valmax = val
-
-        return valmin, valmax
 
     def _get_nodes(self, resolution: float, bounds: Tuple[float, float, float, float]) -> Tuple[
         int, int, List[float, float, float, float]]:
@@ -639,3 +618,22 @@ class point_interpolator:
         data_rb.WriteArray(data)
 
         return dataset
+
+
+def compare_values(val: float, valmin: float, valmax: float) -> Tuple[float, float]:
+    """
+    This is a small utility for inspecting values and seeing they
+    contribute to a min or max estimate.
+    """
+
+    if numpy.isnan(valmin):
+        valmin = val
+    elif val < valmin:
+        valmin = val
+
+    if numpy.isnan(valmax):
+        valmax = val
+    elif val > valmax:
+        valmax = val
+
+    return valmin, valmax
