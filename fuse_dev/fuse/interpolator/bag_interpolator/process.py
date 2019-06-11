@@ -30,7 +30,7 @@ class intitialize:
 
     def linear(self, filepath, coverage_list):
         bag = _bag.bag_file()
-        bag.open_file(filepath)
+        bag.open_file(filepath, 'hyo')
         bag.generate_name(self._outlocation, self._io)
         coverage = _cvg.unified_coverage(coverage_list, bag.wkt, bag.name)
         coverage = _cvg.align2grid(coverage, bag.bounds, bag.shape,

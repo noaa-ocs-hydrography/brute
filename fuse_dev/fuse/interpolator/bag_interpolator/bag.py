@@ -47,41 +47,83 @@ class bag_file:
         self.size = None
         self.outfilename = None
 
-    def open_file(self, filepath):
-        """
+
+    def open_file(self, filepath, method):
+        if method == 'gdal':
+            self._file_gdal(filepath)
+        elif method == 'hyo':
+            self._file_hyo(filepath)
+        else:
+            raise ValueError('Open method not implemented.')
+
+    def _file_hyo(self, filepath):
+        """Used to read a BAG file using HydrOffice's hyo2.bag module.
+
+        This function reads and populates this object's attributes
+
         Parameters
         ----------
         filepath : str
             The complete file path of the input BAG file
 
         """
+        self._known_data(filepath)
+        bag_obj = _bag.BAGFile(filepath)
+        bag_obj.populate_metadata()
+        self.elevation = self._nan2ndv(bag_obj.elevation(), self.nodata)
+        self.uncertainty = self._nan2ndv(bag_obj.uncertainty(), self.nodata)
+        self.shape = bag_obj.elevation_shape()
+        self.bounds = self._meta2bounds(bag_obj.meta)
+        self.resolution = (bag_obj.meta.res_x, bag_obj.meta.res_y)
+        self.wkt = bag_obj.meta.wkt_srs
+
+        bag_obj = None
+
+    def _file_gdal(self, filepath):
+        self._known_data(filepath)
+        bag_obj = _gdal.Open(filepath)
+        self.elevation = self._npflip(self._gdalreadarray(bag_obj, 1))
+        self.uncertainty = self._npflip(self._gdalreadarray(bag_obj, 2))
+        self.shape = self.elevation.shape
+        self.bounds, self.resolution = self._gt2bounds(bag_obj.GetGeoTransform(),
+                                                       self.shape)
+        self.wkt = bag_obj.GetProjectionRef()
+
+        bag_obj = None
+
+    def _known_data(self, filepath):
         _fName = _os.path.split(filepath)[-1]
         self.name = _os.path.splitext(_fName)[0]
         self.nodata = 1000000.0
-        _bag_obj = _bag.BAGFile(filepath)
-        _bag_obj.populate_metadata()
-        self.elevation = self._nan2ndv(_bag_obj.elevation(), self.nodata)
-        self.uncertainty = self._nan2ndv(_bag_obj.uncertainty(), self.nodata)
-        self.shape = _bag_obj.elevation_shape()
-        self.bounds = self._meta2bounds(_bag_obj.meta)
-        self.resolution = (_bag_obj.meta.res_x, _bag_obj.meta.res_y)
-        self.wkt = _bag_obj.meta.wkt_srs
         self.size = self._size_finder(filepath)
 
     def _nan2ndv(self, arr, nodata):
         arr[_np.isnan(arr)] = nodata
-        arr = _np.flipud(arr)
-        return arr
+        return _np.flipud(arr)
+
+    def _npflip(self, arr):
+        return _np.flipud(arr)
 
     def _meta2bounds(self,meta):
         sx,sy = meta.sw
         nx,ny = meta.ne
-        bounds = ([sx,ny],[nx,sy])
-        return bounds
+        return ([sx,ny],[nx,sy])
+
+    def _gt2bounds(self,meta, shape):
+        # (605260.0, 4.0, 0.0, 4505852.0, 0.0, -4.0)
+        # ([605260.0, 4494888.0], [620528.0, 4483924.0])
+        y, x = shape
+        res = (_np.round(meta[1]), _np.round(meta[5]))
+        sx, sy = meta[0], meta[3]
+        nx = sx + (x * res[0])
+        ny = sy + (y * res[1])
+        return ([sx,sy],[nx,ny]), res
+
+    def _gdalreadarray(self, bag_obj, band):
+        return bag_obj.GetRasterBand(band).ReadAsArray()
 
     def _size_finder(self, filepath):
-        size = int(_np.round(_os.path.getsize(filepath)/1000))
-        return size
+        return int(_np.round(_os.path.getsize(filepath)/1000))
 
     def generate_name(self, outlocation, io):
         if io:
