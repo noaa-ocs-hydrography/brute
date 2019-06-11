@@ -30,8 +30,6 @@ import scipy
 from matplotlib.mlab import griddata as mlab_griddata
 from osgeo import gdal, ogr, osr
 
-from fuse_dev.fuse.interpolator import interpolator
-
 
 class point_interpolator:
     """
@@ -82,11 +80,11 @@ class point_interpolator:
         else:
             print('No interpolation method recognized')
 
-        if linear:
+        if interpolation_type == 'linear':
             # trim the triangulated interpolation back using the inv dist as a mask
             ds3 = self._get_mask(dataset, resolution, window)
             ds5 = self._mask_with_raster(ds2, ds3)
-        elif natural or invlin:
+        elif interpolation_type in ['natural', 'invlin']:
             ds3 = self._get_shape_mask(ds2, shapefile, resolution)
 
             if shrink == True:
@@ -95,9 +93,9 @@ class point_interpolator:
                 ds5 = self._mask_with_raster(ds2, ds3)
 
         # write the files out using the above function
-        if linear or natural or invlin:
+        if interpolation_type in ['linear', 'natural', 'invlin']:
             return ds5
-        elif invdist:
+        elif interpolation_type == 'invdist':
             if shrink == True:
                 return ds4
             else:
