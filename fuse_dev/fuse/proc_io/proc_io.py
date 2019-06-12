@@ -259,6 +259,31 @@ class proc_io:
         # Save and close everything
         ds = layer = feat = geom = None
 
+    def _write_vector(self, dataset, outfilename):
+        splits = os.path.split(outfilename)[1]
+        name = os.path.splitext(outfilename)[0]
+        outfilename = os.path.join(splits[0], name + '_Vector.gpkg')
+
+        proj = dataset.GetProjection()
+        proj = osr.SpatialReference(wkt=proj)
+        band = dataset.GetRasterBand(1)
+
+        driver = ogr.GetDriverByName('GPKG')
+        ds = driver.CreateDataSource(outfilename)
+        layer = ds.CreateLayer(name, proj, ogr.wkbMultiPolygon)
+
+        # Add one attribute
+        layer.CreateField(ogr.FieldDefn('Survey', ogr.OFTString))
+        defn = layer.GetLayerDefn()
+
+        # Create a new feature (attribute and geometry)
+        feat = ogr.Feature(defn)
+        feat.SetField('Survey', name)
+
+        gdal.Polygonize(band, None, layer, 0, [],
+                        callback = None)
+
+        ds = band = None
 
     def _gdal2array(self, dataset):
         """
