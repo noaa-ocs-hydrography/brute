@@ -9,15 +9,12 @@ import numpy as _np
 
 from hyo2 import bag as _bag
 from osgeo import gdal as _gdal
+from osgeo import osr as _osr
 
 _gdal.UseExceptions()
 
 class bag_file:
     """This class serves as the main container for BAG data.
-
-    In order to read and assign the data relevant to the interpolation process,
-    this class heavily depends on HydrOffice's hyo2.bag module to open and
-    populate the data needed
 
     Attributes
     ----------
@@ -49,6 +46,18 @@ class bag_file:
 
 
     def open_file(self, filepath, method):
+        """Used to read a BAG file using the method determined by input.
+
+        The current methods available are 'gdal' and 'hyo'
+
+        Parameters
+        ----------
+        filepath : str
+            The complete file path of the input BAG file
+        method : str
+            The method used to open the file
+
+        """
         if method == 'gdal':
             self._file_gdal(filepath)
         elif method == 'hyo':
@@ -80,6 +89,16 @@ class bag_file:
         bag_obj = None
 
     def _file_gdal(self, filepath):
+        """Used to read a BAG file using OSGEO's GDAL module.
+
+        This function reads and populates this object's attributes
+
+        Parameters
+        ----------
+        filepath : str
+            The complete file path of the input BAG file
+
+        """
         self._known_data(filepath)
         bag_obj = _gdal.Open(filepath)
         self.elevation = self._npflip(self._gdalreadarray(bag_obj, 1))
@@ -109,9 +128,7 @@ class bag_file:
         nx,ny = meta.ne
         return ([sx,ny],[nx,sy])
 
-    def _gt2bounds(self,meta, shape):
-        # (605260.0, 4.0, 0.0, 4505852.0, 0.0, -4.0)
-        # ([605260.0, 4494888.0], [620528.0, 4483924.0])
+    def _gt2bounds(self ,meta, shape):
         y, x = shape
         res = (_np.round(meta[1]), _np.round(meta[5]))
         sx, sy = meta[0], meta[3]
@@ -134,23 +151,32 @@ class bag_file:
         self.outfilename = _os.path.join(outlocation, name)
 
 class gdal_create:
-    def __init__(self):
+    _descriptions  = ['Elevation', 'Uncertainty', 'Interpolated']
+
+    def __init__(self, out_verdat=None):
         self.dataset = None
+        self.out_verdat = out_verdat
 
     def bag2gdal(self, bag):
         arrays = [bag.elevation, bag.uncertainty]
         bands = len(arrays)
-        x_orig, y_orig = bag.bounds[0]
+        nw, se = bag.bounds
+        nwx, nwy = nw
+        scx, scy = se
         y_cols, x_cols = bag.shape
         res_x, res_y = bag.resolution[0], bag.resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols,
                                                        bands, _gdal.GDT_Float32)
-        target_gt = (x_orig, res_x, 0, y_orig, 0, res_y)
+        target_gt = (nwx, res_x, 0, scy, 0, res_y)
         target_ds.SetGeoTransform(target_gt)
-        target_ds.SetProjection(bag.wkt)
+        srs = _osr.SpatialReference(wkt=bag.wkt)
+        srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
+        wkt = srs.ExportToWkt()
+        target_ds.SetProjection(wkt)
         x = 1
         for item in arrays:
             band = target_ds.GetRasterBand(x)
+            band.SetDescription(self._descriptions[x])
             band.SetNoDataValue(bag.nodata)
             band.WriteArray(_np.flipud(item))
             band = None
@@ -158,20 +184,26 @@ class gdal_create:
         self.dataset = target_ds
         target_ds = None
 
-    def components2gdal(self, arrays, shape, bounds, resolution, wkt,
+    def components2gdal(self, arrays, shape, bounds, resolution, prj,
                  nodata):
         bands = len(arrays)
-        x_orig, y_orig = bounds[0]
+        nw, se = bounds
+        nwx, nwy = nw
+        scx, scy = se
         y_cols, x_cols = shape
         res_x, res_y = resolution[0], resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols,
                                                        bands, _gdal.GDT_Float32)
-        target_gt = (x_orig, res_x, 0, y_orig, 0, res_y)
+        target_gt = (nwx, res_x, 0, scy, 0, res_y)
         target_ds.SetGeoTransform(target_gt)
+        srs = _osr.SpatialReference(wkt=prj)
+        srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
+        wkt = srs.ExportToWkt()
         target_ds.SetProjection(wkt)
         x = 1
         for item in arrays:
             band = target_ds.GetRasterBand(x)
+            band.SetDescription(self._descriptions[x-1])
             band.SetNoDataValue(nodata)
             band.WriteArray(_np.flipud(item))
             band = None

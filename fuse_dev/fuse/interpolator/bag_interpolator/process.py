@@ -76,14 +76,19 @@ class intitialize:
             td = _dt.now()
             tdelt = td - ts
             print ('Tile complete -', td, '| Tile took:', tdelt)
-        bag.elevation, bag.uncertainty, pol = _itp.rePrint(bag.elevation, bag.uncertainty,
+        bag.elevation, bag.uncertainty, coverage.array = _itp.rePrint(bag.elevation, bag.uncertainty,
                                                            coverage.array, ugrids, bag.nodata, self._io)
+        print (coverage.array)
 
-        save = _bag.gdal_create()
+        save = _bag.gdal_create('MLLW')
+#        save.components2gdal([bag.elevation, bag.uncertainty], bag.shape,
+#                             bag.bounds, bag.resolution, bag.wkt, bag.nodata)
         save.bag2gdal(bag)
 
         writer = proc_io('gdal', 'bag')
         writer.write(save.dataset, bag.outfilename)
+
+        _cvg.write_vector(coverage, self._outlocation)
 
         coverage = None
         bag = None

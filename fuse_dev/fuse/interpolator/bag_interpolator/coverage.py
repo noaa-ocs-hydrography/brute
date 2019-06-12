@@ -230,12 +230,11 @@ class geopackage:
 
     def _name(self, filepath):
         fName = _os.path.split(filepath)[-1]
-        splits = _os.path.splitext(fName)
-        name = splits[0]
-        return name
+        return _os.path.splitext(fName)[0]
 
 class unified_coverage:
     def __init__(self, coverage_files, bag_wkt=None, bag_name='Test_Data.bag'):
+        self.name = None
         self.wkt = bag_wkt
         self.array = None
         self.shape = None
@@ -357,9 +356,8 @@ class unified_coverage:
         justname = _os.path.splitext(fullname)[0]
         snum = justname.split('_')[0]
         outputname = snum + '_COMBINEDPOLY'
-        outputtiff = outputname + '.tif'
 
-        return meanCoverage, outputtiff, tuple(shape)
+        return meanCoverage, outputname, tuple(shape)
 
     def _align(self, rasters):
         """Takes an input of an array of coverage objects. The goal of this function
@@ -381,8 +379,6 @@ class unified_coverage:
         ----------
         rasters : list
             List of coverage objects created by :func:`_open_data`
-        to_res : tuple
-            The desired resolution of the output coverage objectes
 
         Returns
         -------
@@ -514,19 +510,16 @@ def align2grid(coverage, bounds, shape, resolution, nodata):
 
     Parameters
     ----------
-    bag : list
-        BAG file object
-        Position loaded, file name, grid extents, file size, grid dimensions,
-        uncertainty numpy.array, bathymetry numpy.array
-    tif : list
-        GeoTiff file objects with numpy.array raster data replaced with binary
-        data only showing data and nodata areas and that is alligned within
-        the maximum extents of all input GeoTiffs
-    maxVal : int
-        Maximum occurance value AKA nodata value
-    targs : list
-        Additional arguments generated in :func:`polyTifVals` for use in saving
-        the BAG aligned Tiff data
+    coverage : coverage object
+        Input coverage data object
+    bounds : tuple
+        The ([nx, ny], [sx, sy]) extents to be applied to the input data
+    shape : tuple
+        The (y, x) shape to to be applied to the input data
+    resolution : tuple
+        The (x, y) resolution to be applied to the input data
+    nodata : float
+        The nodata value to be applied to the input array object
 
     Returns
     -------
@@ -651,7 +644,7 @@ def align2grid(coverage, bounds, shape, resolution, nodata):
 
     return coverage
 
-def write_raster(coverage, outputpath, dtype=_gdal.GDT_UInt32,
+def write_raster(coverage, outputpath, out_verdat='MLLW', dtype=_gdal.GDT_UInt32,
                  options=0, color_table=0, nbands=1, nodata=False):
     """Directly From:
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
@@ -664,7 +657,7 @@ def write_raster(coverage, outputpath, dtype=_gdal.GDT_UInt32,
     raster_array : numpy.array
         Array to be written to a GeoTiff file
     gt : tuple, gdal.GeoTransform
-        Northern extent, resolution, 0.0, Western extent, 0.0, -resolution)
+        (Northern extent, resolution, 0.0, Western extent, 0.0, -resolution)
     crs : string, WTK projection info
         A string containing the coordinate/spatial reference system of the
         output data
@@ -698,6 +691,53 @@ def write_raster(coverage, outputpath, dtype=_gdal.GDT_UInt32,
     gt = (x_orig, x_res, 0, y_orig, 0, y_res)
     dest.SetGeoTransform(gt)
     dest.SetProjection(coverage.wkt)
+    dest.SetVertCS(out_verdat, out_verdat, 2000)
 
     # Close output raster dataset
     dest = None
+
+def coverage2gdal(coverage):
+    proj = coverage.wkt
+    height, width = coverage.shape
+    nw, se = coverage.bounds
+    nwx, nwy = nw
+    scx, scy = se
+    res_x, res_y = coverage.resolution
+    gt = (nwx, res_x, 0, scy, 0, res_y)
+    coverage_gdal = _gdal.GetDriverByName('MEM').Create('', width,
+                                          height, 1, _gdal.GDT_Float32)
+    coverage_gdal.SetGeoTransform(gt)
+    coverage_gdal.SetProjection(proj)
+
+    band = coverage_gdal.GetRasterBand(1)
+    band.SetNoDataValue(float(coverage.nodata))
+    band.WriteArray(_np.flipud(coverage.array))
+#    coverage = None
+    return coverage_gdal
+
+def write_vector(coverage, outputpath, out_verdat='MLLW'):
+    name = coverage.name + '.gpkg'
+    outfilename = _os.path.join(outputpath, name)
+
+    proj = _osr.SpatialReference(wkt=coverage.wkt)
+    proj.SetVertCS(out_verdat, out_verdat, 2000)
+
+    cov_ds = coverage2gdal(coverage)
+    band = cov_ds.GetRasterBand(1)
+
+    driver = _ogr.GetDriverByName('GPKG')
+    ds = driver.CreateDataSource(outfilename)
+    layer = ds.CreateLayer(name, proj, _ogr.wkbMultiPolygon)
+
+    # Add one attribute
+    layer.CreateField(_ogr.FieldDefn('Survey', _ogr.OFTString))
+    defn = layer.GetLayerDefn()
+
+    # Create a new feature (attribute and geometry)
+    feat = _ogr.Feature(defn)
+    feat.SetField('Survey', name)
+
+    _gdal.Polygonize(band, band, layer, 0, [],
+                    callback = None)
+
+    cov_ds = band = None

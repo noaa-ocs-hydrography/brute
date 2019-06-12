@@ -128,7 +128,7 @@ def rePrint(bag_elev, bag_uncr, cov_array, ugrids, maxVal, ioVal, debug=False):
 
     Steps:
 
-    1. Create a binary grid of tif dat, tpoly.
+    1. Create a binary grid of cov data, tpoly.
     2. Create a binary grid of bag data, bpoly.
     3. Create a combined grid of the "complete coverage" of data; cpoly, numpy.logical_or of bpoly, tpoly.
     4. Use bpoly to remove the bag coverage from the combined "complete coverage"; dpoly, numpy.logical_xor of bpoly, cpoly.
@@ -195,8 +195,8 @@ def rePrint(bag_elev, bag_uncr, cov_array, ugrids, maxVal, ioVal, debug=False):
         nunc = _np.where(fpoly, iuncrt, maxVal)
     print ('done', _dt.now())
     if debug == False:
-        polyList = [fpoly]
-        return nbag, nunc, polyList
+#        polyList = [fpoly, cpoly]
+        return nbag, nunc, cpoly.astype(_np.int)
     elif debug == True:
         polyList = [tpoly,bpoly,cpoly,dpoly,npoly,fpoly,ibag]
         return nbag, nunc, polyList
