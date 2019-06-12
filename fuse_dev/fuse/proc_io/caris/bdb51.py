@@ -10,6 +10,7 @@ Classes and methods for working with CARIS Bathy DataBASE 5.1.
 """
 
 import subprocess
+import socket
 import logging
 import os, sys
 import pickle
@@ -47,9 +48,27 @@ class bdb51:
             ch = logging.StreamHandler(sys.stdout)
             ch.setLevel(logging.DEBUG)
             self._logger.addHandler(ch)
-        self._start_env()
+        self._form_connection()
         
-    def _start_env(self):
+    def _form_connection(self):
+        """
+        Open a socket, start the environment and then pass along when CARIS
+        env sends a response.
+        """
+        sock = socket.socket()
+        sock.bind(('localhost', 0))
+        port = sock.getsockname()[1]
+        sock.listen()
+        self._start_env(port)
+        sock.setblocking(True)
+        self._conn, addr = sock.accept()
+        print('accepted', self._conn, 'from', addr)
+        self._conn.setblocking(True)
+        data = self._conn.recv()
+        response = pickle.loads(data)
+        self._logger.log(response['log'])
+        
+    def _start_env(self, port):
         """
         Instantiate an environment containing CARIS BDB51 object for talking
         to the database.
@@ -58,21 +77,20 @@ class bdb51:
         conda_env_name = self.caris_environment_name
         conda_env_path = helper.retrieve_env_path(conda_env_name)
         python_path = os.path.join(conda_env_path, 'python')
-        self._port = 65505
         # set the location for running the database i/o object
         start = os.path.realpath(os.path.dirname(__file__))
         db_obj = os.path.join(start, 'wrap_bdb51.py')
         activate_file = helper.retrieve_activate_batch()
         args = ["cmd.exe", "/C", "set pythonpath= &&", # setup the commandline
                 activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
-                python_path, db_obj, str(self._port), # call the script for the object
+                python_path, db_obj, str(port), # call the script for the object
                 ]
         args = ' '.join(args)
         self._logger.log(logging.DEBUG, args)
         try:
             self.db = subprocess.Popen(
                     args,
-                    )
+                    subprocess.CREATE_NEW_CONSOLE)
         except:
             err = 'Error executing: {}'.foramt(args)
             print(err)
@@ -130,7 +148,10 @@ class bdb51:
         Send a command to the BDB51 wrapper.
         """
         pc = pickle.dumps(command)
-        self.db.stdin.write(pc)
+        self._conn.send(pc)
+        data = self._conn.recv()
+        response = pickle.loads(data)
+        self._logger.log(response['log'])
         response = self.db.stdout.read()
         print(response.decode(encoding='UTF-8'))
         

@@ -11,7 +11,6 @@ server from within the CARIS conda python environment.
 import os, sys
 import pickle
 import time
-import selectors
 import socket
 
 import caris.bathy.db as bdb
@@ -37,6 +36,21 @@ class bdb51_io:
         self._command = []
         self._response = []
         pass
+    
+    def take_commands(self):
+        """
+        Call the provided port on the host and ask for something to do.
+        """
+        conn = socket.create_connection(('',self.port))
+        conn.setblocking(True)
+        # need to build a packet to send to open the connection
+        hello_im_here = self.status({})
+        conn.send(hello_im_here)
+        while self.alive:
+            command = conn.recv()
+            response = self.take_commands(command)
+            conn.send(response)
+        conn.close()
     
     def connect(self, command_dict):
         """
@@ -139,7 +153,7 @@ class bdb51_io:
         self.alive = False
         return response
     
-    def take_commands(self, command_dict):
+    def take_commands(self):
         """
         Act on commands the provided command dictionary, such as to upload
         data, read and return data, destroy the object and exit the 
@@ -158,46 +172,12 @@ class bdb51_io:
         self._response.append(response)
         return response
     
-sel = selectors.DefaultSelector()
-
-def accept(sock, mask):
-    conn, addr = sock.accept()  # Should be ready
-    print('accepted', conn, 'from', addr)
-    conn.setblocking(False)
-    sel.register(conn, selectors.EVENT_READ, read)
-
-def read(conn, mask):
-    data = conn.recv(1000)  # Should be ready
-    if data:
-        print('echoing', repr(data), 'to', conn)
-        conn.send(data)  # Hope it won't block
-    else:
-        print('closing', conn)
-        sel.unregister(conn)
-        conn.close()
-
 def main(port):
     """
     An event loop waiting for commands.
     """
-    sock = socket.socket()
-    sock.bind(('localhost', port))
-    sock.listen(100)
-    sock.setblocking(False)
-    sel.register(sock, selectors.EVENT_READ, accept)
-    db_io = bdb51_io(port+1)
-    while True:
-        events = sel.select()
-        for key, mask in events:
-            callback = key.data
-            callback(key.fileobj, mask)
-            command = pickle.loads(pc)
-            response = db_io.take_commands(command)
-        if not db_io.alive:
-            break
-    sel.close()
-    sock.close()
-        
+    db_io = bdb51_io(port)
+    db_io.request_commands()        
 
 if __name__ == '__main__':
     args = sys.argv
