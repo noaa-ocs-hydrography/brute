@@ -9,7 +9,8 @@ Created on Thu May  9 15:46:49 2019
 Classes and methods for working with CARIS Bathy DataBASE 5.1.
 """
 
-import asyncio as aio
+import subprocess
+import socket
 import logging
 import os, sys
 import pickle
@@ -40,10 +41,6 @@ class bdb51:
         Instantiate the object and connect to the database referenced, waiting
         until the database responds.
         """
-        # https://docs.python.org/3.6/library/asyncio-subprocess.html#asyncio-subprocess
-        if sys.platform == 'win32':
-            loop = aio.ProactorEventLoop()
-            aio.set_event_loop(loop)
         
         self.caris_environment_name = caris_env_name
         self._logger = logging.getLogger('fuse')
@@ -51,9 +48,27 @@ class bdb51:
             ch = logging.StreamHandler(sys.stdout)
             ch.setLevel(logging.DEBUG)
             self._logger.addHandler(ch)
-        self._start_env()
+        self._form_connection()
         
-    def _start_env(self):
+    def _form_connection(self):
+        """
+        Open a socket, start the environment and then pass along when CARIS
+        env sends a response.
+        """
+        sock = socket.socket()
+        sock.bind(('localhost', 0))
+        port = sock.getsockname()[1]
+        sock.listen()
+        self._start_env(port)
+        sock.setblocking(True)
+        self._conn, addr = sock.accept()
+        print('accepted', self._conn, 'from', addr)
+        self._conn.setblocking(True)
+        data = self._conn.recv()
+        response = pickle.loads(data)
+        self._logger.log(response['log'])
+        
+    def _start_env(self, port):
         """
         Instantiate an environment containing CARIS BDB51 object for talking
         to the database.
@@ -68,24 +83,20 @@ class bdb51:
         activate_file = helper.retrieve_activate_batch()
         args = ["cmd.exe", "/C", "set pythonpath= &&", # setup the commandline
                 activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
-                python_path, db_obj,  # call the script for the object
+                python_path, db_obj, str(port), # call the script for the object
                 ]
         args = ' '.join(args)
         self._logger.log(logging.DEBUG, args)
         try:
-            self.db = aio.subprocess.create_subprocess_exec(
+            self.db = subprocess.Popen(
                     args,
-                    stdin = aio.subprocess.PIPE, 
-                    stdout = aio.subprocess.PIPE, 
-                    stderr = aio.subprocess.PIPE,
-                    )
+                    subprocess.CREATE_NEW_CONSOLE)
         except:
             err = 'Error executing: {}'.foramt(args)
             print(err)
             self._logger.log(logging.DEBUG, err)
         try:
-            await self.db.stdout.read()
-            print('standard error: {}'.format(await self.db.stderr.read()))
+            pass
 #            if len(out) > 0:
 #                msg = out.decode(encoding='UTF-8')
 #                print(msg)
@@ -137,7 +148,10 @@ class bdb51:
         Send a command to the BDB51 wrapper.
         """
         pc = pickle.dumps(command)
-        self.db.stdin.write(pc)
+        self._conn.send(pc)
+        data = self._conn.recv()
+        response = pickle.loads(data)
+        self._logger.log(response['log'])
         response = self.db.stdout.read()
         print(response.decode(encoding='UTF-8'))
         

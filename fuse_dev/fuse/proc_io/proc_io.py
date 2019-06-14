@@ -14,7 +14,7 @@ import logging
 import numpy as np
 from osgeo import gdal, ogr, osr
 gdal.UseExceptions()
-from fuse.proc_io.caris import helper
+from fuse.proc_io import caris
 
 __version__ = 'Test'
 
@@ -61,8 +61,12 @@ class proc_io:
         else:
             self._work_dir_name = work_dir
         self._logger = logging.getLogger('fuse')
+        if len(self._logger.handlers) == 0:
+            ch = logging.StreamHandler(sys.stdout)
+            ch.setLevel(logging.DEBUG)
+            self._logger.addHandler(ch)
         if self._out_data_type == "carisbdb51":
-            self._bdb51 = bdb51()
+            self._bdb51 = caris.bdb51()
 
     def write(self, dataset, instruction, metadata = None):
         """
@@ -129,7 +133,7 @@ class proc_io:
             raise ValueError('input data type unknown: ' +
                              str(self._in_data_type))
         metadata['z_up'] = self._z_up
-        conda_env_path = helper.retrieve_env_path(conda_env_name)
+        conda_env_path = caris.helper.retrieve_env_path(conda_env_name)
         python_path = os.path.join(conda_env_path, 'python')
         # save the provided dataset and metadata to a file
         datafilename = os.path.join(self._work_dir_name, 'rasterdata.npy')
@@ -140,7 +144,7 @@ class proc_io:
         # set the locations for running the wrap_csar script
         start = os.path.realpath(os.path.dirname(__file__))
         write_csar = os.path.join(start, 'caris','wrap_csar.py')
-        activate_file = helper.retrieve_activate_batch()
+        activate_file = caris.helper.retrieve_activate_batch()
         if os.path.exists(write_csar):
             args = ["cmd.exe", "/K", "set pythonpath= &&", # setup the commandline
                     activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
@@ -255,6 +259,31 @@ class proc_io:
         # Save and close everything
         ds = layer = feat = geom = None
 
+    def _write_vector(self, dataset, outfilename):
+        splits = os.path.split(outfilename)[1]
+        name = os.path.splitext(outfilename)[0]
+        outfilename = os.path.join(splits[0], name + '_Vector.gpkg')
+
+        proj = dataset.GetProjection()
+        proj = osr.SpatialReference(wkt=proj)
+        band = dataset.GetRasterBand(1)
+
+        driver = ogr.GetDriverByName('GPKG')
+        ds = driver.CreateDataSource(outfilename)
+        layer = ds.CreateLayer(name, proj, ogr.wkbMultiPolygon)
+
+        # Add one attribute
+        layer.CreateField(ogr.FieldDefn('Survey', ogr.OFTString))
+        defn = layer.GetLayerDefn()
+
+        # Create a new feature (attribute and geometry)
+        feat = ogr.Feature(defn)
+        feat.SetField('Survey', name)
+
+        gdal.Polygonize(band, None, layer, 0, [],
+                        callback = None)
+
+        ds = band = None
 
     def _gdal2array(self, dataset):
         """

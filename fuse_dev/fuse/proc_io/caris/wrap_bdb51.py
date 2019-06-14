@@ -11,6 +11,7 @@ server from within the CARIS conda python environment.
 import os, sys
 import pickle
 import time
+import socket
 
 import caris.bathy.db as bdb
 import caris
@@ -21,10 +22,11 @@ class bdb51_io:
     """
     
     """
-    def __init__(self):
+    def __init__(self, port):
         """
         
         """
+        self.port = port
         self.alive = True
         self.connected = False
         self.node_manager = None
@@ -34,6 +36,21 @@ class bdb51_io:
         self._command = []
         self._response = []
         pass
+    
+    def take_commands(self):
+        """
+        Call the provided port on the host and ask for something to do.
+        """
+        conn = socket.create_connection(('',self.port))
+        conn.setblocking(True)
+        # need to build a packet to send to open the connection
+        hello_im_here = self.status({})
+        conn.send(hello_im_here)
+        while self.alive:
+            command = conn.recv()
+            response = self.take_commands(command)
+            conn.send(response)
+        conn.close()
     
     def connect(self, command_dict):
         """
@@ -136,7 +153,7 @@ class bdb51_io:
         self.alive = False
         return response
     
-    def take_commands(self, command_dict):
+    def take_commands(self):
         """
         Act on commands the provided command dictionary, such as to upload
         data, read and return data, destroy the object and exit the 
@@ -154,21 +171,14 @@ class bdb51_io:
             response = self.die(command_dict)
         self._response.append(response)
         return response
-
-def main():
-    db_io = bdb51_io()
-    sys.stdout.buffer.write(b'waiting for command')
-    sys.stdout.flush()
-    for pc in sys.stdin:
-        sys.stdout.buffer.write(b'#5 is alive!')
-        sys.stdout.flush()
-        command = pickle.loads(pc)
-        response = db_io.take_commands(command)
-        pr = pickle.dumps(response)
-        sys.stdout.buffer.write(pr)
-        if not db_io.alive:
-            sys.stdout('Ending main loop in BDB51 environment.')
-            break
+    
+def main(port):
+    """
+    An event loop waiting for commands.
+    """
+    db_io = bdb51_io(port)
+    db_io.request_commands()        
 
 if __name__ == '__main__':
-    main()
+    args = sys.argv
+    main(int(args[-1]))
