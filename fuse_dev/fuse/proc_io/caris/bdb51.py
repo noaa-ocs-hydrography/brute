@@ -9,16 +9,18 @@ Created on Thu May  9 15:46:49 2019
 Classes and methods for working with CARIS Bathy DataBASE 5.1.
 """
 
-import subprocess
-import socket
 import logging
-import os, sys
+import os
 import pickle
+import socket
+import subprocess
+import sys
+
 from fuse.proc_io.caris import helper
 
+
 class bdb51:
-    """
-    A class for doing I/O with the CARIS Bathy DataBASE 5.1 server.
+    """A class for doing I/O with the CARIS Bathy DataBASE 5.1 server.
     
     This class spawns a conda environment containing the CARIS python API and
     communicates with that environment over subprocess pipes.
@@ -31,10 +33,12 @@ class bdb51:
         connect : Connect the database.
         upload : Send instruction on surveys to upload and what to upload.
         die : Self destruct the _BDB51 object in the CARIs environment.
-        
+    
     Replies from the CARIS environment can be
         status : connectivity to the database and the last file uploaded.
         log : returning a log message
+
+
     """
     def __init__(self, database_loc, database_name, caris_env_name = 'NBS35'):
         """
@@ -51,9 +55,10 @@ class bdb51:
         self._form_connection()
         
     def _form_connection(self):
-        """
-        Open a socket, start the environment and then pass along when CARIS
+        """Open a socket, start the environment and then pass along when CARIS
         env sends a response.
+
+
         """
         sock = socket.socket()
         sock.bind(('localhost', 0))
@@ -69,9 +74,11 @@ class bdb51:
         self._logger.log(response['log'])
         
     def _start_env(self, port):
-        """
-        Instantiate an environment containing CARIS BDB51 object for talking
+        """Instantiate an environment containing CARIS BDB51 object for talking
         to the database.
+
+        :param port: 
+
         """
         # set up the path to python in the CARIS environment
         conda_env_name = self.caris_environment_name
@@ -111,30 +118,34 @@ class bdb51:
             self._logger.log(logging.DEBUG, err)
     
     def connect(self):
-        """
-        Form and send the connect command to the BDB51 wapper.
-        """
+        """Form and send the connect command to the BDB51 wapper."""
         command = {'command':'connect'}
         self._send_command(command)
     
     def status(self):
-        """
-        Check to see if the subprocess is still communicating and connected to
+        """Check to see if the subprocess is still communicating and connected to
         the database.
+
+
         """
         command = {'command':'status'}
         self._send_command(command)
         
     def upload(self, dataset, instruction):
-        """
-        Send the BDB environment instructions on where data is and what to do
+        """Send the BDB environment instructions on where data is and what to do
         with it.
+
+        :param dataset: 
+        :param instruction: 
+
         """
         pass
     
     def die(self, delay = 0):
-        """
-        Destroy the BDB51 wrapper object and environment.
+        """Destroy the BDB51 wrapper object and environment.
+
+        :param delay:  (Default value = 0)
+
         """
         command = {'command':'die'}
         if delay == 0:
@@ -144,8 +155,10 @@ class bdb51:
         self._send_command(command)
     
     def _send_command(self, command):
-        """
-        Send a command to the BDB51 wrapper.
+        """Send a command to the BDB51 wrapper.
+
+        :param command: 
+
         """
         pc = pickle.dumps(command)
         self._conn.send(pc)

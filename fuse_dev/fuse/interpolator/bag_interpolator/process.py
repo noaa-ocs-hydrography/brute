@@ -5,13 +5,14 @@ Created on Thu Jun  6 15:30:21 2019
 @author: Casiano.Koprowski
 """
 
-import numpy as _np
 from datetime import datetime as _dt
+
+import numpy as _np
+from fuse.proc_io.proc_io import proc_io
 
 from . import bag as _bag
 from . import coverage as _cvg
 from . import interpolator as _itp
-from fuse.proc_io.proc_io import proc_io
 
 _catZones = {
         'A1':(.01,.5),
@@ -19,6 +20,7 @@ _catZones = {
         'C':(.05,2)}
 
 class intitialize:
+    """ """
     def __init__(self, outlocation, mode, catzoc, io):
         self._outlocation = outlocation
         self._uval = _catZones.get(catzoc)
@@ -29,6 +31,12 @@ class intitialize:
             raise ValueError('Interpolation type not implemented.')
 
     def linear(self, filepath, coverage_list):
+        """
+
+        :param filepath: 
+        :param coverage_list: 
+
+        """
         bag = _bag.bag_file()
         bag.open_file(filepath, 'hyo')
         bag.generate_name(self._outlocation, self._io)

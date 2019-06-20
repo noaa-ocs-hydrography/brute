@@ -9,17 +9,17 @@ Use VDatum for conversions.
 """
 __version__ = 'use_vdatum 0.0.1'
 
-import subprocess as _subprocess
-import os as _os
 import logging as _logging
-import numpy as _np
-from osgeo import gdal,ogr,osr
+import os as _os
+import subprocess as _subprocess
 from tempfile import TemporaryDirectory as tempdir
 
+import numpy as _np
+from osgeo import gdal, ogr, osr
+
+
 class vdatum:
-    """
-    An object for working with VDatum.
-    """
+    """An object for working with VDatum."""
     def __init__(self, config, reader):
         self._config = config
         self._reader = reader
@@ -27,9 +27,7 @@ class vdatum:
         self._logger = _logging.getLogger('fuse')
         
     def _setup(self):
-        """
-        Set up the object based on the provided configuration.
-        """
+        """Set up the object based on the provided configuration."""
         if 'vdatum_path' in self._config:
             pth = self._config['vdatum_path']
             if _os.path.isdir(pth):
@@ -48,11 +46,17 @@ class vdatum:
             raise ValueError('No java path provided')
 
     def translate(self, infilename, in_hordat, in_verdat, out_epsg, out_verdat):
-        """
-        Translate the provided filename from the provided in datums to the out
+        """Translate the provided filename from the provided in datums to the out
         datums and return a gdal object.
         
-        NSRS2007 is assumed for the out EPSG code. 
+        NSRS2007 is assumed for the out EPSG code.
+
+        :param infilename: 
+        :param in_hordat: 
+        :param in_verdat: 
+        :param out_epsg: 
+        :param out_verdat: 
+
         """
         self._logger.log(_logging.DEBUG, 'Begin datum transformation')
         outxyz, out_zone =  self._translatexyz(infilename, in_hordat, in_verdat, 
@@ -63,9 +67,14 @@ class vdatum:
     
     def _translatexyz(self, infilename, in_hordat, in_verdat, out_epsg, 
                      out_verdat):
-        """
-        were you planning on actually documenting anything?
-        
+        """were you planning on actually documenting anything?
+
+        :param infilename: 
+        :param in_hordat: 
+        :param in_verdat: 
+        :param out_epsg: 
+        :param out_verdat: 
+
         """
         # read the bathy and put it in a temp file for vdatum to read
         bathy = self._reader.read_bathymetry(infilename)
@@ -90,16 +99,21 @@ class vdatum:
         return new_bathy, out_zone
         
     def _setup_vdatum(self, in_fips, in_verdat, out_epsg, out_verdat):
-        """
-        Setup the VDatum command line arguments to convert points.
+        """Setup the VDatum command line arguments to convert points.
         
-        This method current assums US Survey Feet, and convert it into UTM 
-        (meters) with the otherwise the specified vertical datums.  Vertical 
+        This method current assums US Survey Feet, and convert it into UTM
+        (meters) with the otherwise the specified vertical datums.  Vertical
         assumed to be positive down for both input and output. NAD83 is assumed
         for horizontal datums.
         
         The output epsg code is converted to a NSRS2007 zone using a dumb
         conversion.
+
+        :param in_fips: 
+        :param in_verdat: 
+        :param out_epsg: 
+        :param out_verdat: 
+
         """
         ihorz = r'ihorz:NAD83:spc:us_ft:' + str(in_fips)
         ivert = ' ivert:' + in_verdat.lower() + ':us_ft:height'
@@ -111,10 +125,13 @@ class vdatum:
         self._shell = java_str + ' -jar vdatum.jar ' + georef + file_str
         
     def _convert_file(self, vdinfilename, vdoutdir):
-        """
-        The provided file of xyz points will be converted and returned
-        according to the from and to the datums provided through the 
+        """The provided file of xyz points will be converted and returned
+        according to the from and to the datums provided through the
         _setup_vdatum_point_converstion method.
+
+        :param vdinfilename: 
+        :param vdoutdir: 
+
         """
         command = self._shell.format(vdinfilename, vdoutdir)
         self._logger.log(_logging.DEBUG, command)
@@ -137,8 +154,12 @@ class vdatum:
             print(outerr)
             
     def _xyz2gdal(self, outxyz, out_zone, out_verdat):
-        """
-        Convert from numpy xyz array to a gdal dataset.
+        """Convert from numpy xyz array to a gdal dataset.
+
+        :param outxyz: 
+        :param out_zone: 
+        :param out_verdat: 
+
         """
         # setup the gdal bucket
         dest = osr.SpatialReference()

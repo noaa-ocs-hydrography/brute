@@ -5,8 +5,8 @@ Created on Thu Jun  6 15:29:05 2019
 @author: Casiano.Koprowski
 """
 import os as _os
-import numpy as _np
 
+import numpy as _np
 from hyo2 import bag as _bag
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
@@ -14,24 +14,7 @@ from osgeo import osr as _osr
 _gdal.UseExceptions()
 
 class bag_file:
-    """This class serves as the main container for BAG data.
-
-    Attributes
-    ----------
-    nodata : float
-        1000000.0 is the nodata value associated with the BAG format
-    elevation : numpy.array
-        The elevation layer of the BAG
-    uncertainty : numpy.array
-        The uncertainty layer of the BAG
-    shape : tuple
-        The (y, x) dimensions of the layer data
-    bounds : touple
-        The geographic bounds of the data in order (nw, se)=([sx,ny],[nx,sy])
-    wkt : str
-        The WKT representation of the data CRS
-
-    """
+    """This class serves as the main container for BAG data."""
     def __init__(self):
         self.name = None
         self.nodata = 1000000.0
@@ -47,16 +30,13 @@ class bag_file:
 
     def open_file(self, filepath, method):
         """Used to read a BAG file using the method determined by input.
-
+        
         The current methods available are 'gdal' and 'hyo'
 
-        Parameters
-        ----------
-        filepath : str
-            The complete file path of the input BAG file
-        method : str
-            The method used to open the file
+        :param filepath: 
+        :param method: 
 
+        
         """
         if method == 'gdal':
             self._file_gdal(filepath)
@@ -67,14 +47,12 @@ class bag_file:
 
     def _file_hyo(self, filepath):
         """Used to read a BAG file using HydrOffice's hyo2.bag module.
-
+        
         This function reads and populates this object's attributes
 
-        Parameters
-        ----------
-        filepath : str
-            The complete file path of the input BAG file
+        :param filepath: 
 
+        
         """
         self._known_data(filepath)
         bag_obj = _bag.BAGFile(filepath)
@@ -90,14 +68,12 @@ class bag_file:
 
     def _file_gdal(self, filepath):
         """Used to read a BAG file using OSGEO's GDAL module.
-
+        
         This function reads and populates this object's attributes
 
-        Parameters
-        ----------
-        filepath : str
-            The complete file path of the input BAG file
+        :param filepath: 
 
+        
         """
         self._known_data(filepath)
         bag_obj = _gdal.Open(filepath)
@@ -111,24 +87,51 @@ class bag_file:
         bag_obj = None
 
     def _known_data(self, filepath):
+        """
+
+        :param filepath: 
+
+        """
         _fName = _os.path.split(filepath)[-1]
         self.name = _os.path.splitext(_fName)[0]
         self.nodata = 1000000.0
         self.size = self._size_finder(filepath)
 
     def _nan2ndv(self, arr, nodata):
+        """
+
+        :param arr: 
+        :param nodata: 
+
+        """
         arr[_np.isnan(arr)] = nodata
         return _np.flipud(arr)
 
     def _npflip(self, arr):
+        """
+
+        :param arr: 
+
+        """
         return _np.flipud(arr)
 
     def _meta2bounds(self,meta):
+        """
+
+        :param meta: 
+
+        """
         sx,sy = meta.sw
         nx,ny = meta.ne
         return ([sx,ny],[nx,sy])
 
     def _gt2bounds(self ,meta, shape):
+        """
+
+        :param meta: 
+        :param shape: 
+
+        """
         y, x = shape
         res = (_np.round(meta[1]), _np.round(meta[5]))
         sx, sy = meta[0], meta[3]
@@ -137,12 +140,29 @@ class bag_file:
         return ([sx,sy],[nx,ny]), res
 
     def _gdalreadarray(self, bag_obj, band):
+        """
+
+        :param bag_obj: 
+        :param band: 
+
+        """
         return bag_obj.GetRasterBand(band).ReadAsArray()
 
     def _size_finder(self, filepath):
+        """
+
+        :param filepath: 
+
+        """
         return int(_np.round(_os.path.getsize(filepath)/1000))
 
     def generate_name(self, outlocation, io):
+        """
+
+        :param outlocation: 
+        :param io: 
+
+        """
         if io:
             ext = '_INTERP_ONLY.bag'
         else:
@@ -151,6 +171,7 @@ class bag_file:
         self.outfilename = _os.path.join(outlocation, name)
 
 class gdal_create:
+    """ """
     _descriptions  = ['Elevation', 'Uncertainty', 'Interpolated']
 
     def __init__(self, out_verdat=None):
@@ -158,6 +179,11 @@ class gdal_create:
         self.out_verdat = out_verdat
 
     def bag2gdal(self, bag):
+        """
+
+        :param bag: 
+
+        """
         arrays = [bag.elevation, bag.uncertainty]
         bands = len(arrays)
         nw, se = bag.bounds
@@ -186,6 +212,16 @@ class gdal_create:
 
     def components2gdal(self, arrays, shape, bounds, resolution, prj,
                  nodata):
+        """
+
+        :param arrays: 
+        :param shape: 
+        :param bounds: 
+        :param resolution: 
+        :param prj: 
+        :param nodata: 
+
+        """
         bands = len(arrays)
         nw, se = bounds
         nwx, nwy = nw

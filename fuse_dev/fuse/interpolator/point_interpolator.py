@@ -23,18 +23,18 @@ Sources:
 # __version__ = 'point_interpolator 0.0.1'
 
 import os
+
+import matplotlib.pyplot as plt
 import numpy as np
+import scipy
+from matplotlib.mlab import griddata as mlab_griddata
 from osgeo import gdal, ogr, osr
 
-import scipy
-import matplotlib.pyplot as plt
-from matplotlib.mlab import griddata as mlab_griddata
 
 class point_interpolator:
-    """
-    Interpolation methods for creating a raster from points.
-    """
-    def __init__(self, window_scalar = 1.1):
+    """Interpolation methods for creating a raster from points."""
+
+    def __init__(self, window_scalar=1.1):
         """
         Set some of the precondition, but make them over writable.
         """
@@ -42,11 +42,17 @@ class point_interpolator:
 
     def interpolate(self, dataset, interpolation_type, resolution,
                     shapefile=None, shrink=True):
-        """
-        Interpolate the provided dataset.
-
+        """Interpolate the provided dataset.
+        
         Currently this is assumed to be a gdal dataset.  At some point perhaps
         this should become something more native to python.
+
+        :param dataset: 
+        :param interpolation_type: 
+        :param resolution: 
+        :param shapefile:  (Default value = None)
+        :param shrink:  (Default value = True)
+
         """
         linear = False
         natural = False
@@ -110,79 +116,71 @@ class point_interpolator:
             raise ValueError('Interpolation type not understood')
 
     def _gdal2vector(self, dataset):
-        """
-        Take a gdal vector xyz point cloud and return a numpy array.
+        """Take a gdal vector xyz point cloud and return a numpy array.
+
+        :param dataset: 
+
         """
         # get the data out of the gdal data structure
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
-        data = np.zeros((count,3))
+        data = np.zeros((count, 3))
         for n in np.arange(count):
             f = lyr.GetFeature(n)
-            data[n,:] = f.geometry().GetPoint()
+            data[n, :] = f.geometry().GetPoint()
         return data
 
     def _get_point_spacing(self, dataset):
-        """
-        Take a numpy xyz array and return the min, mean, and max spacing
+        """Take a numpy xyz array and return the min, mean, and max spacing
         between different points in the XY direction for interpolation without
         holes.  The returned units will be the same as the provided horizontal
         coordinate system.
+
+        :param dataset: 
+
         """
         count = len(dataset)
         min_dist = np.zeros(count) + np.inf
         # roll the array through, comparing all points and saving the minimum dist.
-        for n in np.arange(1,count):
-            tmp = np.roll(dataset,n,axis = 0)
-            dist = (np.sqrt(np.square(dataset[:,0] - tmp[:,0])
-                    + np.square(dataset[:,1] - tmp[:,1])))
+        for n in np.arange(1, count):
+            tmp = np.roll(dataset, n, axis=0)
+            dist = (np.sqrt(np.square(dataset[:, 0] - tmp[:, 0])
+                            + np.square(dataset[:, 1] - tmp[:, 1])))
             idx = np.nonzero(dist < min_dist)[0]
             if len(idx) > 0:
                 min_dist[idx] = dist[idx]
         return min_dist.min(), min_dist.mean(), min_dist.max()
 
     def _get_mask(self, dataset, resolution, window):
-        """
-        Currently using the shrunk invdist method as a mask.
+        """Currently using the shrunk invdist method as a mask.
+
+        :param dataset: 
+        :param resolution: 
+        :param window: 
+
         """
         data = self._gdal_invdist_interp_points(dataset, resolution, window)
         mask = self._shrink_coverage(data, resolution, window)
         return mask
 
-    def _getShpRast(self, file, to_proj, to_gt, to_res, to_y, to_x, nodata=0):
-        """Import shapefile
-
-        Parameters
-        ----------
-        file : string
-            Shapefile file location
-        to_proj : str
-            WKT object with destination spatial reference system
-        to_gt : tuple
-           gdal.GeoTransform object of the interpolated dataset
-        to_res : int
-            Resolution of the input dataset
-
-        Keyword Args
-        ------------
-        nodata : int,float
-            Nodata value for the ouput gdal.Dataset object
-
-        Returns
-        -------
-        target_ds :
-            Output gdal.Dataset object which represents the rasterized
-            shapefile that matches the origin and resolution of the
-            interpolated dataset
-        target_gt :
-            Output gdal.GeoTransform object of the rasterized shapefile
-
+    def _getShpRast(self, file: str, to_proj: str, to_gt: tuple, to_res: int, to_y, to_x, nodata: float = 0):
         """
-        print ('getShpRast', file)
+        Import shapefile
+
+        :param file: Shapefile file location
+        :param to_proj: WKT object with destination spatial reference system
+        :param to_gt: gdal.GeoTransform object of the interpolated dataset
+        :param to_res: Resolution of the input dataset
+        :param nodata: Nodata value for the ouput gdal.Dataset object (Default value = 0)
+        :param to_y:
+        :param to_x: 
+        """
+
+        print('getShpRast', file)
         fName = os.path.split(file)[-1]
         splits = os.path.splitext(fName)
         name = splits[0]
-#        tif = splits[0] + '.tif'
+        #        tif = splits[0] + '.tif'
 
         # Open the data source and read in the extent
         source_ds = ogr.Open(file)
@@ -192,9 +190,9 @@ class point_interpolator:
         for feature in source_layer:
             if feature != None:
                 geom = feature.GetGeometryRef()
-#                print (geom.ExportToWkt())
+                #                print (geom.ExportToWkt())
                 ds_geom = ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-#                print (source_srs, to_proj, sep='\n')
+                #                print (source_srs, to_proj, sep='\n')
                 coordTrans = osr.CoordinateTransformation(source_srs, to_proj)
                 ds_geom.Transform(coordTrans)
                 driver = ogr.GetDriverByName('Memory')
@@ -216,17 +214,16 @@ class point_interpolator:
                 feat = geom = None  # destroy these
                 break
 
-
         x_min, x_max, y_min, y_max = ds_geom.GetEnvelope()
-        meta = ([x_min,y_max],[x_max,y_min])
-        print (meta)
+        meta = ([x_min, y_max], [x_max, y_min])
+        print(meta)
 
         # Create the destination data source
         x_dim = int((x_max - x_min) / to_res)
         y_dim = int((y_max - y_min) / to_res)
-        print (x_dim, y_dim)
+        print(x_dim, y_dim)
         target_ds = gdal.GetDriverByName('MEM').Create('', x_dim, y_dim,
-                                                        gdal.GDT_Byte)
+                                                       gdal.GDT_Byte)
         x_orig, y_orig = to_gt[0], to_gt[3]
         target_gt = (x_orig, to_res, 0, y_orig, 0, to_res)
         target_ds.SetGeoTransform(target_gt)
@@ -242,38 +239,38 @@ class point_interpolator:
         plt.show()
 
         ## 6
-        print (x_orig, y_orig)
-        print (x_min,y_min)
+        print(x_orig, y_orig)
+        print(x_min, y_min)
         ollx, olly = x_orig, y_orig
         rllx, rlly = x_min, y_min
         dllx, dlly = 0, 0
         if ollx != rllx:
             dllx = rllx - ollx
-            print (ollx, rllx, dllx)
+            print(ollx, rllx, dllx)
         if olly != rlly:
             dlly = olly - rlly
-            print (olly, rlly, dlly)
-        print (dllx, dlly)
+            print(olly, rlly, dlly)
+        print(dllx, dlly)
 
         ## 7
         oShape = (to_y, to_x)
         oSy, oSx = oShape
         rSy, rSx = newarr.shape
-        print (oSy, rSy)
-        print (oSx, rSx)
+        print(oSy, rSy)
+        print(oSx, rSx)
         expx, expy = 0, 0
         if newarr.shape != oShape:
-            print (oSy - rSy, oSx - rSx)
+            print(oSy - rSy, oSx - rSx)
             if rSy < oSy:
                 expy = int(np.abs(oSy - rSy))
-                print ('expy', expy)
+                print('expy', expy)
             if rSx < oSx:
                 expx = int(np.abs(oSx - rSx))
-                print ('expx', expx)
-        ay = np.full((rSy+expy,rSx+expx), nodata)
-        print ('expz', ay.shape, oShape)
-        rollx = int(dllx/to_res)
-        rolly = int(dlly/to_res)
+                print('expx', expx)
+        ay = np.full((rSy + expy, rSx + expx), nodata)
+        print('expz', ay.shape, oShape)
+        rollx = int(dllx / to_res)
+        rolly = int(dlly / to_res)
 
         ## 8
         up, left = 0, 0
@@ -290,18 +287,18 @@ class point_interpolator:
             left = 0
 
         if dllx != 0 or dlly != 0:
-            print ('rollz', up, left, down, right)
-            temp = newarr[up:,left:]
-            print (temp.shape)
+            print('rollz', up, left, down, right)
+            temp = newarr[up:, left:]
+            print(temp.shape)
             plt.imshow(temp)
             plt.show()
-            ay[down:temp.shape[0]+down,right:temp.shape[1]+right] = temp[:,:]
+            ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[:, :]
             temp = None
         else:
             ay[:] = newarr[:]
-        print ('expz', ay.shape)
+        print('expz', ay.shape)
         ax = np.full(oShape, nodata)
-        ax[:] = ay[:oSy,:oSx]
+        ax[:] = ay[:oSy, :oSx]
 
         newarr = None
         ay = None
@@ -312,7 +309,7 @@ class point_interpolator:
         ax_y, ax_x = ax.shape
 
         target_ds = gdal.GetDriverByName('MEM').Create('', ax_x, ax_y,
-                                                        gdal.GDT_Byte)
+                                                       gdal.GDT_Byte)
         x_orig, y_orig = to_gt[0], to_gt[3]
         target_gt = (x_orig, to_res, 0, y_orig, 0, to_res)
         target_ds.SetGeoTransform(target_gt)
@@ -325,6 +322,13 @@ class point_interpolator:
         return target_ds, target_gt
 
     def _get_shape_mask(self, grid, shapefile, resolution):
+        """
+
+        :param grid: 
+        :param shapefile: 
+        :param resolution: 
+
+        """
         band = grid.GetRasterBand(1)
         bandy, bandx = grid.RasterYSize, grid.RasterXSize
         raster = band.ReadAsArray()
@@ -336,71 +340,77 @@ class point_interpolator:
         grid_gt = grid.GetGeoTransform()
         proj = osr.SpatialReference(wkt=grid_ref)
         proj.MorphFromESRI()
-        print (grid_ref, grid_gt)
+        print(grid_ref, grid_gt)
         shape_ds, shape_gt = self._getShpRast(shapefile, proj, grid_gt,
                                               int(resolution), bandy, bandx)
         print('transformed', shape_gt)
         return shape_ds
 
-
-
     def _gdal_linear_interp_points(self, dataset, resolution, nodata=1000000):
-        """
-        Interpolate the provided gdal vector points and return the interpolated
+        """Interpolate the provided gdal vector points and return the interpolated
         data.
+
+        :param dataset: 
+        :param resolution: 
+        :param nodata:  (Default value = 1000000)
+
         """
         # Find the bounds of the provided data
-        xmin,xmax,ymin,ymax = np.nan,np.nan,np.nan,np.nan
+        xmin, xmax, ymin, ymax = np.nan, np.nan, np.nan, np.nan
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
         for n in np.arange(count):
             f = lyr.GetFeature(n)
-            x,y,z = f.geometry().GetPoint()
-            xmin, xmax = self._compare_vals(x,xmin,xmax)
-            ymin, ymax = self._compare_vals(y,ymin,ymax)
+            x, y, z = f.geometry().GetPoint()
+            xmin, xmax = self._compare_vals(x, xmin, xmax)
+            ymin, ymax = self._compare_vals(y, ymin, ymax)
         numrows, numcolumns, bounds = self._get_nodes3(resolution,
-                                                       [xmin,ymin,xmax,ymax])
+                                                       [xmin, ymin, xmax, ymax])
         algorithm = "linear:radius=0:nodata=" + str(int(nodata))
         interp_data = gdal.Grid('', dataset, format='MEM',
-                                width = numcolumns,
-                                height = numrows,
-                                outputBounds = bounds,
+                                width=numcolumns,
+                                height=numrows,
+                                outputBounds=bounds,
                                 algorithm=algorithm)
         return interp_data
 
     def _gdal_mlab_natural_interp_points(self, dataset, resolution,
                                          nodata=1000000):
-        """
-        Interpolate the provided gdal vector points and return the interpolated
+        """Interpolate the provided gdal vector points and return the interpolated
         data.
+
+        :param dataset: 
+        :param resolution: 
+        :param nodata:  (Default value = 1000000)
+
         """
-        print ('_gdal_mlab_natural_interp_points')
+        print('_gdal_mlab_natural_interp_points')
         # Find the bounds of the provided data
-        xmin,xmax,ymin,ymax = np.nan,np.nan,np.nan,np.nan
+        xmin, xmax, ymin, ymax = np.nan, np.nan, np.nan, np.nan
         lyr = dataset.GetLayerByIndex(0)
         proj = lyr.GetSpatialRef().ExportToWkt()
         count = lyr.GetFeatureCount()
         xvals, yvals, zvals = [], [], []
         for n in np.arange(count):
             f = lyr.GetFeature(n)
-            x,y,z = f.geometry().GetPoint()
+            x, y, z = f.geometry().GetPoint()
             xvals.append(x)
             yvals.append(y)
             zvals.append(z)
-            xmin, xmax = self._compare_vals(x,xmin,xmax)
-            ymin, ymax = self._compare_vals(y,ymin,ymax)
+            xmin, xmax = self._compare_vals(x, xmin, xmax)
+            ymin, ymax = self._compare_vals(y, ymin, ymax)
         numrows, numcolumns, bounds = self._get_nodes3(resolution,
-                                                       [xmin,ymin,xmax,ymax])
-        print (bounds)
+                                                       [xmin, ymin, xmax, ymax])
+        print(bounds)
         xbound, ybound = bounds[0], bounds[1]
         xvals, yvals, zvals = np.array(xvals), np.array(yvals), np.array(zvals)
-        xvals, yvals = (xvals-xbound)/resolution, (yvals-ybound)/resolution
+        xvals, yvals = (xvals - xbound) / resolution, (yvals - ybound) / resolution
 
         print('start', xvals, yvals, zvals)
         xi, yi = np.arange(numcolumns), np.arange(numrows)
-        interp_obj = mlab_griddata(xvals,yvals,zvals,xi,yi,interp='nn')
+        interp_obj = mlab_griddata(xvals, yvals, zvals, xi, yi, interp='nn')
         interp_grid, interp_mask = interp_obj.data, interp_obj.mask
-        interp_grid[np.isnan(interp_grid)]=nodata
+        interp_grid[np.isnan(interp_grid)] = nodata
         plt.figure()
         plt.imshow(interp_grid)
         plt.show()
@@ -409,8 +419,8 @@ class point_interpolator:
         plt.show()
         print('stop')
 
-        interp_data = gdal.GetDriverByName('MEM').Create('',numcolumns,
-                                          numrows, 1, gdal.GDT_Float32)
+        interp_data = gdal.GetDriverByName('MEM').Create('', numcolumns,
+                                                         numrows, 1, gdal.GDT_Float32)
         interp_gt = (xbound, resolution, 0,
                      ybound, 0, resolution)
         interp_data.SetGeoTransform(interp_gt)
@@ -425,34 +435,39 @@ class point_interpolator:
         return interp_data
 
     def _gdal_invdist_scilin_interp_points(self, dataset, resolution, radius,
-                                    nodata=1000000):
-        """
-        Interpolate the provided gdal vector points and return the interpolated
+                                           nodata=1000000):
+        """Interpolate the provided gdal vector points and return the interpolated
         data.
+
+        :param dataset: 
+        :param resolution: 
+        :param radius: 
+        :param nodata:  (Default value = 1000000)
+
         """
-        print ('_gdal_invdist_scilin_interp_points')
+        print('_gdal_invdist_scilin_interp_points')
         # Find the bounds of the provided data
-        xmin,xmax,ymin,ymax = np.nan,np.nan,np.nan,np.nan
+        xmin, xmax, ymin, ymax = np.nan, np.nan, np.nan, np.nan
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
         for n in np.arange(count):
             f = lyr.GetFeature(n)
-            x,y,z = f.geometry().GetPoint()
-            xmin, xmax = self._compare_vals(x,xmin,xmax)
-            ymin, ymax = self._compare_vals(y,ymin,ymax)
+            x, y, z = f.geometry().GetPoint()
+            xmin, xmax = self._compare_vals(x, xmin, xmax)
+            ymin, ymax = self._compare_vals(y, ymin, ymax)
         numrows, numcolumns, bounds = self._get_nodes3(resolution,
-                                                       [xmin,ymin,xmax,ymax])
+                                                       [xmin, ymin, xmax, ymax])
         algorithm = ("invdist:power=2.0:smoothing=0.0:radius1="
                      + str(radius) + ":radius2=" + str(radius)
                      + ":angle=0.0:max_points=0:min_points=1:nodata="
                      + str(int(nodata)))
         interp_data = gdal.Grid('', dataset, format='MEM',
-                                width = numcolumns,
-                                height = numrows,
-                                outputBounds = bounds,
+                                width=numcolumns,
+                                height=numrows,
+                                outputBounds=bounds,
                                 algorithm=algorithm)
         arr = interp_data.ReadAsArray()
-        ycoord, xcoord = np.where(arr!=nodata)
+        ycoord, xcoord = np.where(arr != nodata)
         zvals = arr[ycoord[:], xcoord[:]]
         arr = None
 
@@ -462,9 +477,9 @@ class point_interpolator:
         interp_grid = scipy.interpolate.griddata((xcoord, ycoord), zvals,
                                                  (xi, yi), method='linear',
                                                  fill_value=nodata)
-#        interp_obj = mlab_griddata(xcoord,ycoord,zvals,xi,yi,interp='nn')
-#        interp_grid, interp_mask = interp_obj.data, interp_obj.mask
-        interp_grid[np.isnan(interp_grid)]=nodata
+        #        interp_obj = mlab_griddata(xcoord,ycoord,zvals,xi,yi,interp='nn')
+        #        interp_grid, interp_mask = interp_obj.data, interp_obj.mask
+        interp_grid[np.isnan(interp_grid)] = nodata
         plt.figure()
         plt.imshow(interp_grid)
         plt.show()
@@ -479,36 +494,45 @@ class point_interpolator:
 
     def _gdal_invdist_interp_points(self, dataset, resolution, radius,
                                     nodata=1000000):
-        """
-        Interpolate the provided gdal vector points and return the interpolated
+        """Interpolate the provided gdal vector points and return the interpolated
         data.
+
+        :param dataset: 
+        :param resolution: 
+        :param radius: 
+        :param nodata:  (Default value = 1000000)
+
         """
         # Find the bounds of the provided data
-        xmin,xmax,ymin,ymax = np.nan,np.nan,np.nan,np.nan
+        xmin, xmax, ymin, ymax = np.nan, np.nan, np.nan, np.nan
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
         for n in np.arange(count):
             f = lyr.GetFeature(n)
-            x,y,z = f.geometry().GetPoint()
-            xmin, xmax = self._compare_vals(x,xmin,xmax)
-            ymin, ymax = self._compare_vals(y,ymin,ymax)
+            x, y, z = f.geometry().GetPoint()
+            xmin, xmax = self._compare_vals(x, xmin, xmax)
+            ymin, ymax = self._compare_vals(y, ymin, ymax)
         numrows, numcolumns, bounds = self._get_nodes3(resolution,
-                                                       [xmin,ymin,xmax,ymax])
+                                                       [xmin, ymin, xmax, ymax])
         algorithm = ("invdist:power=2.0:smoothing=0.0:radius1="
                      + str(radius) + ":radius2=" + str(radius)
                      + ":angle=0.0:max_points=0:min_points=1:nodata="
                      + str(int(nodata)))
         interp_data = gdal.Grid('', dataset, format='MEM',
-                                width = numcolumns,
-                                height = numrows,
-                                outputBounds = bounds,
+                                width=numcolumns,
+                                height=numrows,
+                                outputBounds=bounds,
                                 algorithm=algorithm)
         return interp_data
 
     def _compare_vals(self, val, valmin, valmax):
-        """
-        This is a small utility for inspecting values and seeing they
+        """This is a small utility for inspecting values and seeing they
         contribute to a min or max estimate.
+
+        :param val: 
+        :param valmin: 
+        :param valmax: 
+
         """
         if np.isnan(valmin):
             valmin = val
@@ -523,29 +547,35 @@ class point_interpolator:
         return valmin, valmax
 
     def _get_nodes(self, resolution, bounds):
-        """
-        Get the bounds and number of rows and columns. The desired resolution
+        """Get the bounds and number of rows and columns. The desired resolution
         and the data max and min in X and Y are required.  This algorithm uses
         the average of the data min and max and centers the grid on this
         location.
+
+        :param resolution: 
+        :param bounds: 
+
         """
         xmin, ymin, xmax, ymax = bounds
         numcolumns = int(np.ceil((1. * (xmax - xmin) / resolution)))
-        xmean = np.mean([xmin,xmax])
+        xmean = np.mean([xmin, xmax])
         xnmin = xmean - numcolumns / 2. * resolution
         xnmax = xmean + numcolumns / 2. * resolution
         numrows = int(np.ceil((1. * (ymax - ymin) / resolution)))
-        ymean = np.mean([ymin,ymax])
-        ynmin = ymean - numrows/ 2. * resolution
-        ynmax = ymean + numrows/ 2. * resolution
-        return numrows, numcolumns, [xnmin,ynmin,xnmax,ynmax]
+        ymean = np.mean([ymin, ymax])
+        ynmin = ymean - numrows / 2. * resolution
+        ynmax = ymean + numrows / 2. * resolution
+        return numrows, numcolumns, [xnmin, ynmin, xnmax, ynmax]
 
     def _get_nodes2(self, resolution, bounds):
-        """
-        Get the bounds and number of rows and columns. The desired resolution
+        """Get the bounds and number of rows and columns. The desired resolution
         and the data max and min in X and Y are required.  This algorithm use
         the data min as the anchor for the rows and columns, thus the max data
         values may contain sparse data.
+
+        :param resolution: 
+        :param bounds: 
+
         """
         xmin, ymin, xmax, ymax = bounds
         numcolumns = int(np.ceil((1. * (xmax - xmin) / resolution)))
@@ -554,14 +584,17 @@ class point_interpolator:
         numrows = int(np.ceil((1. * (ymax - ymin) / resolution)))
         ynmin = ymin
         ynmax = ymin + 1. * numrows * resolution
-        return numrows, numcolumns, [xnmin,ynmin,xnmax,ynmax]
+        return numrows, numcolumns, [xnmin, ynmin, xnmax, ynmax]
 
     def _get_nodes3(self, resolution, bounds):
-        """
-        Get the bounds and number of rows and columns. The desired resolution
+        """Get the bounds and number of rows and columns. The desired resolution
         and the data max and min in X and Y are required.  This algorithm use
         the data min as the anchor for the rows and columns, but floored to the
         nearest multiple of the resolution.
+
+        :param resolution: 
+        :param bounds: 
+
         """
         xmin, ymin, xmax, ymax = bounds
         numcolumns = int(np.ceil((1. * (xmax - xmin) / resolution)))
@@ -572,13 +605,16 @@ class point_interpolator:
         yrem = ymin % resolution
         ynmin = ymin - yrem
         ynmax = ynmin + 1. * numrows * resolution
-        return numrows, numcolumns, [xnmin,ynmin,xnmax,ynmax]
+        return numrows, numcolumns, [xnmin, ynmin, xnmax, ynmax]
 
     def _mask_with_raster(self, dataset, maskraster):
-        """
-        Read two rasters and use the nodata values from one to mask the other.
+        """Read two rasters and use the nodata values from one to mask the other.
         These files are assumed to be collocated as all operation are conducted
         on the pixel level.
+
+        :param dataset: 
+        :param maskraster: 
+
         """
         data = dataset.ReadAsArray()
         data_rb = dataset.GetRasterBand(1)
@@ -592,8 +628,12 @@ class point_interpolator:
         return dataset
 
     def _shrink_coverage(self, dataset, resolution, radius):
-        """
-        Shrink coverage of a dataset by the original coverage radius.
+        """Shrink coverage of a dataset by the original coverage radius.
+
+        :param dataset: 
+        :param resolution: 
+        :param radius: 
+
         """
         data = dataset.ReadAsArray()
         data_rb = dataset.GetRasterBand(1)
@@ -604,9 +644,9 @@ class point_interpolator:
         rem_cells = int(np.round(radius / resolution))
         # print ('Shrinking coverage back ' + str(rem_cells) + ' cells.')
         for n in np.arange(rem_cells):
-            ew = np.diff(data, axis = 0)
+            ew = np.diff(data, axis=0)
             idx_ew = np.nonzero(np.isnan(ew))
-            ns = np.diff(data, axis = 1)
+            ns = np.diff(data, axis=1)
             idx_ns = np.nonzero(np.isnan(ns))
             data[idx_ew] = np.nan
             data[idx_ew[0] + 1, idx_ew[1]] = np.nan

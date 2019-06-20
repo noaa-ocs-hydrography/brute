@@ -10,9 +10,10 @@ Abstract datum transformation.
 from fuse.datum_transform import use_vdatum as uv
 
 class transform:
-    """
-    An object for abstracting the datum transformation API.  This should allow
+    """An object for abstracting the datum transformation API.  This should allow
     for different transformation machines and versions.
+
+
     """
     def __init__(self, config, reader):
         """
@@ -24,9 +25,10 @@ class transform:
         self._setup()
         
     def _setup(self):
-        """
-        Set up and configure the transformation tools based on the information
+        """Set up and configure the transformation tools based on the information
         provided in the configruation file.
+
+
         """
         if 'vdatum_path' in self._config:
             self._engine = uv.vdatum(self._config, self._reader)
@@ -34,9 +36,12 @@ class transform:
             raise ValueError('No java path provided')
             
     def translate(self, infilename, metadata):
-        """
-        Run the specified transformation engine to translate the provided
+        """Run the specified transformation engine to translate the provided
         dataset.
+
+        :param infilename: 
+        :param metadata: 
+
         """
         self._meta = metadata
         in_fips = int(self._meta['from_fips'])

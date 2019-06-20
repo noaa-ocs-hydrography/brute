@@ -5,16 +5,16 @@ Created on Thu Jan 31 10:47:59 2019
 @author: grice
 """
 
+import csv as _csv
+import shutil as _shutil
 from pathlib import Path as _Path
 from tempfile import NamedTemporaryFile as _NamedTemporaryFile
-import shutil as _shutil
-import csv as _csv
+
 import fuse.meta_review.meta_review_base as mrb
 
+
 class meta_review_ehydro(mrb.meta_review_base):
-    """
-    The ehydro metadata object.
-    """
+    """The ehydro metadata object."""
     # ordered dict to ensure looping through the keys always gets 'manual' last.
     _col_root = {'manual' : 'manual: ',
                  'script' : 'script: '}
@@ -80,9 +80,7 @@ class meta_review_ehydro(mrb.meta_review_base):
         self._fieldnames = self._make_col_header()
         
     def _make_col_header(self):
-        """
-        Return the column header names for the csv file.
-        """
+        """ """
         csv_cols = []
         for c in self._metakeys:
             if c is 'from_filename':
@@ -100,9 +98,11 @@ class meta_review_ehydro(mrb.meta_review_base):
         return csv_cols
         
     def write_meta_record(self, meta):
-        """
-        Open the provided file and add the list of metadata in the provided 
+        """Open the provided file and add the list of metadata in the provided
         dictionaries.
+
+        :param meta: 
+
         """
         infile = _Path(self._metafilename)
         if infile.exists():
@@ -117,8 +117,10 @@ class meta_review_ehydro(mrb.meta_review_base):
             self._write_new_csv(meta)
         
     def _add_to_csv(self, meta):
-        """
-        Add the provided metadata to the provide file.
+        """Add the provided metadata to the provide file.
+
+        :param meta: 
+
         """
         orig = []
         # get the names of all the files in the new metadata
@@ -157,8 +159,10 @@ class meta_review_ehydro(mrb.meta_review_base):
         _shutil.move(tempfile.name, self._metafilename)
                     
     def _write_new_csv(self, meta):
-        """
-        Write the provided metadata to a new CSV file.
+        """Write the provided metadata to a new CSV file.
+
+        :param meta: 
+
         """
         if type(meta) == dict: # just a single record
             meta = self._scriptkeys([meta])
@@ -175,9 +179,11 @@ class meta_review_ehydro(mrb.meta_review_base):
                 writer.writerow(row)
 
     def _scriptkeys(self, meta):
-        """
-        Prepend 'script: ' to each key in the list of dictionaries such that the
+        """Prepend 'script: ' to each key in the list of dictionaries such that the
         list goes to the right column when written to a csv.
+
+        :param meta: 
+
         """
         new_meta = []
         for row in meta:
@@ -195,9 +201,10 @@ class meta_review_ehydro(mrb.meta_review_base):
         return new_meta
     
     def read_meta_file(self):
-        """
-        Open the provide csv file name, extract the metadata, and combine
+        """Open the provide csv file name, extract the metadata, and combine
         duplicative rows, giving precedence to the manually entered values.
+
+
         """
         with open(self._metafilename,'r') as csvfile:
             metadata = []
@@ -208,10 +215,13 @@ class meta_review_ehydro(mrb.meta_review_base):
         return metadata
     
     def read_meta_record(self, meta_value, meta_key = 'from_filename'):
-        """
-        Open the provide csv file name, extract the metadata row looking for
+        """Open the provide csv file name, extract the metadata row looking for
         the record name that matches the provided key.  Once the record is
         found the record is "simplified" and returned.
+
+        :param meta_value: 
+        :param meta_key:  (Default value = 'from_filename')
+
         """
         metadata = {}
         with open(self._metafilename,'r') as csvfile:
@@ -223,10 +233,12 @@ class meta_review_ehydro(mrb.meta_review_base):
         return metadata
     
     def _simplify_row(self, row):
-        """
-        Provided a dictionary representing a row from the csv file, combined
+        """Provided a dictionary representing a row from the csv file, combined
         the manual and scripted values, giving precedence to the manual
         entries.
+
+        :param row: 
+
         """
         metarow = {}
         # make dictionaries for sorting data into
@@ -254,8 +266,10 @@ class meta_review_ehydro(mrb.meta_review_base):
         return simplerow
     
     def row2s57(self, row):
-        """
-        Convert the expanded column names used in the csv to an S57 name and value.
+        """Convert the expanded column names used in the csv to an S57 name and value.
+
+        :param row: 
+
         """
         s57row = {}
         # remap the keys

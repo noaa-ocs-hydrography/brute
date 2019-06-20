@@ -12,9 +12,7 @@ An abstraction for data interpolation.
 import fuse.interpolator.point_interpolator as pinterp
 
 class interpolator:
-    """
-    An abstraction for data interpolation.
-    """
+    """An abstraction for data interpolation."""
     def __init__(self, interpolation_engine, interp_type, resolution):
         """
         Set the interpolation method.
@@ -25,17 +23,18 @@ class interpolator:
         self._setup()
 
     def _setup(self):
-        """
-        Set up and configure the interpolation tools.
-        """
+        """Set up and configure the interpolation tools."""
         if self._interp_engine == 'point':
             self._engine = pinterp.point_interpolator()
         else:
             raise ValueError('No interpolation engine type specified')
 
     def interpolate(self, dataset, shapefile=None):
-        """
-        Take a gdal dataset and run the interpolation, returning a gdal raster.
+        """Take a gdal dataset and run the interpolation, returning a gdal raster.
+
+        :param dataset: 
+        :param shapefile:  (Default value = None)
+
         """
         if shapefile != None:
             return self._engine.interpolate(dataset, self._interp_type,

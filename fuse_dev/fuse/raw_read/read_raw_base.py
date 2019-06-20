@@ -11,9 +11,7 @@ any available bathymetry or metadata can be accessed.
 """
 
 class read_raw_abstract:
-    """
-    An abstract raw data reader.
-    """
+    """An abstract raw data reader."""
     
     def __init__(self, datatype):
         """
@@ -23,13 +21,17 @@ class read_raw_abstract:
         pass
     
     def read_metadata(self, infilename):
-        """
-        Read all available meta data.
+        """Read all available meta data.
+
+        :param infilename: 
+
         """
         pass
     
     def read_bathymetry(self, infilename):
-        """
-        Read the bathymetry.
+        """Read the bathymetry.
+
+        :param infilename: 
+
         """
         pass

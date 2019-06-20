@@ -8,20 +8,18 @@ These are the tools for interfacting directly with CARIS Bathy DataBASE 5.1
 server from within the CARIS conda python environment.
 """
 
-import os, sys
 import pickle
-import time
 import socket
+import sys
+import time
 
-import caris.bathy.db as bdb
 import caris
-
+import caris.bathy.db as bdb
 from get_access import *
 
+
 class bdb51_io:
-    """
-    
-    """
+    """ """
     def __init__(self, port):
         """
         
@@ -38,9 +36,7 @@ class bdb51_io:
         pass
     
     def take_commands(self):
-        """
-        Call the provided port on the host and ask for something to do.
-        """
+        """Call the provided port on the host and ask for something to do."""
         conn = socket.create_connection(('',self.port))
         conn.setblocking(True)
         # need to build a packet to send to open the connection
@@ -53,10 +49,12 @@ class bdb51_io:
         conn.close()
     
     def connect(self, command_dict):
-        """
-        Make a connection to the BDB database using the provided location and
+        """Make a connection to the BDB database using the provided location and
         name.  If there is not a predefined password or username one will be
         requested.
+
+        :param command_dict: 
+
         """
         msg = ''
         self.node_manager = command_dict['node_manager']
@@ -77,22 +75,24 @@ class bdb51_io:
         return response
     
     def _check_connection(self):
-        """
-        Check to see if the database connection is alive.
-        """
+        """Check to see if the database connection is alive."""
         pass
     
     def status(self, command_dict):
-        """
-        Check the status of the object.
+        """Check the status of the object.
+
+        :param command_dict: 
+
         """
         response = {'command':'status','alive':self.alive}
         return response
     
     def upload(self, command_dict):
-        """
-        Send data at the provided location, specifying if the metadata or
+        """Send data at the provided location, specifying if the metadata or
         bathymetery should be updated if it already exists.
+
+        :param command_dict: 
+
         """
         # what to upload, new or updated data
         action = command_dict['action']
@@ -104,8 +104,10 @@ class bdb51_io:
         return response
     
     def _upload_new(self, file_path):
-        """
-        Upload both bathymetry and the metadata.
+        """Upload both bathymetry and the metadata.
+
+        :param file_path: 
+
         """
         # create a fake feature
         crs = self._db.crs
@@ -134,16 +136,20 @@ class bdb51_io:
             sys.stderr(pickle.dumps(e))
         
     def query(self, command_dict):
-        """
-        Query for and return data from the db.
+        """Query for and return data from the db.
+
+        :param command_dict: 
+
         """
         pass
 
     def die(self, command_dict):
-        """
-        Update the object "alive" flag.
+        """Update the object "alive" flag.
         
         The command dictionary must contain a key word "action"
+
+        :param command_dict: 
+
         """
         action = command_dict['action']
         time.sleep(int(action))
@@ -154,10 +160,11 @@ class bdb51_io:
         return response
     
     def take_commands(self):
-        """
-        Act on commands the provided command dictionary, such as to upload
-        data, read and return data, destroy the object and exit the 
+        """Act on commands the provided command dictionary, such as to upload
+        data, read and return data, destroy the object and exit the
         environment.
+
+
         """
         self._command.append(command_dict)
         command = command_dict['command']
@@ -173,8 +180,10 @@ class bdb51_io:
         return response
     
 def main(port):
-    """
-    An event loop waiting for commands.
+    """An event loop waiting for commands.
+
+    :param port: 
+
     """
     db_io = bdb51_io(port)
     db_io.request_commands()        

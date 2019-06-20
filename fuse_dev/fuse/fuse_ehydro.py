@@ -7,16 +7,19 @@ Created on Thu Jan 31 10:30:11 2019
 @author: grice
 """
 
-import os as _os
 import logging as _logging
+import os as _os
+
+import fuse.datum_transform.transform as _trans
 import fuse.fuse_base_class as _fbc
+import fuse.interpolator.interpolator as _interp
 import fuse.meta_review.meta_review_ehydro as _mre
 import fuse.raw_read.usace as _usace
-import fuse.datum_transform.transform as _trans
-import fuse.interpolator.interpolator as _interp
 from fuse.proc_io.proc_io import proc_io
 
+
 class fuse_ehydro(_fbc.fuse_base_class):
+    """ """
     _cols = ['from_filename',
             'from_path',
             'to_filename',
@@ -62,9 +65,10 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self.logger.setLevel(_logging.DEBUG)
 
     def _set_data_reader(self):
-        """
-        Use information from the config file to set the reader to use for
+        """Use information from the config file to set the reader to use for
         converting the raw data to usable metadata and bathymetry.
+
+
         """
         try:
             reader_type = self._config['raw_reader_type'].casefold()
@@ -84,24 +88,21 @@ class fuse_ehydro(_fbc.fuse_base_class):
             raise ValueError("No reader type found in the configuration file.")
 
     def _set_data_transform(self):
-        """
-        Set up the datum transformation engine.
-        """
+        """Set up the datum transformation engine."""
         self._transform = _trans.transform(self._config, self._reader)
 
     def _set_data_interpolator(self):
-        """
-        Set up the interpolator engine.
-        """
+        """Set up the interpolator engine."""
         engine = self._config['interpolation_engine']
         res = float(self._config['to_resolution'])
         method = self._config['interpolation_method']
         self._interpolator = _interp.interpolator(engine, method, res)
 
     def _set_data_writer(self):
-        """
-        Set up the location and method to write tranformed and interpolated
+        """Set up the location and method to write tranformed and interpolated
         data.
+
+
         """
         ext = self._config['bathymetry_intermediate_file']
         if ext == 'bag':
@@ -112,14 +113,21 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._points = proc_io('point', 'csar')
         
     def _read_pickle(self,infilename):
+        """
+
+        :param infilename: 
+
+        """
         pickle = _usace.parse_usace_pickle.pickle_file(infilename)
         return pickle.pickle_meta
 
     def read(self, infilename):
-        """
-        Extract metadata from the provided eHydro file path and write the metadata
+        """Extract metadata from the provided eHydro file path and write the metadata
         to the specified metadata file.  The bathymetry will be interpolated and
         writen to a CSAR file in the specificed csarpath.
+
+        :param infilename: 
+
         """
         self._meta = {}
         self._set_log(infilename)
@@ -140,8 +148,10 @@ class fuse_ehydro(_fbc.fuse_base_class):
         # reading the bathymetry is not required > goes directly to datum trans
 
     def process(self, infilename):
-        """
-        Do the datum transformtion and interpolation.
+        """Do the datum transformtion and interpolation.
+
+        :param infilename: 
+
         """
         self._get_stored_meta(infilename)
         self._set_log(infilename)
@@ -172,8 +182,10 @@ class fuse_ehydro(_fbc.fuse_base_class):
             self.logger.log(_logging.DEBUG, 'No fips code found')
 
     def _set_log(self, infilename):
-        """
-        Set the object logging object and file.
+        """Set the object logging object and file.
+
+        :param infilename: 
+
         """
         metapath, metafile = _os.path.split(self._config['metapath'])
         filepath, filename = _os.path.split(infilename)
@@ -192,9 +204,11 @@ class fuse_ehydro(_fbc.fuse_base_class):
 
 
     def _get_stored_meta(self, infilename):
-        """
-        Get the metadata in a local dictionary so that it can be used within
+        """Get the metadata in a local dictionary so that it can be used within
         the instantiated object.
+
+        :param infilename: 
+
         """
         # file name is the key rather than the path
         path, f = _os.path.split(infilename)

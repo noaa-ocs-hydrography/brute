@@ -11,17 +11,17 @@ any available bathymetry or metadata can be accessed.
 """
 
 import os as _os
-from datetime import datetime as _datetime
-import re as _re
 import pickle as _pickle
+import re as _re
+from datetime import datetime as _datetime
 from xml.etree.ElementTree import parse as _parse
+
 import numpy as _np
 from fuse.datum_transform import usefips as _usefips
 
+
 class read_raw:
-    """
-    An abstract raw data reader.
-    """
+    """An abstract raw data reader."""
     _ussft2m = 0.30480060960121924 # US survey feet to meters
     
     def __init__(self):
@@ -31,21 +31,27 @@ class read_raw:
         pass
     
     def read_metadata(self, infilename):
-        """
-        Read all available meta data.
+        """Read all available meta data.
+
+        :param infilename: 
+
         """
         return self._parse_ehydro_xyz_header(infilename)
     
     def read_bathymetry(self, infilename):
-        """
-        Read the bathymetry and return an array of the xyz points.
+        """Read the bathymetry and return an array of the xyz points.
+
+        :param infilename: 
+
         """
         xyz = self._parse_ehydro_xyz_bathy(infilename)
         return xyz
     
     def read_bathymetry_by_point(self, infilename):
-        """
-        Read the bathymetry and return point by point.
+        """Read the bathymetry and return point by point.
+
+        :param infilename: 
+
         """
         xyz = self.read_bathymetry(infilename)
         for n in xyz:
@@ -54,8 +60,7 @@ class read_raw:
     def _parse_ehydro_xyz_header(self, infilename, 
                          meta_source = 'xyz',
                          default_meta = ''):
-        """
-        Parse an USACE eHydro file for the available meta data.
+        """Parse an USACE eHydro file for the available meta data.
         
         Default metadata (values predetermined for the file but not in the file)
         can be stored at the location defined by 'default_meta' as a pickled
@@ -64,6 +69,11 @@ class read_raw:
         not exist no default metadata will be loaded.  If the same keyword for
         the metadata exists both in the file metadata and in the default location,
         the file metadata will take precidence.
+
+        :param infilename: 
+        :param meta_source:  (Default value = 'xyz')
+        :param default_meta:  (Default value = '')
+
         """
         name_meta = self._parse_filename(infilename)
         if meta_source == 'xyz':
@@ -91,8 +101,7 @@ class read_raw:
         return merged_meta
     
     def _parse_filename(self, infilename):
-        """
-        Parse the provided infilename for the channel project code, unique id,
+        """Parse the provided infilename for the channel project code, unique id,
         subproject code, survey acquistion start date, the survey code, and
         optional field and return a dictionary of these fields.  The dictionary
         contains the following keys:
@@ -105,6 +114,9 @@ class read_raw:
             optional : this is the contents of the condition field
             from_path : this is named to match other scripts downstream
             from_filename : this is also named to match other file downstream
+
+        :param infilename: 
+
         """
         base = _os.path.basename(infilename)
         name, ext = _os.path.splitext(base)
@@ -131,13 +143,15 @@ class read_raw:
         return meta
     
     def _parse_xyz_header(self, infilename):
-        """
-        Parse the xyz file header for meta data and return a dictionary.  The
+        """Parse the xyz file header for meta data and return a dictionary.  The
         key words used to search are
             NOTES
             PROJECT_NAME
             SURVEY_NAME
             DATES_OF_SURVEY
+
+        :param infilename: 
+
         """
         header = []
         metalist = []
@@ -167,8 +181,10 @@ class read_raw:
         return meta
     
     def _is_header(self, line):
-        """
-        Test if a line contains anything other than numbers it is a meta data line.
+        """Test if a line contains anything other than numbers it is a meta data line.
+
+        :param line: 
+
         """
         pattern = '[a-zA-Z]'
         if _re.search(pattern, line) is None:
@@ -177,8 +193,10 @@ class read_raw:
             return True
     
     def _parse_note(self, line):
-        """
-        Parse the notes line.
+        """Parse the notes line.
+
+        :param line: 
+
         """
         metadata = {}
         # find the horizontal datum information.
@@ -227,8 +245,10 @@ class read_raw:
         return metadata
     
     def _parse_projectname(self, line):
-        """
-        Parse the project name line.
+        """Parse the project name line.
+
+        :param line: 
+
         """
         name = line.split('=')[-1]
         name = name.strip('\n')
@@ -236,8 +256,10 @@ class read_raw:
         return metadata
     
     def _parse_surveyname(self, line):
-        """
-        Parse the survey name line.
+        """Parse the survey name line.
+
+        :param line: 
+
         """
         name = line.split('=')[-1]
         name = name.strip('\n')
@@ -245,8 +267,10 @@ class read_raw:
         return metadata
     
     def _parse_surveydates(self, line):
-        """
-        Parse the project dates line.
+        """Parse the project dates line.
+
+        :param line: 
+
         """
         metadata = {}
         datestr = line.split('=')[-1]
@@ -266,9 +290,11 @@ class read_raw:
         return metadata
     
     def _xyztext2date(self, textdate):
-        """
-        Take the date as provided in a text string as "day month year" as in
+        """Take the date as provided in a text string as "day month year" as in
         "20 March 2017" and return the format "YearMonthDay" as in "20170320".
+
+        :param textdate: 
+
         """
         try:
             date = _datetime.strptime(textdate, '%d %B %Y')
@@ -278,11 +304,14 @@ class read_raw:
             return 'unknown'
     
     def _load_default_metadata(self, infilename, default_meta):
-        """
-        Given the file name for data and a default metadata file (containing a
+        """Given the file name for data and a default metadata file (containing a
         picked dictionary), look for the default file.  If that files does not
         exist, look for a file named 'default.pkl' in the same directory as the
         provided file name.
+
+        :param infilename: 
+        :param default_meta: 
+
         """
         if len(default_meta) == 0:
             path, infile = _os.path.split(infilename)
@@ -295,9 +324,11 @@ class read_raw:
         return meta
     
     def _parse_ehydro_xml(self, infilename):
-        """
-        Parse the eHydro XML file as provided by Wilmington, Charleston, and
+        """Parse the eHydro XML file as provided by Wilmington, Charleston, and
         Norfolk Districts.
+
+        :param infilename: 
+
         """
         xml_meta = self._parse_xml(infilename)
         text_meta = self._parse_xml_text(infilename)
@@ -305,8 +336,10 @@ class read_raw:
         return meta_out
     
     def _parse_xml(self, infilename):
-        """
-        Parse the xml portion of the xml file
+        """Parse the xml portion of the xml file
+
+        :param infilename: 
+
         """
         xml_meta = {}
         tree = _parse(infilename)
@@ -330,8 +363,10 @@ class read_raw:
         return xml_meta
             
     def _parse_xml_text(self, infilename):
-        """
-        Pase the text portion of the xml file
+        """Pase the text portion of the xml file
+
+        :param infilename: 
+
         """
         txt_meta = {}
         txt_keys = {'Implied_Vertical_Accuracy' : 'from_vert_unc',
@@ -368,10 +403,12 @@ class read_raw:
         return txt_meta
     
     def _parse_ehydro_xyz_bathy(self, infilename):
-        """
-        Read the best available point bathymetry for the district.
+        """Read the best available point bathymetry for the district.
         
         This method assumes the provided file name is the XYZ file.
+
+        :param infilename: 
+
         """
         bathy = []
         # get the header

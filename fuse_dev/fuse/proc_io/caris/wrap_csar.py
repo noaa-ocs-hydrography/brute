@@ -7,16 +7,20 @@ Created on Thu Feb 14 15:11:39 2019
 @author: grice
 """
 import os
-import sys
 import pickle
-import numpy as np
-import logging
+import sys
+
 import caris.coverage as cc
+import numpy as np
+
 
 def write_csar(dataset, m):
-    """
-    Convert a gdal dataset into a csar.
+    """Convert a gdal dataset into a csar.
     http://www.teledynecaris.com/en/support/caris-python-api/5-1/coverage/raster/intro.html#creating-a-raster
+
+    :param dataset: 
+    :param m: 
+
     """
     print ('write_csar')
     dataset = np.array(dataset)
@@ -63,19 +67,14 @@ def write_csar(dataset, m):
     raster = None
 
 def write_cloud(dataset, m):
-    """
-    Convert a set of GDAL points to a CSAR point cloud.  The provided data is
+    """Convert a set of GDAL points to a CSAR point cloud.  The provided data is
     assumed to be a depth (positive down) and is assigned to a height
     (positive up).
 
-    Parameters
-    ----------
-    dataset : numpy.array
-        An array of [x,y,z] data points
-    m : dict
-        a dictionary containing the 'crs' info, 'outfilename', and 'z_up' to
-        determine directionality of the data
+    :param dataset: 
+    :param m: 
 
+    
     """
     print ('write_cloud')
     print (m)
@@ -136,9 +135,12 @@ def write_cloud(dataset, m):
     pc = None
 
 def check_metadata(meta, meta_type):
-    """
-    Check to make sure the required metadata keys are available in the
+    """Check to make sure the required metadata keys are available in the
     provided metadata dictionary.
+
+    :param meta: 
+    :param meta_type: 
+
     """
     if meta_type == 'gdal':
         req_attrib = {'resx',
@@ -173,9 +175,7 @@ def check_metadata(meta, meta_type):
         raise ValueError('Metadata missing to write csar %s' % mkeys)
 
 def main():
-    """
-    Parse the arguments and send them to the write method.
-    """
+    """Parse the arguments and send them to the write method."""
     # check to make sure the file exists
     data = np.load(sys.argv[1])
     # check to make sure the metadata file exists

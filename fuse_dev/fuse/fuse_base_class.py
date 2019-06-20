@@ -10,9 +10,7 @@ Created on Thu Jan 31 10:03:30 2019
 import os as _os
 
 class fuse_base_class:
-    """
-    The fuse object.
-    """
+    """The fuse object."""
     def __init__(self, configfilename = 'generic.config'):
         """
         Initialize with the metadata file to use and the horizontal and
@@ -24,8 +22,7 @@ class fuse_base_class:
         self._meta = {}
         
     def _read_configfile(self, confile):
-        """
-        Read, parse, and return the configuration information in the provided file.
+        """Read, parse, and return the configuration information in the provided file.
         The actual format of this file is ....
         
         rawpaths
@@ -33,6 +30,9 @@ class fuse_base_class:
         to_horiz_datum
         to_vert_datum
         metapath
+
+        :param confile: 
+
         """
         config = {}
         with open(confile, 'r') as configfile:
@@ -74,9 +74,11 @@ class fuse_base_class:
         return config
     
     def _check_config(self, config_dict):
-        """
-        Check to ensure at least the basic elements of the configuration are
+        """Check to ensure at least the basic elements of the configuration are
         available.
+
+        :param config_dict: 
+
         """
         if 'rawpaths' not in config_dict:
             raise ValueError('No path to raw data found in configuration file.')
@@ -90,25 +92,31 @@ class fuse_base_class:
             raise ValueError('No metadata output location found in configuration file.')
 
     def read(self, infilename):
-        """
-        The file name to use to read the bathymetry and metadata into useable
+        """The file name to use to read the bathymetry and metadata into useable
         forms.
+
+        :param infilename: 
+
         """
         pass
     
     def process(self, infilename):
-        """
-        If the right metadata is available, perform any required datum
+        """If the right metadata is available, perform any required datum
         transformations and interpolation.
+
+        :param infilename: 
+
         """
         pass
     
     def upload(self, infilename):
-        """
-        If the metadata is checked and the data is interpolated and transformed
+        """If the metadata is checked and the data is interpolated and transformed
         as needed, upload for amalgamation.
         
         If no filename is provided try to upload all files from the metadata
         file.
+
+        :param infilename: 
+
         """
         pass

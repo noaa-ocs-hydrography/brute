@@ -7,13 +7,16 @@ Created on Thu Aug 16 15:26:20 2018
 import os as _os
 
 def fips2wkt(fips, units = 'FEET'):
-    """
-    Given an ESRI FIPS code, return the associated wkt string as found in the
-    gdal module data file 'esri_StatePlane_extra.wkt'.  
+    """Given an ESRI FIPS code, return the associated wkt string as found in the
+    gdal module data file 'esri_StatePlane_extra.wkt'.
     
-    units default to 'FEET', but 'METER' can also be provided.  
+    units default to 'FEET', but 'METER' can also be provided.
     
     Only NAD83 codes without HARN are supported.
+
+    :param fips: 
+    :param units:  (Default value = 'FEET')
+
     """
     # combine the fips code with units to get the ERSI code
     fipsstr = str(fips)
