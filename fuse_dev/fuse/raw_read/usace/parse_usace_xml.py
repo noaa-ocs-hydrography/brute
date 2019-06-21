@@ -9,7 +9,7 @@ a general sense, and also for specific S57 needs.
 
 J Kinney 
 update April 3, 2019
-
+update June 21, 2019
 """
 import re
 from xml.etree import ElementTree as et 
@@ -1046,6 +1046,12 @@ SOURCEPROJECTION_dict = {
      'California IV Zone' : '0404',
      'California V Zone' : '0405',
      'California VI Zone' : '0406',
+     'California Zone I' : '0401',
+     'California Zone II' : '0402',
+     'California Zone III' : '0403',
+     'California Zone IV' : '0404',
+     'California Zone V' : '0405',
+     'California Zone VI' : '0406',
      'Connecticut' : '0600',
      'Connecticut Zone' : '0600',
      'Delaware' : '0700',
