@@ -9,7 +9,7 @@ Created on Tue April 15 13:44:14 2019
 
 @author: sarah.wolfskehl
 """
-import numpy as np
+
 import matplotlib.pyplot as plt
 
 #S102 Tile Size Recommendations from Table 11.1 – Informative Grid Resolution and Resulting Tile Size at Chart Scale

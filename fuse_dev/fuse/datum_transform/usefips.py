@@ -4,6 +4,7 @@ Created on Thu Aug 16 15:26:20 2018
 
 @author: grice
 """
+
 import os as _os
 
 
@@ -16,8 +17,18 @@ def fips2wkt(fips: int, units: str = 'FEET'):
     
     Only NAD83 codes without HARN are supported.
 
-    :param fips: 
-    :param units:  (Default value = 'FEET')
+    Parameters
+    ----------
+    fips :
+        param units:  (Default value = 'FEET')
+    fips: int :
+        
+    units: str :
+         (Default value = 'FEET')
+
+    Returns
+    -------
+
     """
 
     # combine the fips code with units to get the ERSI code

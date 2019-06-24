@@ -7,6 +7,7 @@ Created on Wed Aug 22 12:27:39 2018
 
 Use VDatum for conversions. 
 """
+
 from typing import Tuple, List
 
 __version__ = 'use_vdatum 0.0.1'
@@ -21,9 +22,7 @@ from osgeo import gdal, ogr, osr
 
 
 class vdatum:
-    """
-    An object for working with VDatum.
-    """
+    """An object for working with VDatum."""
 
     def __init__(self, config: dict, reader):
         """
@@ -40,9 +39,7 @@ class vdatum:
         self._logger = _logging.getLogger('fuse')
 
     def _setup(self):
-        """
-        Set up the object based on the provided configuration.
-        """
+        """Set up the object based on the provided configuration."""
 
         if 'vdatum_path' in self._config:
             pth = self._config['vdatum_path']
@@ -68,11 +65,24 @@ class vdatum:
         
         NSRS2007 is assumed for the out EPSG code.
 
-        :param infilename: 
-        :param in_hordat: 
-        :param in_verdat: 
-        :param out_epsg: 
-        :param out_verdat: 
+        Parameters
+        ----------
+        infilename :
+            param in_hordat:
+        in_verdat :
+            param out_epsg:
+        out_verdat :
+            
+        infilename: str :
+            
+        in_hordat :
+            
+        out_epsg: int :
+            
+
+        Returns
+        -------
+
         """
 
         self._logger.log(_logging.DEBUG, 'Begin datum transformation')
@@ -86,11 +96,28 @@ class vdatum:
         """
         TODO write description
 
-        :param infilename: 
-        :param in_hordat: 
-        :param in_verdat: 
-        :param out_epsg: 
-        :param out_verdat: 
+        Parameters
+        ----------
+        infilename :
+            param in_hordat:
+        in_verdat :
+            param out_epsg:
+        out_verdat :
+            
+        infilename: str :
+            
+        in_hordat: str :
+            
+        in_verdat: str :
+            
+        out_epsg: int :
+            
+        out_verdat: str :
+            
+
+        Returns
+        -------
+
         """
 
         # read the bathy and put it in a temp file for vdatum to read
@@ -127,10 +154,24 @@ class vdatum:
         The output epsg code is converted to a NSRS2007 zone using a dumb
         conversion.
 
-        :param in_fips: 
-        :param in_verdat: 
-        :param out_epsg: 
-        :param out_verdat: 
+        Parameters
+        ----------
+        in_fips :
+            param in_verdat:
+        out_epsg :
+            param out_verdat:
+        in_fips: int :
+            
+        in_verdat: str :
+            
+        out_epsg: int :
+            
+        out_verdat: str :
+            
+
+        Returns
+        -------
+
         """
 
         ihorz = r'ihorz:NAD83:spc:us_ft:' + str(in_fips)
@@ -148,8 +189,18 @@ class vdatum:
         according to the from and to the datums provided through the
         _setup_vdatum_point_converstion method.
 
-        :param vdinfilename: 
-        :param vdoutdir: 
+        Parameters
+        ----------
+        vdinfilename :
+            param vdoutdir:
+        vdinfilename: str :
+            
+        vdoutdir: str :
+            
+
+        Returns
+        -------
+
         """
 
         command = self._shell.format(vdinfilename, vdoutdir)
@@ -176,9 +227,26 @@ class vdatum:
         """
         Convert from numpy xyz array to a gdal dataset.
 
-        :param outxyz: 
-        :param out_zone: 
-        :param out_verdat: 
+        Parameters
+        ----------
+        outxyz :
+            param out_zone:
+        out_verdat :
+            
+        outxyz: List[Tuple[float :
+            
+        float :
+            
+        float]] :
+            
+        out_zone: int :
+            
+        out_verdat: str :
+            
+
+        Returns
+        -------
+
         """
 
         # setup the gdal bucket

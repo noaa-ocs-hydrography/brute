@@ -22,45 +22,76 @@ from fuse.datum_transform import usefips as _usefips
 
 class read_raw:
     """An abstract raw data reader."""
-    _ussft2m = 0.30480060960121924 # US survey feet to meters
-    
+
+    _ussft2m = 0.30480060960121924  # US survey feet to meters
+
     def __init__(self):
         """
         No init needed?
         """
+
         pass
-    
-    def read_metadata(self, infilename):
-        """Read all available meta data.
 
-        :param infilename: 
+    def read_metadata(self, infilename: str):
+        """
+        Read all available meta data.
+
+        Parameters
+        ----------
+        infilename :
+            
+        infilename: str :
+            
+
+        Returns
+        -------
 
         """
+
         return self._parse_ehydro_xyz_header(infilename)
-    
-    def read_bathymetry(self, infilename):
-        """Read the bathymetry and return an array of the xyz points.
 
-        :param infilename: 
+    def read_bathymetry(self, infilename: str):
+        """
+        Read the bathymetry and return an array of the xyz points.
+
+        Parameters
+        ----------
+        infilename :
+            
+        infilename: str :
+            
+
+        Returns
+        -------
 
         """
+
         xyz = self._parse_ehydro_xyz_bathy(infilename)
         return xyz
-    
-    def read_bathymetry_by_point(self, infilename):
-        """Read the bathymetry and return point by point.
 
-        :param infilename: 
+    def read_bathymetry_by_point(self, infilename: str):
+        """
+        Read the bathymetry and return point by point.
+
+        Parameters
+        ----------
+        infilename :
+            
+        infilename: str :
+            
+
+        Returns
+        -------
 
         """
+
         xyz = self.read_bathymetry(infilename)
         for n in xyz:
             yield n
 
-    def _parse_ehydro_xyz_header(self, infilename, 
-                         meta_source = 'xyz',
-                         default_meta = ''):
-        """Parse an USACE eHydro file for the available meta data.
+    def _parse_ehydro_xyz_header(self, infilename: str, meta_source: str = 'xyz', default_meta: str = '') -> dict:
+        """
+        Parse an USACE eHydro file for the available meta data.
         
         Default metadata (values predetermined for the file but not in the file)
         can be stored at the location defined by 'default_meta' as a pickled
@@ -70,11 +101,24 @@ class read_raw:
         the metadata exists both in the file metadata and in the default location,
         the file metadata will take precidence.
 
-        :param infilename: 
-        :param meta_source:  (Default value = 'xyz')
-        :param default_meta:  (Default value = '')
+        Parameters
+        ----------
+        infilename :
+            param meta_source:  (Default value = 'xyz')
+        default_meta :
+            Default value = '')
+        infilename: str :
+            
+        meta_source: str :
+             (Default value = 'xyz')
+        default_meta: str :
+             (Default value = '')
+
+        Returns
+        -------
 
         """
+
         name_meta = self._parse_filename(infilename)
         if meta_source == 'xyz':
             file_meta = self._parse_xyz_header(infilename)
@@ -91,17 +135,18 @@ class read_raw:
                 val = read_raw._ussft2m * float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
-        sorind = (name_meta['projid'] + '_' + 
-                  name_meta['uniqueid'] + '_' + 
-                  name_meta['subprojid'] + '_' + 
-                  name_meta['start_date'] + '_' + 
+        sorind = (name_meta['projid'] + '_' +
+                  name_meta['uniqueid'] + '_' +
+                  name_meta['subprojid'] + '_' +
+                  name_meta['start_date'] + '_' +
                   name_meta['statuscode'])
         merged_meta['source_indicator'] = 'US,US,graph,' + sorind
         # merged_meta['script_version'] = __version__
         return merged_meta
-    
+
     def _parse_filename(self, infilename):
-        """Parse the provided infilename for the channel project code, unique id,
+        """
+        Parse the provided infilename for the channel project code, unique id,
         subproject code, survey acquistion start date, the survey code, and
         optional field and return a dictionary of these fields.  The dictionary
         contains the following keys:
@@ -115,23 +160,29 @@ class read_raw:
             from_path : this is named to match other scripts downstream
             from_filename : this is also named to match other file downstream
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+
+        Returns
+        -------
 
         """
         base = _os.path.basename(infilename)
         name, ext = _os.path.splitext(base)
         splitname = name.split('_')
-        
+
         if len(splitname) >= 5:
             meta = {
-                    'from_path' : infilename,
-                    'from_filename' : base,
-                    'projid' : splitname[0],
-                    'uniqueid' : splitname[1],
-                    'subprojid' : splitname[2],
-                    'start_date' : splitname[3],
-                    'statuscode' : splitname[4],
-                    }
+                'from_path': infilename,
+                'from_filename': base,
+                'projid': splitname[0],
+                'uniqueid': splitname[1],
+                'subprojid': splitname[2],
+                'start_date': splitname[3],
+                'statuscode': splitname[4],
+            }
             if len(splitname) > 5:
                 option = splitname[5]
                 if len(splitname) > 6:
@@ -141,16 +192,23 @@ class read_raw:
         else:
             print(name + ' appears to have a nonstandard naming convention.')
         return meta
-    
+
     def _parse_xyz_header(self, infilename):
-        """Parse the xyz file header for meta data and return a dictionary.  The
+        """
+        Parse the xyz file header for meta data and return a dictionary.  The
         key words used to search are
             NOTES
             PROJECT_NAME
             SURVEY_NAME
             DATES_OF_SURVEY
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+
+        Returns
+        -------
 
         """
         header = []
@@ -179,11 +237,18 @@ class read_raw:
         for m in metalist:
             meta = {**meta, **m}
         return meta
-    
-    def _is_header(self, line):
-        """Test if a line contains anything other than numbers it is a meta data line.
 
-        :param line: 
+    def _is_header(self, line):
+        """
+        Test if a line contains anything other than numbers it is a meta data line.
+
+        Parameters
+        ----------
+        line :
+            
+
+        Returns
+        -------
 
         """
         pattern = '[a-zA-Z]'
@@ -191,11 +256,18 @@ class read_raw:
             return False
         else:
             return True
-    
-    def _parse_note(self, line):
-        """Parse the notes line.
 
-        :param line: 
+    def _parse_note(self, line):
+        """
+        Parse the notes line.
+
+        Parameters
+        ----------
+        line :
+            
+
+        Returns
+        -------
 
         """
         metadata = {}
@@ -227,49 +299,70 @@ class read_raw:
             metadata['from_vert_key'] = 'MLW'
         else:
             metadata['vert_key'] = 'Unknown'
-        vert_units_tags = ['NAVD88','NAVD1988','NAVD 1988']
+        vert_units_tags = ['NAVD88', 'NAVD1988', 'NAVD 1988']
         for tag in vert_units_tags:
-            vert_units_end = line.find(tag) 
+            vert_units_end = line.find(tag)
             if vert_units_end >= 0:
                 vert_units_end += len(tag)
                 break
             else:
                 vert_units_end = 0
         vert_units_start = vert_units_end - line[vert_units_end::-1].find('>krb<')
-        vert_units = line[vert_units_start+1:vert_units_end]
+        vert_units = line[vert_units_start + 1:vert_units_end]
         metadata['from_vert_datum'] = vert_units
         if vert_units.find('FEET') > 0:
             metadata['from_vert_units'] = 'US Survey Foot'
         else:
             metadata['from_vert_units'] = 'unknown'
         return metadata
-    
+
     def _parse_projectname(self, line):
-        """Parse the project name line.
+        """
+        Parse the project name line.
 
-        :param line: 
+        Parameters
+        ----------
+        line :
+            
+
+        Returns
+        -------
 
         """
         name = line.split('=')[-1]
         name = name.strip('\n')
-        metadata = {'projectname' : name}
+        metadata = {'projectname': name}
         return metadata
-    
+
     def _parse_surveyname(self, line):
-        """Parse the survey name line.
+        """
+        Parse the survey name line.
 
-        :param line: 
+        Parameters
+        ----------
+        line :
+            
+
+        Returns
+        -------
 
         """
         name = line.split('=')[-1]
         name = name.strip('\n')
-        metadata = {'surveyname' : name}
+        metadata = {'surveyname': name}
         return metadata
-    
-    def _parse_surveydates(self, line):
-        """Parse the project dates line.
 
-        :param line: 
+    def _parse_surveydates(self, line):
+        """
+        Parse the project dates line.
+
+        Parameters
+        ----------
+        line :
+            
+
+        Returns
+        -------
 
         """
         metadata = {}
@@ -281,64 +374,93 @@ class read_raw:
             delim = ' to '
         dateout = datestr.split(delim)
         metadata['start_date'] = self._xyztext2date(dateout[0])
-        if len(dateout) == 1: 
+        if len(dateout) == 1:
             metadata['end_date'] = 'unknown'
         elif len(dateout) == 2:
             metadata['end_date'] = self._xyztext2date(dateout[1])
         else:
             print('ambiguous date found!')
         return metadata
-    
+
     def _xyztext2date(self, textdate):
-        """Take the date as provided in a text string as "day month year" as in
+        """
+        Take the date as provided in a text string as "day month year" as in
         "20 March 2017" and return the format "YearMonthDay" as in "20170320".
 
-        :param textdate: 
+        Parameters
+        ----------
+        textdate :
+            
+
+        Returns
+        -------
 
         """
         try:
             date = _datetime.strptime(textdate, '%d %B %Y')
-            numdate=date.strftime('%Y%m%d')
+            numdate = date.strftime('%Y%m%d')
             return numdate
         except:
             return 'unknown'
-    
+
     def _load_default_metadata(self, infilename, default_meta):
-        """Given the file name for data and a default metadata file (containing a
+        """
+        Given the file name for data and a default metadata file (containing a
         picked dictionary), look for the default file.  If that files does not
         exist, look for a file named 'default.pkl' in the same directory as the
         provided file name.
 
-        :param infilename: 
-        :param default_meta: 
+        Parameters
+        ----------
+        infilename :
+            param default_meta:
+        default_meta :
+            
+
+        Returns
+        -------
 
         """
         if len(default_meta) == 0:
             path, infile = _os.path.split(infilename)
-            default_meta = _os.path.join(path,'default.pkl')
+            default_meta = _os.path.join(path, 'default.pkl')
         if _os.path.exists(default_meta):
             with open(default_meta, 'rb') as metafile:
                 meta = _pickle.load(metafile)
         else:
             meta = {}
         return meta
-    
+
     def _parse_ehydro_xml(self, infilename):
-        """Parse the eHydro XML file as provided by Wilmington, Charleston, and
+        """
+        Parse the eHydro XML file as provided by Wilmington, Charleston, and
         Norfolk Districts.
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+
+        Returns
+        -------
 
         """
         xml_meta = self._parse_xml(infilename)
         text_meta = self._parse_xml_text(infilename)
         meta_out = {**xml_meta, **text_meta}
         return meta_out
-    
-    def _parse_xml(self, infilename):
-        """Parse the xml portion of the xml file
 
-        :param infilename: 
+    def _parse_xml(self, infilename):
+        """
+        Parse the xml portion of the xml file
+
+        Parameters
+        ----------
+        infilename :
+            
+
+        Returns
+        -------
 
         """
         xml_meta = {}
@@ -353,28 +475,35 @@ class read_raw:
         val = root.findtext('.//abstract')
         if val is not None:
             vals = val.split(' ')
-            for n,v in enumerate(vals):
+            for n, v in enumerate(vals):
                 if v == 'dates':
                     break
-            date_str = vals[n+1]
+            date_str = vals[n + 1]
             start, end = date_str.split(',')
-            xml_meta['start_date'] = start.replace('-','')
-            xml_meta['end_date'] = end.replace('-','')
+            xml_meta['start_date'] = start.replace('-', '')
+            xml_meta['end_date'] = end.replace('-', '')
         return xml_meta
-            
-    def _parse_xml_text(self, infilename):
-        """Pase the text portion of the xml file
 
-        :param infilename: 
+    def _parse_xml_text(self, infilename):
+        """
+        Pase the text portion of the xml file
+
+        Parameters
+        ----------
+        infilename :
+            
+
+        Returns
+        -------
 
         """
         txt_meta = {}
-        txt_keys = {'Implied_Vertical_Accuracy' : 'from_vert_unc',
-                    'Implied_Horizontal_Accuracy' : 'from_horiz_unc',
-                    'Horizontal_Zone' : 'from_horiz_datum',
-                    'Units' : 'from_horiz_units'}
+        txt_keys = {'Implied_Vertical_Accuracy': 'from_vert_unc',
+                    'Implied_Horizontal_Accuracy': 'from_horiz_unc',
+                    'Horizontal_Zone': 'from_horiz_datum',
+                    'Units': 'from_horiz_units'}
         keys = txt_keys.keys()
-        with open(infilename,'r') as metafile:
+        with open(infilename, 'r') as metafile:
             for line in metafile:
                 for key in keys:
                     if line.startswith(key):
@@ -401,13 +530,20 @@ class read_raw:
         if fips is not None:
             txt_meta['fips'] = int(fips.group())
         return txt_meta
-    
+
     def _parse_ehydro_xyz_bathy(self, infilename):
-        """Read the best available point bathymetry for the district.
+        """
+        Read the best available point bathymetry for the district.
         
         This method assumes the provided file name is the XYZ file.
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+
+        Returns
+        -------
 
         """
         bathy = []
@@ -424,6 +560,3 @@ class read_raw:
                     bathy.append([float(x) for x in line.split(' ')])
         bathy = _np.asarray(bathy)
         return bathy
-        
-                
-        

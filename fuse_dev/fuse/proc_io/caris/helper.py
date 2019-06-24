@@ -8,19 +8,15 @@ Created on Wed May 15 15:13:07 2019
 
 A set of small utilities for working with CARIS and the CARIS environment.
 """
+
 import os
 import sys
 
 
 # helper function to retrieve the path to the "Scripts" folder in PydroXL
 def retrieve_scripts_folder() -> str:
-    """
-    TODO write description
+    """TODO write description"""
 
-    Returns
-    -------
-
-    """
     install_prefix = sys.exec_prefix
     folder_path = os.path.realpath(os.path.join(install_prefix, os.pardir, os.pardir, "Scripts"))
     if not os.path.exists(folder_path):
@@ -30,13 +26,7 @@ def retrieve_scripts_folder() -> str:
 
 # helper function to retrieve the path to the "activate.bat" batch file in PydroXL
 def retrieve_activate_batch() -> str:
-    """
-    TODO write description
-
-    Returns
-    -------
-
-    """
+    """TODO write description"""
 
     scripts_prefix = retrieve_scripts_folder()
     file_path = os.path.realpath(os.path.join(scripts_prefix, "activate.bat"))
@@ -49,7 +39,16 @@ def retrieve_env_path(env_name: str) -> str:
     """
     Given a conda environement name, find the environment.
 
-    :param env_name: 
+    Parameters
+    ----------
+    env_name :
+        
+    env_name: str :
+        
+
+    Returns
+    -------
+
     """
 
     current_env_loc = os.environ['conda_prefix']

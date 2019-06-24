@@ -8,10 +8,13 @@ datums are used to move data into a new folder based on vertical datum
 J. Kinney
 
 """
+
 import os
-from glob import glob as glob
-import pandas as pd
 import shutil
+from glob import glob as glob
+
+import pandas as pd
+
 
 #------------------------------------------------------------------------------
 
@@ -20,6 +23,13 @@ def test_from_existing_file():
     """
     take an existing metadata .csv file that has all the metadata
     For internal development and testing at this point.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
     """
     mv_to_dir = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\CEMVN"
     df_export_to_csv = mv_to_dir + "\metadata\ehydro_allscript_meta_v1.txt"#r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt'
@@ -30,9 +40,7 @@ def test_from_existing_file():
     move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir)
 
 def test_from_existing_file_meta2csvstyle():
-    """
-    take an existing metadata .csv file that comes as output from meta2csv
-    """
+    """take an existing metadata .csv file that comes as output from meta2csv"""
     mv_to_dir = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\CEMVN"
     metafile = mv_to_dir + "\metadata\ehydro_meta_dict_out.txt"
     merged_dataframe = pd.read_csv(metafile, sep = ",", index_col = 1)
@@ -43,7 +51,20 @@ def look_for_Ehydro_datum_folders(f, datumfolder = 'unknown', newpathroot = None
     """
     look_for_Ehydro_datum_folders(f, datumfolder = 'unknown')
     example:look_for_Ehydro_datum_folders(f, 'MLLW')
-    moves file to a new directory corresponding to vertical datum    
+    moves file to a new directory corresponding to vertical datum
+
+    Parameters
+    ----------
+    f :
+        
+    datumfolder :
+         (Default value = 'unknown')
+    newpathroot :
+         (Default value = None)
+
+    Returns
+    -------
+
     """
     if datumfolder == 'unknown' or datumfolder == '':
         d_folder = '\\unknown'
@@ -100,6 +121,20 @@ def look_for_Ehydro_datum_folders(f, datumfolder = 'unknown', newpathroot = None
 #------------------------------------------------------------------------------                
 
 def return_surveyid(filenamepath, ex_string):
+    """
+    
+
+    Parameters
+    ----------
+    filenamepath :
+        
+    ex_string :
+        
+
+    Returns
+    -------
+
+    """
     
     basename = os.path.basename(filenamepath)
     surveybasename = basename.rstrip(ex_string)
@@ -109,6 +144,17 @@ def return_surveyid(filenamepath, ex_string):
 def move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir):
     """
     move all files with matching extension to new folder based on the datum
+
+    Parameters
+    ----------
+    merged_dataframe :
+        
+    mv_to_dir :
+        
+
+    Returns
+    -------
+
     """
     Ax = merged_dataframe.axes
     Ax_row_index = Ax[0].tolist()
@@ -140,6 +186,7 @@ def move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir):
     print('moving of files complete!')
 
 def main():
+    """ """
     #test_from_existing_file()
     test_from_existing_file_meta2csvstyle()
     

@@ -11,6 +11,7 @@ J Kinney
 update April 3, 2019
 
 """
+
 import logging as log
 import re
 from os import path
@@ -53,10 +54,17 @@ _ussft2m = 0.30480060960121924  # US survey feet to meters
 
 
 def extract_s57_dict(xmlfilename):
-    """Open the filename provided and extract the s57 dictionary from an object of
+    """
+    Open the filename provided and extract the s57 dictionary from an object of
     this module's Meta class type.
 
-    :param xmlfilename: 
+    Parameters
+    ----------
+    xmlfilename :
+        
+
+    Returns
+    -------
 
     """
     with open(xmlfilename, 'r') as xml_file:
@@ -68,13 +76,19 @@ def extract_s57_dict(xmlfilename):
 
 
 class XML_Meta(object):
-    """Helper class to manage xml metadata. This class takes an xml string and
+    """
+    Helper class to manage xml metadata. This class takes an xml string and
     parses the string based on a dictionary with keys that
     name the item to extract and the tree path string to find the data.
     Different versions of the source dictionary can be set based on the version
     of the metadata being parsed.  All extracted metadata is placed in a
     dictionary (my_etree_dict1)
 
+    Parameters
+    ----------
+
+    Returns
+    -------
 
     """
 
@@ -102,10 +116,16 @@ class XML_Meta(object):
         self.get_fields()
 
     def _guess_version(self):
-        """Try to guess the version of the metadata for the purpose of parsing the
+        """
+        Try to guess the version of the metadata for the purpose of parsing the
         fields.  The guess is based off comparing the name spaces and or first lines of xml
         files.
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         version_1 = {
@@ -136,9 +156,15 @@ class XML_Meta(object):
             print('We do not have a template for this version yet!')
 
     def _set_format(self):
-        """Set the locations of the desired data types based on the version of the
+        """
+        Set the locations of the desired data types based on the version of the
         metadata.
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         version = self.version
@@ -194,7 +220,8 @@ class XML_Meta(object):
                 self.metadataformat_check = 'fail'
 
     def convert_xml_to_dict(self):
-        """This version exports out multiple entries into a comma delimited list
+        """
+        This version exports out multiple entries into a comma delimited list
         within the dictionary it is just appended within the dictionary
         The method may be modified if needed.
         This approach is just going through the first few layers of the etree
@@ -202,6 +229,11 @@ class XML_Meta(object):
         it is meant as a generic pull when more specific paths have yet
         to be developed
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         my_etree_dict1 = {}
@@ -227,7 +259,8 @@ class XML_Meta(object):
         return my_etree_dict1
 
     def convert_xml_to_dict2(self):
-        """This version exports out  entries into a dictionary using the dictionary
+        """
+        This version exports out  entries into a dictionary using the dictionary
         xml_path_to_baseattribute for USACE FGDC data (as opposed to ISO format)
         The method may be modified if needed.
         
@@ -237,6 +270,11 @@ class XML_Meta(object):
             my_etree_dict1[xml_path_to_baseattribute[key]] = self.xml_tree.findall('./' + key[8:])[0].text
         self.my_etree_dict1 = my_etree_dict1
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         my_etree_dict1 = {}
@@ -286,7 +324,8 @@ class XML_Meta(object):
         return my_etree_dict1
 
     def convert_xml_to_dict_ISO_FGDC(self):
-        """This version exports out entries into a dictionary using the dictionary
+        """
+        This version exports out entries into a dictionary using the dictionary
         'iso_xml_path_to_baseattribute' for USACE ISO FGDC data
         The method may be modified if needed.
         
@@ -298,6 +337,11 @@ class XML_Meta(object):
         
         vertical datum is returned in my_etree_dict1['from_vert_key']
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         my_etree_dict1 = {}
@@ -347,9 +391,15 @@ class XML_Meta(object):
         return my_etree_dict1
 
     def extended_xml_fgdc(self):
-        """extra attribute paths found in the older CESAJ metadata, but may be in other files
+        """
+        extra attribute paths found in the older CESAJ metadata, but may be in other files
         less conistently as part of the fgdc xml format
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         my_etree_dict1 = {}
@@ -372,9 +422,15 @@ class XML_Meta(object):
         return my_etree_dict1
 
     def find_Instruments(self):
-        """This method just takes out the Survey Instruments into a dictionary,
+        """
+        This method just takes out the Survey Instruments into a dictionary,
         rather than loading the full attribute dictionary
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         Survey_Instruments = {}
@@ -403,9 +459,15 @@ class XML_Meta(object):
         return Survey_Instruments
 
     def get_fields(self):
-        """Using the field available for the version type, get the data for those
+        """
+        Using the field available for the version type, get the data for those
         fields.
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         self.data = {}
@@ -477,10 +539,17 @@ class XML_Meta(object):
 
     # --------------------------------------------------------------------------
     def _extract_meta_USACE_FGDC(self, override=None):
-        """retrieves USACE e-hydro metadata that follows the FGDC format
+        """
+        retrieves USACE e-hydro metadata that follows the FGDC format
         and returns a dictionary
 
-        :param override:  (Default value = None)
+        Parameters
+        ----------
+        override :
+            Default value = None)
+
+        Returns
+        -------
 
         """
         if override != None:
@@ -507,9 +576,15 @@ class XML_Meta(object):
         return meta_all_fields
 
     def _extract_meta_USACE_ISO(self):
-        """retrieves USACE e-hydro metadata that follows the ISO-8859-1
+        """
+        retrieves USACE e-hydro metadata that follows the ISO-8859-1
         FGDC format and returns a dictionary
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         if self.version == 'ISO-8859-1':
@@ -529,9 +604,15 @@ class XML_Meta(object):
         return meta_all_fields
 
     def _read_file_name(self):
-        """Read the source file name and store it in the object 'data' dictionary
+        """
+        Read the source file name and store it in the object 'data' dictionary
         with the key 'filename'.
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         try:
@@ -576,9 +657,15 @@ class XML_Meta(object):
             self.data['SORDAT'] = tm_date
 
     def _read_survey_authority(self):
-        """Read the survey authority name and store it in the object 'data'
+        """
+        Read the survey authority name and store it in the object 'data'
         dictionary with the key 'SURATH'.
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         if self.version == 1.0:
@@ -602,9 +689,15 @@ class XML_Meta(object):
                 return
 
     def _read_survey_start_date(self):
-        """Read the survey start date store it in the object 'data'
+        """
+        Read the survey start date store it in the object 'data'
         dictionary with the key 'SURSTA'.
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         try:
@@ -632,9 +725,15 @@ class XML_Meta(object):
                 self.data['SURSTA'] = tms_date
 
     def _read_survey_end_date(self):
-        """Read the survey end date and store it in the object 'data'
+        """
+        Read the survey end date and store it in the object 'data'
         dictionary with the key 'SUREND'.
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         try:
@@ -661,9 +760,15 @@ class XML_Meta(object):
                 self.data['SUREND'] = tme_date
 
     def _read_tecsou(self):
-        """Read tehcnology used for sounding the seafloor during the described
+        """
+        Read tehcnology used for sounding the seafloor during the described
         survey.
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         try:
@@ -682,9 +787,15 @@ class XML_Meta(object):
             return
 
     def _read_datum(self):
-        """Read the survey vertical datum and store it in the object 'data'
+        """
+        Read the survey vertical datum and store it in the object 'data'
         dictionary with the key 'VERDAT'.
 
+        Parameters
+        ----------
+
+        Returns
+        -------
 
         """
         try:
@@ -753,10 +864,17 @@ class XML_Meta(object):
 # ------------------------------------------------------------------------------
 
 def parse_namespace(meta_str):
-    """Catch the xml and read the second line assuming it is the namespace
+    """
+    Catch the xml and read the second line assuming it is the namespace
     information.  Return a namespace dictionary for use when parsing.
 
-    :param meta_str: 
+    Parameters
+    ----------
+    meta_str :
+        
+
+    Returns
+    -------
 
     """
     xmlns_loc = meta_str.find("xmlns:")
@@ -784,9 +902,16 @@ def parse_namespace(meta_str):
 
 # ------------------------------------------------------------------------------
 def check_firstline(meta_xml):
-    """Check the first line of the xml for version encoding used on E-Hydro
+    """
+    Check the first line of the xml for version encoding used on E-Hydro
 
-    :param meta_xml: 
+    Parameters
+    ----------
+    meta_xml :
+        
+
+    Returns
+    -------
 
     """
     xml_version = ''
@@ -1039,11 +1164,19 @@ fgdc_additional_values = {
 
 # ------------------------------------------------------------------------------
 def convert_tofips(SOURCEPROJECTION_dict, SPCS):
-    """SOURCEPROJECTION or SPCS
+    """
+    SOURCEPROJECTION or SPCS
     FIPS = SOURCEPROJECTION_dict[SPCS]##state plane coordinate system
 
-    :param SOURCEPROJECTION_dict: 
-    :param SPCS: 
+    Parameters
+    ----------
+    SOURCEPROJECTION_dict :
+        param SPCS:
+    SPCS :
+        
+
+    Returns
+    -------
 
     """
     FIPS = SOURCEPROJECTION_dict[SPCS]
@@ -1258,8 +1391,15 @@ SOURCEPROJECTION_dict = {
 
 def parse_abstract_iso_ex(abstract):
     """
+    
 
-    :param abstract: 
+    Parameters
+    ----------
+    abstract :
+        
+
+    Returns
+    -------
 
     """
     m = {}
@@ -1320,8 +1460,15 @@ def parse_abstract_iso_ex(abstract):
 
 def VERDAT_iso_check(xml_meta):
     """
+    
 
-    :param xml_meta: 
+    Parameters
+    ----------
+    xml_meta :
+        
+
+    Returns
+    -------
 
     """
     m = {}
@@ -1349,9 +1496,16 @@ def VERDAT_iso_check(xml_meta):
 
 
 def extract_from_iso_meta(xml_meta):
-    """mapping out more attributes from the example USACE iso metadata xml files
+    """
+    mapping out more attributes from the example USACE iso metadata xml files
 
-    :param xml_meta: 
+    Parameters
+    ----------
+    xml_meta :
+        
+
+    Returns
+    -------
 
     """
 
@@ -1430,9 +1584,16 @@ def extract_from_iso_meta(xml_meta):
 
 
 def date_iso_abstract(abstract):
-    """extracting a date range
+    """
+    extracting a date range
 
-    :param abstract: 
+    Parameters
+    ----------
+    abstract :
+        
+
+    Returns
+    -------
 
     """
     m = {}
@@ -1446,7 +1607,8 @@ def date_iso_abstract(abstract):
 
 
 def ext_xml_map_enddate(xml_meta):
-    """retreiving attributes found in the extended list of attributes
+    """
+    retreiving attributes found in the extended list of attributes
     namely end_date
     
     #xml_meta = self.my_etree_dict2
@@ -1455,7 +1617,13 @@ def ext_xml_map_enddate(xml_meta):
     # 'metadata/dataqual/lineage/srcinfo/srctime/timeinfo/rngdates': 'rngdates',
     # 'metadata/distinfo/availabl/timeinfo/rngdates': 'rngdates',
 
-    :param xml_meta: 
+    Parameters
+    ----------
+    xml_meta :
+        
+
+    Returns
+    -------
 
     """
 
@@ -1471,7 +1639,8 @@ def ext_xml_map_enddate(xml_meta):
 
 # ------------------------------------------------------------------------------
 def parsing_xml_FGDC_attributes_s57(meta_xml):
-    """#PARSING XML attributes
+    """
+    #PARSING XML attributes
     
     Within the abstact line pull out information on TECSOU, VERDAT, Horizontal
     Coordinate System, State Plane Coordinate System, Horizonatal units
@@ -1536,7 +1705,13 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
          if =='Odom MKIII echosounder':
              'single beam'
 
-    :param meta_xml: 
+    Parameters
+    ----------
+    meta_xml :
+        
+
+    Returns
+    -------
 
     """
     # ------------------------------------------------------------------------------
@@ -1664,10 +1839,17 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
 
 
 def find_ISO_xml_bottom(xml_txt):
-    """Finds lines for parsing of metadata not part of traditional xml format
+    """
+    Finds lines for parsing of metadata not part of traditional xml format
     as found in ISO example from CESAJ and other districts
 
-    :param xml_txt: 
+    Parameters
+    ----------
+    xml_txt :
+        
+
+    Returns
+    -------
 
     """
     # handlingof ISO xml USACE format information not proper children of the root 'metadata':
@@ -1677,12 +1859,20 @@ def find_ISO_xml_bottom(xml_txt):
 
 
 def parse_xml_info_text_ISO(xml_txt, m):
-    """Parsing of metadata not part of traditional xml format
+    """
+    Parsing of metadata not part of traditional xml format
     as found in ISO example from CESAJ and other districts
     Section passed from find_ISO_xml_bottom(xml_txt)
 
-    :param xml_txt: 
-    :param m: 
+    Parameters
+    ----------
+    xml_txt :
+        param m:
+    m :
+        
+
+    Returns
+    -------
 
     """
     xml_i_bottom = find_ISO_xml_bottom(xml_txt)
@@ -1716,8 +1906,15 @@ def parse_xml_info_text_ISO(xml_txt, m):
 
 def convert_list_to_str(other_lines):
     """
+    
 
-    :param other_lines: 
+    Parameters
+    ----------
+    other_lines :
+        
+
+    Returns
+    -------
 
     """
     other_lines_str = ''
@@ -1730,10 +1927,17 @@ def convert_list_to_str(other_lines):
 
 
 def convert_meta_to_input(m):
-    """m = convert_meta_to_input(m)
+    """
+    m = convert_meta_to_input(m)
     maps dictionary keys to new keys
 
-    :param m: 
+    Parameters
+    ----------
+    m :
+        
+
+    Returns
+    -------
 
     """
     if 'Vertical Datum Description' in m:
@@ -1769,8 +1973,15 @@ def convert_meta_to_input(m):
 # ------------------------------------------------------------------------------
 def _print_TECSOU_defs(myvalue=None):
     """
+    
 
-    :param myvalue:  (Default value = None)
+    Parameters
+    ----------
+    myvalue :
+        Default value = None)
+
+    Returns
+    -------
 
     """
 

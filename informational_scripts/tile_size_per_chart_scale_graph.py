@@ -9,7 +9,7 @@ Created on Tue April 15 13:44:14 2019
 
 @author: sarah.wolfskehl
 """
-import numpy as np
+
 import matplotlib.pyplot as plt
 
 grid_resolution_list = [900,

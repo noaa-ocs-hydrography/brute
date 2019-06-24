@@ -4,6 +4,7 @@ Created on Thu Jun  6 15:29:05 2019
 
 @author: Casiano.Koprowski
 """
+
 import os as _os
 from typing import Tuple, List
 
@@ -16,9 +17,7 @@ _gdal.UseExceptions()
 
 
 class bag_file:
-    """
-    This class serves as the main container for BAG data.
-    """
+    """This class serves as the main container for BAG data."""
 
     def __init__(self):
         self.name = None
@@ -38,8 +37,18 @@ class bag_file:
         
         The current methods available are 'gdal' and 'hyo'
 
-        :param filepath: 
-        :param method: 
+        Parameters
+        ----------
+        filepath :
+            param method:
+        filepath: str :
+            
+        method: str :
+            
+
+        Returns
+        -------
+
         """
 
         if method == 'gdal':
@@ -55,7 +64,16 @@ class bag_file:
         
         This function reads and populates this object's attributes
 
-        :param filepath: 
+        Parameters
+        ----------
+        filepath :
+            
+        filepath: str :
+            
+
+        Returns
+        -------
+
         """
 
         self._known_data(filepath)
@@ -76,7 +94,16 @@ class bag_file:
         
         This function reads and populates this object's attributes
 
-        :param filepath: 
+        Parameters
+        ----------
+        filepath :
+            
+        filepath: str :
+            
+
+        Returns
+        -------
+
         """
 
         self._known_data(filepath)
@@ -94,7 +121,16 @@ class bag_file:
         """
         TODO write description
 
-        :param filepath: 
+        Parameters
+        ----------
+        filepath :
+            
+        filepath: str :
+            
+
+        Returns
+        -------
+
         """
 
         _fName = _os.path.split(filepath)[-1]
@@ -106,9 +142,20 @@ class bag_file:
         """
         TODO write description
 
-        :param arr: 
-        :param nodata:
-        :returns: array
+        Parameters
+        ----------
+        arr :
+            param nodata:
+        arr: _np.array :
+            
+        nodata: float :
+            
+
+        Returns
+        -------
+        type
+            array
+
         """
 
         arr[_np.isnan(arr)] = nodata
@@ -118,8 +165,18 @@ class bag_file:
         """
         TODO write description
 
-        :param arr:
-        :returns: array
+        Parameters
+        ----------
+        arr :
+            returns: array
+        arr: _np.array :
+            
+
+        Returns
+        -------
+        type
+            array
+
         """
 
         return _np.flipud(arr)
@@ -128,8 +185,16 @@ class bag_file:
         """
         TODO write description
 
-        :param meta:
-        :returns: tuple of bounds
+        Parameters
+        ----------
+        meta :
+            returns: tuple of bounds
+
+        Returns
+        -------
+        type
+            tuple of bounds
+
         """
 
         sx, sy = meta.sw
@@ -140,8 +205,18 @@ class bag_file:
         """
         TODO write description
 
-        :param meta:
-        :param shape: 
+        Parameters
+        ----------
+        meta :
+            param shape:
+        shape: Tuple[int :
+            
+        int] :
+            
+
+        Returns
+        -------
+
         """
 
         y, x = shape
@@ -155,9 +230,18 @@ class bag_file:
         """
         TODO write description
 
-        :param bag_obj: 
-        :param band:
-        :returns: array
+        Parameters
+        ----------
+        bag_obj :
+            param band:
+        band: int :
+            
+
+        Returns
+        -------
+        type
+            array
+
         """
 
         return bag_obj.GetRasterBand(band).ReadAsArray()
@@ -166,8 +250,18 @@ class bag_file:
         """
         TODO write description
 
-        :param filepath:
-        :returns: size
+        Parameters
+        ----------
+        filepath :
+            returns: size
+        filepath: str :
+            
+
+        Returns
+        -------
+        type
+            size
+
         """
 
         return int(_np.round(_os.path.getsize(filepath) / 1000))
@@ -176,8 +270,18 @@ class bag_file:
         """
         TODO write description
 
-        :param outlocation: 
-        :param io: 
+        Parameters
+        ----------
+        outlocation :
+            param io:
+        outlocation: str :
+            
+        io: bool :
+            
+
+        Returns
+        -------
+
         """
 
         name = self.name + '_INTERP_ONLY.bag' if io else '_INTERP_FULL.bag'
@@ -185,9 +289,7 @@ class bag_file:
 
 
 class gdal_create:
-    """
-    TODO write description
-    """
+    """TODO write description"""
     _descriptions = ['Elevation', 'Uncertainty', 'Interpolated']
 
     def __init__(self, out_verdat: str = None):
@@ -205,7 +307,14 @@ class gdal_create:
         """
         TODO write description
 
-        :param bag:
+        Parameters
+        ----------
+        bag :
+            
+
+        Returns
+        -------
+
         """
 
         arrays = [bag.elevation, bag.uncertainty]
@@ -239,12 +348,34 @@ class gdal_create:
         """
         TODO write description
 
-        :param arrays: 
-        :param shape: 
-        :param bounds: 
-        :param resolution: 
-        :param prj: 
-        :param nodata: 
+        Parameters
+        ----------
+        arrays :
+            param shape:
+        bounds :
+            param resolution:
+        prj :
+            param nodata:
+        arrays: List[_np.array] :
+            
+        shape: Tuple[int :
+            
+        int] :
+            
+        bounds: Tuple[float :
+            
+        float] :
+            
+        resolution: Tuple[float :
+            
+        prj: str :
+            
+        nodata: float :
+            
+
+        Returns
+        -------
+
         """
 
         bands = len(arrays)

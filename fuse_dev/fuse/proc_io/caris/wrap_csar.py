@@ -6,6 +6,7 @@ Created on Thu Feb 14 15:11:39 2019
 
 @author: grice
 """
+
 import os
 import pickle
 import sys
@@ -20,8 +21,18 @@ def write_csar(dataset: gdal.Dataset, m: dict):
     Convert a gdal dataset into a csar.
     http://www.teledynecaris.com/en/support/caris-python-api/5-1/coverage/raster/intro.html#creating-a-raster
 
-    :param dataset: 
-    :param m: 
+    Parameters
+    ----------
+    dataset :
+        param m:
+    dataset: gdal.Dataset :
+        
+    m: dict :
+        
+
+    Returns
+    -------
+
     """
 
     print('write_csar')
@@ -75,8 +86,18 @@ def write_cloud(dataset: gdal.Dataset, m: dict):
     assumed to be a depth (positive down) and is assigned to a height
     (positive up).
 
-    :param dataset: 
-    :param m: 
+    Parameters
+    ----------
+    dataset :
+        param m:
+    dataset: gdal.Dataset :
+        
+    m: dict :
+        
+
+    Returns
+    -------
+
     """
 
     print('write_cloud')
@@ -142,8 +163,18 @@ def check_metadata(meta: dict, meta_type: str):
     Check to make sure the required metadata keys are available in the
     provided metadata dictionary.
 
-    :param meta: 
-    :param meta_type: 
+    Parameters
+    ----------
+    meta :
+        param meta_type:
+    meta: dict :
+        
+    meta_type: str :
+        
+
+    Returns
+    -------
+
     """
 
     if meta_type == 'gdal':
@@ -180,9 +211,7 @@ def check_metadata(meta: dict, meta_type: str):
 
 
 def main():
-    """
-    Parse the arguments and send them to the write method.
-    """
+    """Parse the arguments and send them to the write method."""
 
     # check to make sure the file exists
     data = np.load(sys.argv[1])

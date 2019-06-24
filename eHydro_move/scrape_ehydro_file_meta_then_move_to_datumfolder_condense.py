@@ -9,13 +9,13 @@ and datums are used to move data into a new folder based on vertical datum
 jkinney February 2019
 update 3/1/19
 """
+
 import os
-import pandas as pd
 
 import BDB.BDB51.preprocessing.Searching_files_and_directories as S_f_d
-
-#import fuse.raw_read.usace.cesaj as e_meta
+# import fuse.raw_read.usace.cesaj as e_meta
 import fuse.raw_read.usace.cesam as cesam
+import pandas as pd
 
 try:
     import fuse.raw_read.usace.parse_usace_xml as p_usace_xml#import parse_usace_xml_1 as p_usace_xml
@@ -25,6 +25,18 @@ import BDB.BDB51.preprocessing.meta2csv as m2c#from BDB.BDB51.preprocessing impo
 
 #------------------------------------------------------------------
 def district_meta(district):
+    """
+    
+
+    Parameters
+    ----------
+    district :
+        
+
+    Returns
+    -------
+
+    """
     district = district.upper()
     if district == 'CESAM':
         import fuse.raw_read.usace.cesam as e_meta
@@ -40,6 +52,20 @@ def district_meta(district):
     
 
 def ehydro_subset_only_ifnotfull_restoo(highresfolder, ehydrofolder):
+    """
+    
+
+    Parameters
+    ----------
+    highresfolder :
+        
+    ehydrofolder :
+        
+
+    Returns
+    -------
+
+    """
     excludematchesfrom_dir = highresfolder
     directory_path = ehydrofolder
     g1 = S_f_d.exlude_overlap_list_search_xyz(excludematchesfrom_dir, directory_path, search_string = '*.xyz', ex_string = '*_A.xyz', splitter = '.', splitter2 = '_A.')
@@ -55,6 +81,13 @@ def testonefile():
     FUSE module method
     single file
     export out dictionary
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
     """
     #import fuse.raw_read.usace.extract_ehydro_meta_class_CESAM 
     infilename = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\downloads\CESAM\PH_01_PSB_20180710_CS.XYZ"
@@ -67,6 +100,19 @@ def retrieve_meta_for_Ehydro_fuse_CESAM(highresfolder, ehydrofolder, metafile):
     take input path for ehydro data
     read in metadata using the FUSE module
     and then write to the csv metadata file using Glen's script
+
+    Parameters
+    ----------
+    highresfolder :
+        
+    ehydrofolder :
+        
+    metafile :
+        
+
+    Returns
+    -------
+
     """
     #import fuse.raw_read.usace.extract_ehydro_meta_class_CESAM 
     rr = cesam.read_raw_cesam()
@@ -79,6 +125,26 @@ def retrieve_meta_for_Ehydro_fuse_CESAM(highresfolder, ehydrofolder, metafile):
     return merge2
 
 def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, metafile, df_export_to_csv):
+    """
+    
+
+    Parameters
+    ----------
+    highresfolder :
+        
+    ehydrofolder :
+        
+    district :
+        
+    metafile :
+        
+    df_export_to_csv :
+        
+
+    Returns
+    -------
+
+    """
     g1 = ehydro_subset_only_ifnotfull_restoo(highresfolder, ehydrofolder)
     merged_meta = {}
     merge2 = {}
@@ -170,7 +236,8 @@ def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, meta
     nn.to_csv(path_or_buf=(df_export_to_csv), encoding='UTF-8', sep ='\t')
     return merged_meta, nn
         
-def test_cesam_ccom_defaultnames():    
+def test_cesam_ccom_defaultnames():
+    """ """
     district = 'CESAM'
     highresfolder = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\downloads\cesam_test"
     #CESAM"
@@ -185,6 +252,20 @@ def test_cesam_ccom_defaultnames():
     
 #move to a new folder
 def move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir):
+    """
+    
+
+    Parameters
+    ----------
+    merged_dataframe :
+        
+    mv_to_dir :
+        
+
+    Returns
+    -------
+
+    """
     Ax = merged_dataframe.axes
     Ax_row_index = Ax[0].tolist()
     Ax_row_index.sort()
@@ -217,6 +298,7 @@ def move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir):
   
 
 def main():
+    """ """
     test_cesam_ccom_defaultnames()
 
     """
