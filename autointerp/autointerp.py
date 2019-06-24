@@ -175,7 +175,7 @@ def getShpRast(file, y, pixel_size=1, nodata=255):
 
     # Read as array
     arr = band.ReadAsArray()
-    
+
     write_raster(arr,gt,target_ds,tif)
 
     band=None
@@ -287,7 +287,7 @@ def getBagLyrs(fileObj):
                                       namespaces=ns)[0].text.split()
             a = 1
         except (_et.Error, IndexError) as e:
-            print("Unable to read corners SW and NE: %s" % e, 
+            print("Unable to read corners SW and NE: %s" % e,
                   '\nAttempting to read via a different namespace')
             try:
                 ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
@@ -1508,16 +1508,14 @@ class chunk():
     without a buffer) and the indices of the data within the buffered tiles.
 
     """
-
-    yMin, yMax, xMin, xMax = 0, 0, 0, 0
-    yBMin, yBMax, xBMin, xBMax = 0, 0, 0, 0
-    yIMin, yIMax, xIMin, xIMax = 0, 0, 0, 0
-
     def __init__(self, sliceInfo, chunkSlice, shape):
         '''Breaks the input sliceInfo into individual variables and starts the
         calculation function calcSlice()
 
         '''
+        self.yMin, self.yMax, self.xMin, self.xMax = 0, 0, 0, 0
+        self.yBMin, self.yBMax, self.xBMin, self.xBMax = 0, 0, 0, 0
+        self.yIMin, self.yIMax, self.xIMin, self.xIMax = 0, 0, 0, 0
         buffer = sliceInfo[0]
         yChunk = sliceInfo[1]
         xChunk = sliceInfo[2]

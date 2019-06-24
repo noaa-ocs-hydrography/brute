@@ -699,11 +699,11 @@ def write_raster(coverage, outputpath, out_verdat='MLLW', dtype=_gdal.GDT_UInt32
 def coverage2gdal(coverage):
     proj = coverage.wkt
     height, width = coverage.shape
-    nw, se = coverage.bounds
-    nwx, nwy = nw
-    scx, scy = se
+    sw, ne = coverage.bounds
+    scx, scy = sw
+    nex, ney = ne
     res_x, res_y = coverage.resolution
-    gt = (nwx, res_x, 0, scy, 0, res_y)
+    gt = (scx, res_x, 0, scy, 0, res_y)
     coverage_gdal = _gdal.GetDriverByName('MEM').Create('', width,
                                           height, 1, _gdal.GDT_Float32)
     coverage_gdal.SetGeoTransform(gt)
@@ -711,7 +711,7 @@ def coverage2gdal(coverage):
 
     band = coverage_gdal.GetRasterBand(1)
     band.SetNoDataValue(float(coverage.nodata))
-    band.WriteArray(_np.flipud(coverage.array))
+    band.WriteArray(coverage.array)
 #    coverage = None
     return coverage_gdal
 
@@ -727,7 +727,7 @@ def write_vector(coverage, outputpath, out_verdat='MLLW'):
 
     driver = _ogr.GetDriverByName('GPKG')
     ds = driver.CreateDataSource(outfilename)
-    layer = ds.CreateLayer(name, proj, _ogr.wkbMultiPolygon)
+    layer = ds.CreateLayer(name, proj, _ogr.wkbPolygon)
 
     # Add one attribute
     layer.CreateField(_ogr.FieldDefn('Survey', _ogr.OFTString))

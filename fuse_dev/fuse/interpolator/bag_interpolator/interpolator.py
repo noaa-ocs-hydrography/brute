@@ -9,6 +9,8 @@ import scipy as _scipy
 import astropy.convolution as _apc
 from datetime import datetime as _dt
 
+import matplotlib.pyplot as plt
+
 def tupleGrid(grid, nodata):
     """Takes an input matrix and an assumed nodata value. The function iterates
     through the matrix and compiles a list of 'edge' points [[x, y, z], ...]
@@ -194,11 +196,15 @@ def rePrint(bag_elev, bag_uncr, cov_array, ugrids, maxVal, ioVal, debug=False):
         nbag = _np.where(fpoly, interp, maxVal)
         nunc = _np.where(fpoly, iuncrt, maxVal)
     print ('done', _dt.now())
+    polyList = [tpoly,bpoly,cpoly,dpoly,npoly,fpoly,ibag]
+    plt.figure()
+    for rast in polyList:
+        plt.imshow(rast)
+        plt.show()
     if debug == False:
 #        polyList = [fpoly, cpoly]
         return nbag, nunc, cpoly.astype(_np.int)
     elif debug == True:
-        polyList = [tpoly,bpoly,cpoly,dpoly,npoly,fpoly,ibag]
         return nbag, nunc, polyList
 
 class linear:
@@ -254,12 +260,13 @@ class linear:
         x, y = _np.arange(bathy.shape[1]), _np.arange(bathy.shape[0])
         xi, yi = _np.meshgrid(x, y)
         xy, z = concatGrid(bathy, covrg, nodata)
+        print (xy, z)
         if len(xy) != 0:
             self.bathy, self.uncrt, self.unint = self._interpolate(xy, z, xi,
                                                                   yi, catzoc,
                                                                   nodata)
         else:
-           self.bathy, self.uncrt, self.unint = None, None, None
+           self.bathy, self.uncrt, self.unint = bathy, uncrt, bathy
 
     def _interpolate(self, xy, z, xi, yi, uval, nodata):
         m, b = uval
@@ -329,7 +336,7 @@ def sliceFinder(size, shape, res, var=5000):
     print ('sliceFinder')
     if res < 1:
         b = 25/res
-    elif res > 1:
+    elif res >= 1:
         b = 25
     if size <= 100000:
         tiles = 0

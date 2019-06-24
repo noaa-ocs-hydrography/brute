@@ -20,11 +20,11 @@ from get_access import *
 
 class bdb51_io:
     """
-    
+
     """
     def __init__(self, port):
         """
-        
+
         """
         self.port = port
         self.alive = True
@@ -36,8 +36,8 @@ class bdb51_io:
         self._command = []
         self._response = []
         pass
-    
-    def take_commands(self):
+
+    def request_commands(self):
         """
         Call the provided port on the host and ask for something to do.
         """
@@ -51,7 +51,28 @@ class bdb51_io:
             response = self.take_commands(command)
             conn.send(response)
         conn.close()
-    
+
+    def take_commands(self, command_dict):
+        """
+        Act on commands the provided command dictionary, such as to upload
+        data, read and return data, destroy the object and exit the
+        environment.
+        """
+        self._command.append(command_dict)
+        command = command_dict['command']
+        if command == 'connect':
+            print('connected')
+            pass
+#            response = self.connect(command_dict)
+        elif command == 'status':
+            response = self.status(command_dict)
+        elif command == 'upload':
+            response = self.upload(command_dict)
+        elif command == 'die':
+            response = self.die(command_dict)
+        self._response.append(response)
+        return response
+
     def connect(self, command_dict):
         """
         Make a connection to the BDB database using the provided location and
@@ -75,20 +96,20 @@ class bdb51_io:
                 sys.stderr(pickle.dumps(e))
         response = {'command':'connect','response':'success', 'log':msg}
         return response
-    
+
     def _check_connection(self):
         """
         Check to see if the database connection is alive.
         """
         pass
-    
+
     def status(self, command_dict):
         """
         Check the status of the object.
         """
         response = {'command':'status','alive':self.alive}
         return response
-    
+
     def upload(self, command_dict):
         """
         Send data at the provided location, specifying if the metadata or
@@ -102,7 +123,7 @@ class bdb51_io:
             msg = self._upload_new(name)
         response = {'command':'upload','response':'success', 'log':msg}
         return response
-    
+
     def _upload_new(self, file_path):
         """
         Upload both bathymetry and the metadata.
@@ -112,7 +133,7 @@ class bdb51_io:
         fake_coverage = 'POLYGON((0 0,0 1,1 1,1 0,0 0))'
         geom = caris.Geometry(crs, fake_coverage)
         surface = self._db.create_feature('surfac', geom)
-        surface['OBJNAM'] = file_path    
+        surface['OBJNAM'] = file_path
         surface['srcfil'] = file_path
         # get a metadata container to put stuff into
 #        metadata = surface.attributes
@@ -132,7 +153,7 @@ class bdb51_io:
             surface.upload_coverage(file_path)
         except RuntimeError as e:
             sys.stderr(pickle.dumps(e))
-        
+
     def query(self, command_dict):
         """
         Query for and return data from the db.
@@ -142,7 +163,7 @@ class bdb51_io:
     def die(self, command_dict):
         """
         Update the object "alive" flag.
-        
+
         The command dictionary must contain a key word "action"
         """
         action = command_dict['action']
@@ -152,32 +173,13 @@ class bdb51_io:
         response = {'response':'log', 'message':'Stopping I/O with {}'.format(self.database)}
         self.alive = False
         return response
-    
-    def take_commands(self):
-        """
-        Act on commands the provided command dictionary, such as to upload
-        data, read and return data, destroy the object and exit the 
-        environment.
-        """
-        self._command.append(command_dict)
-        command = command_dict['command']
-        if command == 'connect':
-            response = self.connect(command_dict)
-        elif command == 'status':
-            response = self.status(command_dict)
-        elif command == 'upload':
-            response = self.upload(command_dict)
-        elif command == 'die':
-            response = self.die(command_dict)
-        self._response.append(response)
-        return response
-    
+
 def main(port):
     """
     An event loop waiting for commands.
     """
     db_io = bdb51_io(port)
-    db_io.request_commands()        
+    db_io.request_commands()
 
 if __name__ == '__main__':
     args = sys.argv

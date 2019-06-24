@@ -312,7 +312,7 @@ class point_interpolator:
         ax_y, ax_x = ax.shape
 
         target_ds = gdal.GetDriverByName('MEM').Create('', ax_x, ax_y,
-                                                        gdal.GDT_Byte)
+                                                       1, gdal.GDT_Float32)
         x_orig, y_orig = to_gt[0], to_gt[3]
         target_gt = (x_orig, to_res, 0, y_orig, 0, to_res)
         target_ds.SetGeoTransform(target_gt)

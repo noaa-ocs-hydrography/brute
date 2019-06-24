@@ -201,6 +201,9 @@ class proc_io:
                              str(self._in_data_type))
         if metadata is not None:
             raise NotImplementedError('bag xml metadata write has not been implemented')
+
+        print (dataset.GetGeoTransform())
+
         # Prepare destination file
         driver = gdal.GetDriverByName("BAG")
         # write and close output raster dataset

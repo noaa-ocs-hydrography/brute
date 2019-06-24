@@ -10,6 +10,7 @@ An abstraction for data interpolation.
 """
 
 import fuse.interpolator.point_interpolator as pinterp
+import fuse.interpolator.bag_interpolator as binterp
 
 class interpolator:
     """
@@ -30,6 +31,8 @@ class interpolator:
         """
         if self._interp_engine == 'point':
             self._engine = pinterp.point_interpolator()
+        elif self._interp_engine == 'bag':
+            self._engine = binterp.bag_interpolator()
         else:
             raise ValueError('No interpolation engine type specified')
 
@@ -37,9 +40,10 @@ class interpolator:
         """
         Take a gdal dataset and run the interpolation, returning a gdal raster.
         """
-        if shapefile != None:
-            return self._engine.interpolate(dataset, self._interp_type,
-                                            self._resolution, shapefile)
-        else:
-            return self._engine.interpolate(dataset, self._interp_type,
-                                            self._resolution)
+        if self._interp_engine == 'point':
+            if shapefile != None:
+                return self._engine.interpolate(dataset, self._interp_type,
+                                                self._resolution, shapefile)
+            else:
+                return self._engine.interpolate(dataset, self._interp_type,
+                                                self._resolution)

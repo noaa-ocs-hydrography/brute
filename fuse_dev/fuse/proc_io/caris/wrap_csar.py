@@ -10,7 +10,6 @@ import os
 import sys
 import pickle
 import numpy as np
-import logging
 import caris.coverage as cc
 
 def write_csar(dataset, m):

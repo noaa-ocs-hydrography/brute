@@ -86,6 +86,7 @@ class bag_file:
         self.resolution = (bag_obj.meta.res_x, bag_obj.meta.res_y)
         self.wkt = bag_obj.meta.wkt_srs
 
+        print (self.bounds)
         bag_obj = None
 
     def _file_gdal(self, filepath):
@@ -101,13 +102,15 @@ class bag_file:
         """
         self._known_data(filepath)
         bag_obj = _gdal.Open(filepath)
-        self.elevation = self._npflip(self._gdalreadarray(bag_obj, 1))
-        self.uncertainty = self._npflip(self._gdalreadarray(bag_obj, 2))
+        self.elevation = self._gdalreadarray(bag_obj, 1)
+        self.uncertainty = self._gdalreadarray(bag_obj, 2)
         self.shape = self.elevation.shape
+        print (bag_obj.GetGeoTransform())
         self.bounds, self.resolution = self._gt2bounds(bag_obj.GetGeoTransform(),
                                                        self.shape)
         self.wkt = bag_obj.GetProjectionRef()
 
+        print (self.bounds)
         bag_obj = None
 
     def _known_data(self, filepath):
@@ -126,14 +129,16 @@ class bag_file:
     def _meta2bounds(self,meta):
         sx,sy = meta.sw
         nx,ny = meta.ne
-        return ([sx,ny],[nx,sy])
+        return ([sx,sy],[nx,ny])
 
-    def _gt2bounds(self ,meta, shape):
+    def _gt2bounds(self, meta, shape):
         y, x = shape
-        res = (_np.round(meta[1]), _np.round(meta[5]))
-        sx, sy = meta[0], meta[3]
+        res = (meta[1], meta[5])
+        sx, sy = _np.round(meta[0]), _np.round(meta[3])
         nx = sx + (x * res[0])
         ny = sy + (y * res[1])
+        print ([sx,sy],[nx,ny])
+        res = (_np.round(meta[1], 2), _np.round(meta[5], 2))
         return ([sx,sy],[nx,ny]), res
 
     def _gdalreadarray(self, bag_obj, band):
@@ -160,14 +165,14 @@ class gdal_create:
     def bag2gdal(self, bag):
         arrays = [bag.elevation, bag.uncertainty]
         bands = len(arrays)
-        nw, se = bag.bounds
-        nwx, nwy = nw
-        scx, scy = se
+        sw, ne = bag.bounds
+        scx, scy = sw
+        nex, ney = ne
         y_cols, x_cols = bag.shape
         res_x, res_y = bag.resolution[0], bag.resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols,
                                                        bands, _gdal.GDT_Float32)
-        target_gt = (nwx, res_x, 0, scy, 0, res_y)
+        target_gt = (scx, res_x, 0, scy, 0, res_y)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=bag.wkt)
         srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
@@ -178,7 +183,7 @@ class gdal_create:
             band = target_ds.GetRasterBand(x)
             band.SetDescription(self._descriptions[x])
             band.SetNoDataValue(bag.nodata)
-            band.WriteArray(_np.flipud(item))
+            band.WriteArray(item)
             band = None
             x+=1
         self.dataset = target_ds
@@ -187,14 +192,14 @@ class gdal_create:
     def components2gdal(self, arrays, shape, bounds, resolution, prj,
                  nodata):
         bands = len(arrays)
-        nw, se = bounds
-        nwx, nwy = nw
-        scx, scy = se
+        sw, ne = bounds
+        scx, scy = sw
+        nex, ney = ne
         y_cols, x_cols = shape
         res_x, res_y = resolution[0], resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols,
                                                        bands, _gdal.GDT_Float32)
-        target_gt = (nwx, res_x, 0, scy, 0, res_y)
+        target_gt = (scx, res_x, 0, scy, 0, res_y)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=prj)
         srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
@@ -205,7 +210,7 @@ class gdal_create:
             band = target_ds.GetRasterBand(x)
             band.SetDescription(self._descriptions[x-1])
             band.SetNoDataValue(nodata)
-            band.WriteArray(_np.flipud(item))
+            band.WriteArray(item)
             band = None
             x+=1
         self.dataset = target_ds

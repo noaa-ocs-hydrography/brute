@@ -30,7 +30,7 @@ class intitialize:
 
     def linear(self, filepath, coverage_list):
         bag = _bag.bag_file()
-        bag.open_file(filepath, 'hyo')
+        bag.open_file(filepath, 'gdal')
         bag.generate_name(self._outlocation, self._io)
         coverage = _cvg.unified_coverage(coverage_list, bag.wkt, bag.name)
         coverage = _cvg.align2grid(coverage, bag.bounds, bag.shape,
@@ -66,6 +66,7 @@ class intitialize:
                     tdelt = td - ts
                     print ('Tile complete -', td, '| Tile took:', tdelt)
             ugrids = [unitedBag, unitedUnc, unitedPre]
+            unitedBag = unitedUnc = unitedPre = None
         else:
             ts = _dt.now()
             print ('\nTile 1 of 1 -', ts)
@@ -73,6 +74,7 @@ class intitialize:
             interp = _itp.linear(bag.elevation, bag.uncertainty,
                                  coverage.array, self._uval)
             ugrids = [interp.bathy, interp.uncrt, interp.unint]
+            interp = None
             td = _dt.now()
             tdelt = td - ts
             print ('Tile complete -', td, '| Tile took:', tdelt)
@@ -86,12 +88,11 @@ class intitialize:
         save.bag2gdal(bag)
 
         writer = proc_io('gdal', 'bag')
+        print (save.dataset.GetGeoTransform())
         writer.write(save.dataset, bag.outfilename)
 
         _cvg.write_vector(coverage, self._outlocation)
 
-        coverage = None
-        bag = None
-        save = None
+        coverage = bag = save = ugrids = None
 
 
