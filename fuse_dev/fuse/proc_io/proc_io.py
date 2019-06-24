@@ -12,6 +12,7 @@ import pickle
 import subprocess
 import sys
 from tempfile import TemporaryDirectory as tempdir
+from typing import Tuple, List
 
 import numpy as np
 from osgeo import gdal, ogr, osr
@@ -23,11 +24,12 @@ __version__ = 'Test'
 
 
 class proc_io:
-    """A class to abstract the reading and writing of bathymetry."""
+    """
+    A class to abstract the reading and writing of bathymetry.
+    """
 
-    def __init__(self, in_data_type, out_data_type, work_dir=None,
-                 z_up=True, nodata=1000000.0, caris_env_name='CARIS35',
-                 overwrite=True):
+    def __init__(self, in_data_type: str, out_data_type: str, work_dir: str = None, z_up: bool = True,
+                 nodata: float = 1000000.0, caris_env_name: str = 'CARIS35', overwrite: bool = True):
         """
         Initialize with the data type to be worked.
 
@@ -50,8 +52,8 @@ class proc_io:
         overwrite : bool, optional
             Default is ``True``. If a file with an existing name is input, this
             will determine whether the file is overwritten or kept
-
         """
+
         self._in_data_type = in_data_type
         self._out_data_type = out_data_type
         self._z_up = z_up
@@ -71,17 +73,16 @@ class proc_io:
         if self._out_data_type == "carisbdb51":
             self._bdb51 = caris.bdb51()
 
-    def write(self, dataset, instruction, metadata=None):
-        """Write the provided data to the predefined data type.
+    def write(self, dataset: gdal.Dataset, instruction: str, metadata: dict = None):
+        """
+        Write the provided data to the predefined data type.
 
         :param dataset: 
         :param instruction: 
         :param metadata:  (Default value = None)
-
-        
         """
-        self._logger.log(logging.DEBUG,
-                         'Begin {} write'.format(self._out_data_type))
+
+        self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write')
         if os.path.exists(instruction) and self.overwrite:
             self._logger.log(logging.DEBUG, 'Overwriting ' + instruction)
             os.remove(instruction)
@@ -101,17 +102,17 @@ class proc_io:
             raise ValueError('writer type unknown: ' +
                              str(self._out_data_type))
 
-    def _write_csar(self, dataset, outfilename):
-        """Convert the provided gdal dataset into a csar file.
+    def _write_csar(self, dataset: gdal.Dataset, outfilename: str):
+        """
+        Convert the provided gdal dataset into a csar file.
         
         The data and metadata are saved out to a file and then loaded into the
         wrapper around the csar writer.
 
         :param dataset: 
         :param outfilename: 
-
-        
         """
+
         conda_env_name = self._caris_environment_name
         # put the provided data into the right form for the csar conversion.
         if self._in_data_type == 'gdal':
@@ -173,15 +174,15 @@ class proc_io:
             self._logger.log(logging.DEBUG, err)
             raise RuntimeError(err)
 
-    def _write_bag(self, dataset, outfilename, metadata=None):
-        """Convert the provided gdal dataset into a bag file.
+    def _write_bag(self, dataset: gdal.Dataset, outfilename: str, metadata=None):
+        """
+        Convert the provided gdal dataset into a bag file.
 
         :param dataset: 
         :param outfilename: 
         :param metadata:  (Default value = None)
-
-        
         """
+
         if self._in_data_type == 'gdal':
             dataset = self._set_gdalndv(dataset)
         else:
@@ -196,14 +197,14 @@ class proc_io:
         dest = None
         self._logger.log(logging.DEBUG, 'BAG file created')
 
-    def _write_points(self, dataset, outfilename):
-        """Convert the provided gdal dataset into a geopackage file.
+    def _write_points(self, dataset: gdal.Dataset, outfilename: str):
+        """
+        Convert the provided gdal dataset into a geopackage file.
 
         :param dataset: 
         :param outfilename: 
-
-        
         """
+
         points, meta = self._point2wkt(dataset)
         crs = meta['crs']
         proj = osr.SpatialReference(wkt=crs)
@@ -244,13 +245,14 @@ class proc_io:
         # Save and close everything
         ds = layer = feat = geom = None
 
-    def _write_vector(self, dataset, outfilename):
+    def _write_vector(self, dataset: gdal.Dataset, outfilename: str):
         """
+        TODO write description
 
         :param dataset: 
         :param outfilename: 
-
         """
+
         splits = os.path.split(outfilename)[1]
         name = os.path.splitext(outfilename)[0]
         outfilename = os.path.join(splits[0], name + '_Vector.gpkg')
@@ -276,14 +278,15 @@ class proc_io:
 
         ds = band = None
 
-    def _gdal2array(self, dataset: gdal.Dataset):
+    def _gdal2array(self, dataset: gdal.Dataset) -> np.array:
         """
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
         
         The gdal dataset should have he no data value set appropriately.
 
-        :param dataset: 
+        :param dataset:
+        :returns: array
         """
 
         meta = {}
@@ -304,14 +307,15 @@ class proc_io:
         data = rb.ReadAsArray()
         return data, meta
 
-    def _point2array(self, dataset: gdal.Dataset):
+    def _point2array(self, dataset: gdal.Dataset) -> np.array:
         """
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
         
         The gdal dataset should have he no data value set appropriately.
 
-        :param dataset: 
+        :param dataset:
+        :returns: array
         """
 
         meta = {}
@@ -333,14 +337,15 @@ class proc_io:
 
         return data, meta
 
-    def _point2wkt(self, dataset: gdal.Dataset):
+    def _point2wkt(self, dataset: gdal.Dataset) -> Tuple[List[dict], dict]:
         """
         Convert the gdal dataset into a WKT Points object and a dictionary of
         metadata of the geotransform information and return.
         
         The gdal dataset should have he no data value set appropriately.
 
-        :param dataset: 
+        :param dataset:
+        :returns: points and metadata
         """
 
         meta = {}
@@ -372,7 +377,7 @@ class proc_io:
 
         return points, meta
 
-    def _set_gdalndv(self, dataset: gdal.Dataset):
+    def _set_gdalndv(self, dataset: gdal.Dataset) -> gdal.Dataset:
         """
         Update the gdal raster object no data value and the raster no data
         values in to corrispond with the object no data value.

@@ -5,6 +5,7 @@ Created on Thu Jun  6 15:29:05 2019
 @author: Casiano.Koprowski
 """
 import os as _os
+from typing import Tuple, List
 
 import numpy as _np
 from hyo2 import bag as _bag
@@ -13,8 +14,12 @@ from osgeo import osr as _osr
 
 _gdal.UseExceptions()
 
+
 class bag_file:
-    """This class serves as the main container for BAG data."""
+    """
+    This class serves as the main container for BAG data.
+    """
+
     def __init__(self):
         self.name = None
         self.nodata = 1000000.0
@@ -27,17 +32,16 @@ class bag_file:
         self.size = None
         self.outfilename = None
 
-
-    def open_file(self, filepath, method):
-        """Used to read a BAG file using the method determined by input.
+    def open_file(self, filepath: str, method: str):
+        """
+        Used to read a BAG file using the method determined by input.
         
         The current methods available are 'gdal' and 'hyo'
 
         :param filepath: 
         :param method: 
-
-        
         """
+
         if method == 'gdal':
             self._file_gdal(filepath)
         elif method == 'hyo':
@@ -45,15 +49,15 @@ class bag_file:
         else:
             raise ValueError('Open method not implemented.')
 
-    def _file_hyo(self, filepath):
-        """Used to read a BAG file using HydrOffice's hyo2.bag module.
+    def _file_hyo(self, filepath: str):
+        """
+        Used to read a BAG file using HydrOffice's hyo2.bag module.
         
         This function reads and populates this object's attributes
 
         :param filepath: 
-
-        
         """
+
         self._known_data(filepath)
         bag_obj = _bag.BAGFile(filepath)
         bag_obj.populate_metadata()
@@ -66,15 +70,15 @@ class bag_file:
 
         bag_obj = None
 
-    def _file_gdal(self, filepath):
-        """Used to read a BAG file using OSGEO's GDAL module.
+    def _file_gdal(self, filepath: str):
+        """
+        Used to read a BAG file using OSGEO's GDAL module.
         
         This function reads and populates this object's attributes
 
         :param filepath: 
-
-        
         """
+
         self._known_data(filepath)
         bag_obj = _gdal.Open(filepath)
         self.elevation = self._npflip(self._gdalreadarray(bag_obj, 1))
@@ -86,104 +90,124 @@ class bag_file:
 
         bag_obj = None
 
-    def _known_data(self, filepath):
+    def _known_data(self, filepath: str):
         """
+        TODO write description
 
         :param filepath: 
-
         """
+
         _fName = _os.path.split(filepath)[-1]
         self.name = _os.path.splitext(_fName)[0]
         self.nodata = 1000000.0
         self.size = self._size_finder(filepath)
 
-    def _nan2ndv(self, arr, nodata):
+    def _nan2ndv(self, arr: _np.array, nodata: float) -> _np.array:
         """
+        TODO write description
 
         :param arr: 
-        :param nodata: 
-
+        :param nodata:
+        :returns: array
         """
+
         arr[_np.isnan(arr)] = nodata
         return _np.flipud(arr)
 
-    def _npflip(self, arr):
+    def _npflip(self, arr: _np.array) -> _np.array:
+        """
+        TODO write description
+
+        :param arr:
+        :returns: array
         """
 
-        :param arr: 
-
-        """
         return _np.flipud(arr)
 
-    def _meta2bounds(self,meta):
+    def _meta2bounds(self, meta) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+        """
+        TODO write description
+
+        :param meta:
+        :returns: tuple of bounds
         """
 
-        :param meta: 
+        sx, sy = meta.sw
+        nx, ny = meta.ne
+        return ((sx, ny), (nx, sy))
 
+    def _gt2bounds(self, meta, shape: Tuple[int, int]) -> Tuple[Tuple[Tuple[float, float], Tuple[float, float]], float]:
         """
-        sx,sy = meta.sw
-        nx,ny = meta.ne
-        return ([sx,ny],[nx,sy])
+        TODO write description
 
-    def _gt2bounds(self ,meta, shape):
-        """
-
-        :param meta: 
+        :param meta:
         :param shape: 
-
         """
+
         y, x = shape
         res = (_np.round(meta[1]), _np.round(meta[5]))
         sx, sy = meta[0], meta[3]
         nx = sx + (x * res[0])
         ny = sy + (y * res[1])
-        return ([sx,sy],[nx,ny]), res
+        return ((sx, ny), (nx, sy)), res
 
-    def _gdalreadarray(self, bag_obj, band):
+    def _gdalreadarray(self, bag_obj, band: int) -> _np.array:
         """
+        TODO write description
 
         :param bag_obj: 
-        :param band: 
-
+        :param band:
+        :returns: array
         """
+
         return bag_obj.GetRasterBand(band).ReadAsArray()
 
-    def _size_finder(self, filepath):
+    def _size_finder(self, filepath: str) -> int:
+        """
+        TODO write description
+
+        :param filepath:
+        :returns: size
         """
 
-        :param filepath: 
+        return int(_np.round(_os.path.getsize(filepath) / 1000))
 
+    def generate_name(self, outlocation: str, io: bool):
         """
-        return int(_np.round(_os.path.getsize(filepath)/1000))
-
-    def generate_name(self, outlocation, io):
-        """
+        TODO write description
 
         :param outlocation: 
         :param io: 
-
         """
-        if io:
-            ext = '_INTERP_ONLY.bag'
-        else:
-            ext = '_INTERP_FULL.bag'
-        name = self.name + ext
+
+        name = self.name + '_INTERP_ONLY.bag' if io else '_INTERP_FULL.bag'
         self.outfilename = _os.path.join(outlocation, name)
 
-class gdal_create:
-    """ """
-    _descriptions  = ['Elevation', 'Uncertainty', 'Interpolated']
 
-    def __init__(self, out_verdat=None):
+class gdal_create:
+    """
+    TODO write description
+    """
+    _descriptions = ['Elevation', 'Uncertainty', 'Interpolated']
+
+    def __init__(self, out_verdat: str = None):
+        """
+
+        Parameters
+        ----------
+        out_verdat
+        """
+
         self.dataset = None
         self.out_verdat = out_verdat
 
     def bag2gdal(self, bag):
         """
+        TODO write description
 
-        :param bag: 
-
+        :param bag:
         """
+
         arrays = [bag.elevation, bag.uncertainty]
         bands = len(arrays)
         nw, se = bag.bounds
@@ -192,7 +216,7 @@ class gdal_create:
         y_cols, x_cols = bag.shape
         res_x, res_y = bag.resolution[0], bag.resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols,
-                                                       bands, _gdal.GDT_Float32)
+                                                        bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, scy, 0, res_y)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=bag.wkt)
@@ -206,13 +230,14 @@ class gdal_create:
             band.SetNoDataValue(bag.nodata)
             band.WriteArray(_np.flipud(item))
             band = None
-            x+=1
+            x += 1
         self.dataset = target_ds
         target_ds = None
 
-    def components2gdal(self, arrays, shape, bounds, resolution, prj,
-                 nodata):
+    def components2gdal(self, arrays: List[_np.array], shape: Tuple[int, int], bounds: Tuple[float, float],
+                        resolution: Tuple[float, float], prj: str, nodata: float):
         """
+        TODO write description
 
         :param arrays: 
         :param shape: 
@@ -220,8 +245,8 @@ class gdal_create:
         :param resolution: 
         :param prj: 
         :param nodata: 
-
         """
+
         bands = len(arrays)
         nw, se = bounds
         nwx, nwy = nw
@@ -229,7 +254,7 @@ class gdal_create:
         y_cols, x_cols = shape
         res_x, res_y = resolution[0], resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols,
-                                                       bands, _gdal.GDT_Float32)
+                                                        bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, scy, 0, res_y)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=prj)
@@ -239,10 +264,10 @@ class gdal_create:
         x = 1
         for item in arrays:
             band = target_ds.GetRasterBand(x)
-            band.SetDescription(self._descriptions[x-1])
+            band.SetDescription(self._descriptions[x - 1])
             band.SetNoDataValue(nodata)
             band.WriteArray(_np.flipud(item))
             band = None
-            x+=1
+            x += 1
         self.dataset = target_ds
         target_ds = None

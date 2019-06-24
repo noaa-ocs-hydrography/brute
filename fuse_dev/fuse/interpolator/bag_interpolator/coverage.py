@@ -10,7 +10,7 @@ from datetime import datetime as _dt
 from typing import List, Tuple
 
 import numpy as _np
-from osgeo import gdal as _gdal
+from osgeo import gdal as _gdal, gdal
 from osgeo import ogr as _ogr
 from osgeo import osr as _osr
 from scipy.ndimage.interpolation import zoom as _zoom
@@ -650,9 +650,10 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     return coverage
 
 
-def write_raster(coverage, outputpath, out_verdat='MLLW', dtype=_gdal.GDT_UInt32,
-                 options=0, color_table=0, nbands=1, nodata=False):
-    """Directly From:
+def write_raster(coverage, outputpath: str, out_verdat: str = 'MLLW', dtype=_gdal.GDT_UInt32,
+                 options: int = 0, color_table: int = 0, nbands: int = 1, nodata: bool = False):
+    """
+    Directly From:
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
     (https://gis.stackexchange.com/a/278965)]
     
@@ -666,9 +667,8 @@ def write_raster(coverage, outputpath, out_verdat='MLLW', dtype=_gdal.GDT_UInt32
     :param color_table:  (Default value = 0)
     :param nbands:  (Default value = 1)
     :param nodata:  (Default value = False)
-
-    
     """
+
     print('write_raster')
 
     height, width = coverage.shape
@@ -701,12 +701,14 @@ def write_raster(coverage, outputpath, out_verdat='MLLW', dtype=_gdal.GDT_UInt32
     dest = None
 
 
-def coverage2gdal(coverage):
+def coverage2gdal(coverage) -> gdal.Dataset:
+    """
+    TODO write description
+
+    :param coverage:
+    :returns: gdal dataset
     """
 
-    :param coverage: 
-
-    """
     proj = coverage.wkt
     height, width = coverage.shape
     nw, se = coverage.bounds
@@ -714,8 +716,7 @@ def coverage2gdal(coverage):
     scx, scy = se
     res_x, res_y = coverage.resolution
     gt = (nwx, res_x, 0, scy, 0, res_y)
-    coverage_gdal = _gdal.GetDriverByName('MEM').Create('', width,
-                                                        height, 1, _gdal.GDT_Float32)
+    coverage_gdal = _gdal.GetDriverByName('MEM').Create('', width, height, 1, _gdal.GDT_Float32)
     coverage_gdal.SetGeoTransform(gt)
     coverage_gdal.SetProjection(proj)
 
@@ -726,13 +727,13 @@ def coverage2gdal(coverage):
     return coverage_gdal
 
 
-def write_vector(coverage, outputpath, out_verdat='MLLW'):
+def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW'):
     """
+    TODO write description
 
     :param coverage: 
     :param outputpath: 
     :param out_verdat:  (Default value = 'MLLW')
-
     """
     name = coverage.name + '.gpkg'
     outfilename = _os.path.join(outputpath, name)
