@@ -37,9 +37,22 @@ def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, floa
     This is a small utility for inspecting values and seeing they
     contribute to a min or max estimate.
 
-    :param val: 
-    :param valmin: 
-    :param valmax: 
+    Parameters
+    ----------
+    val :
+        param valmin:
+    valmax :
+        
+    val: float :
+        
+    valmin: float :
+        
+    valmax: float :
+        
+
+    Returns
+    -------
+
     """
 
     if np.isnan(valmin):
@@ -56,9 +69,7 @@ def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, floa
 
 
 class point_interpolator:
-    """
-    Interpolation methods for creating a raster from points.
-    """
+    """Interpolation methods for creating a raster from points."""
 
     def __init__(self, window_scalar: float = 1.1):
         """
@@ -75,12 +86,30 @@ class point_interpolator:
         Currently this is assumed to be a gdal dataset.  At some point perhaps
         this should become something more native to python.
 
-        :param dataset: 
-        :param interpolation_type: 
-        :param resolution: 
-        :param shapefile:  (Default value = None)
-        :param shrink:  (Default value = True)
-        :returns: interpolated dataset
+        Parameters
+        ----------
+        dataset :
+            param interpolation_type:
+        resolution :
+            param shapefile:  (Default value = None)
+        shrink :
+            Default value = True)
+        dataset: gdal.Dataset :
+            
+        interpolation_type: str :
+            
+        resolution: float :
+            
+        shapefile: str :
+             (Default value = None)
+        shrink: bool :
+             (Default value = True)
+
+        Returns
+        -------
+        type
+            interpolated dataset
+
         """
 
         linear = False
@@ -148,8 +177,18 @@ class point_interpolator:
         """
         Take a gdal vector xyz point cloud and return a numpy array.
 
-        :param dataset: 
-        :returns: vector dataset
+        Parameters
+        ----------
+        dataset :
+            returns: vector dataset
+        dataset: gdal.Dataset :
+            
+
+        Returns
+        -------
+        type
+            vector dataset
+
         """
 
         # get the data out of the gdal data structure
@@ -168,8 +207,18 @@ class point_interpolator:
         holes.  The returned units will be the same as the provided horizontal
         coordinate system.
 
-        :param dataset: 
-        :returns: minimum, mean, and maximum
+        Parameters
+        ----------
+        dataset :
+            returns: minimum, mean, and maximum
+        dataset: np.array :
+            
+
+        Returns
+        -------
+        type
+            minimum, mean, and maximum
+
         """
 
         count = len(dataset)
@@ -188,10 +237,24 @@ class point_interpolator:
         """
         Currently using the shrunk invdist method as a mask.
 
-        :param dataset: 
-        :param resolution: 
-        :param window: 
-        :returns: mask
+        Parameters
+        ----------
+        dataset :
+            param resolution:
+        window :
+            returns: mask
+        dataset: gdal.Dataset :
+            
+        resolution: float :
+            
+        window: float :
+            
+
+        Returns
+        -------
+        type
+            mask
+
         """
 
         data = self._gdal_invdist_interp_points(dataset, resolution, window)
@@ -203,14 +266,38 @@ class point_interpolator:
         """
         Import shapefile
 
-        :param file: Shapefile file location
-        :param to_proj: WKT object with destination spatial reference system
-        :param to_gt: gdal.GeoTransform object of the interpolated dataset
-        :param to_res: Resolution of the input dataset
-        :param to_y:
-        :param to_x:
-        :param nodata: Nodata value for the ouput gdal.Dataset object (Default value = 0)
-        :returns: dataset and geotransform
+        Parameters
+        ----------
+        file :
+            Shapefile file location
+        to_proj :
+            WKT object with destination spatial reference system
+        to_gt :
+            gdal.GeoTransform object of the interpolated dataset
+        to_res :
+            Resolution of the input dataset
+        to_y :
+            param to_x:
+        nodata :
+            Nodata value for the ouput gdal.Dataset object (Default value = 0)
+        file: str :
+            
+        to_proj: str :
+            
+        to_gt: tuple :
+            
+        to_res: int :
+            
+        to_x :
+            
+        nodata: float :
+             (Default value = 0)
+
+        Returns
+        -------
+        type
+            dataset and geotransform
+
         """
 
         print('getShpRast', file)
@@ -362,10 +449,24 @@ class point_interpolator:
         """
         TODO write description
 
-        :param grid: 
-        :param shapefile: 
-        :param resolution: 
-        :returns: shape mask
+        Parameters
+        ----------
+        grid :
+            param shapefile:
+        resolution :
+            returns: shape mask
+        grid: gdal.Grid :
+            
+        shapefile: str :
+            
+        resolution: float :
+            
+
+        Returns
+        -------
+        type
+            shape mask
+
         """
 
         band = grid.GetRasterBand(1)
@@ -390,10 +491,24 @@ class point_interpolator:
         Interpolate the provided gdal vector points and return the interpolated
         data.
 
-        :param dataset: 
-        :param resolution: 
-        :param nodata:  (Default value = 1000000)
-        :returns: interpolated dataset
+        Parameters
+        ----------
+        dataset :
+            param resolution:
+        nodata :
+            Default value = 1000000)
+        dataset: gdal.Dataset :
+            
+        resolution: float :
+            
+        nodata: float :
+             (Default value = 1000000)
+
+        Returns
+        -------
+        type
+            interpolated dataset
+
         """
 
         # Find the bounds of the provided data
@@ -421,10 +536,24 @@ class point_interpolator:
         Interpolate the provided gdal vector points and return the interpolated
         data.
 
-        :param dataset: 
-        :param resolution: 
-        :param nodata:  (Default value = 1000000)
-        :returns: interpolated dataset
+        Parameters
+        ----------
+        dataset :
+            param resolution:
+        nodata :
+            Default value = 1000000)
+        dataset: gdal.Dataset :
+            
+        resolution: float :
+            
+        nodata: float :
+             (Default value = 1000000)
+
+        Returns
+        -------
+        type
+            interpolated dataset
+
         """
 
         print('_gdal_mlab_natural_interp_points')
@@ -483,11 +612,26 @@ class point_interpolator:
         Interpolate the provided gdal vector points and return the interpolated
         data.
 
-        :param dataset: 
-        :param resolution: 
-        :param radius: 
-        :param nodata:  (Default value = 1000000)
-        :returns: interpolated dataset
+        Parameters
+        ----------
+        dataset :
+            param resolution:
+        radius :
+            param nodata:  (Default value = 1000000)
+        dataset: gdal.Dataset :
+            
+        resolution: float :
+            
+        radius: float :
+            
+        nodata: float :
+             (Default value = 1000000)
+
+        Returns
+        -------
+        type
+            interpolated dataset
+
         """
 
         print('_gdal_invdist_scilin_interp_points')
@@ -541,11 +685,26 @@ class point_interpolator:
         Interpolate the provided gdal vector points and return the interpolated
         data.
 
-        :param dataset: 
-        :param resolution: 
-        :param radius: 
-        :param nodata:  (Default value = 1000000)
-        :returns: interpolated grid
+        Parameters
+        ----------
+        dataset :
+            param resolution:
+        radius :
+            param nodata:  (Default value = 1000000)
+        dataset: gdal.Dataset :
+            
+        resolution: float :
+            
+        radius: float :
+            
+        nodata: float :
+             (Default value = 1000000)
+
+        Returns
+        -------
+        type
+            interpolated grid
+
         """
 
         # Find the bounds of the provided data
@@ -577,9 +736,24 @@ class point_interpolator:
         the average of the data min and max and centers the grid on this
         location.
 
-        :param resolution: 
-        :param bounds: 
-        :returns: number of rows, number of columns, and bounds
+        Parameters
+        ----------
+        resolution :
+            param bounds:
+        resolution: float :
+            
+        bounds: Tuple[float :
+            
+        float :
+            
+        float] :
+            
+
+        Returns
+        -------
+        type
+            number of rows, number of columns, and bounds
+
         """
 
         xmin, ymin, xmax, ymax = bounds
@@ -601,9 +775,24 @@ class point_interpolator:
         the data min as the anchor for the rows and columns, thus the max data
         values may contain sparse data.
 
-        :param resolution: 
-        :param bounds:
-        :returns: number of rows, number of columns, and bounds
+        Parameters
+        ----------
+        resolution :
+            param bounds:
+        resolution: float :
+            
+        bounds: Tuple[float :
+            
+        float :
+            
+        float] :
+            
+
+        Returns
+        -------
+        type
+            number of rows, number of columns, and bounds
+
         """
 
         xmin, ymin, xmax, ymax = bounds
@@ -623,9 +812,24 @@ class point_interpolator:
         the data min as the anchor for the rows and columns, but floored to the
         nearest multiple of the resolution.
 
-        :param resolution: 
-        :param bounds:
-        :returns: number of rows, number of columns, and bounds
+        Parameters
+        ----------
+        resolution :
+            param bounds:
+        resolution: float :
+            
+        bounds: Tuple[float :
+            
+        float :
+            
+        float] :
+            
+
+        Returns
+        -------
+        type
+            number of rows, number of columns, and bounds
+
         """
 
         xmin, ymin, xmax, ymax = bounds
@@ -645,9 +849,20 @@ class point_interpolator:
         These files are assumed to be collocated as all operation are conducted
         on the pixel level.
 
-        :param dataset: 
-        :param maskraster:
-        :returns: masked dataset
+        Parameters
+        ----------
+        dataset :
+            param maskraster:
+        dataset: gdal.Dataset :
+            
+        maskraster: gdal.Dataset :
+            
+
+        Returns
+        -------
+        type
+            masked dataset
+
         """
 
         data = dataset.ReadAsArray()
@@ -665,10 +880,24 @@ class point_interpolator:
         """
         Shrink coverage of a dataset by the original coverage radius.
 
-        :param dataset: 
-        :param resolution: 
-        :param radius:
-        :returns: shrunken dataset
+        Parameters
+        ----------
+        dataset :
+            param resolution:
+        radius :
+            returns: shrunken dataset
+        dataset: gdal.Dataset :
+            
+        resolution: float :
+            
+        radius: float :
+            
+
+        Returns
+        -------
+        type
+            shrunken dataset
+
         """
 
         data = dataset.ReadAsArray()

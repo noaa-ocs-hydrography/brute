@@ -14,6 +14,13 @@ class transform:
     """
     An object for abstracting the datum transformation API.  This should allow
     for different transformation machines and versions.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
     """
 
     def __init__(self, config: dict, reader):
@@ -30,6 +37,13 @@ class transform:
         """
         Set up and configure the transformation tools based on the information
         provided in the configruation file.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
 
         if 'vdatum_path' in self._config:
@@ -42,8 +56,18 @@ class transform:
         Run the specified transformation engine to translate the provided
         dataset.
 
-        :param infilename: 
-        :param metadata: 
+        Parameters
+        ----------
+        infilename :
+            param metadata:
+        infilename: str :
+            
+        metadata: dict :
+            
+
+        Returns
+        -------
+
         """
 
         self._meta = metadata

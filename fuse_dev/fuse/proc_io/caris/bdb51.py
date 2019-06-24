@@ -40,6 +40,13 @@ class bdb51:
     Replies from the CARIS environment can be
         status : connectivity to the database and the last file uploaded.
         log : returning a log message
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
     """
 
     def __init__(self, database_loc: str, database_name: str, caris_env_name: str = 'NBS35'):
@@ -66,6 +73,13 @@ class bdb51:
         """
         Open a socket, start the environment and then pass along when CARIS
         env sends a response.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
 
         sock = socket.socket()
@@ -86,7 +100,16 @@ class bdb51:
         Instantiate an environment containing CARIS BDB51 object for talking
         to the database.
 
-        :param port: 
+        Parameters
+        ----------
+        port :
+            
+        port: int :
+            
+
+        Returns
+        -------
+
         """
 
         # set up the path to python in the CARIS environment
@@ -127,9 +150,7 @@ class bdb51:
             self._logger.log(logging.DEBUG, err)
 
     def connect(self):
-        """
-        Form and send the connect command to the BDB51 wapper.
-        """
+        """Form and send the connect command to the BDB51 wapper."""
 
         command = {'command': 'connect'}
         self._send_command(command)
@@ -138,6 +159,13 @@ class bdb51:
         """
         Check to see if the subprocess is still communicating and connected to
         the database.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
 
         command = {'command': 'status'}
@@ -148,8 +176,18 @@ class bdb51:
         Send the BDB environment instructions on where data is and what to do
         with it.
 
-        :param dataset: 
-        :param instruction: 
+        Parameters
+        ----------
+        dataset :
+            param instruction:
+        dataset: gdal.Dataset :
+            
+        instruction: str :
+            
+
+        Returns
+        -------
+
         """
 
         pass
@@ -158,7 +196,16 @@ class bdb51:
         """
         Destroy the BDB51 wrapper object and environment.
 
-        :param delay:  (Default value = 0)
+        Parameters
+        ----------
+        delay :
+            Default value = 0)
+        delay: int :
+             (Default value = 0)
+
+        Returns
+        -------
+
         """
 
         command = {'command': 'die'}
@@ -172,7 +219,18 @@ class bdb51:
         """
         Send a command to the BDB51 wrapper.
 
-        :param command: 
+        Parameters
+        ----------
+        command :
+            
+        command: Dict[str :
+            
+        str] :
+            
+
+        Returns
+        -------
+
         """
 
         pc = pickle.dumps(command)

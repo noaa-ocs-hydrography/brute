@@ -18,6 +18,13 @@ class Form(autointerp_ui.Form):
     """
     Load ui and: define tif storage columns, overwrite ui defined fucntions
     with desired function behaviour
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
     """
 
     def __init__(self, parent):
@@ -31,6 +38,15 @@ class Form(autointerp_ui.Form):
         """
         Closes GUI, ends program.
         Maps to Cancel button, File->Quit, and CTRL+Q
+
+        Parameters
+        ----------
+        event :
+            
+
+        Returns
+        -------
+
         """
 
         self.Close()
@@ -40,6 +56,15 @@ class Form(autointerp_ui.Form):
         Adds files selected from the 'Add GeoTIFF File' to the 'GeoTIFF File
         List' box. 'File' holds the name of the file and 'Path' holds the
         complete file path
+
+        Parameters
+        ----------
+        event :
+            
+
+        Returns
+        -------
+
         """
 
         print (self.picker_tif.GetPath())
@@ -55,6 +80,15 @@ class Form(autointerp_ui.Form):
         """
         Removes selected files from the 'GeoTIFF File List' box when the
         'Remove' button is clicked
+
+        Parameters
+        ----------
+        event :
+            
+
+        Returns
+        -------
+
         """
 
         selected = self.list_tif.SelectedItemCount
@@ -70,6 +104,13 @@ class Form(autointerp_ui.Form):
         Main function run as a thread by programProg(). This function
         collects the input field values and passes them to autointerp.py's
         'main' function interp()
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
 
         st = 'Started - ' + str(_dt.now())
@@ -90,6 +131,15 @@ class Form(autointerp_ui.Form):
     def programProg(self, event):
         """
         Start thread to run main()
+
+        Parameters
+        ----------
+        event :
+            
+
+        Returns
+        -------
+
         """
 
         import threading
@@ -100,6 +150,13 @@ class Form(autointerp_ui.Form):
         """
         Used for checking and updating the contents of current collection
         of .tiff files
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
 
         tifCount = self.list_tif.GetItemCount()
@@ -109,6 +166,7 @@ class Form(autointerp_ui.Form):
         print (self.tifList)
 
 class Done(autointerp_ui.Done):
+    """ """
     def __init__(self, parent):
         autointerp_ui.Done.__init__(self, parent)
 

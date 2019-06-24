@@ -15,9 +15,7 @@ import fuse.meta_review.meta_review_base as mrb
 
 
 class meta_review_ehydro(mrb.meta_review_base):
-    """
-    The ehydro metadata object.
-    """
+    """The ehydro metadata object."""
 
     # ordered dict to ensure looping through the keys always gets 'manual' last.
     _col_root = {'manual': 'manual: ',
@@ -93,13 +91,7 @@ class meta_review_ehydro(mrb.meta_review_base):
         self._fieldnames = self._make_col_header()
 
     def _make_col_header(self) -> List[str]:
-        """
-        TODO write description
-
-        Returns
-        -------
-
-        """
+        """TODO write description"""
         csv_cols = []
         for c in self._metakeys:
             if c is 'from_filename':
@@ -121,7 +113,18 @@ class meta_review_ehydro(mrb.meta_review_base):
         Open the provided file and add the list of metadata in the provided
         dictionaries.
 
-        :param meta: 
+        Parameters
+        ----------
+        meta :
+            
+        meta: Union[List[dict] :
+            
+        dict] :
+            
+
+        Returns
+        -------
+
         """
 
         infile = _Path(self._metafilename)
@@ -140,7 +143,16 @@ class meta_review_ehydro(mrb.meta_review_base):
         """
         Add the provided metadata to the provide file.
 
-        :param meta: 
+        Parameters
+        ----------
+        meta :
+            
+        meta: List[dict] :
+            
+
+        Returns
+        -------
+
         """
 
         orig = []
@@ -183,7 +195,16 @@ class meta_review_ehydro(mrb.meta_review_base):
         """
         Write the provided metadata to a new CSV file.
 
-        :param meta: 
+        Parameters
+        ----------
+        meta :
+            
+        meta: List[dict] :
+            
+
+        Returns
+        -------
+
         """
 
         if type(meta) == dict:  # just a single record
@@ -205,7 +226,16 @@ class meta_review_ehydro(mrb.meta_review_base):
         Prepend 'script: ' to each key in the list of dictionaries such that the
         list goes to the right column when written to a csv.
 
-        :param meta: 
+        Parameters
+        ----------
+        meta :
+            
+        meta: List[dict] :
+            
+
+        Returns
+        -------
+
         """
 
         new_meta = []
@@ -227,6 +257,13 @@ class meta_review_ehydro(mrb.meta_review_base):
         """
         Open the provide csv file name, extract the metadata, and combine
         duplicative rows, giving precedence to the manually entered values.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
 
         with open(self._metafilename, 'r') as csvfile:
@@ -243,8 +280,16 @@ class meta_review_ehydro(mrb.meta_review_base):
         the record name that matches the provided key.  Once the record is
         found the record is "simplified" and returned.
 
-        :param meta_value: 
-        :param meta_key:  (Default value = 'from_filename')
+        Parameters
+        ----------
+        meta_value :
+            param meta_key:  (Default value = 'from_filename')
+        meta_key: str :
+             (Default value = 'from_filename')
+
+        Returns
+        -------
+
         """
 
         metadata = {}
@@ -262,7 +307,16 @@ class meta_review_ehydro(mrb.meta_review_base):
         the manual and scripted values, giving precedence to the manual
         entries.
 
-        :param row: 
+        Parameters
+        ----------
+        row :
+            
+        row: dict :
+            
+
+        Returns
+        -------
+
         """
 
         metarow = {}
@@ -294,7 +348,16 @@ class meta_review_ehydro(mrb.meta_review_base):
         """
         Convert the expanded column names used in the csv to an S57 name and value.
 
-        :param row: 
+        Parameters
+        ----------
+        row :
+            
+        row: dict :
+            
+
+        Returns
+        -------
+
         """
 
         s57row = {}

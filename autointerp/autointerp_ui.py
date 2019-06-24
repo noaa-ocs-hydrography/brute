@@ -15,6 +15,7 @@ import wx.xrc
 ###########################################################################
 
 class Form ( wx.Frame ):
+	""" """
 
 	def __init__( self, parent ):
 		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"Interpolation Tool", pos = wx.DefaultPosition, size = wx.Size( 500,625 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
@@ -147,16 +148,64 @@ class Form ( wx.Frame ):
 
 	# Virtual event handlers, overide them in your derived class
 	def programQuit( self, event ):
+		"""
+		
+
+		Parameters
+		----------
+		event :
+		    
+
+		Returns
+		-------
+
+		"""
 		event.Skip()
 
 	def itemInsert( self, event ):
+		"""
+		
+
+		Parameters
+		----------
+		event :
+		    
+
+		Returns
+		-------
+
+		"""
 		event.Skip()
 
 	def itemRemove( self, event ):
+		"""
+		
+
+		Parameters
+		----------
+		event :
+		    
+
+		Returns
+		-------
+
+		"""
 		event.Skip()
 
 
 	def programProg( self, event ):
+		"""
+		
+
+		Parameters
+		----------
+		event :
+		    
+
+		Returns
+		-------
+
+		"""
 		event.Skip()
 
 
@@ -165,6 +214,7 @@ class Form ( wx.Frame ):
 ###########################################################################
 
 class Done ( wx.Dialog ):
+	""" """
 
 	def __init__( self, parent ):
 		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"Interpolation Tool", pos = wx.DefaultPosition, size = wx.Size( 350,150 ), style = wx.DEFAULT_DIALOG_STYLE )

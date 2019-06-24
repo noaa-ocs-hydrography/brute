@@ -54,20 +54,33 @@ def regionPath(root: str, folder: str) -> dict:
     """
     Uses repo path derived from the program's location to find the downloads
     folder of eHydro_scrape.
-
+    
     This function uses the the NBS region definitions file defined in the
     provided ``config.ini`` under the header **[CSVs]** and name 'NBS ='.
     Each region within the definitions file is made up of the region name,
     processing branch, list of USACE districts included, and the relative
     location of a shapefile containing the geographic boundaries of the region
-
+    
     Each region's information is assigned to a dictionary with the
     [Region]_[ProcessingBranch] as the key and the subseqent districts and
     shapefile location are assigned as the value as a list
 
-    :param root: A string representing the base path of the repository
-    :param folder: A string representing the downloads folder of eHydro_scrape
-    :returns: A dictionary with keys of region names and values of a list of district downloads folders and relative path for the shapfile for that region
+    Parameters
+    ----------
+    root :
+        A string representing the base path of the repository
+    folder :
+        A string representing the downloads folder of eHydro_scrape
+    root: str :
+        
+    folder: str :
+        
+
+    Returns
+    -------
+    type
+        A dictionary with keys of region names and values of a list of district downloads folders and relative path for the shapfile for that region
+
     """
 
     regions = []
@@ -91,6 +104,18 @@ def regionPath(root: str, folder: str) -> dict:
 
 
 def open_ogr(path):
+    """
+    
+
+    Parameters
+    ----------
+    path :
+        
+
+    Returns
+    -------
+
+    """
     ds = _ogr.Open(path)
     ds_layer = ds.GetLayer()
     for feature in ds_layer:
@@ -110,16 +135,36 @@ def write_shapefile(out_shp: str, name: str, geom, spcs: Union[str, int]):
     """
     Writes out a geopackage shapefile containing the bounding geometry of
     of the given query.
-
+    
     Derived from:
     https://gis.stackexchange.com/a/52708/8104
     via
     https://gis.stackexchange.com/q/217165
 
-    :param out_shp: String representing the complete file path for the output shapefile
-    :param name: String representing the name of the survey; Used to name the layer
-    :param poly: The WTK Multipolygon object that holds the survey's bounding data
-    :param proj: The ESPG code for the data
+    Parameters
+    ----------
+    out_shp :
+        String representing the complete file path for the output shapefile
+    name :
+        String representing the name of the survey; Used to name the layer
+    poly :
+        The WTK Multipolygon object that holds the survey's bounding data
+    proj :
+        The ESPG code for the data
+    out_shp: str :
+        
+    name: str :
+        
+    geom :
+        
+    spcs: Union[str :
+        
+    int] :
+        
+
+    Returns
+    -------
+
     """
 
     # Reference
@@ -160,16 +205,29 @@ def fileCollect(path: str, bounds: str) -> list:
     """
     Given a folder path, this function will return the complete list of
     files in that folder.
-
+    
     Because this tool is specifically designed to move eHydro_scrape downloads,
     it is expected that all file paths collected will be ``.zip`` files.  If
     there are non-``.zip`` files in an eHydro_scrape download folder, the
     function will not raise an error, but it will collect the file path for use
     in copying the file.
 
-    :param path: A string representing a folder path
-    :param bounds:
-    :returns: A list of all files found in the provided file path, returns an empty list if none are found
+    Parameters
+    ----------
+    path :
+        A string representing a folder path
+    bounds :
+        returns: A list of all files found in the provided file path, returns an empty list if none are found
+    path: str :
+        
+    bounds: str :
+        
+
+    Returns
+    -------
+    type
+        A list of all files found in the provided file path, returns an empty list if none are found
+
     """
 
     zips = []
@@ -248,15 +306,27 @@ def fileCollect(path: str, bounds: str) -> list:
 def eHydroZIPs(regions: Dict[str, List[str]]) -> Dict[str, List[str]]:
     """
     Creates a dictionary with keys of region names and values of a list of all files downloaded from districts within the respective regions
-
+    
     For each region provided in the dictionary passed to this function, it will
     use the eHydro_scrape download folders associated with it and compile one
     complete list of all the files associated with the districts within the
     defined region.  This list is then reassociated with the region names as a
     dictionary and returned.
 
-    :param regions: A dictionary with keys of region names and values of a list of district downloads folders for that region
-    :returns: A dictionary with keys of region names and values of a list of all files downloaded from districts within the respective regions
+    Parameters
+    ----------
+    regions :
+        A dictionary with keys of region names and values of a list of district downloads folders for that region
+    regions: Dict[str :
+        
+    List[str]] :
+        
+
+    Returns
+    -------
+    type
+        A dictionary with keys of region names and values of a list of all files downloaded from districts within the respective regions
+
     """
 
     hold = []
@@ -273,13 +343,23 @@ def eHydroZIPs(regions: Dict[str, List[str]]) -> Dict[str, List[str]]:
 def contentSearch(contents: List[str]) -> List[str]:
     """
     This funtion takes a list of zipfile contents.
-
+    
     Using the zipfile contents, it parses the files for any file containing the
     full string '.xyz', '.xml', or '.pickle'.  If a file name contains this
     string, it is added to a list of found files.
 
-    :param contents: A list of file names
-    :returns: a list of files that met the correct conditions
+    Parameters
+    ----------
+    contents :
+        A list of file names
+    contents: List[str] :
+        
+
+    Returns
+    -------
+    type
+        a list of files that met the correct conditions
+
     """
 
     files = []
@@ -298,8 +378,18 @@ def zipManipulate(path: str, name: str):
     """
     TODO write description
 
-    :param path:
-    :param name:
+    Parameters
+    ----------
+    path :
+        param name:
+    path: str :
+        
+    name: str :
+        
+
+    Returns
+    -------
+
     """
 
     _os.chdir(path)
@@ -323,11 +413,11 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method, text_r
     Takes a dictionary of keys representing regions and values representing
     a list of all files downloaded from districts within the respective regions
     and attempts to copy the files to the new directory structure.
-
+    
     Uses paramerters desination and folder along with keys representing region
     names to extrapolate the complete path where the region-associated files
     will be moved to.
-
+    
     Given a destination path such as ``..\\vlab-nbs\\New_Directory\\``, the
     default folder of ``USACE\\eHydro\\original\\`` and a region defined as
     ``NorthEast = CENAN``, the function would produce a destination folder path
@@ -336,11 +426,36 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method, text_r
     to folders like this.  If the folder does not exist, it will be created
     using :func:`os.makedirs` and the folder path produced.
 
-    :param regionFiles: A dictionary with keys of region names and values of a list of district downloads folders for that region
-    :param destination: A string representing the base path of the destination directory
-    :param text_region: Optional text field used when run via the included GUI; displays the current region being copied
-    :param progressBar: Optional guage used when run via the included GUI; displays the copy progress of the current region
-    :param text_output: Optional text field used when run via the included GUI; displays the names of files copied
+    Parameters
+    ----------
+    regionFiles :
+        A dictionary with keys of region names and values of a list of district downloads folders for that region
+    destination :
+        A string representing the base path of the destination directory
+    text_region :
+        Optional text field used when run via the included GUI; displays the current region being copied
+    progressBar :
+        Optional guage used when run via the included GUI; displays the copy progress of the current region
+    text_output :
+        Optional text field used when run via the included GUI; displays the names of files copied
+    regionFiles: Dict[str :
+        
+    List[str]] :
+        
+    destination: str :
+        
+    method :
+        
+    text_region: wx.TextCtrl :
+         (Default value = None)
+    progressBar: wx.Guage :
+         (Default value = None)
+    text_output: wx.TextCtrl :
+         (Default value = None)
+
+    Returns
+    -------
+
     """
 
     fileName = open(config['CSVs']['USACE'], 'r')
@@ -392,9 +507,24 @@ def _main(text_region: wx.TextCtrl = None, progressBar: wx.Guage = None, text_ou
     Main function of the program. Responsible for passing items through the
     intended use of this tool.
 
-    :param text_region: Optional text field used when run via the included GUI; displays the current region being copied
-    :param progressBar: Optional guage used when run via the included GUI; displays the copy progress of the current region
-    :param text_output: Optional text field used when run via the included GUI; displays the names of files copied
+    Parameters
+    ----------
+    text_region :
+        Optional text field used when run via the included GUI; displays the current region being copied
+    progressBar :
+        Optional guage used when run via the included GUI; displays the copy progress of the current region
+    text_output :
+        Optional text field used when run via the included GUI; displays the names of files copied
+    text_region: wx.TextCtrl :
+         (Default value = None)
+    progressBar: wx.Guage :
+         (Default value = None)
+    text_output: wx.TextCtrl :
+         (Default value = None)
+
+    Returns
+    -------
+
     """
 
     if progressBar != None:

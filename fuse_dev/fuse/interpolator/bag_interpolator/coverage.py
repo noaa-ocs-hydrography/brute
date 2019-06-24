@@ -27,7 +27,16 @@ def _maxValue(arr: _np.array):
     Takes an input array and finds the most used value in the array, this
     value is used by the program to assume the array's nodata value
 
-    :param arr: An input array
+    Parameters
+    ----------
+    arr :
+        An input array
+    arr: _np.array :
+        
+
+    Returns
+    -------
+
     """
 
     nums, counts = _np.unique(arr, return_counts=True)
@@ -42,6 +51,12 @@ class geotiff:
     In order to read and assign the data relevant to the interpolation process,
     this class heavily depends on OSGEO's GDAL, OGR, and ORS libraries to open
     and populate the data needed
+
+    Parameters
+    ----------
+
+    Returns
+    -------
 
     Attributes
     ----------
@@ -71,7 +86,16 @@ class geotiff:
         """
         TODO write description
 
-        :param filename: The complete file path of the input coverage file
+        Parameters
+        ----------
+        filename :
+            The complete file path of the input coverage file
+        filename: str :
+            
+
+        Returns
+        -------
+
         """
 
         _ds = _gdal.Open(filename)
@@ -85,7 +109,14 @@ class geotiff:
         """
         TODO write description
 
-        :param gdal_obj:
+        Parameters
+        ----------
+        gdal_obj :
+            
+
+        Returns
+        -------
+
         """
 
         ulx, xres, xskew, uly, yskew, yres = gdal_obj.GetGeoTransform()
@@ -106,7 +137,14 @@ class geotiff:
         """
         TODO write description
 
-        :param gdal_obj: 
+        Parameters
+        ----------
+        gdal_obj :
+            
+
+        Returns
+        -------
+
         """
 
         band = gdal_obj.GetRasterBand(1)
@@ -132,6 +170,12 @@ class geopackage:
     A geopackage coverage requres a ``to_crs`` WKT spatial reference system in
     order to ensure that the contents of the geopackage can be properly
     rasterized.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
 
     Attributes
     ----------
@@ -161,10 +205,28 @@ class geopackage:
         """
         TODO write description
 
-        :param filename: The complete file path of the input coverage file
-        :param to_crs: WKT object with destination spatial reference system
-        :param pixel_size:  (Default value = 1)
-        :param nodata:  (Default value = 255)
+        Parameters
+        ----------
+        filename :
+            The complete file path of the input coverage file
+        to_crs :
+            WKT object with destination spatial reference system
+        pixel_size :
+            Default value = 1)
+        nodata :
+            Default value = 255)
+        filename: str :
+            
+        to_crs: str :
+            
+        pixel_size: int :
+             (Default value = 1)
+        nodata: int :
+             (Default value = 255)
+
+        Returns
+        -------
+
         """
 
         self.wkt = to_crs
@@ -178,10 +240,26 @@ class geopackage:
         """
         TODO write description
 
-        :param filename: The complete file path of the input coverage file
-        :param to_crs: WKT object with destination spatial reference system
-        :param pixel_size:
-        :param nodata:
+        Parameters
+        ----------
+        filename :
+            The complete file path of the input coverage file
+        to_crs :
+            WKT object with destination spatial reference system
+        pixel_size :
+            param nodata:
+        filename: str :
+            
+        to_crs: str :
+            
+        pixel_size: int :
+             (Default value = 1)
+        nodata: int :
+             (Default value = 255)
+
+        Returns
+        -------
+
         """
 
         fName = _os.path.split(filename)[-1]
@@ -253,7 +331,16 @@ class geopackage:
         """
         TODO write description
 
-        :param filepath: 
+        Parameters
+        ----------
+        filepath :
+            
+        filepath: str :
+            
+
+        Returns
+        -------
+
         """
 
         fName = _os.path.split(filepath)[-1]
@@ -261,9 +348,7 @@ class geopackage:
 
 
 class unified_coverage:
-    """
-    TODO write description
-    """
+    """TODO write description"""
 
     def __init__(self, coverage_files, bag_wkt=None, bag_name='Test_Data.bag'):
         self.name = None
@@ -281,8 +366,18 @@ class unified_coverage:
         """
         TODO write description
 
-        :param files:
-        :param bag_wkt: 
+        Parameters
+        ----------
+        files :
+            param bag_wkt:
+        files: List[str] :
+            
+        bag_wkt: str :
+            
+
+        Returns
+        -------
+
         """
 
         print('_open')
@@ -306,8 +401,16 @@ class unified_coverage:
         """
         TODO write description
 
-        :param rasters: 
-        :param name: 
+        Parameters
+        ----------
+        rasters :
+            param name:
+        name :
+            
+
+        Returns
+        -------
+
         """
 
         sized, self.bounds = self._align(rasters)
@@ -337,8 +440,20 @@ class unified_coverage:
         This binary raster is saved at the input path and also returned with the
         new full path for the output
 
-        :param rasters: List of coverage objects
-        :param name: File path of the relevant bag file
+        Parameters
+        ----------
+        rasters :
+            List of coverage objects
+        name :
+            File path of the relevant bag file
+        rasters: list :
+            
+        name: str :
+            
+
+        Returns
+        -------
+
         """
 
         print('_combine')
@@ -410,7 +525,16 @@ class unified_coverage:
         4. Reposition the data within each input array to maintain original geographic placement based on the difference of the input array's original NW corner and the recorded 'largest' NW boundry of the combined input areas.
         5. Return coverage objects with the newly resized/repositioned tifs and the new NW and SE extents of the new combined area.
 
-        :param rasters: List of coverage objects created by :func:`_open_data`
+        Parameters
+        ----------
+        rasters :
+            List of coverage objects created by :func:`_open_data`
+        rasters: list :
+            
+
+        Returns
+        -------
+
         """
 
         print('_align')
@@ -532,11 +656,38 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     8. Align the content of the tiff as needed in order to match the bag and apply the shifted content to the empty array created in Step 7.
     9. Enforce the size of the bag onto the shifted tiff data stored in the array created and modified in Step(s) 7 and 8.
 
-    :param coverage: Input coverage data object
-    :param bounds: The ([nx, ny], [sx, sy]) extents to be applied to the input data
-    :param shape: The (y, x) shape to to be applied to the input data
-    :param resolution: The (x, y) resolution to be applied to the input data
-    :param nodata: The nodata value to be applied to the input array object
+    Parameters
+    ----------
+    coverage :
+        Input coverage data object
+    bounds :
+        The ([nx, ny], [sx, sy]) extents to be applied to the input data
+    shape :
+        The (y, x) shape to to be applied to the input data
+    resolution :
+        The (x, y) resolution to be applied to the input data
+    nodata :
+        The nodata value to be applied to the input array object
+    bounds: Tuple[Tuple[float :
+        
+    float] :
+        
+    Tuple[float :
+        
+    float]] :
+        
+    shape: Tuple[int :
+        
+    int] :
+        
+    resolution: Tuple[float :
+        
+    nodata: float :
+        
+
+    Returns
+    -------
+
     """
 
     print('align2grid')
@@ -659,14 +810,38 @@ def write_raster(coverage, outputpath: str, out_verdat: str = 'MLLW', dtype=_gda
     
     options=['COMPRESS=LZW']
 
-    :param coverage: 
-    :param outputpath: 
-    :param out_verdat:  (Default value = 'MLLW')
-    :param dtype:  (Default value = _gdal.GDT_UInt32)
-    :param options:  (Default value = 0)
-    :param color_table:  (Default value = 0)
-    :param nbands:  (Default value = 1)
-    :param nodata:  (Default value = False)
+    Parameters
+    ----------
+    coverage :
+        param outputpath:
+    out_verdat :
+        Default value = 'MLLW')
+    dtype :
+        Default value = _gdal.GDT_UInt32)
+    options :
+        Default value = 0)
+    color_table :
+        Default value = 0)
+    nbands :
+        Default value = 1)
+    nodata :
+        Default value = False)
+    outputpath: str :
+        
+    out_verdat: str :
+         (Default value = 'MLLW')
+    options: int :
+         (Default value = 0)
+    color_table: int :
+         (Default value = 0)
+    nbands: int :
+         (Default value = 1)
+    nodata: bool :
+         (Default value = False)
+
+    Returns
+    -------
+
     """
 
     print('write_raster')
@@ -705,8 +880,16 @@ def coverage2gdal(coverage) -> gdal.Dataset:
     """
     TODO write description
 
-    :param coverage:
-    :returns: gdal dataset
+    Parameters
+    ----------
+    coverage :
+        returns: gdal dataset
+
+    Returns
+    -------
+    type
+        gdal dataset
+
     """
 
     proj = coverage.wkt
@@ -731,9 +914,20 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW'):
     """
     TODO write description
 
-    :param coverage: 
-    :param outputpath: 
-    :param out_verdat:  (Default value = 'MLLW')
+    Parameters
+    ----------
+    coverage :
+        param outputpath:
+    out_verdat :
+        Default value = 'MLLW')
+    outputpath: str :
+        
+    out_verdat: str :
+         (Default value = 'MLLW')
+
+    Returns
+    -------
+
     """
     name = coverage.name + '.gpkg'
     outfilename = _os.path.join(outputpath, name)

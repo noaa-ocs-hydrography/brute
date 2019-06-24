@@ -15,8 +15,15 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 def read(*parts):
     """
+    
 
-    :param *parts: 
+    Parameters
+    ----------
+    *parts :
+        
+
+    Returns
+    -------
 
     """
     # intentionally *not* adding an encoding option to open, See:
@@ -27,8 +34,15 @@ def read(*parts):
 
 def find_version(*file_paths):
     """
+    
 
-    :param *file_paths: 
+    Parameters
+    ----------
+    *file_paths :
+        
+
+    Returns
+    -------
 
     """
     version_file = read(*file_paths)

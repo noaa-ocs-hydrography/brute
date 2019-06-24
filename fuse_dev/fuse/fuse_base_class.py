@@ -11,9 +11,7 @@ import os as _os
 
 
 class fuse_base_class:
-    """
-    The fuse object.
-    """
+    """The fuse object."""
 
     def __init__(self, configfilename: str = 'generic.config'):
         """
@@ -41,7 +39,16 @@ class fuse_base_class:
         to_vert_datum
         metapath
 
-        :param confile:
+        Parameters
+        ----------
+        confile :
+            
+        confile: str :
+            
+
+        Returns
+        -------
+
         """
 
         config = {}
@@ -89,7 +96,16 @@ class fuse_base_class:
         Check to ensure at least the basic elements of the configuration are
         available.
 
-        :param config_dict: 
+        Parameters
+        ----------
+        config_dict :
+            
+        config_dict: dict :
+            
+
+        Returns
+        -------
+
         """
 
         if 'rawpaths' not in config_dict:
@@ -108,7 +124,16 @@ class fuse_base_class:
         The file name to use to read the bathymetry and metadata into useable
         forms.
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+        infilename: str :
+            
+
+        Returns
+        -------
+
         """
 
         pass
@@ -118,7 +143,16 @@ class fuse_base_class:
         If the right metadata is available, perform any required datum
         transformations and interpolation.
 
-        :param infilename:
+        Parameters
+        ----------
+        infilename :
+            
+        infilename: str :
+            
+
+        Returns
+        -------
+
         """
 
         pass
@@ -131,7 +165,16 @@ class fuse_base_class:
         If no filename is provided try to upload all files from the metadata
         file.
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+        infilename: str :
+            
+
+        Returns
+        -------
+
         """
 
         pass

@@ -70,13 +70,23 @@ def getTifElev(file: str, y):
     to access their values. Returned as a list of tif objects are the order a
     file was found, the path of the file, and the file's values as
     [x, file, extent, arr] and a list of file names
-
+    
     Upper Left Corner and Lower Right Corner Bounds Directly from:
     "How to get raster corner..." on on GIS Stack Exchange [Answer by 'James'
     (https://gis.stackexchange.com/a/201320)]
 
-    :param file: GeoTiff file location
-    :param y:
+    Parameters
+    ----------
+    file :
+        GeoTiff file location
+    y :
+        
+    file: str :
+        
+
+    Returns
+    -------
+
     """
 
     print('getTifElev')
@@ -124,10 +134,22 @@ def getShpRast(file: str, y, pixel_size=1, nodata=255):
     """
     Import shapefile
 
-    :param file: Shapefile file location
-    :param y:
-    :param pixel_size:  (Default value = 1)
-    :param nodata:  (Default value = 255)
+    Parameters
+    ----------
+    file :
+        Shapefile file location
+    y :
+        param pixel_size:  (Default value = 1)
+    nodata :
+        Default value = 255)
+    file: str :
+        
+    pixel_size :
+         (Default value = 1)
+
+    Returns
+    -------
+
     """
 
     print('getShpRast', file)
@@ -174,7 +196,16 @@ def getBndRast(files: List[str]):
     Passes individual file paths to the appropriate data reader(s)
     :func:`getTifElev` or :func:`getShpRast`
 
-    :param files: File paths of the input GeoTiff and/or Shapefile files
+    Parameters
+    ----------
+    files :
+        File paths of the input GeoTiff and/or Shapefile files
+    files: List[str] :
+        
+
+    Returns
+    -------
+
     """
 
     print('getBndRast')
@@ -207,7 +238,16 @@ def getBagLyrs(fileObj: str):
     file's uncertainty values as [x, file, extent, elev] and a list of file
     names
 
-    :param fileObj: File path of the input BAG file
+    Parameters
+    ----------
+    fileObj :
+        File path of the input BAG file
+    fileObj: str :
+        
+
+    Returns
+    -------
+
     """
 
     print('getBagLyrs')
@@ -288,15 +328,30 @@ def write_raster(raster_array, gt, data_obj, outputpath, dtype=_gdal.GDT_UInt32,
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
     (https://gis.stackexchange.com/a/278965)]
 
-    :param raster_array:
-    :param gt:
-    :param data_obj:
-    :param outputpath:
-    :param dtype:  (Default value = _gdal.GDT_UInt32)
-    :param options:  (Default value = 0)
-    :param color_table:  (Default value = 0)
-    :param nbands:  (Default value = 1)
-    :param nodata:  (Default value = False)
+    Parameters
+    ----------
+    raster_array :
+        param gt:
+    data_obj :
+        param outputpath:
+    dtype :
+        Default value = _gdal.GDT_UInt32)
+    options :
+        Default value = 0)
+    color_table :
+        Default value = 0)
+    nbands :
+        Default value = 1)
+    nodata :
+        Default value = False)
+    gt :
+        
+    outputpath :
+        
+
+    Returns
+    -------
+
     """
 
     print('write_raster')
@@ -333,11 +388,20 @@ def write_raster(raster_array, gt, data_obj, outputpath, dtype=_gdal.GDT_UInt32,
 def maxValue(arr: _np.array):
     """
     Returns the most used value in the array as an integer
-
+    
     Takes an input array and finds the most used value in the array, this
     value is used by the program to assume the array's nodata value
 
-    :param arr: An input array
+    Parameters
+    ----------
+    arr :
+        An input array
+    arr: _np.array :
+        
+
+    Returns
+    -------
+
     """
 
     print('maxValue')
@@ -352,15 +416,27 @@ def tupleGrid(grid: _np.array, maxVal: int):
     Takes an input matrix and an assumed nodata value. The function iterates
     through the matrix and compiles a list of 'edge' points [[x, y, z], ...]
     where:
-
+    
     1. the current value is not a nodata value and previous value was a nodata value.
         - sets io True, indicating that the next value to compare against should be a nodata value.
     2. the current value is a nodata value and the previous value was not a nodata value.
         - sets io False, indicating that the next value to compare against should not be a nodata value.
     3. returns a list of the points found.
 
-    :param grid: An input array
-    :param maxVal: The array's nodata value
+    Parameters
+    ----------
+    grid :
+        An input array
+    maxVal :
+        The array's nodata value
+    grid: _np.array :
+        
+    maxVal: int :
+        
+
+    Returns
+    -------
+
     """
 
     print('tupleGrid')
@@ -399,17 +475,34 @@ def concatGrid(grids: list, maxVal: int, shape: Tuple[int, int]):
     Passes the assumed nodata value and the arrays held within each of the
     listed grid objects to tupleGrid(grid, maxVal) for a return of an array of
     edge points for each grid [[x, y, z], ...]
-
+    
     Takes the results of both tupleGrid calls and combines them into a single
     array of edge points.  Then uses .view().sort() to sort the combined
     products [[x, y, z], ...] based on ascending x, then column y.
-
+    
     The results of the sorted point array are then split into a list of points
     [[x, y], ...] and values [[z], ...] and returned
 
-    :param grids: The BAG and GeoTiff objects
-    :param maxVal: The BAG data's nodata value
-    :param shape: Dimensions of the input BAG data (y, x)
+    Parameters
+    ----------
+    grids :
+        The BAG and GeoTiff objects
+    maxVal :
+        The BAG data's nodata value
+    shape :
+        Dimensions of the input BAG data (y, x)
+    grids: list :
+        
+    maxVal: int :
+        
+    shape: Tuple[int :
+        
+    int] :
+        
+
+    Returns
+    -------
+
     """
 
     print('concatGrid')
@@ -451,19 +544,28 @@ def alignTifs(tifs: list):
     """
     Takes an input of an array of tiff objects. The goal of this function
     is to fit the provided tifs to the largest combined area of the inputs.
-
-
+    
+    
     1. Find NW and SE corners of the first input array and the number of rows and columns in the input.
     2. Find NW and SE corners of subsiquent input arrays and record differences as the NW differences (nxd, nyd) SE differences (sxd, syd).
-
+    
         - also modify the original NW and/or SE corner values if applicable.
         - also modify the original number or rows and columns if applicable.
-
+    
     3. Resize the area of each input array to the new total combined size of all input arrays based on the stored number of rows and columns.
     4. Reposition the data within each input array to maintain original geographic placement based on the difference of the input array's original NW corner and the recorded 'largest' NW boundry of the combined input areas.
     5. Return tiff objects with the newly resized/repositioned tifs and the new NW and SE extents of the new combined area.
 
-    :param tifs: List of GeoTiff objects created by :func:`getTifElev`
+    Parameters
+    ----------
+    tifs :
+        List of GeoTiff objects created by :func:`getTifElev`
+    tifs: list :
+        
+
+    Returns
+    -------
+
     """
 
     print('alignTifs')
@@ -575,28 +677,46 @@ def polyTifVals(tifs: list, path: str, names: List[str], extent: list):
     Heavy Influence From:
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
     (https://gis.stackexchange.com/a/278965)]
-
+    
     This function takes an array input of tif objects, a destination path (for
     ouput saving), and a list the names of the input tif objects.
-
+    
     Takes the arrays of each tif object and combines them along the z axis of
     each::
-
+    
         [[za,zb],[za,zb],[za,zb],
          [za,zb],[za,zb],[za,zb],
          [za,zb],[za,zb],[za,zb]]
-
+    
     Then takes the mean of the values along the z axis. The reslult is then
     modified to a binary raster by making all values that are not the nodata
     value 1 and the values that are nodata 0.
-
+    
     This binary raster is saved at the input path and also returned with the
     new full path for the output
 
-    :param tifs: List of GeoTiff objects
-    :param path: Folder path for the output files
-    :param names: List of names of imported GeoTiffs
-    :param extent: The maximum extents of all input GeoTiffs
+    Parameters
+    ----------
+    tifs :
+        List of GeoTiff objects
+    path :
+        Folder path for the output files
+    names :
+        List of names of imported GeoTiffs
+    extent :
+        The maximum extents of all input GeoTiffs
+    tifs: list :
+        
+    path: str :
+        
+    names: List[str] :
+        
+    extent: list :
+        
+
+    Returns
+    -------
+
     """
 
     print('polyTifVals')
@@ -671,10 +791,20 @@ def shift5(arr, y, x, fill_value=_np.nan):
     """
     https://stackoverflow.com/questions/30399534/shift-elements-in-a-numpy-array
 
-    :param arr:
-    :param y:
-    :param x:
-    :param fill_value:  (Default value = _np.nan)
+    Parameters
+    ----------
+    arr :
+        param y:
+    x :
+        param fill_value:  (Default value = _np.nan)
+    y :
+        
+    fill_value :
+         (Default value = _np.nan)
+
+    Returns
+    -------
+
     """
 
     print('shift5', y)
@@ -704,9 +834,9 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     Takes an input of two arrays representing bag and tif data. These arrays
     hold information like extent, data, and more. The goal of this function is
     to fit and/or shift the provided tif to the area of the bag.
-
+    
     Steps:
-
+    
     1. Determine/confirm the resolution of the tif using a mix of file naming, extent, and dimensions.
     2. Determine the resolution of the bag using file naming conventions.
     3. Calculate the tif/bag resolution to determine the value needed to resize the tif.
@@ -717,10 +847,28 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     8. Align the content of the tiff as needed in order to match the bag and apply the shifted content to the empty array created in Step 7.
     9. Enforce the size of the bag onto the shifted tiff data stored in the array created and modified in Step(s) 7 and 8.
 
-    :param bag: BAG file object Position loaded, file name, grid extents, file size, grid dimensions, uncertainty numpy.array, bathymetry numpy.array
-    :param tif: GeoTiff file objects with numpy.array raster data replaced with binary data only showing data and nodata areas and that is alligned within the maximum extents of all input GeoTiffs
-    :param maxVal: Maximum occurance value AKA nodata value
-    :param targs: Additional arguments generated in :func:`polyTifVals` for use in saving the BAG aligned Tiff data
+    Parameters
+    ----------
+    bag :
+        BAG file object Position loaded, file name, grid extents, file size, grid dimensions, uncertainty numpy.array, bathymetry numpy.array
+    tif :
+        GeoTiff file objects with numpy.array raster data replaced with binary data only showing data and nodata areas and that is alligned within the maximum extents of all input GeoTiffs
+    maxVal :
+        Maximum occurance value AKA nodata value
+    targs :
+        Additional arguments generated in :func:`polyTifVals` for use in saving the BAG aligned Tiff data
+    bag: list :
+        
+    tif: list :
+        
+    maxVal: int :
+        
+    targs: list :
+        
+
+    Returns
+    -------
+
     """
 
     print('alignGrids')
@@ -885,7 +1033,16 @@ def comboGrid(grids: list):
     """
     Prepares the tif and bag data to be split in concatGrid and returns the results
 
-    :param grids: The BAG and GeoTiff objects
+    Parameters
+    ----------
+    grids :
+        The BAG and GeoTiff objects
+    grids: list :
+        
+
+    Returns
+    -------
+
     """
 
     print('comboGrid')
@@ -903,8 +1060,8 @@ def rePrint(grids: list, ugrids: list, maxVal, ioVal: Union[int, bool], debug: U
     Uses a mix of interpolated and original bag and tif data in order to
     determine where new interpolated data should be applied. No interpolated
     data is used where original bag data exists.
-
-
+    
+    
     bag : numpy.array
         orignal bag data
     interp : numpy.array
@@ -921,10 +1078,10 @@ def rePrint(grids: list, ugrids: list, maxVal, ioVal: Union[int, bool], debug: U
         bag no-data value
     ioVal : numpy.array
         user option to include all data or interpolated data only
-
-
+    
+    
     Steps:
-
+    
     1. Create a binary grid of tif dat, tpoly.
     2. Create a binary grid of bag data, bpoly.
     3. Create a combined grid of the "complete coverage" of data; cpoly, numpy.logical_or of bpoly, tpoly.
@@ -934,11 +1091,32 @@ def rePrint(grids: list, ugrids: list, maxVal, ioVal: Union[int, bool], debug: U
     7. Use npoly and dpoly to create a binary grid where only data is present; fpoly, numpy.logical_and of dpoly, nopoly.
     8. Finalize results by using fpoly to apply interpolated data where appropriate and original bag data everywhere else.
 
-    :param grids: List of original data objects for BAG and GeoTiff data
-    :param ugrids: List of interpolated data objects for BAG depth and uncertainty data
-    :param ioVal: User input. Determines whether origninal and interpolated or only interpolated data is output
-    :param debug: Whether or not polyList includes all or only the last step in the evaluation process (Default value = 0)
-    :param maxVal:
+    Parameters
+    ----------
+    grids :
+        List of original data objects for BAG and GeoTiff data
+    ugrids :
+        List of interpolated data objects for BAG depth and uncertainty data
+    ioVal :
+        User input. Determines whether origninal and interpolated or only interpolated data is output
+    debug :
+        Whether or not polyList includes all or only the last step in the evaluation process (Default value = 0)
+    maxVal :
+        
+    grids: list :
+        
+    ugrids: list :
+        
+    ioVal: Union[int :
+        
+    bool] :
+         (Default value = 0)
+    debug: Union[int :
+        
+
+    Returns
+    -------
+
     """
 
     print('rePrint', _dt.now())
@@ -984,7 +1162,7 @@ def rePrint(grids: list, ugrids: list, maxVal, ioVal: Union[int, bool], debug: U
 def triangulateSurfaces(grids: list, combo: _np.array, vals: _np.array, uval: tuple):
     """
     Interpolates input data and convolves the ouput of the interpolation
-
+    
     Takes input BAG and GeoTiff objects; tile or complete data.  This data is
     used to inform the shape/size of the resulting output of the interpolation
     function. If combo and vals are empty, the interpolation process is skipped
@@ -994,13 +1172,30 @@ def triangulateSurfaces(grids: list, combo: _np.array, vals: _np.array, uval: tu
     The output of this function is also saved to a seperate variable "grid"
     while the original output is left untouched. The seperate output is then
     passed to :func:`astropy.convolution.convolve` to smooth the output.
-
+    
     The uncertainty layer is calculated using uval and grid::
 
-    :param grids: The BAG and GeoTiff objects
-    :param combo: Array of indecies where nodata values meet data values in order x, y
-    :param vals: Array of values where nodata values meet data values in order z
-    :param uval: Values for uncertainty calculation
+    Parameters
+    ----------
+    grids :
+        The BAG and GeoTiff objects
+    combo :
+        Array of indecies where nodata values meet data values in order x, y
+    vals :
+        Array of values where nodata values meet data values in order z
+    uval :
+        Values for uncertainty calculation
+    grids: list :
+        
+    combo: _np.array :
+        
+    vals: _np.array :
+        
+    uval: tuple :
+        
+
+    Returns
+    -------
 
     >>> m, b = uval
     >>> uncr = (grid*m)+b
@@ -1042,18 +1237,33 @@ def triangulateSurfaces(grids: list, combo: _np.array, vals: _np.array, uval: tu
 def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
     """
     Primary function for saving final products of the tool.
-
+    
     Extended description of function.
 
-    :param bag:
-    :param new:
-    :param tifs:
-    :param res:
-    :param ext:
-    :param path:
-    :param newu:
-    :param polyList:
-    :param ioVal:
+    Parameters
+    ----------
+    bag :
+        param new:
+    tifs :
+        param res:
+    ext :
+        param path:
+    newu :
+        param polyList:
+    ioVal :
+        
+    new :
+        
+    res :
+        
+    path :
+        
+    polyList :
+        
+
+    Returns
+    -------
+
     """
 
     for tif in tifs:
@@ -1115,23 +1325,43 @@ def sliceFinder(size: int, res: float, shape: Tuple[int, int], var: int = 5000):
     If the file is less than 100Mb, the file will not be tiled.  If the file is
     large enough to tile, the number of tiles and index size of each tile will
     be calculated based on the ratio of the total size of each array.
-
+    
     yChunk = 5000\*sqrt(height/width)
     xChunk = 5000\*sqrt(width/height)
-
+    
     ny = _np.ceil(height/yChunk)
     nx = _np.ceil(width/xChunk)
-
+    
     tiles = nx\*ny
-
+    
     chunkgird is both the arrangement of tiles in relation to the grid and the
     order in which the tiles are processed.
 
-    :param size: Size of the input BAG file
-    :param res: Resolution of the input BAG data
-    :param shape: Dimensions of the input BAG data (y, x)
-    :param var: Arbitrary value for determining chunk size (Default value = 5000)
-    :param size:
+    Parameters
+    ----------
+    size :
+        Size of the input BAG file
+    res :
+        Resolution of the input BAG data
+    shape :
+        Dimensions of the input BAG data (y, x)
+    var :
+        Arbitrary value for determining chunk size (Default value = 5000)
+    size :
+        
+    size: int :
+        
+    res: float :
+        
+    shape: Tuple[int :
+        
+    int] :
+        
+    var: int :
+         (Default value = 5000)
+
+    Returns
+    -------
 
     >>> chunkGrid = _np.arrange(tiles).reshape((ny, nx))
     array([[ 0,  1,  2,  3,  4,  5],
@@ -1168,15 +1398,43 @@ def sliceFinder(size: int, res: float, shape: Tuple[int, int], var: int = 5000):
 def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tuple, ioVal: Union[int, bool]):
     """
     Summary of function
-
+    
     Extended description of function.
 
-    :param grids: The BAG and GeoTiff objects
-    :param size: Size of the input BAG file
-    :param res: Resolution of the input BAG data
-    :param shape: Dimensions of the input BAG data (y, x)
-    :param uval: Values for uncertainty calculation
-    :param ioVal: User input. Determines whether origninal and interpolated or only interpolated data is output
+    Parameters
+    ----------
+    grids :
+        The BAG and GeoTiff objects
+    size :
+        Size of the input BAG file
+    res :
+        Resolution of the input BAG data
+    shape :
+        Dimensions of the input BAG data (y, x)
+    uval :
+        Values for uncertainty calculation
+    ioVal :
+        User input. Determines whether origninal and interpolated or only interpolated data is output
+    grids: list :
+        
+    size: int :
+        
+    res: float :
+        
+    shape: Tuple[int :
+        
+    int] :
+        
+    uval: tuple :
+        
+    ioVal: Union[int :
+        
+    bool] :
+        
+
+    Returns
+    -------
+
     """
 
     z, chunkGrid, sliceInfo = sliceFinder(size, res, shape)
@@ -1251,11 +1509,34 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
     """
     main function of the interpolation process.  This function handles the flow of data in input, tiling, interpolation, and reintigration of the final grid.
 
-    :param bagPath: File path of the input BAG file
-    :param bndPaths: File paths of the input GeoTiff and/or Shapefile files
-    :param desPath: Folder path for the output files
-    :param catzoc: Selection of catzoc grade used to calculate interpolated uncertainty
-    :param ioVal: User input. Determines whether origninal and interpolated or only interpolated data is output
+    Parameters
+    ----------
+    bagPath :
+        File path of the input BAG file
+    bndPaths :
+        File paths of the input GeoTiff and/or Shapefile files
+    desPath :
+        Folder path for the output files
+    catzoc :
+        Selection of catzoc grade used to calculate interpolated uncertainty
+    ioVal :
+        User input. Determines whether origninal and interpolated or only interpolated data is output
+    bagPath: str :
+        
+    bndPaths: List[str] :
+        
+    desPath: List[str] :
+        
+    catzoc: str :
+        
+    ioVal: Union[int :
+        
+    bool] :
+        
+
+    Returns
+    -------
+
     """
 
     start = _dt.now()
@@ -1307,6 +1588,13 @@ class chunk():
     (tile position), and the total height and width of the BAG grid.  This
     information is then used to calculate the indices of each tile (with and
     without a buffer) and the indices of the data within the buffered tiles.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
     """
 
     yMin, yMax, xMin, xMax = 0, 0, 0, 0
@@ -1329,30 +1617,30 @@ class chunk():
         Takes the complete information of a give individual tile and
         calculates the indices of each tile (with and without a buffer) and the
         indices of the data within the buffered tiles.
-
-
+        
+        
         The calculations are the same, regardless of axis:
-
+        
         1. Determination of the data (with a buffer) for interpolation.::
-
+        
             Min = 0 #(for tiles on the upper or right borders)
             #or
             Min = (chunk \* index) - buffer
             Max = chunk \* (inex + 1) + buffer
             #or
             Max = axis total
-
+        
         2. Determination of the data (without a buffer) for use in re-applying data back to the original shape of the data.::
-
+        
             BMin = 0 #(for tiles on the upper or right borders)
             #or
             BMin = (chunk \* index)
             BMax = chunk \* (inex + 1)
             #or
             BMax = axis total
-
+        
         3. Determination of where the data (without a buffer) lies within an interpolated tile (with a buffer).::
-
+        
             IMin = 0
             #or
             IMin = BMin - Min
@@ -1363,35 +1651,45 @@ class chunk():
                 IMax = chunk + buffer
             if ma != 0:
                 IMax = -(yma)
-
-
+        
+        
         Example
         -------
-
+        
         For a shape of::
-
+        
             [25710,35010]
             (4285, 5835)
-
+        
         Tile 1 of 36::
-
+        
             chunkSlice = [0,0]
             [0, 4325, 0, 5875]
             [0, 4285, 0, 5835]
             [0, -40, 0, -40]
-
+        
         Tile 8 of 36::
-
+        
             chunkSlice = [1,2]
             [4245, 8610, 5795, 11710]
             [4285, 8570, 5835, 11670]
             [40, -40, 40, -40]
 
-        :param buffer:
-        :param yChunk:
-        :param xChunk:
-        :param chunkSlice:
-        :param shape:
+        Parameters
+        ----------
+        buffer :
+            param yChunk:
+        xChunk :
+            param chunkSlice:
+        shape :
+            
+        yChunk :
+            
+        chunkSlice :
+            
+
+        Returns
+        -------
 
         >>> tiles, chunkGrid, sliceInfo = sliceFinder(20, .5, [25710,35010])
         >>> print(tiles)

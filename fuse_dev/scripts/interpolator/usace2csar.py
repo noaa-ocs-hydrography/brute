@@ -40,15 +40,42 @@ def write_raster(raster_array: _np.array, gt, data_obj, outputpath: str, dtype=_
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
     (https://gis.stackexchange.com/a/278965)]
 
-    :param raster_array:
-    :param gt:
-    :param data_obj:
-    :param outputpath:
-    :param dtype:  (Default value = _gdal.GDT_UInt32)
-    :param options:  (Default value = 0)
-    :param color_table:  (Default value = 0)
-    :param nbands:  (Default value = 1)
-    :param nodata:  (Default value = False)
+    Parameters
+    ----------
+    raster_array :
+        param gt:
+    data_obj :
+        param outputpath:
+    dtype :
+        Default value = _gdal.GDT_UInt32)
+    options :
+        Default value = 0)
+    color_table :
+        Default value = 0)
+    nbands :
+        Default value = 1)
+    nodata :
+        Default value = False)
+    raster_array: _np.array :
+        
+    gt :
+        
+    outputpath: str :
+        
+    options: int :
+         (Default value = 0)
+    color_table: int :
+         (Default value = 0)
+    nbands: int :
+         (Default value = 1)
+    nodata: Union[int :
+        
+    bool] :
+         (Default value = False)
+
+    Returns
+    -------
+
     """
 
     print('write_raster')
@@ -86,8 +113,18 @@ def _dat2gdal(self, infilename: str, dest_epsg: int):
     """
     Read a dat file and turn it into a GDAL point cloud.
 
-    :param infilename: 
-    :param dest_epsg: 
+    Parameters
+    ----------
+    infilename :
+        param dest_epsg:
+    infilename: str :
+        
+    dest_epsg: int :
+        
+
+    Returns
+    -------
+
     """
 
     points = _np.loadtxt(infilename, delimiter=' ')
@@ -112,7 +149,16 @@ def _zone2epsg(self, zone: int):
     work for zones 1 through 19 for NSRS2007.
     http://spatialreference.org/ref/?search=nad83+utm+zone
 
-    :param zone: 
+    Parameters
+    ----------
+    zone :
+        
+    zone: int :
+        
+
+    Returns
+    -------
+
     """
 
     return int(zone) + 3707
@@ -125,7 +171,16 @@ def _start_xyz(infilename: str):
     looks for the first line of the xyz data after the header
     returns the row number of first line of data
 
-    :param infilename: 
+    Parameters
+    ----------
+    infilename :
+        
+    infilename: str :
+        
+
+    Returns
+    -------
+
     """
 
     x = 0
@@ -147,7 +202,16 @@ def read_bathymetry_dat(infilename: str):
     Read the bathymetry from the .dat file. The dat file is less precise,
     but had no header and is in a standardized format
 
-    :param infilename: 
+    Parameters
+    ----------
+    infilename :
+        
+    infilename: str :
+        
+
+    Returns
+    -------
+
     """
 
     # get the dat file for CEMVN
@@ -166,7 +230,16 @@ def read_bathymetry_xyz(infilename: str):
     
     Note: The high resolution multibeam files are available as .xyz on E-Hydro
 
-    :param infilename: 
+    Parameters
+    ----------
+    infilename :
+        
+    infilename: str :
+        
+
+    Returns
+    -------
+
     """
 
     first_instance = _start_xyz(infilename)
@@ -189,8 +262,20 @@ def tupleGrid(grid: _np.array, maxVal: int):
         - sets io False, indicating that the next value to compare against should not be a nodata value.
     3. returns a list of the points found.
 
-    :param grid: An input array
-    :param maxVal: The array's nodata value
+    Parameters
+    ----------
+    grid :
+        An input array
+    maxVal :
+        The array's nodata value
+    grid: _np.array :
+        
+    maxVal: int :
+        
+
+    Returns
+    -------
+
     """
 
     print('tupleGrid')
@@ -227,7 +312,14 @@ def make_grid(data):
     """
     TODO write description
 
-    :param data: 
+    Parameters
+    ----------
+    data :
+        
+
+    Returns
+    -------
+
     """
 
     maxVal = 1000000.0
@@ -285,11 +377,32 @@ def natInterp(grid: _np.array, xy: _np.array, z: _np.array, shape: tuple, diff: 
     on a mask genereated via the convolution of a binary grid derived from
     original data
 
-    :param grid: The complete grid of original data
-    :param xy: x and y points for data within the grid
-    :param z: z values of the provided data points
-    :param shape: Shape of the grid
-    :param diff: Median of the difference of distance between points in the grid
+    Parameters
+    ----------
+    grid :
+        The complete grid of original data
+    xy :
+        x and y points for data within the grid
+    z :
+        z values of the provided data points
+    shape :
+        Shape of the grid
+    diff :
+        Median of the difference of distance between points in the grid
+    grid: _np.array :
+        
+    xy: _np.array :
+        
+    z: _np.array :
+        
+    shape: tuple :
+        
+    diff: int :
+        
+
+    Returns
+    -------
+
     """
 
     print('natInterp')
@@ -325,9 +438,7 @@ def natInterp(grid: _np.array, xy: _np.array, z: _np.array, shape: tuple, diff: 
 
 
 class xyz_grid():
-    """
-    TODO write description
-    """
+    """TODO write description"""
 
     def __init__(self, grid, vals, extents, shape, res, diff):
         self.grid = grid

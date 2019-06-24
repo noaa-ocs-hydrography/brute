@@ -19,9 +19,7 @@ from get_access import *
 
 
 class bdb51_io:
-    """
-    TODO write description
-    """
+    """TODO write description"""
 
     def __init__(self, port: int):
         """
@@ -43,9 +41,7 @@ class bdb51_io:
         self._response = []
 
     def take_commands(self):
-        """
-        Call the provided port on the host and ask for something to do.
-        """
+        """Call the provided port on the host and ask for something to do."""
 
         conn = socket.create_connection(('', self.port))
         conn.setblocking(True)
@@ -64,8 +60,18 @@ class bdb51_io:
         name. If there is not a predefined password or username one will be
         requested.
 
-        :param command_dict:
-        :returns: response
+        Parameters
+        ----------
+        command_dict :
+            returns: response
+        command_dict: dict :
+            
+
+        Returns
+        -------
+        type
+            response
+
         """
 
         msg = ''
@@ -87,9 +93,7 @@ class bdb51_io:
         return response
 
     def _check_connection(self):
-        """
-        Check to see if the database connection is alive.
-        """
+        """Check to see if the database connection is alive."""
 
         pass
 
@@ -97,8 +101,18 @@ class bdb51_io:
         """
         Check the status of the object.
 
-        :param command_dict:
-        :returns: response
+        Parameters
+        ----------
+        command_dict :
+            returns: response
+        command_dict: dict :
+            
+
+        Returns
+        -------
+        type
+            response
+
         """
 
         response = {'command': 'status', 'alive': self.alive}
@@ -109,8 +123,18 @@ class bdb51_io:
         Send data at the provided location, specifying if the metadata or
         bathymetery should be updated if it already exists.
 
-        :param command_dict: 
-        :returns: response
+        Parameters
+        ----------
+        command_dict :
+            returns: response
+        command_dict: dict :
+            
+
+        Returns
+        -------
+        type
+            response
+
         """
 
         # what to upload, new or updated data
@@ -126,7 +150,16 @@ class bdb51_io:
         """
         Upload both bathymetry and the metadata.
 
-        :param file_path: 
+        Parameters
+        ----------
+        file_path :
+            
+        file_path: str :
+            
+
+        Returns
+        -------
+
         """
 
         # create a fake feature
@@ -159,7 +192,16 @@ class bdb51_io:
         """
         Query for and return data from the db.
 
-        :param command_dict: 
+        Parameters
+        ----------
+        command_dict :
+            
+        command_dict: dict :
+            
+
+        Returns
+        -------
+
         """
 
         pass
@@ -170,8 +212,18 @@ class bdb51_io:
         
         The command dictionary must contain a key word "action"
 
-        :param command_dict:
-        :returns: response
+        Parameters
+        ----------
+        command_dict :
+            returns: response
+        command_dict: dict :
+            
+
+        Returns
+        -------
+        type
+            response
+
         """
 
         action = command_dict['action']
@@ -188,8 +240,18 @@ class bdb51_io:
         data, read and return data, destroy the object and exit the
         environment.
 
-        :param command_dict:
-        :returns: response
+        Parameters
+        ----------
+        command_dict :
+            returns: response
+        command_dict: dict :
+            
+
+        Returns
+        -------
+        type
+            response
+
         """
 
         self._command.append(command_dict)
@@ -210,7 +272,16 @@ def main(port: int):
     """
     An event loop waiting for commands.
 
-    :param port: 
+    Parameters
+    ----------
+    port :
+        
+    port: int :
+        
+
+    Returns
+    -------
+
     """
 
     db_io = bdb51_io(port)

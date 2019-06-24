@@ -34,17 +34,30 @@ except:
 ##-----------------------------------------------------------------------------
 
 class read_raw:
-    """This class passes back bathymetry
+    """
+    This class passes back bathymetry
     & a metadata dictionary from the e-Hydro files
 
+    Parameters
+    ----------
+
+    Returns
+    -------
 
     """
     
     def read_metadata(self, infilename):
-        """Read all available meta data.
+        """
+        Read all available meta data.
         returns dictionary
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+
+        Returns
+        -------
 
         """
         version='CESWG'
@@ -52,10 +65,17 @@ class read_raw:
         return retrieve_meta_for_Ehydro_out_onefile(infilename)#
     
     def read_bathymetry_dat(self, infilename):
-        """Read the bathymetry from the .dat file. The dat file is less precise,
+        """
+        Read the bathymetry from the .dat file. The dat file is less precise,
         but had no header and is in a standardized format
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+
+        Returns
+        -------
 
         """
         # get the dat file for CESWG# Galveston
@@ -66,12 +86,19 @@ class read_raw:
         return xyz
 
     def read_bathymetry(self, infilename):
-        """Read the bathymetry from the xyz files, this tells it to not include
+        """
+        Read the bathymetry from the xyz files, this tells it to not include
         the header when reading the file
         
         Note: The high resolution multibeam files are available as .xyz on E-Hydro
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+
+        Returns
+        -------
 
         """
         version='CESWG'
@@ -89,11 +116,19 @@ class read_raw:
 
 #------------------------------------------------------------------------------
 def return_surveyid(filenamepath, ex_string):
-    """strip end of filename off
+    """
+    strip end of filename off
     surveybasename =return_surveyid(filenamepath, ex_string)
 
-    :param filenamepath: 
-    :param ex_string: 
+    Parameters
+    ----------
+    filenamepath :
+        param ex_string:
+    ex_string :
+        
+
+    Returns
+    -------
 
     """
     basename = os.path.basename(filenamepath)
@@ -102,12 +137,19 @@ def return_surveyid(filenamepath, ex_string):
 #------------------------------------------------------------------------------
 
 def retrieve_meta_for_Ehydro_out_onefile(filename):
-    """retrieve metadata for USACE E-Hydro files
+    """
+    retrieve metadata for USACE E-Hydro files
     function returns metadata dictionary
     
     input is filename of .xyz file with path
 
-    :param filename: 
+    Parameters
+    ----------
+    filename :
+        
+
+    Returns
+    -------
 
     """
     #next if pull the subset of the table in the dataframe related to the list of files passed to it.
@@ -203,12 +245,22 @@ class Extract_Txt(object):
             self.errorfile = os.path.dirname(filename) + 'Default_extract_ehdyro_meta_class_CESWG_error.txt'       
 
     def parse_ehydro_xyz(self, infilename, meta_source = 'xyz', version= 'CESWG', default_meta = ''):#need to change version to None
-        """'CESWG'
+        """
+        'CESWG'
 
-        :param infilename: 
-        :param meta_source:  (Default value = 'xyz')
-        :param version:  (Default value = 'CESWG')
-        :param default_meta:  (Default value = '')
+        Parameters
+        ----------
+        infilename :
+            param meta_source:  (Default value = 'xyz')
+        version :
+            Default value = 'CESWG')
+        default_meta :
+            Default value = '')
+        meta_source :
+             (Default value = 'xyz')
+
+        Returns
+        -------
 
         """
         """
@@ -250,7 +302,8 @@ class Extract_Txt(object):
         return merged_meta
 
     def parse_ehydro_filename(self, infilename):
-        """Parse the provided infilename for the channel project code, unique id,
+        """
+        Parse the provided infilename for the channel project code, unique id,
         subproject code, survey acquistion start date, the survey code, and
         optional field and return a dictionary of these fields.  The dictionary
         contains the following keys:
@@ -264,7 +317,13 @@ class Extract_Txt(object):
             from_path : this is named to match other scripts downstream
             from_filename : this is also named to match other file downstream
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+
+        Returns
+        -------
 
         """
         base = os.path.basename(infilename)
@@ -294,15 +353,23 @@ class Extract_Txt(object):
         return meta
 
     def parse_xyz_header(self, infilename, version=None):
-        """Parse the xyz file header for meta data and return a dictionary.  The
+        """
+        Parse the xyz file header for meta data and return a dictionary.  The
         key words used to search are
             NOTES
             PROJECT_NAME
             SURVEY_NAME
             DATES_OF_SURVEY
 
-        :param infilename: 
-        :param version:  (Default value = None)
+        Parameters
+        ----------
+        infilename :
+            param version:  (Default value = None)
+        version :
+             (Default value = None)
+
+        Returns
+        -------
 
         """
         header = []
@@ -350,13 +417,21 @@ class Extract_Txt(object):
             return meta
 
     def load_default_metadata(self, infilename, default_meta):
-        """Given the file name for data and a default metadata file (containing a
+        """
+        Given the file name for data and a default metadata file (containing a
         picked dictionary), look for the default file.  If that files does not
         exist, look for a file named 'default.pkl' in the same directory as the
         provided file name.
 
-        :param infilename: 
-        :param default_meta: 
+        Parameters
+        ----------
+        infilename :
+            param default_meta:
+        default_meta :
+            
+
+        Returns
+        -------
 
         """
         if len(default_meta) == 0:
@@ -370,11 +445,18 @@ class Extract_Txt(object):
         return meta
 ##-----------------------------------------------------------------------------
 def get_xml(filename):
-    """input USACE .xyz/.XYZ filename or any last extension and return .xml
+    """
+    input USACE .xyz/.XYZ filename or any last extension and return .xml
     xmlname = get_xml(filename) this makes this friendlier to .ppxyz files
     for instance
 
-    :param filename: 
+    Parameters
+    ----------
+    filename :
+        
+
+    Returns
+    -------
 
     """
     basef = filename.rpartition('.')[0]
@@ -382,13 +464,21 @@ def get_xml(filename):
     return xml_name
 
 def get_xml_xt(filename, extension):
-    """input USACE text filename and ending to chop to get to basename
+    """
+    input USACE text filename and ending to chop to get to basename
     output will be the .xml file name
     (_A.xyz for instance or _FULL.XYZ are examples of extensions)
     xmlname = get_xml_xt(filename, extension)
 
-    :param filename: 
-    :param extension: 
+    Parameters
+    ----------
+    filename :
+        param extension:
+    extension :
+        
+
+    Returns
+    -------
 
     """
     end_len = len(extension)
@@ -400,11 +490,18 @@ def get_xml_xt(filename, extension):
     return xml_name
 
 def get_xml_match(f):
-    """input USACE .xyz/.XYZ filename or any last extension and return .xml
+    """
+    input USACE .xyz/.XYZ filename or any last extension and return .xml
     it will try to match the non-full survey to the full density survey
     inorder to use the matching xml
 
-    :param f: 
+    Parameters
+    ----------
+    f :
+        
+
+    Returns
+    -------
 
     """
     if '_A.xyz' in f:
@@ -420,10 +517,17 @@ def get_xml_match(f):
     return xmlfilename
 ##-----------------------------------------------------------------------------        
 def _start_xyz(infilename):
-    """looks for the first line of the xyz data after the header
+    """
+    looks for the first line of the xyz data after the header
     returns the row number of first line of data
 
-    :param infilename: 
+    Parameters
+    ----------
+    infilename :
+        
+
+    Returns
+    -------
 
     """
     first_instance = ''
@@ -442,9 +546,17 @@ def _start_xyz(infilename):
 
 def _is_header2(line, version = None):
     """
+    
 
-    :param line: 
-    :param version:  (Default value = None)
+    Parameters
+    ----------
+    line :
+        param version:  (Default value = None)
+    version :
+         (Default value = None)
+
+    Returns
+    -------
 
     """
     if version == None:
@@ -469,9 +581,16 @@ def _is_header2(line, version = None):
             return True
 
 def _parse_projectname(line):
-    """Parse the project name line.
+    """
+    Parse the project name line.
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     name = line.split('=')[-1]
@@ -481,8 +600,15 @@ def _parse_projectname(line):
 
 def _parse_notes_chart(line):
     """
+    
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     lines = line.split('\\n')
@@ -511,9 +637,16 @@ def _parse_notes_chart(line):
     return metadata            
 
 def _parse_note(line):
-    """Parse the notes line.
+    """
+    Parse the notes line.
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     metadata = {}
@@ -564,9 +697,16 @@ def _parse_note(line):
     return metadata
 
 def _parse_surveyname(line):
-    """Parse the survey name line.
+    """
+    Parse the survey name line.
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     name = line.split('=')[-1]
@@ -575,9 +715,16 @@ def _parse_surveyname(line):
     return metadata
 
 def _parse_surveydates(line):
-    """Parse the project dates line.
+    """
+    Parse the project dates line.
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     metadata = {}
@@ -598,10 +745,17 @@ def _parse_surveydates(line):
     return metadata
 
 def _xyztext2date(textdate):
-    """Take the date as provided in a text string as "day month year" as in
+    """
+    Take the date as provided in a text string as "day month year" as in
     "20 March 2017" and return the format "YearMonthDay" as in "20170320".
 
-    :param textdate: 
+    Parameters
+    ----------
+    textdate :
+        
+
+    Returns
+    -------
 
     """
     try:
@@ -617,12 +771,19 @@ def _xyztext2date(textdate):
             return 'unknown'
 
 def _parse_sounding_frequency(line):
-    """parse sounding frequency.
+    """
+    parse sounding frequency.
     Note: LOW & HIGH are usually settings for the
     single beam in New Orleans
     400kHz seems to be their multibeam.
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     name = line.split('SOUNDING_FREQUENCY==')[-1].strip('\n')
@@ -630,9 +791,16 @@ def _parse_sounding_frequency(line):
     return metadata
 
 def _parse_survey_type(line):
-    """returns survey type
+    """
+    returns survey type
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     name = line.split('SURVEY_TYPE==')[-1]
@@ -641,9 +809,16 @@ def _parse_survey_type(line):
     return metadata
 
 def _parse_survey_crew(line):
-    """returns survey crew
+    """
+    returns survey crew
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     name = line.split('SURVEY_CREW==')[-1]
@@ -652,9 +827,16 @@ def _parse_survey_crew(line):
     return metadata 
 
 def _parse_sea_condition(line):
-    """sea conditions
+    """
+    sea conditions
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     name = line.split('SEA_CONDITION==')[-1]
@@ -663,9 +845,16 @@ def _parse_sea_condition(line):
     return metadata
 
 def _parse_vessel_name(line):
-    """vessel name
+    """
+    vessel name
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     name = line.split('VESSEL_NAME==')[-1]
@@ -674,9 +863,16 @@ def _parse_vessel_name(line):
     return metadata
 
 def _parse_LWRP_(line):
-    """Checks to see if its in Low Water Reference Plane
+    """
+    Checks to see if its in Low Water Reference Plane
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     name = line.split('LWRP==')[-1]
@@ -698,10 +894,18 @@ def _parse_LWRP_(line):
     return metadata
 
 def _parse_Gage_Reading(line, allcap1):
-    """Looks for the water level Gage
+    """
+    Looks for the water level Gage
 
-    :param line: 
-    :param allcap1: 
+    Parameters
+    ----------
+    line :
+        param allcap1:
+    allcap1 :
+        
+
+    Returns
+    -------
 
     """
     if allcap1 == 1:
@@ -715,9 +919,16 @@ def _parse_Gage_Reading(line, allcap1):
     return metadata  
 
 def _parse_sound_velocity(line):
-    """Looks for Sound Velocity
+    """
+    Looks for Sound Velocity
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     name = line.split('SOUND VELOCITY')[-1]
@@ -727,8 +938,15 @@ def _parse_sound_velocity(line):
 
 def _parse_Ranges(line):
     """
+    
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     name = line.split('Range:')[-1]
@@ -738,8 +956,15 @@ def _parse_Ranges(line):
 
 def _is_RTK(line):
     """
+    
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     pattern_coordinates = '[RTK]'#at least six digits# should be seven then . plus two digits
@@ -750,8 +975,15 @@ def _is_RTK(line):
         
 def _is_RTK_Tide(line):
     """
+    
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     if _re.findall('[VRS RTK TIDES]', line) is not None:
@@ -761,8 +993,15 @@ def _is_RTK_Tide(line):
 
 def _parse_processedBy(line):
     """
+    
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     metadata = {'ProcessedBy' : line}
@@ -770,8 +1009,15 @@ def _parse_processedBy(line):
 
 def _parse_CheckedBy(line):
     """
+    
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     metadata = {'CheckedBy':line.split('CheckedBy==')[1]}
@@ -779,8 +1025,15 @@ def _parse_CheckedBy(line):
 
 def _parse_ReviewedBy(line):
     """
+    
 
-    :param line: 
+    Parameters
+    ----------
+    line :
+        
+
+    Returns
+    -------
 
     """
     metadata = {'ReviewedBy':line.split('ReviewedBy==')[1]}
@@ -788,11 +1041,19 @@ def _parse_ReviewedBy(line):
 
 ##-----------------------------------------------------------------------------
 def check_date_order(m, mm):
-    """ingest dates from e-hydro file name, and xml if available
+    """
+    ingest dates from e-hydro file name, and xml if available
     do a date check.
 
-    :param m: 
-    :param mm: 
+    Parameters
+    ----------
+    m :
+        param mm:
+    mm :
+        
+
+    Returns
+    -------
 
     """
     date_list = []#date_list = [begdate, enddate,filename_date]
@@ -832,13 +1093,21 @@ def check_date_order(m, mm):
 ##-----------------------------------------------------------------------------
 
 def check_abst_date(filename_date, daterange):
-    """check_abst_date(filename_date, daterange)
+    """
+    check_abst_date(filename_date, daterange)
     Expecting values from:
     #filename_date = m['filename_date']
     #dateramge = xml_meta['daterange']
 
-    :param filename_date: 
-    :param daterange: 
+    Parameters
+    ----------
+    filename_date :
+        param daterange:
+    daterange :
+        
+
+    Returns
+    -------
 
     """
     next_date = []
@@ -917,8 +1186,15 @@ def check_abst_date(filename_date, daterange):
 
 def check_datelist(next_date):
     """
+    
 
-    :param next_date: 
+    Parameters
+    ----------
+    next_date :
+        
+
+    Returns
+    -------
 
     """
     dateonly_list =[]
@@ -929,9 +1205,17 @@ def check_datelist(next_date):
 
 def check_date_format_hasday(date_string, b_or_e =None):
     """
+    
 
-    :param date_string: 
-    :param b_or_e:  (Default value = None)
+    Parameters
+    ----------
+    date_string :
+        param b_or_e:  (Default value = None)
+    b_or_e :
+         (Default value = None)
+
+    Returns
+    -------
 
     """
     pattern_missing_valid_day='[\d][\d][\d][\d][\d][\d][0][0]'

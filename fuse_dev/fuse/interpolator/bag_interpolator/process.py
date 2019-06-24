@@ -22,9 +22,7 @@ _catZones = {
 
 
 class intitialize:
-    """
-    TODO write description
-    """
+    """TODO write description"""
 
     def __init__(self, outlocation: str, mode: str, catzoc, io: bool):
         """
@@ -49,8 +47,18 @@ class intitialize:
         """
         TODO write description
 
-        :param filepath: 
-        :param coverage_list: 
+        Parameters
+        ----------
+        filepath :
+            param coverage_list:
+        filepath: str :
+            
+        coverage_list :
+            
+
+        Returns
+        -------
+
         """
 
         bag = _bag.bag_file()

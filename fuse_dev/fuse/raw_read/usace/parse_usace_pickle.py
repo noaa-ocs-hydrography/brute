@@ -10,9 +10,7 @@ import pickle as _pickle
 
 
 class pickle_file:
-    """
-    TODO write description
-    """
+    """TODO write description"""
 
     _eHyo = ["OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
              "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION",
@@ -40,7 +38,16 @@ class pickle_file:
         If a .pickle exists, the function will open it and return it's
         dictionary contents
 
-        :param infilename: Complete file path of a survey .xyz file
+        Parameters
+        ----------
+        infilename :
+            Complete file path of a survey .xyz file
+        infilename: str :
+            
+
+        Returns
+        -------
+
         """
 
         froot, fname = _os.path.split(infilename)

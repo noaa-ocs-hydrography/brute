@@ -14,9 +14,7 @@ from osgeo import gdal
 
 
 class interpolator:
-    """
-    An abstraction for data interpolation.
-    """
+    """An abstraction for data interpolation."""
 
     def __init__(self, interpolation_engine: str, interp_type: str, resolution: float):
         """
@@ -29,9 +27,7 @@ class interpolator:
         self._setup()
 
     def _setup(self):
-        """
-        Set up and configure the interpolation tools.
-        """
+        """Set up and configure the interpolation tools."""
 
         if self._interp_engine == 'point':
             self._engine = pinterp.point_interpolator()
@@ -42,8 +38,18 @@ class interpolator:
         """
         Take a gdal dataset and run the interpolation, returning a gdal raster.
 
-        :param dataset: 
-        :param shapefile:  (Default value = None)
+        Parameters
+        ----------
+        dataset :
+            param shapefile:  (Default value = None)
+        dataset: gdal.Dataset :
+            
+        shapefile: str :
+             (Default value = None)
+
+        Returns
+        -------
+
         """
 
         if shapefile != None:

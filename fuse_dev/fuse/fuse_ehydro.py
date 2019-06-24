@@ -19,9 +19,7 @@ from fuse.proc_io.proc_io import proc_io
 
 
 class fuse_ehydro(_fbc.fuse_base_class):
-    """
-    TODO write description
-    """
+    """TODO write description"""
     _cols = ['from_filename',
              'from_path',
              'to_filename',
@@ -70,6 +68,13 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         Use information from the config file to set the reader to use for
         converting the raw data to usable metadata and bathymetry.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
 
         try:
@@ -90,16 +95,12 @@ class fuse_ehydro(_fbc.fuse_base_class):
             raise ValueError("No reader type found in the configuration file.")
 
     def _set_data_transform(self):
-        """
-        Set up the datum transformation engine.
-        """
+        """Set up the datum transformation engine."""
 
         self._transform = _trans.transform(self._config, self._reader)
 
     def _set_data_interpolator(self):
-        """
-        Set up the interpolator engine.
-        """
+        """Set up the interpolator engine."""
 
         engine = self._config['interpolation_engine']
         res = float(self._config['to_resolution'])
@@ -110,6 +111,13 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         Set up the location and method to write tranformed and interpolated
         data.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
 
         ext = self._config['bathymetry_intermediate_file']
@@ -122,8 +130,15 @@ class fuse_ehydro(_fbc.fuse_base_class):
 
     def _read_pickle(self, infilename):
         """
+        
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+
+        Returns
+        -------
 
         """
         pickle = _usace.parse_usace_pickle.pickle_file(infilename)
@@ -135,7 +150,16 @@ class fuse_ehydro(_fbc.fuse_base_class):
         to the specified metadata file.  The bathymetry will be interpolated and
         writen to a CSAR file in the specificed csarpath.
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+        infilename: str :
+            
+
+        Returns
+        -------
+
         """
 
         self._meta = {}
@@ -160,7 +184,16 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         Do the datum transformtion and interpolation.
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+        infilename: str :
+            
+
+        Returns
+        -------
+
         """
 
         self._get_stored_meta(infilename)
@@ -195,7 +228,16 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         Set the object logging object and file.
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+        infilename: str :
+            
+
+        Returns
+        -------
+
         """
 
         metapath, metafile = _os.path.split(self._config['metapath'])
@@ -218,7 +260,16 @@ class fuse_ehydro(_fbc.fuse_base_class):
         Get the metadata in a local dictionary so that it can be used within
         the instantiated object.
 
-        :param infilename: 
+        Parameters
+        ----------
+        infilename :
+            
+        infilename: str :
+            
+
+        Returns
+        -------
+
         """
 
         # file name is the key rather than the path
