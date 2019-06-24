@@ -163,7 +163,7 @@ def check_metadata(meta: dict, meta_type: str):
             if key not in meta:
                 mkeys = mkeys + key + ', '
         if len(mkeys) > 0:
-            raise ValueError('Metadata missing to write csar %s' % mkeys)
+            raise ValueError(f'Metadata missing to write csar {mkeys}')
     elif meta_type == 'point':
         req_attrib = {'crs',
                       'outfilename',
@@ -174,9 +174,10 @@ def check_metadata(meta: dict, meta_type: str):
             if key not in meta:
                 mkeys = mkeys + key + ', '
         if len(mkeys) > 0:
-            raise ValueError('Metadata missing to write csar %s' % mkeys)
+            raise ValueError(f'Metadata missing to write csar {mkeys}')
     else:
-        raise ValueError('Metadata missing to write csar %s' % mkeys)
+        raise ValueError(f'Metadata missing to write csar {mkeys}')
+
 
 def main():
     """

@@ -166,11 +166,11 @@ class proc_io:
                 print(err)
                 self._logger.log(logging.DEBUG, err)
             if not os.path.exists(metadata['outfilename']):
-                err = "Unable to create {}".format(metadata['outfilename'])
+                err = f"Unable to create {metadata['outfilename']}"
                 self._logger.log(logging.DEBUG, err)
                 raise RuntimeError(err)
         else:
-            err = "Unable to overwrite {}".format(metadata['outfilename'])
+            err = f"Unable to overwrite {metadata['outfilename']}"
             self._logger.log(logging.DEBUG, err)
             raise RuntimeError(err)
 

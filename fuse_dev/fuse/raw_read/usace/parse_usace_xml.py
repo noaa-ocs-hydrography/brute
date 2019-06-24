@@ -543,7 +543,7 @@ class XML_Meta(object):
         try:
             self.data['filename'] = ret.text
         except Exception as e:
-            log.warning("unable to read the survey name attribute: %s" % e)
+            log.warning(f"unable to read the survey name attribute: {e}")
             return
 
     # --------------------------------------------------------------------------
@@ -559,16 +559,16 @@ class XML_Meta(object):
             try:
                 text_date = ret.text
             except Exception as e:
-                log.warning("unable to read the SORDAT date string: %s" % e)
-                return    
+                log.warning(f"unable to read the SORDAT date string: {e}")
+                return
             tm_date = None
             try:
                 parsed_date = parser.parse(text_date)
                 tm_date = parsed_date.strftime('%Y%m%d')
             except Exception:
-                log.warning("unable to handle the date string: %s" % text_date)
-        elif self.version=='HSMDB':
-            date1 =  parser.parse(self.source['SORDAT'])
+                log.warning(f"unable to handle the date string: {text_date}")
+        elif self.version == 'HSMDB':
+            date1 = parser.parse(self.source['SORDAT'])
             tm_date = date1.strftime('%Y%m%d')
         if tm_date is None:
             self.data['SORDAT'] = text_date
@@ -592,13 +592,13 @@ class XML_Meta(object):
                 if ret is not None:
                     self.data['SURATH'] = ret.text
             except Exception as e:
-                log.warning("unable to read the survey authority name attribute: %s" % e)
-                return            
-        elif self.version=='HSMDB':
+                log.warning(f"unable to read the survey authority name attribute: {e}")
+                return
+        elif self.version == 'HSMDB':
             try:
                 self.data['SURATH'] = self.source['SURATH']
             except Exception as e:
-                log.warning("unable to read the survey authority name attribute: %s" % e)
+                log.warning(f"unable to read the survey authority name attribute: {e}")
                 return
 
     def _read_survey_start_date(self):
@@ -617,15 +617,15 @@ class XML_Meta(object):
             try:
                 text_start_date = rets.text
             except Exception as e:
-                log.warning("unable to read the survey start date string: %s" % e)
-                return            
+                log.warning(f"unable to read the survey start date string: {e}")
+                return
             tms_date = None
             try:
                 parsed_date = parser.parse(text_start_date)
                 tms_date = parsed_date.strftime('%Y%m%d')  # S-57/S-101 date format
             except Exception:
-                log.warning("unable to handle the survey start string: %s" % text_start_date)
-    
+                log.warning(f"unable to handle the survey start string: {text_start_date}")
+
             if tms_date is None:
                 self.data['SURSTA'] = text_start_date
             else:
@@ -647,14 +647,14 @@ class XML_Meta(object):
             try:
                 text_end_date = rete.text
             except Exception as e:
-                log.warning("unable to read the survey end date string: %s" % e)
-                return            
+                log.warning(f"unable to read the survey end date string: {e}")
+                return
             tme_date = None
             try:
                 parsed_date = parser.parse(text_end_date)
                 tme_date = parsed_date.strftime('%Y%m%d')
             except Exception:
-                log.warning("unable to handle the survey end string: %s" % text_end_date)    
+                log.warning(f"unable to handle the survey end string: {text_end_date}")
             if tme_date is None:
                 self.data['SUREND'] = text_end_date
             else:
@@ -678,7 +678,7 @@ class XML_Meta(object):
                 for r in ret:
                     self.data['TECSOU'].append(r.text)
         except Exception as e:
-            log.warning("unable to read the TECSOU attribute: %s" % e)
+            log.warning(f"unable to read the TECSOU attribute: {e}")
             return
 
     def _read_datum(self):
@@ -699,7 +699,7 @@ class XML_Meta(object):
                 for r in ret:
                     self.data['DATUM'].append(r.text)
         except Exception as e:
-            log.warning("unable to read the survey datum name attribute: %s" % e)
+            log.warning(f"unable to read the survey datum name attribute: {e}")
             return
 
     def _read_survey_name(self):
@@ -714,7 +714,7 @@ class XML_Meta(object):
             if ret is not None:
                 self.data['survey'] = ret.text
         except Exception as e:
-            log.warning("unable to read the survey name attribute: %s" % e)
+            log.warning(f"unable to read the survey name attribute: {e}")
             return
 
     def _read_planam(self):
@@ -729,7 +729,7 @@ class XML_Meta(object):
             if ret is not None:
                 self.data['planam'] = ret.text
         except Exception as e:
-            log.warning("unable to read the survey platform name attribute: %s" % e)
+            log.warning(f"unable to read the survey platform name attribute: {e}")
             return
 
     def _read_sensor_desc(self):
@@ -746,7 +746,7 @@ class XML_Meta(object):
                 for r in ret:
                     self.data['sensor'].append(r.text)
         except Exception as e:
-            log.warning("unable to read the sensor descriptioin name attribute: %s" % e)
+            log.warning(f"unable to read the sensor descriptioin name attribute: {e}")
             return
 
 
