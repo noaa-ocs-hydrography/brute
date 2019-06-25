@@ -13,12 +13,14 @@ import numpy as _np
 import scipy as _scipy
 
 
+import matplotlib.pyplot as plt
+
 def tupleGrid(grid: _np.array, nodata: int):
     """
     Takes an input matrix and an assumed nodata value. The function iterates
     through the matrix and compiles a list of 'edge' points [[x, y, z], ...]
     where:
-    
+
     1. the current value is not a nodata value and previous value was a nodata value.
         - sets io True, indicating that the next value to compare against should be a nodata value.
     2. the current value is a nodata value and the previous value was not a nodata value.
@@ -32,9 +34,9 @@ def tupleGrid(grid: _np.array, nodata: int):
     nodata :
         The array's nodata value
     grid: _np.array :
-        
+
     nodata: int :
-        
+
 
     Returns
     -------
@@ -74,11 +76,11 @@ def concatGrid(arr_1, arr_2, nodata: int):
     Passes the assumed nodata value and the arrays held within each of the
     listed grid objects to :func:`tupleGrid` for a return of an array of
     edge points for each grid [[x, y, z], ...]
-    
+
     Takes the results of both tupleGrid calls and combines them into a single
     array of edge points.  Then uses .view().sort() to sort the combined
     products [[x, y, z], ...] based on ascending x, then column y.
-    
+
     The results of the sorted point array are then split into a list of points
     [[x, y], ...] and values [[z], ...] and returned
 
@@ -89,9 +91,9 @@ def concatGrid(arr_1, arr_2, nodata: int):
     nodata :
         The BAG data's nodata value
     arr_2 :
-        
+
     nodata: int :
-        
+
 
     Returns
     -------
@@ -117,9 +119,9 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
     Uses a mix of interpolated and original bag and tif data in order to
     determine where new interpolated data should be applied. No interpolated
     data is used where original bag data exists.
-    
+
     Steps:
-    
+
     1. Create a binary grid of cov data, tpoly.
     2. Create a binary grid of bag data, bpoly.
     3. Create a combined grid of the "complete coverage" of data; cpoly, numpy.logical_or of bpoly, tpoly.
@@ -144,21 +146,21 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
     debug :
         Whether or not polyList includes all or only the last step in the evaluation process (Default value = False)
     bag_elev: _np.array :
-        
+
     bag_uncr: _np.array :
-        
+
     cov_array: _np.array :
-        
+
     ugrids: list :
-        
+
     maxVal: _np.array :
-        
+
     ioVal: Union[int :
-        
+
     bool] :
          (Default value = False)
     debug: Union[int :
-        
+
 
     Returns
     -------
@@ -197,11 +199,15 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
         nbag = _np.where(fpoly, interp, maxVal)
         nunc = _np.where(fpoly, iuncrt, maxVal)
     print('done', _dt.now())
+    polyList = [tpoly,bpoly,cpoly,dpoly,npoly,fpoly,ibag]
+    plt.figure()
+    for rast in polyList:
+        plt.imshow(rast)
+        plt.show()
     if debug == False:
         #        polyList = [fpoly, cpoly]
         return nbag, nunc, cpoly.astype(_np.int)
     elif debug == True:
-        polyList = [tpoly, bpoly, cpoly, dpoly, npoly, fpoly, ibag]
         return nbag, nunc, polyList
 
 
@@ -249,12 +255,13 @@ class linear:
         x, y = _np.arange(bathy.shape[1]), _np.arange(bathy.shape[0])
         xi, yi = _np.meshgrid(x, y)
         xy, z = concatGrid(bathy, covrg, nodata)
+        print (xy, z)
         if len(xy) != 0:
             self.bathy, self.uncrt, self.unint = self._interpolate(xy, z, xi,
                                                                    yi, catzoc,
                                                                    nodata)
         else:
-            self.bathy, self.uncrt, self.unint = None, None, None
+            self.bathy, self.uncrt, self.unint = bathy, uncrt, bathy
 
     def _interpolate(self, xy, z, xi, yi, uval, nodata):
         """
@@ -269,11 +276,11 @@ class linear:
         uval :
             param nodata:
         z :
-            
+
         yi :
-            
+
         nodata :
-            
+
 
         Returns
         -------
@@ -300,15 +307,15 @@ def sliceFinder(size: int, shape: Tuple[int, int], res: float, var: int = 5000):
     If the file is less than 100Mb, the file will not be tiled.  If the file is
     large enough to tile, the number of tiles and index size of each tile will
     be calculated based on the ratio of the total size of each array.
-    
+
     yChunk = 5000\*sqrt(height/width)
     xChunk = 5000\*sqrt(width/height)
-    
+
     ny = _np.ceil(height/yChunk)
     nx = _np.ceil(width/xChunk)
-    
+
     tiles = nx\*ny
-    
+
     chunkgird is both the arrangement of tiles in relation to the grid and the
     order in which the tiles are processed.
 
@@ -323,13 +330,13 @@ def sliceFinder(size: int, shape: Tuple[int, int], res: float, var: int = 5000):
     var :
         Arbitrary value for determining chunk size (Default value = 5000)
     size: int :
-        
+
     shape: Tuple[int :
-        
+
     int] :
-        
+
     res: float :
-        
+
     var: int :
          (Default value = 5000)
 
@@ -350,7 +357,7 @@ def sliceFinder(size: int, shape: Tuple[int, int], res: float, var: int = 5000):
     print('sliceFinder')
     if res < 1:
         b = 25 / res
-    elif res > 1:
+    elif res >= 1:
         b = 25
     if size <= 100000:
         tiles = 0
@@ -381,7 +388,7 @@ def chunk(arr, tile, mode=None, copy=None):
     copy :
         Default value = None)
     tile :
-        
+
 
     Returns
     -------
@@ -509,29 +516,29 @@ class tile:
         Takes the complete information of a give individual tile and
         calculates the indices of each tile (with and without a buffer) and the
         indices of the data within the buffered tiles.
-        
+
         The calculations are the same, regardless of axis:
-        
+
         1. Determination of the data (with a buffer) for interpolation.::
-        
+
             Min = 0 #(for tiles on the upper or right borders)
             #or
             Min = (chunk \* index) - buffer
             Max = chunk \* (inex + 1) + buffer
             #or
             Max = axis total
-        
+
         2. Determination of the data (without a buffer) for use in re-applying data back to the original shape of the data.::
-        
+
             BMin = 0 #(for tiles on the upper or right borders)
             #or
             BMin = (chunk \* index)
             BMax = chunk \* (inex + 1)
             #or
             BMax = axis total
-        
+
         3. Determination of where the data (without a buffer) lies within an interpolated tile (with a buffer).::
-        
+
             IMin = 0
             #or
             IMin = BMin - Min
@@ -542,24 +549,24 @@ class tile:
                 IMax = chunk + buffer
             if ma != 0:
                 IMax = -(yma)
-        
+
         Example
         -------
-        
+
         For a shape of::
-        
+
             [25710,35010]
             (4285, 5835)
-        
+
         Tile 1 of 36::
-        
+
             chunkSlice = [0,0]
             [0, 4325, 0, 5875]
             [0, 4285, 0, 5835]
             [0, -40, 0, -40]
-        
+
         Tile 8 of 36::
-        
+
             chunkSlice = [1,2]
             [4245, 8610, 5795, 11710]
             [4285, 8570, 5835, 11670]
@@ -572,11 +579,11 @@ class tile:
         xChunk :
             param chunkSlice:
         shape :
-            
+
         yChunk :
-            
+
         chunkSlice :
-            
+
 
         Returns
         -------

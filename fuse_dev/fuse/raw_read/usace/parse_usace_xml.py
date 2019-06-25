@@ -9,7 +9,7 @@ a general sense, and also for specific S57 needs.
 
 J Kinney 
 update April 3, 2019
-
+update June 21, 2019
 """
 
 import logging as log
@@ -61,7 +61,7 @@ def extract_s57_dict(xmlfilename):
     Parameters
     ----------
     xmlfilename :
-        
+
 
     Returns
     -------
@@ -871,7 +871,7 @@ def parse_namespace(meta_str):
     Parameters
     ----------
     meta_str :
-        
+
 
     Returns
     -------
@@ -908,7 +908,7 @@ def check_firstline(meta_xml):
     Parameters
     ----------
     meta_xml :
-        
+
 
     Returns
     -------
@@ -1173,7 +1173,7 @@ def convert_tofips(SOURCEPROJECTION_dict, SPCS):
     SOURCEPROJECTION_dict :
         param SPCS:
     SPCS :
-        
+
 
     Returns
     -------
@@ -1225,7 +1225,13 @@ SOURCEPROJECTION_dict = {
     'California IV Zone': '0404',
     'California V Zone': '0405',
     'California VI Zone': '0406',
-    'Connecticut': '0600',
+    'California Zone I' : '0401',
+     'California Zone II' : '0402',
+     'California Zone III' : '0403',
+     'California Zone IV' : '0404',
+     'California Zone V' : '0405',
+     'California Zone VI' : '0406',
+     'Connecticut': '0600',
     'Connecticut Zone': '0600',
     'Delaware': '0700',
     'Delaware Zone': '0700',
@@ -1385,18 +1391,17 @@ SOURCEPROJECTION_dict = {
     'Wisconsin North Zone': '4801',
     'Wisconsin South Zone': '4803'}
 
-
 #     'Puerto Rice': '5201'
 # ------------------------------------------------------------------------------
 
 def parse_abstract_iso_ex(abstract):
     """
-    
+
 
     Parameters
     ----------
     abstract :
-        
+
 
     Returns
     -------
@@ -1460,12 +1465,12 @@ def parse_abstract_iso_ex(abstract):
 
 def VERDAT_iso_check(xml_meta):
     """
-    
+
 
     Parameters
     ----------
     xml_meta :
-        
+
 
     Returns
     -------
@@ -1502,7 +1507,7 @@ def extract_from_iso_meta(xml_meta):
     Parameters
     ----------
     xml_meta :
-        
+
 
     Returns
     -------
@@ -1590,7 +1595,7 @@ def date_iso_abstract(abstract):
     Parameters
     ----------
     abstract :
-        
+
 
     Returns
     -------
@@ -1620,7 +1625,7 @@ def ext_xml_map_enddate(xml_meta):
     Parameters
     ----------
     xml_meta :
-        
+
 
     Returns
     -------
@@ -1641,7 +1646,7 @@ def ext_xml_map_enddate(xml_meta):
 def parsing_xml_FGDC_attributes_s57(meta_xml):
     """
     #PARSING XML attributes
-    
+
     Within the abstact line pull out information on TECSOU, VERDAT, Horizontal
     Coordinate System, State Plane Coordinate System, Horizonatal units
     
@@ -1649,7 +1654,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     abstract = meta_xml['abstract']
     if abstract.find('Survey Type: Single Beam Soundings') >= 0:
        TECSOU= 'single beam'
-    
+
     -> 1= TECSOU, | abstract.find('Vertical Datum:)
     # later step assign (NO)=1, 1= f_dict. 1= f_lstd, 9999=f_size, 1 =flbath, 1=flcvrg for TECSOU 1
     -> find(Mean Lower Low Water)
@@ -1660,13 +1665,13 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     
     
     Horizontal Units are also found within plandu:
-    
+
     if m['Horizontal_Units'] == '':
         if  meta_xml['plandu'] == 'Foot_US':
             #plandu = #horizontal units
             m['Horizontal_Units']='U.S. Survey Feet'
     
-    
+
     
     #QC_checks
     #if expected results found ok, if not trigger more QC:
@@ -1682,7 +1687,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     #QC check against FIPS from table
     
     'Survey Type' = themekey.find('Condition Survey')
-    
+
     if horizdn == 'D_North_American_1983':
         horizontal_datum = horizdn
     if ellips =='GRS_1980':
@@ -1697,7 +1702,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         m['vert_acc'] = '0.3'# 1 ft =   0.30480060960121924 m
     elif vertaccr.find('+/- 0.03 meter (0.1 foot)')  >= 0:
         m['vert_acc'] = '0.03'#
-    
+
     if procdesc.find():
     procdesc
         -> to coverage single beam (Cat B type coverage)
@@ -1708,7 +1713,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     Parameters
     ----------
     meta_xml :
-        
+
 
     Returns
     -------
@@ -1846,7 +1851,7 @@ def find_ISO_xml_bottom(xml_txt):
     Parameters
     ----------
     xml_txt :
-        
+
 
     Returns
     -------
@@ -1869,7 +1874,7 @@ def parse_xml_info_text_ISO(xml_txt, m):
     xml_txt :
         param m:
     m :
-        
+
 
     Returns
     -------
@@ -1906,12 +1911,12 @@ def parse_xml_info_text_ISO(xml_txt, m):
 
 def convert_list_to_str(other_lines):
     """
-    
+
 
     Parameters
     ----------
     other_lines :
-        
+
 
     Returns
     -------
@@ -1934,7 +1939,7 @@ def convert_meta_to_input(m):
     Parameters
     ----------
     m :
-        
+
 
     Returns
     -------
@@ -1973,7 +1978,7 @@ def convert_meta_to_input(m):
 # ------------------------------------------------------------------------------
 def _print_TECSOU_defs(myvalue=None):
     """
-    
+
 
     Parameters
     ----------

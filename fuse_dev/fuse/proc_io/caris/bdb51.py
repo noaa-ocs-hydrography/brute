@@ -24,19 +24,19 @@ from osgeo import gdal
 class bdb51:
     """
     A class for doing I/O with the CARIS Bathy DataBASE 5.1 server.
-    
+
     This class spawns a conda environment containing the CARIS python API and
     communicates with that environment over subprocess pipes.
-    
+
     The pipes carry pickled python dictionaries.
-    
+
     General commands that are sent to the CARIS environment include:
         status : Is the system is connected to the server, what was the last
             file uploaded.
         connect : Connect the database.
         upload : Send instruction on surveys to upload and what to upload.
         die : Self destruct the _BDB51 object in the CARIs environment.
-    
+
     Replies from the CARIS environment can be
         status : connectivity to the database and the last file uploaded.
         log : returning a log message
@@ -88,9 +88,12 @@ class bdb51:
         sock.listen()
         self._start_env(port)
         sock.setblocking(True)
+
+        # TODO
         self._conn, addr = sock.accept()
         print('accepted', self._conn, 'from', addr)
         self._conn.setblocking(True)
+
         data = self._conn.recv()
         response = pickle.loads(data)
         self._logger.log(response['log'])
@@ -103,9 +106,9 @@ class bdb51:
         Parameters
         ----------
         port :
-            
+
         port: int :
-            
+
 
         Returns
         -------
@@ -120,7 +123,7 @@ class bdb51:
         start = os.path.realpath(os.path.dirname(__file__))
         db_obj = os.path.join(start, 'wrap_bdb51.py')
         activate_file = helper.retrieve_activate_batch()
-        args = ["cmd.exe", "/C", "set pythonpath= &&",  # setup the commandline
+        args = ["cmd.exe", "/K", "set pythonpath= &&",  # setup the commandline
                 activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
                 python_path, db_obj, str(port),  # call the script for the object
                 ]
@@ -129,7 +132,7 @@ class bdb51:
         try:
             self.db = subprocess.Popen(
                 args,
-                subprocess.CREATE_NEW_CONSOLE)
+                creationflags=subprocess.CREATE_NEW_CONSOLE)
         except:
             err = f'Error executing: {args}'
             print(err)
@@ -181,9 +184,9 @@ class bdb51:
         dataset :
             param instruction:
         dataset: gdal.Dataset :
-            
+
         instruction: str :
-            
+
 
         Returns
         -------
@@ -222,11 +225,11 @@ class bdb51:
         Parameters
         ----------
         command :
-            
+
         command: Dict[str :
-            
+
         str] :
-            
+
 
         Returns
         -------

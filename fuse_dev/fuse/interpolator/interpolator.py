@@ -10,6 +10,7 @@ An abstraction for data interpolation.
 """
 
 import fuse.interpolator.point_interpolator as pinterp
+import fuse.interpolator.bag_interpolator as binterp
 from osgeo import gdal
 
 
@@ -31,6 +32,8 @@ class interpolator:
 
         if self._interp_engine == 'point':
             self._engine = pinterp.point_interpolator()
+        elif self._interp_engine == 'bag':
+            self._engine = binterp.bag_interpolator()
         else:
             raise ValueError('No interpolation engine type specified')
 
@@ -43,7 +46,7 @@ class interpolator:
         dataset :
             param shapefile:  (Default value = None)
         dataset: gdal.Dataset :
-            
+
         shapefile: str :
              (Default value = None)
 
@@ -52,7 +55,7 @@ class interpolator:
 
         """
 
-        if shapefile != None:
+if self._interp_engine == 'point':        if shapefile != None:
             return self._engine.interpolate(dataset, self._interp_type, self._resolution, shapefile)
         else:
             return self._engine.interpolate(dataset, self._interp_type, self._resolution)

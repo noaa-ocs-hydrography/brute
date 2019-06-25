@@ -9,6 +9,7 @@ Created on Thu Feb 14 15:11:39 2019
 
 import os
 import pickle
+import numpy as np
 import sys
 
 import caris.coverage as cc
@@ -26,9 +27,9 @@ def write_csar(dataset: gdal.Dataset, m: dict):
     dataset :
         param m:
     dataset: gdal.Dataset :
-        
+
     m: dict :
-        
+
 
     Returns
     -------
@@ -91,9 +92,9 @@ def write_cloud(dataset: gdal.Dataset, m: dict):
     dataset :
         param m:
     dataset: gdal.Dataset :
-        
+
     m: dict :
-        
+
 
     Returns
     -------
@@ -168,9 +169,9 @@ def check_metadata(meta: dict, meta_type: str):
     meta :
         param meta_type:
     meta: dict :
-        
+
     meta_type: str :
-        
+
 
     Returns
     -------

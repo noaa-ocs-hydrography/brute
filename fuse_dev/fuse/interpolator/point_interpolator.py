@@ -42,13 +42,13 @@ def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, floa
     val :
         param valmin:
     valmax :
-        
+
     val: float :
-        
+
     valmin: float :
-        
+
     valmax: float :
-        
+
 
     Returns
     -------
@@ -82,7 +82,7 @@ class point_interpolator:
                     shrink: bool = True) -> gdal.Dataset:
         """
         Interpolate the provided dataset.
-        
+
         Currently this is assumed to be a gdal dataset.  At some point perhaps
         this should become something more native to python.
 
@@ -95,11 +95,11 @@ class point_interpolator:
         shrink :
             Default value = True)
         dataset: gdal.Dataset :
-            
+
         interpolation_type: str :
-            
+
         resolution: float :
-            
+
         shapefile: str :
              (Default value = None)
         shrink: bool :
@@ -182,7 +182,7 @@ class point_interpolator:
         dataset :
             returns: vector dataset
         dataset: gdal.Dataset :
-            
+
 
         Returns
         -------
@@ -212,7 +212,7 @@ class point_interpolator:
         dataset :
             returns: minimum, mean, and maximum
         dataset: np.array :
-            
+
 
         Returns
         -------
@@ -244,11 +244,11 @@ class point_interpolator:
         window :
             returns: mask
         dataset: gdal.Dataset :
-            
+
         resolution: float :
-            
+
         window: float :
-            
+
 
         Returns
         -------
@@ -281,15 +281,15 @@ class point_interpolator:
         nodata :
             Nodata value for the ouput gdal.Dataset object (Default value = 0)
         file: str :
-            
+
         to_proj: str :
-            
+
         to_gt: tuple :
-            
+
         to_res: int :
-            
+
         to_x :
-            
+
         nodata: float :
              (Default value = 0)
 
@@ -433,7 +433,7 @@ class point_interpolator:
         ax_y, ax_x = ax.shape
 
         target_ds = gdal.GetDriverByName('MEM').Create('', ax_x, ax_y,
-                                                       gdal.GDT_Byte)
+                                                       1, gdal.GDT_Float32)
         x_orig, y_orig = to_gt[0], to_gt[3]
         target_gt = (x_orig, to_res, 0, y_orig, 0, to_res)
         target_ds.SetGeoTransform(target_gt)
@@ -456,11 +456,11 @@ class point_interpolator:
         resolution :
             returns: shape mask
         grid: gdal.Grid :
-            
+
         shapefile: str :
-            
+
         resolution: float :
-            
+
 
         Returns
         -------
@@ -498,9 +498,9 @@ class point_interpolator:
         nodata :
             Default value = 1000000)
         dataset: gdal.Dataset :
-            
+
         resolution: float :
-            
+
         nodata: float :
              (Default value = 1000000)
 
@@ -543,9 +543,9 @@ class point_interpolator:
         nodata :
             Default value = 1000000)
         dataset: gdal.Dataset :
-            
+
         resolution: float :
-            
+
         nodata: float :
              (Default value = 1000000)
 
@@ -619,11 +619,11 @@ class point_interpolator:
         radius :
             param nodata:  (Default value = 1000000)
         dataset: gdal.Dataset :
-            
+
         resolution: float :
-            
+
         radius: float :
-            
+
         nodata: float :
              (Default value = 1000000)
 
@@ -692,11 +692,11 @@ class point_interpolator:
         radius :
             param nodata:  (Default value = 1000000)
         dataset: gdal.Dataset :
-            
+
         resolution: float :
-            
+
         radius: float :
-            
+
         nodata: float :
              (Default value = 1000000)
 
@@ -741,13 +741,13 @@ class point_interpolator:
         resolution :
             param bounds:
         resolution: float :
-            
+
         bounds: Tuple[float :
-            
+
         float :
-            
+
         float] :
-            
+
 
         Returns
         -------
@@ -780,13 +780,13 @@ class point_interpolator:
         resolution :
             param bounds:
         resolution: float :
-            
+
         bounds: Tuple[float :
-            
+
         float :
-            
+
         float] :
-            
+
 
         Returns
         -------
@@ -817,13 +817,13 @@ class point_interpolator:
         resolution :
             param bounds:
         resolution: float :
-            
+
         bounds: Tuple[float :
-            
+
         float :
-            
+
         float] :
-            
+
 
         Returns
         -------
@@ -854,9 +854,9 @@ class point_interpolator:
         dataset :
             param maskraster:
         dataset: gdal.Dataset :
-            
+
         maskraster: gdal.Dataset :
-            
+
 
         Returns
         -------
@@ -887,11 +887,11 @@ class point_interpolator:
         radius :
             returns: shrunken dataset
         dataset: gdal.Dataset :
-            
+
         resolution: float :
-            
+
         radius: float :
-            
+
 
         Returns
         -------

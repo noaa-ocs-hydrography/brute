@@ -23,7 +23,7 @@ _gdal.UseExceptions()
 def _maxValue(arr: _np.array):
     """
     Returns the most used value in the array as an integer
-    
+
     Takes an input array and finds the most used value in the array, this
     value is used by the program to assume the array's nodata value
 
@@ -32,7 +32,7 @@ def _maxValue(arr: _np.array):
     arr :
         An input array
     arr: _np.array :
-        
+
 
     Returns
     -------
@@ -47,7 +47,7 @@ def _maxValue(arr: _np.array):
 class geotiff:
     """
     This class serves as the main container for geotiff data.
-    
+
     In order to read and assign the data relevant to the interpolation process,
     this class heavily depends on OSGEO's GDAL, OGR, and ORS libraries to open
     and populate the data needed
@@ -91,7 +91,7 @@ class geotiff:
         filename :
             The complete file path of the input coverage file
         filename: str :
-            
+
 
         Returns
         -------
@@ -112,7 +112,7 @@ class geotiff:
         Parameters
         ----------
         gdal_obj :
-            
+
 
         Returns
         -------
@@ -140,7 +140,7 @@ class geotiff:
         Parameters
         ----------
         gdal_obj :
-            
+
 
         Returns
         -------
@@ -162,11 +162,11 @@ class geotiff:
 class geopackage:
     """
     This class serves as the main container for geopackage data.
-    
+
     In order to read and assign the data relevant to the interpolation process,
     this class heavily depends on OSGEO's GDAL, OGR, and ORS libraries to open
     and populate the data needed
-    
+
     A geopackage coverage requres a ``to_crs`` WKT spatial reference system in
     order to ensure that the contents of the geopackage can be properly
     rasterized.
@@ -216,9 +216,9 @@ class geopackage:
         nodata :
             Default value = 255)
         filename: str :
-            
+
         to_crs: str :
-            
+
         pixel_size: int :
              (Default value = 1)
         nodata: int :
@@ -249,9 +249,9 @@ class geopackage:
         pixel_size :
             param nodata:
         filename: str :
-            
+
         to_crs: str :
-            
+
         pixel_size: int :
              (Default value = 1)
         nodata: int :
@@ -334,9 +334,9 @@ class geopackage:
         Parameters
         ----------
         filepath :
-            
+
         filepath: str :
-            
+
 
         Returns
         -------
@@ -371,9 +371,9 @@ class unified_coverage:
         files :
             param bag_wkt:
         files: List[str] :
-            
+
         bag_wkt: str :
-            
+
 
         Returns
         -------
@@ -406,7 +406,7 @@ class unified_coverage:
         rasters :
             param name:
         name :
-            
+
 
         Returns
         -------
@@ -422,21 +422,21 @@ class unified_coverage:
         Heavy Influence From:
         "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
         (https://gis.stackexchange.com/a/278965)]
-        
+
         This function takes an array input of coverage objects, a destination path (for
         ouput saving), and a list the names of the input coverage objects.
-        
+
         Takes the arrays of each coverage object and combines them along the z axis of
         each::
-        
+
             [[za,zb],[za,zb],[za,zb],
              [za,zb],[za,zb],[za,zb],
              [za,zb],[za,zb],[za,zb]]
-        
+
         Then takes the mean of the values along the z axis. The reslult is then
         modified to a binary raster by making all values that are not the nodata
         value 1 and the values that are nodata 0.
-        
+
         This binary raster is saved at the input path and also returned with the
         new full path for the output
 
@@ -447,9 +447,9 @@ class unified_coverage:
         name :
             File path of the relevant bag file
         rasters: list :
-            
+
         name: str :
-            
+
 
         Returns
         -------
@@ -513,14 +513,14 @@ class unified_coverage:
         """
         Takes an input of an array of coverage objects. The goal of this function
         is to fit the provided coverage objects to the largest combined area of the inputs.
-        
-        
+
+
         1. Find NW and SE corners of the first input array and the number of rows and columns in the input.
         2. Find NW and SE corners of subsiquent input arrays and record differences as the NW differences (nxd, nyd) SE differences (sxd, syd).
-        
+
             - also modify the original NW and/or SE corner values if applicable.
             - also modify the original number or rows and columns if applicable.
-        
+
         3. Resize the area of each input array to the new total combined size of all input arrays based on the stored number of rows and columns.
         4. Reposition the data within each input array to maintain original geographic placement based on the difference of the input array's original NW corner and the recorded 'largest' NW boundry of the combined input areas.
         5. Return coverage objects with the newly resized/repositioned tifs and the new NW and SE extents of the new combined area.
@@ -530,7 +530,7 @@ class unified_coverage:
         rasters :
             List of coverage objects created by :func:`_open_data`
         rasters: list :
-            
+
 
         Returns
         -------
@@ -643,9 +643,9 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     Takes an input of two arrays representing bag and tif data. These arrays
     hold information like extent, data, and more. The goal of this function is
     to fit and/or shift the provided tif to the area of the bag.
-    
+
     Steps:
-    
+
     1. Determine/confirm the resolution of the tif using a mix of file naming, extent, and dimensions.
     2. Determine the resolution of the bag using file naming conventions.
     3. Calculate the tif/bag resolution to determine the value needed to resize the tif.
@@ -669,21 +669,21 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     nodata :
         The nodata value to be applied to the input array object
     bounds: Tuple[Tuple[float :
-        
+
     float] :
-        
+
     Tuple[float :
-        
+
     float]] :
-        
+
     shape: Tuple[int :
-        
+
     int] :
-        
+
     resolution: Tuple[float :
-        
+
     nodata: float :
-        
+
 
     Returns
     -------
@@ -807,7 +807,7 @@ def write_raster(coverage, outputpath: str, out_verdat: str = 'MLLW', dtype=_gda
     Directly From:
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
     (https://gis.stackexchange.com/a/278965)]
-    
+
     options=['COMPRESS=LZW']
 
     Parameters
@@ -827,7 +827,7 @@ def write_raster(coverage, outputpath: str, out_verdat: str = 'MLLW', dtype=_gda
     nodata :
         Default value = False)
     outputpath: str :
-        
+
     out_verdat: str :
          (Default value = 'MLLW')
     options: int :
@@ -894,18 +894,18 @@ def coverage2gdal(coverage) -> gdal.Dataset:
 
     proj = coverage.wkt
     height, width = coverage.shape
-    nw, se = coverage.bounds
-    nwx, nwy = nw
-    scx, scy = se
+    sw, ne = coverage.bounds
+    scx, scy = sw
+    nex, ney = ne
     res_x, res_y = coverage.resolution
-    gt = (nwx, res_x, 0, scy, 0, res_y)
+    gt = (scx, res_x, 0, scy, 0, res_y)
     coverage_gdal = _gdal.GetDriverByName('MEM').Create('', width, height, 1, _gdal.GDT_Float32)
     coverage_gdal.SetGeoTransform(gt)
     coverage_gdal.SetProjection(proj)
 
     band = coverage_gdal.GetRasterBand(1)
     band.SetNoDataValue(float(coverage.nodata))
-    band.WriteArray(_np.flipud(coverage.array))
+    band.WriteArray(coverage.array)
     #    coverage = None
     return coverage_gdal
 
@@ -921,7 +921,7 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW'):
     out_verdat :
         Default value = 'MLLW')
     outputpath: str :
-        
+
     out_verdat: str :
          (Default value = 'MLLW')
 
@@ -940,7 +940,7 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW'):
 
     driver = _ogr.GetDriverByName('GPKG')
     ds = driver.CreateDataSource(outfilename)
-    layer = ds.CreateLayer(name, proj, _ogr.wkbMultiPolygon)
+    layer = ds.CreateLayer(name, proj, _ogr.wkbPolygon)
 
     # Add one attribute
     layer.CreateField(_ogr.FieldDefn('Survey', _ogr.OFTString))

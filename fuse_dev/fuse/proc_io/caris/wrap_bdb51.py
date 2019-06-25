@@ -29,7 +29,6 @@ class bdb51_io:
         ----------
         port
         """
-
         self.port = port
         self.alive = True
         self.connected = False
@@ -40,7 +39,7 @@ class bdb51_io:
         self._command = []
         self._response = []
 
-    def take_commands(self):
+    def request_commands(self):
         """Call the provided port on the host and ask for something to do."""
 
         conn = socket.create_connection(('', self.port))
@@ -54,6 +53,40 @@ class bdb51_io:
             conn.send(response)
         conn.close()
 
+    def take_commands(self, command_dict: dict):
+        """
+        Act on commands the provided command dictionary, such as to upload
+        data, read and return data, destroy the object and exit the
+        environment.
+
+        Parameters
+        ----------
+        command_dict :
+            returns: response
+        command_dict: dict :
+
+
+        Returns
+        -------
+        type
+            response
+
+        """
+
+        self._command.append(command_dict)
+        command = command_dict['command']
+        if command == 'connect':
+            print('connected')
+        #            response = self.connect(command_dict)
+        elif command == 'status':
+            response = self.status(command_dict)
+        elif command == 'upload':
+            response = self.upload(command_dict)
+        elif command == 'die':
+            response = self.die(command_dict)
+        self._response.append(response)
+        return response
+
     def connect(self, command_dict: dict) -> dict:
         """
         Make a connection to the BDB database using the provided location and
@@ -65,7 +98,7 @@ class bdb51_io:
         command_dict :
             returns: response
         command_dict: dict :
-            
+
 
         Returns
         -------
@@ -106,7 +139,7 @@ class bdb51_io:
         command_dict :
             returns: response
         command_dict: dict :
-            
+
 
         Returns
         -------
@@ -128,7 +161,7 @@ class bdb51_io:
         command_dict :
             returns: response
         command_dict: dict :
-            
+
 
         Returns
         -------
@@ -153,9 +186,9 @@ class bdb51_io:
         Parameters
         ----------
         file_path :
-            
+
         file_path: str :
-            
+
 
         Returns
         -------
@@ -195,9 +228,9 @@ class bdb51_io:
         Parameters
         ----------
         command_dict :
-            
+
         command_dict: dict :
-            
+
 
         Returns
         -------
@@ -209,7 +242,7 @@ class bdb51_io:
     def die(self, command_dict: dict) -> dict:
         """
         Update the object "alive" flag.
-        
+
         The command dictionary must contain a key word "action"
 
         Parameters
@@ -217,7 +250,7 @@ class bdb51_io:
         command_dict :
             returns: response
         command_dict: dict :
-            
+
 
         Returns
         -------
@@ -234,39 +267,6 @@ class bdb51_io:
         self.alive = False
         return response
 
-    def take_commands(self, command_dict: dict):
-        """
-        Act on commands the provided command dictionary, such as to upload
-        data, read and return data, destroy the object and exit the
-        environment.
-
-        Parameters
-        ----------
-        command_dict :
-            returns: response
-        command_dict: dict :
-            
-
-        Returns
-        -------
-        type
-            response
-
-        """
-
-        self._command.append(command_dict)
-        command = command_dict['command']
-        if command == 'connect':
-            response = self.connect(command_dict)
-        elif command == 'status':
-            response = self.status(command_dict)
-        elif command == 'upload':
-            response = self.upload(command_dict)
-        elif command == 'die':
-            response = self.die(command_dict)
-        self._response.append(response)
-        return response
-
 
 def main(port: int):
     """
@@ -275,9 +275,9 @@ def main(port: int):
     Parameters
     ----------
     port :
-        
+
     port: int :
-        
+
 
     Returns
     -------
