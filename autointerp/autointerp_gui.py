@@ -30,7 +30,7 @@ class Form(autointerp_ui.Form):
     def __init__(self, parent):
         autointerp_ui.Form.__init__(self, parent)
         self.insInd = 0
-        #Instantiation of 'GeoTIFF File List' box Columns:
+        # Instantiation of 'GeoTIFF File List' box Columns:
         self.list_tif.InsertColumn(0, 'File', width=200)
         self.list_tif.InsertColumn(1, 'Path', width=500)
 
@@ -67,7 +67,7 @@ class Form(autointerp_ui.Form):
 
         """
 
-        print (self.picker_tif.GetPath())
+        print(self.picker_tif.GetPath())
         tif = self.picker_tif.GetPath()
         self.gettifList()
         if tif not in self.tifList:
@@ -163,12 +163,15 @@ class Form(autointerp_ui.Form):
         self.tifList = []
         for x in range(0, tifCount):
             self.tifList.append(self.list_tif.GetItemText(x, col=1))
-        print (self.tifList)
+        print(self.tifList)
+
 
 class Done(autointerp_ui.Done):
     """ """
+
     def __init__(self, parent):
         autointerp_ui.Done.__init__(self, parent)
+
 
 if __name__ == '__main__':
     app = wx.App()

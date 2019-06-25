@@ -13,19 +13,19 @@ Created on Tue April 15 13:44:14 2019
 import matplotlib.pyplot as plt
 
 grid_resolution_list = [900,
-                        900, 
-                        450, 
-                        210, 
-                        105, 
-                        54, 
-                        27, 
-                        13, 
-                        6, 
-                        3, 
-                        2, 
-                        1, 
-                        1, 
-                        1, 
+                        900,
+                        450,
+                        210,
+                        105,
+                        54,
+                        27,
+                        13,
+                        6,
+                        3,
+                        2,
+                        1,
+                        1,
+                        1,
                         1]
 scale = [10000000,
          3500000,
@@ -74,7 +74,6 @@ resulting_tile_size_at_256MB = [2770,
                                 3.0,
                                 3.0,
                                 3.0]
-
 
 plt.plot(10000, 4.5, 'r^', label="NOAA Band 5 1:10,000 ")
 plt.plot(20000, 4.5, 'g^', label="NOAA Band 5 1:20,000")

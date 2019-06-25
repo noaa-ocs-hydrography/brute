@@ -102,7 +102,7 @@ setup(
                   # extra_compile_args=["-Zi", "/Od"],
                   # extra_link_args=["-debug"],
                   ),
-        ],
+    ],
         annotate=True,
         compiler_directives={'language_level': '3'}
     ),

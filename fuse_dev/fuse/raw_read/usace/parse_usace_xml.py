@@ -1225,13 +1225,13 @@ SOURCEPROJECTION_dict = {
     'California IV Zone': '0404',
     'California V Zone': '0405',
     'California VI Zone': '0406',
-    'California Zone I' : '0401',
-     'California Zone II' : '0402',
-     'California Zone III' : '0403',
-     'California Zone IV' : '0404',
-     'California Zone V' : '0405',
-     'California Zone VI' : '0406',
-     'Connecticut': '0600',
+    'California Zone I': '0401',
+    'California Zone II': '0402',
+    'California Zone III': '0403',
+    'California Zone IV': '0404',
+    'California Zone V': '0405',
+    'California Zone VI': '0406',
+    'Connecticut': '0600',
     'Connecticut Zone': '0600',
     'Delaware': '0700',
     'Delaware Zone': '0700',
@@ -1390,6 +1390,7 @@ SOURCEPROJECTION_dict = {
     'Wisconsin Central Zone': '4802',
     'Wisconsin North Zone': '4801',
     'Wisconsin South Zone': '4803'}
+
 
 #     'Puerto Rice': '5201'
 # ------------------------------------------------------------------------------

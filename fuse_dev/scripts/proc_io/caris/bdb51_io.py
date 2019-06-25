@@ -6,12 +6,9 @@ Created on Thu Jun 20 09:09:59 2019
 """
 
 import os
-import sys
-import time
-import pickle
 import socket
-import logging
 import subprocess
+import sys
 
 from fuse.proc_io.caris import helper
 
@@ -47,9 +44,9 @@ class bdb51:
         print(args)
         try:
             db = subprocess.Popen(
-                    args,
-                    creationflags=subprocess.CREATE_NEW_CONSOLE,
-                    close_fds=True)
+                args,
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+                close_fds=True)
         except:
             err = 'Error executing: {}'.foramt(args)
             print(err)
@@ -64,7 +61,7 @@ class bdb51:
         self.port = self.sock.getsockname()[1]
         self.sock.close()
         for res in socket.getaddrinfo(host, self.port, socket.AF_UNSPEC,
-                              socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
+                                      socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
             af, socktype, proto, canonname, sa = res
             try:
                 self.sock = socket.socket(af, socktype, proto)
@@ -116,7 +113,7 @@ class bdb51:
             print('dead')
 
     def _is_alive(self):
-#        self.conn, self.addr = self.sock.accept()
+        #        self.conn, self.addr = self.sock.accept()
         with self.conn:
             while True:
                 print('Connected by', self.addr)
@@ -124,7 +121,6 @@ class bdb51:
                 print('Received', repr(self.data))
         return self.data
 
-#test = bdb51()
-#test.domath()
-#test.die()
-
+# test = bdb51()
+# test.domath()
+# test.die()

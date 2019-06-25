@@ -11,11 +11,13 @@ into the metadata file for qualification.
 
 import os
 from glob import glob
+
 import fuse.fuse_ehydro as ffe
 
-cenan = ffe.fuse_ehydro('cenan.config') # this config is local for testing
-for path in cenan.rawdata_path:
-    flist = glob(os.path.join(path,'*.xyz'))
-    for f in flist:
-        cenan.read(f)
-        cenan.process(f)
+if __name__ == '__main__':
+    cenan = ffe.fuse_ehydro('cenan.config')  # this config is local for testing
+    for path in cenan.rawdata_path:
+        flist = glob(os.path.join(path, '*.xyz'))
+        for f in flist:
+            cenan.read(f)
+            cenan.process(f)

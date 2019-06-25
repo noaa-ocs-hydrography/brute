@@ -13,14 +13,16 @@ import eHydro_scrape
 
 class Form(scrape_prog.Form):
     """ """
+
     def __init__(self, parent):
         scrape_prog.Form.__init__(self, parent)
-    
+
     def main(self):
         """ """
         eHydro_scrape.main(self.progress_bar, self.output_text)
-#        self.Close()
-        
+
+    #        self.Close()
+
     def programProg(self):
         """
         Collects the GUI field values for use in running the main
@@ -36,6 +38,7 @@ class Form(scrape_prog.Form):
         import threading
         th = threading.Thread(target=self.main)
         th.start()
+
 
 if __name__ == '__main__':
     app = wx.App()

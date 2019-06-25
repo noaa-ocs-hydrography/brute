@@ -120,7 +120,7 @@ class intitialize:
         save.bag2gdal(bag)
 
         writer = proc_io('gdal', 'bag')
-        print (save.dataset.GetGeoTransform())
+        print(save.dataset.GetGeoTransform())
         writer.write(save.dataset, bag.outfilename)
 
         _cvg.write_vector(coverage, self._outlocation)

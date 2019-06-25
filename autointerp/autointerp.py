@@ -1596,6 +1596,7 @@ class chunk():
     -------
 
     """
+
     def __init__(self, sliceInfo, chunkSlice, shape):
         """
         Breaks the input sliceInfo into individual variables and starts the

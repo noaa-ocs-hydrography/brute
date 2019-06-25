@@ -449,11 +449,12 @@ class xyz_grid():
         self.diff = diff
 
 
-ext = os.path.splitext(path)[1].lower()
-if ext == '.xyz':
-    data = read_bathymetry_xyz(path)
-elif ext == '.dat':
-    data = read_bathymetry_dat(path)
-print(ext, data)
-# grid, d = make_grid(data)
-# interp = natInterp(grid, d.grid, d.vals, d.shape, d.diff)
+if __name__ == '__main__':
+    ext = os.path.splitext(path)[1].lower()
+    if ext == '.xyz':
+        data = read_bathymetry_xyz(path)
+    elif ext == '.dat':
+        data = read_bathymetry_dat(path)
+    print(ext, data)
+    # grid, d = make_grid(data)
+    # interp = natInterp(grid, d.grid, d.vals, d.shape, d.diff)

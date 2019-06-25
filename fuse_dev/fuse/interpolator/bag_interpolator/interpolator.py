@@ -9,11 +9,10 @@ from datetime import datetime as _dt
 from typing import Union, Tuple
 
 import astropy.convolution as _apc
+import matplotlib.pyplot as plt
 import numpy as _np
 import scipy as _scipy
 
-
-import matplotlib.pyplot as plt
 
 def tupleGrid(grid: _np.array, nodata: int):
     """
@@ -199,7 +198,7 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
         nbag = _np.where(fpoly, interp, maxVal)
         nunc = _np.where(fpoly, iuncrt, maxVal)
     print('done', _dt.now())
-    polyList = [tpoly,bpoly,cpoly,dpoly,npoly,fpoly,ibag]
+    polyList = [tpoly, bpoly, cpoly, dpoly, npoly, fpoly, ibag]
     plt.figure()
     for rast in polyList:
         plt.imshow(rast)
@@ -255,7 +254,7 @@ class linear:
         x, y = _np.arange(bathy.shape[1]), _np.arange(bathy.shape[0])
         xi, yi = _np.meshgrid(x, y)
         xy, z = concatGrid(bathy, covrg, nodata)
-        print (xy, z)
+        print(xy, z)
         if len(xy) != 0:
             self.bathy, self.uncrt, self.unint = self._interpolate(xy, z, xi,
                                                                    yi, catzoc,

@@ -9,7 +9,6 @@ Created on Thu Feb 14 15:11:39 2019
 
 import os
 import pickle
-import numpy as np
 import sys
 
 import caris.coverage as cc

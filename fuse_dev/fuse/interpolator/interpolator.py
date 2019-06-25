@@ -9,8 +9,8 @@ Created on Mon Feb 11 12:55:51 2019
 An abstraction for data interpolation.
 """
 
-import fuse.interpolator.point_interpolator as pinterp
 import fuse.interpolator.bag_interpolator as binterp
+import fuse.interpolator.point_interpolator as pinterp
 from osgeo import gdal
 
 
@@ -55,7 +55,9 @@ class interpolator:
 
         """
 
-if self._interp_engine == 'point':        if shapefile != None:
-            return self._engine.interpolate(dataset, self._interp_type, self._resolution, shapefile)
-        else:
-            return self._engine.interpolate(dataset, self._interp_type, self._resolution)
+
+if self._interp_engine == 'point':        if
+shapefile != None:
+return self._engine.interpolate(dataset, self._interp_type, self._resolution, shapefile)
+else:
+return self._engine.interpolate(dataset, self._interp_type, self._resolution)

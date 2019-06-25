@@ -14,8 +14,10 @@ import wx
 progLoc = os.getcwd()
 print(progLoc)
 
+
 class Form(ncei_ui.Form):
     """ """
+
     def __init__(self, parent):
         ncei_ui.Form.__init__(self, parent)
 
@@ -27,7 +29,7 @@ class Form(ncei_ui.Form):
         sy = self.text_south.GetValue()
         sx = self.text_east.GetValue()
         ny = self.text_north.GetValue()
-        if nceiBAGs.main(name,nx,sy,sx,ny,self.progress_bar) == True:
+        if nceiBAGs.main(name, nx, sy, sx, ny, self.progress_bar) == True:
             self.status_bar.SetStatusText('Done!')
 
     def programQuit(self, event):
@@ -63,6 +65,7 @@ class Form(ncei_ui.Form):
         import threading
         th = threading.Thread(target=self.main)
         th.start()
+
 
 app = wx.App()
 frame = Form(None)

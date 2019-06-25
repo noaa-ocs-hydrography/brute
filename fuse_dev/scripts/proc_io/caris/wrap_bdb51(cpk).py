@@ -5,17 +5,16 @@ Created on Thu Jun 20 09:11:10 2019
 @author: Casiano.Koprowski
 """
 
-import os
+import socket
 import sys
 import time
-import pickle
-import socket
-import subprocess
+
 
 class bdb51_io:
     """
 
     """
+
     def __init__(self, port):
         """
 
@@ -57,10 +56,9 @@ class bdb51_io:
             print('could not open socket')
             sys.exit(1)
 
-
         with self.sock:
             self.sock.sendall(b'Alive')
-#            try:
+            #            try:
             while True:
                 data = self.sock.recv(1024)
                 print('Received', repr(data))
@@ -68,8 +66,9 @@ class bdb51_io:
                     self.bmsg = self._command_data(data)
                 print(self.bmsg)
                 self.sock.sendall(self.bmsg)
-#            except:
-#                pass
+
+    #            except:
+    #                pass
 
     def _command_data(self, data):
         print(bmsg)
@@ -93,7 +92,7 @@ class bdb51_io:
     def _die(self):
         x = 10
         while True:
-            print (x)
+            print(x)
             time.sleep(1)
             if x == 0:
                 sys.exit(1)
@@ -101,12 +100,14 @@ class bdb51_io:
             x -= 1
         return b'done'
 
+
 def main(port):
     """
     An event loop waiting for commands.
     """
     db_io = bdb51_io(port)
     print(db_io.alive)
+
 
 if __name__ == '__main__':
     args = sys.argv

@@ -192,7 +192,7 @@ class proc_io:
         if metadata is not None:
             raise NotImplementedError('bag xml metadata write has not been implemented')
 
-        print (dataset.GetGeoTransform())
+        print(dataset.GetGeoTransform())
 
         # Prepare destination file
         driver = gdal.GetDriverByName("BAG")

@@ -86,7 +86,7 @@ class bag_file:
         self.resolution = (bag_obj.meta.res_x, bag_obj.meta.res_y)
         self.wkt = bag_obj.meta.wkt_srs
 
-        print (self.bounds)
+        print(self.bounds)
         bag_obj = None
 
     def _file_gdal(self, filepath: str):
@@ -112,12 +112,12 @@ class bag_file:
         self.elevation = self._gdalreadarray(bag_obj, 1)
         self.uncertainty = self._gdalreadarray(bag_obj, 2)
         self.shape = self.elevation.shape
-        print (bag_obj.GetGeoTransform())
+        print(bag_obj.GetGeoTransform())
         self.bounds, self.resolution = self._gt2bounds(bag_obj.GetGeoTransform(),
                                                        self.shape)
         self.wkt = bag_obj.GetProjectionRef()
 
-        print (self.bounds)
+        print(self.bounds)
         bag_obj = None
 
     def _known_data(self, filepath: str):
@@ -224,7 +224,7 @@ class bag_file:
         sx, sy = _np.round(meta[0]), _np.round(meta[3])
         nx = sx + (x * res[0])
         ny = sy + (y * res[1])
-        print ([sx,sy],[nx,ny])
+        print([sx, sy], [nx, ny])
         res = (_np.round(meta[1], 2), _np.round(meta[5], 2))
         return ((sx, ny), (nx, sy)), res
 
