@@ -62,7 +62,7 @@ class bdb51:
         self.sock = socket.socket()
         self.sock.bind((host, port))
         self.port = self.sock.getsockname()[1]
-        self.sock.close()
+        #self.sock.close()
         for res in socket.getaddrinfo(host, self.port, socket.AF_UNSPEC,
                               socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
             af, socktype, proto, canonname, sa = res
