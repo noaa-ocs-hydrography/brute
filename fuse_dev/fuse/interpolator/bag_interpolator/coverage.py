@@ -484,6 +484,7 @@ class unified_coverage:
             x += 1
         #        plt.figure()
         covDict = dict(coverageList)
+
         for i, grid in covDict.items():
             #            plt.imshow(grid)
             #            plt.show()
@@ -492,6 +493,7 @@ class unified_coverage:
                 allarrays = array
             else:
                 allarrays = _np.concatenate((allarrays, array), axis=2)
+
         meanCoverage = _np.nanmean(allarrays, axis=2)
         #        plt.imshow(meanCoverage)
         #        plt.show()

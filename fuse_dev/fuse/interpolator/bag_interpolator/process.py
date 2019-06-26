@@ -43,17 +43,15 @@ class intitialize:
         else:
             raise ValueError('Interpolation type not implemented.')
 
-    def linear(self, filepath: str, coverage_list):
+    def linear(self, filepath: str, coverage_list: list):
         """
         TODO write description
 
         Parameters
         ----------
-        filepath :
-            param coverage_list:
         filepath: str :
 
-        coverage_list :
+        coverage_list list :
 
 
         Returns
