@@ -203,11 +203,8 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
     for rast in polyList:
         plt.imshow(rast)
         plt.show()
-    if debug == False:
-        #        polyList = [fpoly, cpoly]
-        return nbag, nunc, cpoly.astype(_np.int)
-    elif debug == True:
-        return nbag, nunc, polyList
+    #polyList = [fpoly, cpoly]
+    return nbag, nunc, polyList if debug else cpoly.astype(_np.int)
 
 
 class linear:
