@@ -84,10 +84,10 @@ class bdb51:
                     self.alive = response['alive']
             else:
                 print('No response from subprocess received')
-            while True:
+            while self.alive:
                 ''' 
-                TO DO: we should try to detect if the connection is broken
-                and look for another connection if it is
+                TO DO: should we should try to detect if the connection is 
+                broken and look for another connection if it is
                 '''
                 if self._command is not None:
                     try:
@@ -138,7 +138,9 @@ class bdb51:
         Form and send the connect command to the BDB51 wapper.
         """
         command = {'command':'connect'}
-        self._set_command(command)
+        command['node_manager'] = self.database_loc
+        command['database'] = self.database_name
+        response = self._set_command(command)
 
     def status(self):
         """
@@ -146,7 +148,7 @@ class bdb51:
         the database.
         """
         command = {'command':'status'}
-        self._set_command(command)
+        response = self._set_command(command)
 
     def upload(self, dataset, instruction):
         """
@@ -161,7 +163,9 @@ class bdb51:
         """
         command = {'command':'die'}
         command['action'] = int(delay)
-        self._set_command(command)
+        response = self._set_command(command)
+        if response['command'] == 'die' and response['success']:
+            self.alive = False
 
     def _set_command(self, command):
         """
@@ -173,7 +177,7 @@ class bdb51:
         if self._command is None and self._response is None:
             self._command = command
             while True:
-                if self._response is not None:
+                if self._response is not None: # we need a way to check if the connection is alive
                     response = self._response
                     self._logger.log(logging.DEBUG, str(response))
                     if not response['success']:
@@ -182,3 +186,4 @@ class bdb51:
                     break
         else:
             raise ValueError('command / response state is unexpected')
+        return response
