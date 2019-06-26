@@ -80,7 +80,7 @@ class bdb51_io:
         data, read and return data, destroy the object and exit the
         environment.
         """
-        self._command.append(command_dict)
+        # self._command.append(command_dict)
         command = command_dict['command']
         if command == 'connect':
             response = self.connect(command_dict)
@@ -90,7 +90,7 @@ class bdb51_io:
             response = self.upload(command_dict)
         elif command == 'die':
             response = self.die(command_dict)
-        self._response.append(response)
+        # self._response.append(response)
         return response
 
     def connect(self, command_dict):
@@ -104,19 +104,20 @@ class bdb51_io:
         self.database = command_dict['database']
         try:
             self._nm = bdb.NodeManager(username, password, self.node_manager)
-            msg = msg + 'Connected to Node Manager {}'.format(self.node_manager)
+            msg = msg + 'Connected to Node Manager {}\n'.format(str(self.node_manager))
         except RuntimeError as error:
             msg = msg + str(error)
         if self._nm is not None:
             try:
                 self._db = self._nm.get_database(self.database)
-                msg = msg + ', Connected to database {}'.format(self.database)
+                msg = msg + 'Connected to database {}\n'.format(str(self.database))
                 self.connected = True
+                command_dict['success'] = True
             except RuntimeError as error:
                 msg = msg + str(error)
-        command_dict['success'] = True
+                command_dict['success'] = False
         command_dict['log'] = msg
-        return response
+        return command_dict
 
     def _check_connection(self):
         """
