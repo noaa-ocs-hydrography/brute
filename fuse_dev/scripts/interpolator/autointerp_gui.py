@@ -5,7 +5,11 @@ Created on Mon Mar 25 11:55:07 2019
 @author: Casiano.Koprowski
 """
 
+import sys
 import os
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir))
+
 import wx
 import autointerp_ui
 from datetime import datetime as _dt
@@ -16,6 +20,7 @@ class Form(autointerp_ui.Form):
     """Load ui and: define tif storage columns, overwrite ui defined fucntions
     with desired function behaviour
     """
+
     def __init__(self, parent):
         autointerp_ui.Form.__init__(self, parent)
         self.insInd = 0

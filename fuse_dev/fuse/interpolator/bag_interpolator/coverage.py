@@ -16,7 +16,9 @@ from osgeo import gdalconst as _gdalconst
 from scipy.ndimage.interpolation import zoom as _zoom
 
 _gdal.UseExceptions()
-#import matplotlib.pyplot as plt
+
+
+# import matplotlib.pyplot as plt
 
 
 def _maxValue(arr):
@@ -69,6 +71,7 @@ class geotiff:
         The WKT representation of the data CRS
 
     """
+
     def __init__(self):
         self.bounds = None
         self.resolution = None
@@ -147,6 +150,7 @@ class geopackage:
         The WKT representation of the data CRS
 
     """
+
     def __init__(self):
         self.bounds = None
         self.resolution = None
@@ -161,7 +165,7 @@ class geopackage:
         self.nodata = 0
         self.name = self._name(filename)
         self.array, self.shape, self.bounds = self._readAndRasterize(filename,
-                                                    to_crs, pixel_size, nodata)
+                                                                     to_crs, pixel_size, nodata)
 
     def _readAndRasterize(self, filename, to_crs, pixel_size, nodata):
         fName = _os.path.split(filename)[-1]
@@ -179,9 +183,9 @@ class geopackage:
         for feature in source_layer:
             if feature is not None:
                 geom = feature.GetGeometryRef()
-#                print(geom.ExportToWkt())
+                #                print(geom.ExportToWkt())
                 ds_geom = _ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-#                print(source_srs, to_proj, sep='\n')
+                #                print(source_srs, to_proj, sep='\n')
                 coordTrans = _osr.CoordinateTransformation(source_srs, to_srs)
                 ds_geom.Transform(coordTrans)
                 driver = _ogr.GetDriverByName('Memory')
@@ -316,45 +320,45 @@ class unified_coverage:
         coverageList = []
         x = 0
         for raster in rasters:
-#            print(raster.shape)
+            #            print(raster.shape)
             maxVal = raster.nodata
-#            print(maxVal)
+            #            print(maxVal)
             cols, rows = raster.shape
             if x == 0:
-#                print('original', shape)
+                #                print('original', shape)
                 if cols >= shape[0]:
                     shape[0] = cols
                 if rows >= shape[1]:
                     shape[1] = rows
-#                print('original', shape)
+                #                print('original', shape)
                 coverageList.append([x, raster.array])
             elif x != 0:
                 if [cols, rows] != shape:
-#                    print('nope')
+                    #                    print('nope')
                     pass
                 else:
                     coverageList.append([x, raster.array])
-#                    print('yup')1
+            #                    print('yup')1
             x += 1
-#        plt.figure()
+        #        plt.figure()
         covDict = dict(coverageList)
         for i, grid in covDict.items():
-#            plt.imshow(grid)
-#            plt.show()
+            #            plt.imshow(grid)
+            #            plt.show()
             array = _np.expand_dims(grid, 2)
             if i == 0:
                 allarrays = array
             else:
                 allarrays = _np.concatenate((allarrays, array), axis=2)
         meanCoverage = _np.nanmean(allarrays, axis=2)
-#        plt.imshow(meanCoverage)
-#        plt.show()
+        #        plt.imshow(meanCoverage)
+        #        plt.show()
         if maxVal != 0:
             meanCoverage = (meanCoverage < maxVal).astype(_np.int)
         else:
             meanCoverage = (meanCoverage > maxVal).astype(_np.int)
-#        plt.imshow(meanCoverage)
-#        plt.show()
+        #        plt.imshow(meanCoverage)
+        #        plt.show()
 
         fullname = _os.path.split(name)[1]
         justname = _os.path.splitext(fullname)[0]
@@ -410,7 +414,7 @@ class unified_coverage:
             if x == 0:
                 nw = ul
                 se = lr
-#                print(nw, se)
+                #                print(nw, se)
                 x += 1
             else:
                 ulx, uly = ul
@@ -437,62 +441,62 @@ class unified_coverage:
                     scy = lry
                 elif lry >= scy:
                     syd = scy - lry
-#                print(nxd, nyd, sxd, syd)
-#                print(sxd, nyd)
+                #                print(nxd, nyd, sxd, syd)
+                #                print(sxd, nyd)
                 nw = [nwx, nwy]
                 se = [scx, scy]
                 cols, rows = (int(_np.round(nwy - scy)),
                               int(_np.round(scx - nwx)))
-#                print('cols: ' , nwy - scy, '\nrows: ', scx - nwx)
-#        print(nw, se)
+        #                print('cols: ' , nwy - scy, '\nrows: ', scx - nwx)
+        #        print(nw, se)
         sizedCoverage = []
-#        print('resize?')
+        #        print('resize?')
         if nxd != 0 or nyd != 0 or sxd != 0 or syd != 0:
-#            plt.figure()
-#            print('yes')#, _dt.now())
-#            ref = _np.full((cols, rows), 0)
-#            print(ref.shape)
+            #            plt.figure()
+            #            print('yes')#, _dt.now())
+            #            ref = _np.full((cols, rows), 0)
+            #            print(ref.shape)
             for grid in rasters:
                 maxVal = grid.nodata
                 bndx, bndy = grid.bounds[0]
                 nwx, nwy = nw
-#                print('old:', bndx, bndy)
-#                print('new', nwx, nwy)
+                #                print('old:', bndx, bndy)
+                #                print('new', nwx, nwy)
                 arr = grid.array
                 y, x = arr.shape
-#                print(y, rows)
-#                print(x, cols)
+                #                print(y, rows)
+                #                print(x, cols)
                 if x != cols:
                     exp = int(abs(rows - x))
-#                    print(exp)
+                    #                    print(exp)
                     add = _np.full((y, exp), maxVal)
                     arr = _np.column_stack([arr, add])
                     y, x = arr.shape
                 if y != rows:
                     exp = int(abs(cols - y))
-#                    print(exp)
+                    #                    print(exp)
                     add = _np.full((exp, x), maxVal)
                     arr = _np.vstack([arr, add])
-#                print(bef, arr.shape)
+                #                print(bef, arr.shape)
                 if nwx != bndx:
                     rollx = bndx - nwx
-#                    print(rollx)
+                    #                    print(rollx)
                     arr = _np.roll(arr, int(rollx), axis=1)
                 if nwy != bndy:
                     rolly = nwy - bndy
-#                    print(rolly)
+                    #                    print(rolly)
                     arr = _np.roll(arr, int(rolly), axis=0)
                 grid.array = arr
-#                plt.imshow(grid.array)
-#                plt.show()
+                #                plt.imshow(grid.array)
+                #                plt.show()
                 grid.bounds = (nw, se)
                 sizedCoverage.append(grid)
             bounds = (nw, se)
-#            print(bounds)
-#            print('done')#, _dt.now())
+            #            print(bounds)
+            #            print('done')#, _dt.now())
             return sizedCoverage, bounds
         else:
-#            print('same')
+            #            print('same')
             bounds = (nw, se)
             return rasters, bounds
 
@@ -550,7 +554,7 @@ def align2grid(coverage, bounds, shape, resolution, nodata):
     bagRes = resolution[0]
 
     # 3
-    zres = covRes/bagRes
+    zres = covRes / bagRes
     print(bagRes, zres)
 
     # 4
@@ -612,8 +616,8 @@ def align2grid(coverage, bounds, shape, resolution, nodata):
             print('expx', expx)
     ay = _np.full((cSy + expy, cSx + expx), nodata)
     print('expz', ay.shape, bShape)
-    rollx = int(dulx*zres)
-    rolly = int(duly*zres)
+    rollx = int(dulx * zres)
+    rolly = int(duly * zres)
 
     # 8
     up, left = 0, 0
@@ -633,7 +637,7 @@ def align2grid(coverage, bounds, shape, resolution, nodata):
         print('rollz', up, left, down, right)
         temp = newarr[up:, left:]
         print(temp.shape)
-        ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[:, :]
+        ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[down:ay.shape[0] + down, right:ay.shape[1] + right]
         temp = None
     else:
         ay[:] = newarr[:]
@@ -724,7 +728,7 @@ def coverage2gdal(coverage):
     band = coverage_gdal.GetRasterBand(1)
     band.SetNoDataValue(float(coverage.nodata))
     band.WriteArray(coverage.array)
-#    coverage = None
+    #    coverage = None
     return coverage_gdal
 
 

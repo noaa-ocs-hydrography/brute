@@ -35,8 +35,7 @@ class intitialize:
         bag.open_file(filepath, 'gdal')
         bag.generate_name(self._outlocation, self._io)
         coverage = _cvg.unified_coverage(coverage_list, bag.wkt, bag.name)
-        coverage = _cvg.align2grid(coverage, bag.bounds, bag.shape,
-                                   bag.resolution, bag.nodata)
+        coverage = _cvg.align2grid(coverage, bag.bounds, bag.shape, bag.resolution, bag.nodata)
 
         z, tiles, tile_info = _itp.sliceFinder(bag.size, bag.shape,
                                                bag.resolution[0])
