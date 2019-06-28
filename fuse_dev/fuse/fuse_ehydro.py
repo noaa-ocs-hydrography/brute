@@ -16,48 +16,49 @@ import fuse.datum_transform.transform as _trans
 import fuse.interpolator.interpolator as _interp
 from fuse.proc_io.proc_io import proc_io
 
+
 class fuse_ehydro(_fbc.fuse_base_class):
     _cols = ['from_filename',
-            'from_path',
-            'to_filename',
-            'start_date',
-            'end_date',
-            'from_fips',
-            'from_horiz_datum',
-            'from_horiz_units',
-            'from_horiz_unc',
-            'to_horiz_datum',
-            'from_vert_datum',
-            'from_vert_key',
-            'from_vert_units',
-            'from_vert_unc',
-            'to_vert_datum',
-            'to_vert_units',
-            'agency',
-            'source_indicator',
-            'source_type',
-            'complete_coverage',
-            'complete_bathymetry',
-            'vert_uncert_fixed',
-            'vert_uncert_vari',
-            'horiz_uncert',
-            'feat_size',
-            'feat_detect',
-            'feat_least_depth',
-            'interpolated',
-            'script_version',
-            ]
+             'from_path',
+             'to_filename',
+             'start_date',
+             'end_date',
+             'from_fips',
+             'from_horiz_datum',
+             'from_horiz_units',
+             'from_horiz_unc',
+             'to_horiz_datum',
+             'from_vert_datum',
+             'from_vert_key',
+             'from_vert_units',
+             'from_vert_unc',
+             'to_vert_datum',
+             'to_vert_units',
+             'agency',
+             'source_indicator',
+             'source_type',
+             'complete_coverage',
+             'complete_bathymetry',
+             'vert_uncert_fixed',
+             'vert_uncert_vari',
+             'horiz_uncert',
+             'feat_size',
+             'feat_detect',
+             'feat_least_depth',
+             'interpolated',
+             'script_version',
+             ]
 
     def __init__(self, config_filename):
         super().__init__(config_filename)
         self._meta_obj = _mre.meta_review_ehydro(self._config['metapath'],
-                                                fuse_ehydro._cols)
+                                                 fuse_ehydro._cols)
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()
         self._set_data_writer()
-        self._meta = {} # initialize the metadata holder
-        self._pickle_meta = {} # initialize the survey pickle object
+        self._meta = {}  # initialize the metadata holder
+        self._pickle_meta = {}  # initialize the survey pickle object
         self.logger = _logging.getLogger('fuse')
         self.logger.setLevel(_logging.DEBUG)
 
@@ -78,6 +79,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
                 self._reader = _usace.cesam.read_raw()
             elif reader_type == 'ceswg':
                 self._reader = _usace.ceswg.read_raw()
+            elif reader_type == 'cespl':
+                self._reader = _usace.cespl.read_raw()
             else:
                 raise ValueError('reader type not implemented')
         except:
@@ -110,7 +113,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
             ext2 = ext
         self._writer = proc_io('gdal', ext)
         self._points = proc_io('point', 'csar')
-        
+
     def _read_pickle(self,infilename):
         pickle = _usace.parse_usace_pickle.pickle_file(infilename)
         return pickle.pickle_meta

@@ -11,6 +11,7 @@ import autointerp_ui
 from datetime import datetime as _dt
 from fuse.interpolator import bag_interpolator as _bip
 
+
 class Form(autointerp_ui.Form):
     """Load ui and: define tif storage columns, overwrite ui defined fucntions
     with desired function behaviour
@@ -18,7 +19,7 @@ class Form(autointerp_ui.Form):
     def __init__(self, parent):
         autointerp_ui.Form.__init__(self, parent)
         self.insInd = 0
-        #Instantiation of 'GeoTIFF File List' box Columns:
+        # Instantiation of 'GeoTIFF File List' box Columns:
         self.list_tif.InsertColumn(0, 'File', width=200)
         self.list_tif.InsertColumn(1, 'Path', width=500)
 
@@ -33,7 +34,7 @@ class Form(autointerp_ui.Form):
         List' box. 'File' holds the name of the file and 'Path' holds the
         complete file path
         """
-        print (self.picker_tif.GetPath())
+        print(self.picker_tif.GetPath())
         tif = self.picker_tif.GetPath()
         self.gettifList()
         if tif not in self.tifList:
@@ -68,7 +69,9 @@ class Form(autointerp_ui.Form):
         desPath = self.picker_des.GetPath()
         if desPath == '':
             desPath = os.path.split(bagPath)[0]
-        catzoc = self.choice_catzoc.GetString(self.choice_catzoc.GetCurrentSelection())
+        catzoc = self.choice_catzoc.GetString(
+            self.choice_catzoc.GetCurrentSelection()
+            )
         ioOut = self.radio_data.GetSelection()
         interp = _bip.process.intitialize(desPath, 'linear', catzoc, ioOut)
         interp.linear(bagPath, tifPath)
@@ -89,11 +92,13 @@ class Form(autointerp_ui.Form):
         self.tifList = []
         for x in range(0, tifCount):
             self.tifList.append(self.list_tif.GetItemText(x, col=1))
-        print (self.tifList)
+        print(self.tifList)
+
 
 class Done(autointerp_ui.Done):
     def __init__(self, parent):
         autointerp_ui.Done.__init__(self, parent)
+
 
 if __name__ == '__main__':
     app = wx.App()

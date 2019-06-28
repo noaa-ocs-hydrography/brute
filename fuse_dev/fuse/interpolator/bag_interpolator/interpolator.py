@@ -11,6 +11,7 @@ from datetime import datetime as _dt
 
 import matplotlib.pyplot as plt
 
+
 def tupleGrid(grid, nodata):
     """Takes an input matrix and an assumed nodata value. The function iterates
     through the matrix and compiles a list of 'edge' points [[x, y, z], ...]
@@ -26,12 +27,12 @@ def tupleGrid(grid, nodata):
     ----------
     grid : numpy.array
         An input array
-    nodata : int
+    nodata : float
         The array's nodata value
 
     Returns
     -------
-    np.array
+    numpy.array
         Array of indecies where nodata values meet data values
         in order x, y, z
 
@@ -41,9 +42,9 @@ def tupleGrid(grid, nodata):
     for x in range(grid.shape[1]):
         io = False
         for y in range(grid.shape[0]):
-            if grid[y,x] == nodata:
-                if grid[y-1,x] != nodata:
-                    val = grid[y-1,x]
+            if grid[y, x] == nodata:
+                if grid[y-1, x] != nodata:
+                    val = grid[y-1, x]
                     point = [x, y-1, val]
                     if a == 1:
                         a += 1
@@ -52,8 +53,8 @@ def tupleGrid(grid, nodata):
                 else:
                     pass
             else:
-                if io == False:
-                    val = grid[y,x]
+                if not io:
+                    val = grid[y, x]
                     point = [x, y, val]
 
                     if a == 0:
@@ -61,6 +62,7 @@ def tupleGrid(grid, nodata):
                     points.append(point)
                     io = True
     return _np.array(points)
+
 
 def concatGrid(arr_1, arr_2, nodata):
     """Takes an input of an array of grid objects and the assumed nodata value
@@ -103,6 +105,7 @@ def concatGrid(arr_1, arr_2, nodata):
         z = grid[1].squeeze()
         xy = grid[0]
     return xy, z
+
 
 def rePrint(bag_elev, bag_uncr, cov_array, ugrids, maxVal, ioVal, debug=False):
     """Uses a mix of interpolated and original bag and tif data in order to
@@ -164,8 +167,8 @@ def rePrint(bag_elev, bag_uncr, cov_array, ugrids, maxVal, ioVal, debug=False):
         the evaluation process
 
     """
-    print ('rePrint', _dt.now())
-    print (maxVal)
+    print('rePrint', _dt.now())
+    print(maxVal)
     poly = cov_array
     bag = bag_elev
     uncr = bag_uncr
@@ -173,39 +176,40 @@ def rePrint(bag_elev, bag_uncr, cov_array, ugrids, maxVal, ioVal, debug=False):
     iuncrt = ugrids[1]
     pbag = ugrids[2]
     rows, cols = bag.shape
-    ## 1
+    # 1
     tpoly = _np.nan_to_num(poly)
     tpoly = (tpoly < maxVal).astype(_np.int)
-    ## 2
+    # 2
     bpoly = (bag < maxVal).astype(_np.int)
-    ## 3
+    # 3
     cpoly = _np.logical_or(bpoly, tpoly)
-    ## 4
+    # 4
     dpoly = _np.logical_xor(bpoly, cpoly)
-    ## 5
+    # 5
     ibag = _np.where(dpoly, pbag, bag)
-    ## 6
+    # 6
     npoly = (ibag < maxVal).astype(_np.int)
-    ## 7
+    # 7
     fpoly = _np.logical_and(dpoly, npoly)
-    ## 8
-    if ioVal == False:
+    # 8
+    if not ioVal:
         nbag = _np.where(fpoly, interp, bag)
         nunc = _np.where(fpoly, iuncrt, uncr)
-    elif ioVal == True:
+    elif ioVal:
         nbag = _np.where(fpoly, interp, maxVal)
         nunc = _np.where(fpoly, iuncrt, maxVal)
-    print ('done', _dt.now())
-    polyList = [tpoly,bpoly,cpoly,dpoly,npoly,fpoly,ibag]
+    print('done', _dt.now())
+    polyList = [tpoly, bpoly, cpoly, dpoly, npoly, fpoly, ibag]
     plt.figure()
     for rast in polyList:
         plt.imshow(rast)
         plt.show()
-    if debug == False:
-#        polyList = [fpoly, cpoly]
+    if not debug:
+        # polyList = [fpoly, cpoly]
         return nbag, nunc, cpoly.astype(_np.int)
-    elif debug == True:
+    elif debug:
         return nbag, nunc, polyList
+
 
 class linear:
     """Interpolates input data and convolves the ouput of the interpolation, if
@@ -260,27 +264,29 @@ class linear:
         x, y = _np.arange(bathy.shape[1]), _np.arange(bathy.shape[0])
         xi, yi = _np.meshgrid(x, y)
         xy, z = concatGrid(bathy, covrg, nodata)
-        print (xy, z)
+        print(xy, z)
         if len(xy) != 0:
             self.bathy, self.uncrt, self.unint = self._interpolate(xy, z, xi,
-                                                                  yi, catzoc,
-                                                                  nodata)
+                                                                   yi, catzoc,
+                                                                   nodata)
         else:
-           self.bathy, self.uncrt, self.unint = bathy, uncrt, bathy
+            self.bathy, self.uncrt, self.unint = bathy, uncrt, bathy
 
     def _interpolate(self, xy, z, xi, yi, uval, nodata):
         m, b = uval
         grid_pre = _scipy.interpolate.griddata(xy, z, (xi, yi),
-                                            method='linear', fill_value=nodata)
+                                               method='linear',
+                                               fill_value=nodata)
         grid = grid_pre
         grid = _np.asarray(grid, dtype='float64')
-        grid[grid>0] = _np.nan
+        grid[grid > 0] = _np.nan
         kernel = _apc.Gaussian2DKernel(3)
-        grid = _apc.convolve(grid,kernel)
-        grid[_np.isnan(grid)]=nodata
-        grid[grid>=0] = nodata
+        grid = _apc.convolve(grid, kernel)
+        grid[_np.isnan(grid)] = nodata
+        grid[grid >= 0] = nodata
         uncr = (grid*m)+b
         return grid, uncr, grid_pre
+
 
 def sliceFinder(size, shape, res, var=5000):
     """Uses the file size of the bag to determine if the grid should be tiled.
@@ -288,13 +294,13 @@ def sliceFinder(size, shape, res, var=5000):
     large enough to tile, the number of tiles and index size of each tile will
     be calculated based on the ratio of the total size of each array.
 
-    yChunk = 5000\*sqrt(height/width)
-    xChunk = 5000\*sqrt(width/height)
+    yChunk = var*sqrt(height/width)
+    xChunk = var*sqrt(width/height)
 
     ny = _np.ceil(height/yChunk)
     nx = _np.ceil(width/xChunk)
 
-    tiles = nx\*ny
+    tiles = nx*ny
 
     chunkgird is both the arrangement of tiles in relation to the grid and the
     order in which the tiles are processed.
@@ -333,7 +339,7 @@ def sliceFinder(size, shape, res, var=5000):
     # Tile 3 is index [0,3] and has a value of 2
 
     """
-    print ('sliceFinder')
+    print('sliceFinder')
     if res < 1:
         b = 25/res
     elif res >= 1:
@@ -342,29 +348,31 @@ def sliceFinder(size, shape, res, var=5000):
         tiles = 0
         return tiles, None, None
     elif size > 100000:
-        yChunk = int(_np.round(var*_np.sqrt(shape[0]/shape[1]))) #y
-        xChunk = int(_np.round(var*_np.sqrt(shape[1]/shape[0]))) #x
-        ny = int(_np.ceil(shape[0]/yChunk)) #ny
-        nx = int(_np.ceil(shape[1]/xChunk)) #nx
-        print (ny, nx)
+        yChunk = int(_np.round(var*_np.sqrt(shape[0]/shape[1])))  # y
+        xChunk = int(_np.round(var*_np.sqrt(shape[1]/shape[0])))  # x
+        ny = int(_np.ceil(shape[0]/yChunk))  # ny
+        nx = int(_np.ceil(shape[1]/xChunk))  # nx
+        print(ny, nx)
         tiles = ny*nx
         chunckGrid = _np.arange(tiles).reshape((ny, nx))
         sliceInfo = [b, yChunk, xChunk]
-        print (tiles, chunckGrid, sliceInfo)
+        print(tiles, chunckGrid, sliceInfo)
         return tiles, chunckGrid, sliceInfo
+
 
 def chunk(arr, tile, mode=None, copy=None):
     if mode == 'a':
-        arr = arr[tile.yMin:tile.yMax,tile.xMin:tile.xMax]
+        arr = arr[tile.yMin:tile.yMax, tile.xMin:tile.xMax]
         return arr
     elif mode == 'b':
-        arr = arr[tile.yIMin:tile.yIMax,tile.xIMin:tile.xIMax]
+        arr = arr[tile.yIMin:tile.yIMax, tile.xIMin:tile.xIMax]
         return arr
     elif mode == 'c':
-        copy[tile.yBMin:tile.yBMax,tile.xBMin:tile.xBMax] = arr[tile.yIMin:tile.yIMax,tile.xIMin:tile.xIMax]
+        copy[tile.yBMin:tile.yBMax, tile.xBMin:tile.xBMax] = arr[tile.yIMin:tile.yIMax, tile.xIMin:tile.xIMax]
         return copy
-    elif mode == None:
+    elif mode is None:
         raise ValueError("Mode value required.")
+
 
 class tile:
     """tiles() serves as the data container for individual tile data. It's
@@ -536,28 +544,28 @@ class tile:
 
 
         """
-        ## 1
+        # 1
         self.yMin = int(max(0, (yChunk * chunkSlice[0]) - buffer))
         self.yMax = int(min(yChunk * (chunkSlice[0]+1) + buffer, shape[0]))
         self.xMin = int(max(0, (xChunk * chunkSlice[1]) - buffer))
         self.xMax = int(min(xChunk * (chunkSlice[1]+1) + buffer, shape[1]))
         slices = [self.yMin, self.yMax, self.xMin, self.xMax]
 
-        ## 2
+        # 2
         self.yBMin = int(max(0, (yChunk * chunkSlice[0])))
         self.yBMax = int(min(yChunk * (chunkSlice[0]+1), shape[0]))
         self.xBMin = int(max(0, (xChunk * chunkSlice[1])))
         self.xBMax = int(min(xChunk * (chunkSlice[1]+1), shape[1]))
         tiles = [self.yBMin, self.yBMax, self.xBMin, self.xBMax]
 
-        ## 3
-        self.yIMin = int(max(0,(self.yBMin-self.yMin)))
+        # 3
+        self.yIMin = int(max(0, (self.yBMin-self.yMin)))
         yma = int(min((self.yMax-self.yBMax), shape[0]))
         if yma == 0:
             self.yIMax = int(yChunk + buffer)
         else:
             self.yIMax = -int(yma)
-        self.xIMin = int(max(0,(self.xBMin-self.xMin)))
+        self.xIMin = int(max(0, (self.xBMin-self.xMin)))
         xma = int(min((self.xMax-self.xBMax), shape[1]))
         if xma == 0:
             self.xIMax = int(xChunk + buffer)
@@ -565,4 +573,4 @@ class tile:
             self.xIMax = -int(xma)
         borders = [self.yIMin, self.yIMax, self.xIMin, self.xIMax]
 
-        print (slices, tiles, borders, sep='\n')
+        print(slices, tiles, borders, sep='\n')
