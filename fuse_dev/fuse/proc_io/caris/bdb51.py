@@ -15,6 +15,7 @@ import pickle
 import socket
 import subprocess
 import sys
+import threading
 from typing import Dict
 
 from fuse.proc_io.caris import helper
@@ -49,7 +50,8 @@ class bdb51:
 
     """
 
-    def __init__(self, database_loc: str, database_name: str, caris_env_name: str = 'NBS35'):
+    def __init__(self, database_loc: str, database_name: str, caris_env_name: str = 'NBS35',
+                 host='localhost'):
         """
         Instantiate the object and connect to the database referenced, waiting
         until the database responds.
@@ -60,14 +62,26 @@ class bdb51:
         database_name
         caris_env_name
         """
-
+        self.host = host
+        self.port = None
+        self.sock = None
+        self.conn = None
+        self.data = None
+        self.alive = False  # is the sub environment talking via TCP
+        self.connected = False  # is the sub environment talking to the db
+        self._response = None
+        self._command = None
+        self.msg_id = 0
+        self.database_loc = database_loc
+        self.database_name = database_name
         self.caris_environment_name = caris_env_name
         self._logger = logging.getLogger('fuse')
         if len(self._logger.handlers) == 0:
             ch = logging.StreamHandler(sys.stdout)
             ch.setLevel(logging.DEBUG)
             self._logger.addHandler(ch)
-        self._form_connection()
+        self._thread = threading.Thread(target=self._form_connection)
+        self._thread.start()
 
     def _form_connection(self):
         """
@@ -82,21 +96,41 @@ class bdb51:
 
         """
 
-        sock = socket.socket()
-        sock.bind(('localhost', 0))
-        port = sock.getsockname()[1]
-        sock.listen()
-        self._start_env(port)
-        sock.setblocking(True)
-
-        # TODO
-        self._conn, addr = sock.accept()
-        print('accepted', self._conn, 'from', addr)
-        self._conn.setblocking(True)
-
-        data = self._conn.recv()
-        response = pickle.loads(data)
-        self._logger.log(response['log'])
+        self.sock = socket.socket()
+        self.sock.bind((self.host, 0))
+        self.port = self.sock.getsockname()[1]
+        self.sock.listen(1)
+        self._start_env(self.port)
+        while True:
+            self._conn, addr = self.sock.accept()
+            self._logger.log(logging.DEBUG, 'accepted connection from {} at {}'.format(str(addr), str(self._conn)))
+            data = self._conn.recv(1024)
+            if len(data) > 0:
+                response = pickle.loads(data)
+                if response['success']:
+                    self.alive = response['alive']
+            else:
+                print('No response from subprocess received')
+            while self.alive:
+                ''' 
+                TO DO: should we should try to detect if the connection is 
+                broken and look for another connection if it is
+                '''
+                if self._command is not None:
+                    try:
+                        self._conn.send(pickle.dumps(self._command))
+                        self._command = None
+                        data = self._conn.recv(1024)
+                        if len(data) > 0:
+                            response = pickle.loads(data)
+                            self._response = response
+                    except ConnectionResetError:
+                        self.alive = False
+                        break
+                    except Exception as error:
+                        self._logger.log(logging.DEBUG, str(error))
+            if not self.alive:
+                break
 
     def _start_env(self, port: int):
         """
@@ -156,7 +190,9 @@ class bdb51:
         """Form and send the connect command to the BDB51 wapper."""
 
         command = {'command': 'connect'}
-        self._send_command(command)
+        command['node_manager'] = self.database_loc
+        command['database'] = self.database_name
+        response = self._set_command(command)
 
     def status(self):
         """
@@ -172,7 +208,7 @@ class bdb51:
         """
 
         command = {'command': 'status'}
-        self._send_command(command)
+        response = self._set_command(command)
 
     def upload(self, dataset: gdal.Dataset, instruction: str):
         """
@@ -212,37 +248,28 @@ class bdb51:
         """
 
         command = {'command': 'die'}
-        if delay == 0:
-            command['action'] = 'now'
+        command['action'] = int(delay)
+        response = self._set_command(command)
+        if response['command'] == 'die' and response['success']:
+            self.alive = False
+
+    def _set_command(self, command: Dict[str, str]):
+        """
+        Set the object command variable and wait for a response from
+        the subprocess.
+        """
+        command['id'] = self.msg_id
+        self.msg_id += 1
+        if self._command is None and self._response is None:
+            self._command = command
+            while True:
+                if self._response is not None:  # we need a way to check if the connection is alive
+                    response = self._response
+                    self._logger.log(logging.DEBUG, str(response))
+                    if not response['success']:
+                        print('{} failed!').format(response['command'])
+                    self._response = None
+                    break
         else:
-            command['action'] = int(delay)
-        self._send_command(command)
-
-    def _send_command(self, command: Dict[str, str]):
-        """
-        Send a command to the BDB51 wrapper.
-
-        Parameters
-        ----------
-        command :
-
-        command: Dict[str :
-
-        str] :
-
-
-        Returns
-        -------
-
-        """
-
-        pc = pickle.dumps(command)
-        self._conn.send(pc)
-        data = self._conn.recv()
-        response = pickle.loads(data)
-        self._logger.log(response['log'])
-        response = self.db.stdout.read()
-        print(response.decode(encoding='UTF-8'))
-
-        # self._logger.log(logging.DEBUG, pickle.loads(response))
-        # self._logger.log(logging.DEBUG, pickle.loads(err))
+            raise ValueError('command / response state is unexpected')
+        return response

@@ -30,7 +30,7 @@ def tupleGrid(grid: _np.array, nodata: int):
     ----------
     grid :
         An input array
-    nodata :
+    nodata : float
         The array's nodata value
     grid: _np.array :
 
@@ -39,6 +39,9 @@ def tupleGrid(grid: _np.array, nodata: int):
 
     Returns
     -------
+    numpy.array
+        Array of indecies where nodata values meet data values
+        in order x, y, z
 
     """
 
@@ -58,7 +61,7 @@ def tupleGrid(grid: _np.array, nodata: int):
                 else:
                     pass
             else:
-                if io == False:
+                if not io:
                     val = grid[y, x]
                     point = [x, y, val]
 
@@ -175,26 +178,26 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
     iuncrt = ugrids[1]
     pbag = ugrids[2]
     rows, cols = bag.shape
-    ## 1
+    # 1
     tpoly = _np.nan_to_num(poly)
     tpoly = (tpoly < maxVal).astype(_np.int)
-    ## 2
+    # 2
     bpoly = (bag < maxVal).astype(_np.int)
-    ## 3
+    # 3
     cpoly = _np.logical_or(bpoly, tpoly)
-    ## 4
+    # 4
     dpoly = _np.logical_xor(bpoly, cpoly)
-    ## 5
+    # 5
     ibag = _np.where(dpoly, pbag, bag)
-    ## 6
+    # 6
     npoly = (ibag < maxVal).astype(_np.int)
-    ## 7
+    # 7
     fpoly = _np.logical_and(dpoly, npoly)
-    ## 8
-    if ioVal == False:
+    # 8
+    if not ioVal:
         nbag = _np.where(fpoly, interp, bag)
         nunc = _np.where(fpoly, iuncrt, uncr)
-    elif ioVal == True:
+    elif ioVal:
         nbag = _np.where(fpoly, interp, maxVal)
         nunc = _np.where(fpoly, iuncrt, maxVal)
     print('done', _dt.now())
@@ -205,6 +208,7 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
         plt.show()
     #polyList = [fpoly, cpoly]
     return nbag, nunc, polyList if debug else cpoly.astype(_np.int)
+
 
 
 class linear:
@@ -285,7 +289,8 @@ class linear:
 
         m, b = uval
         grid_pre = _scipy.interpolate.griddata(xy, z, (xi, yi),
-                                               method='linear', fill_value=nodata)
+                                               method='linear',
+                                               fill_value=nodata)
         grid = grid_pre
         grid = _np.asarray(grid, dtype='float64')
         grid[grid > 0] = _np.nan
@@ -304,13 +309,13 @@ def sliceFinder(size: int, shape: Tuple[int, int], res: float, var: int = 5000):
     large enough to tile, the number of tiles and index size of each tile will
     be calculated based on the ratio of the total size of each array.
 
-    yChunk = 5000\*sqrt(height/width)
-    xChunk = 5000\*sqrt(width/height)
+    yChunk = var*sqrt(height/width)
+    xChunk = var*sqrt(width/height)
 
     ny = _np.ceil(height/yChunk)
     nx = _np.ceil(width/xChunk)
 
-    tiles = nx\*ny
+    tiles = nx*ny
 
     chunkgird is both the arrangement of tiles in relation to the grid and the
     order in which the tiles are processed.
@@ -400,7 +405,7 @@ def chunk(arr, tile, mode=None, copy=None):
     elif mode == 'c':
         copy[tile.yBMin:tile.yBMax, tile.xBMin:tile.xBMax] = arr[tile.yIMin:tile.yIMax, tile.xIMin:tile.xIMax]
         return copy
-    elif mode == None:
+    elif mode is None:
         raise ValueError("Mode value required.")
 
 
@@ -599,21 +604,21 @@ class tile:
         [40.0, 4285, 5835]
         """
 
-        ## 1
+        # 1
         self.yMin = int(max(0, (yChunk * chunkSlice[0]) - buffer))
         self.yMax = int(min(yChunk * (chunkSlice[0] + 1) + buffer, shape[0]))
         self.xMin = int(max(0, (xChunk * chunkSlice[1]) - buffer))
         self.xMax = int(min(xChunk * (chunkSlice[1] + 1) + buffer, shape[1]))
         slices = [self.yMin, self.yMax, self.xMin, self.xMax]
 
-        ## 2
+        # 2
         self.yBMin = int(max(0, (yChunk * chunkSlice[0])))
         self.yBMax = int(min(yChunk * (chunkSlice[0] + 1), shape[0]))
         self.xBMin = int(max(0, (xChunk * chunkSlice[1])))
         self.xBMax = int(min(xChunk * (chunkSlice[1] + 1), shape[1]))
         tiles = [self.yBMin, self.yBMax, self.xBMin, self.xBMax]
 
-        ## 3
+        # 3
         self.yIMin = int(max(0, (self.yBMin - self.yMin)))
         yma = int(min((self.yMax - self.yBMax), shape[0]))
         if yma == 0:

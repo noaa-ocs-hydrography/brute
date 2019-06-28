@@ -89,6 +89,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
                 self._reader = _usace.cesam.read_raw()
             elif reader_type == 'ceswg':
                 self._reader = _usace.ceswg.read_raw()
+            elif reader_type == 'cespl':
+                self._reader = _usace.cespl.read_raw()
             else:
                 raise ValueError('reader type not implemented')
         except:
@@ -128,19 +130,20 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._writer = proc_io('gdal', ext)
         self._points = proc_io('point', 'csar')
 
-    def _read_pickle(self, infilename):
+    def _read_pickle(self, infilename: str):
         """
-        
+
 
         Parameters
         ----------
         infilename :
-            
+
 
         Returns
         -------
 
         """
+
         pickle = _usace.parse_usace_pickle.pickle_file(infilename)
         return pickle.pickle_meta
 
@@ -153,9 +156,9 @@ class fuse_ehydro(_fbc.fuse_base_class):
         Parameters
         ----------
         infilename :
-            
+
         infilename: str :
-            
+
 
         Returns
         -------
@@ -187,9 +190,9 @@ class fuse_ehydro(_fbc.fuse_base_class):
         Parameters
         ----------
         infilename :
-            
+
         infilename: str :
-            
+
 
         Returns
         -------
@@ -231,9 +234,9 @@ class fuse_ehydro(_fbc.fuse_base_class):
         Parameters
         ----------
         infilename :
-            
+
         infilename: str :
-            
+
 
         Returns
         -------
@@ -263,9 +266,9 @@ class fuse_ehydro(_fbc.fuse_base_class):
         Parameters
         ----------
         infilename :
-            
+
         infilename: str :
-            
+
 
         Returns
         -------

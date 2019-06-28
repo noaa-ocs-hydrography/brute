@@ -30,6 +30,7 @@ class bag_file:
         self.wkt = None
         self.size = None
         self.outfilename = None
+        self.version = None
 
     def open_file(self, filepath: str, method: str):
         """
@@ -39,15 +40,10 @@ class bag_file:
 
         Parameters
         ----------
-        filepath :
-            param method:
-        filepath: str :
-
-        method: str :
-
-
-        Returns
-        -------
+        filepath : str
+            The complete file path of the input BAG file
+        method : str
+            The method used to open the file
 
         """
 
@@ -66,13 +62,8 @@ class bag_file:
 
         Parameters
         ----------
-        filepath :
-
-        filepath: str :
-
-
-        Returns
-        -------
+        filepath : str
+            The complete file path of the input BAG file
 
         """
 
@@ -97,13 +88,8 @@ class bag_file:
 
         Parameters
         ----------
-        filepath :
-
-        filepath: str :
-
-
-        Returns
-        -------
+        filepath : str
+            The complete file path of the input BAG file
 
         """
 
@@ -113,9 +99,12 @@ class bag_file:
         self.uncertainty = self._gdalreadarray(bag_obj, 2)
         self.shape = self.elevation.shape
         print(bag_obj.GetGeoTransform())
-        self.bounds, self.resolution = self._gt2bounds(bag_obj.GetGeoTransform(),
-                                                       self.shape)
+        self.bounds, self.resolution = self._gt2bounds(
+            bag_obj.GetGeoTransform(),
+            self.shape
+        )
         self.wkt = bag_obj.GetProjectionRef()
+        self.version = bag_obj.GetMetadata()
 
         print(self.bounds)
         bag_obj = None
@@ -202,7 +191,7 @@ class bag_file:
 
         sx, sy = meta.sw
         nx, ny = meta.ne
-        return ((sx, ny), (nx, sy))
+        return ([sx, ny], [nx, sy])
 
     def _gt2bounds(self, meta, shape: Tuple[int, int]) -> Tuple[Tuple[Tuple[float, float], Tuple[float, float]], float]:
         """
@@ -221,12 +210,13 @@ class bag_file:
         """
         y, x = shape
         res = (meta[1], meta[5])
-        sx, sy = _np.round(meta[0]), _np.round(meta[3])
-        nx = sx + (x * res[0])
-        ny = sy + (y * res[1])
-        print([sx, sy], [nx, ny])
-        res = (_np.round(meta[1], 2), _np.round(meta[5], 2))
-        return ((sx, ny), (nx, sy)), res
+        #        ulx, uly = _np.round(meta[0]), _np.round(meta[3])
+        ulx, uly = meta[0], meta[3]
+        lrx = ulx + (x * res[0])
+        lry = uly + (y * res[1])
+        print([ulx, uly], [lrx, lry])
+        #        res = (_np.round(meta[1], 2), _np.round(meta[5], 2))
+        return ([ulx, uly], [lrx, lry]), res
 
     def _gdalreadarray(self, bag_obj, band: int) -> _np.array:
         """
@@ -327,7 +317,8 @@ class gdal_create:
         y_cols, x_cols = bag.shape
         res_x, res_y = bag.resolution[0], bag.resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols,
-                                                        bands, _gdal.GDT_Float32)
+                                                        bands,
+                                                        _gdal.GDT_Float32)
         target_gt = (scx, res_x, 0, scy, 0, res_y)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=bag.wkt)
@@ -379,16 +370,16 @@ class gdal_create:
         -------
 
         """
-
         bands = len(arrays)
-        sw, ne = bounds
-        scx, scy = sw
-        nex, ney = ne
+        nw, se = bounds
+        nwx, nwy = nw
+        scx, scy = se
         y_cols, x_cols = shape
         res_x, res_y = resolution[0], resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols,
-                                                        bands, _gdal.GDT_Float32)
-        target_gt = (scx, res_x, 0, scy, 0, res_y)
+                                                        bands,
+                                                        _gdal.GDT_Float32)
+        target_gt = (nwx, res_x, 0, nwy, 0, res_y)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=prj)
         srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)

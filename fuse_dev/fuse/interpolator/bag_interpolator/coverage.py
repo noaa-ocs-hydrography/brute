@@ -20,6 +20,7 @@ _gdal.UseExceptions()
 
 # import matplotlib.pyplot as plt
 
+
 def _maxValue(arr: _np.array):
     """
     Returns the most used value in the array as an integer
@@ -275,11 +276,11 @@ class geopackage:
         source_srs = source_layer.GetSpatialRef()
 
         for feature in source_layer:
-            if feature != None:
+            if feature is not None:
                 geom = feature.GetGeometryRef()
-                #                print (geom.ExportToWkt())
+                #                print(geom.ExportToWkt())
                 ds_geom = _ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-                #                print (source_srs, to_proj, sep='\n')
+                #                print(source_srs, to_proj, sep='\n')
                 coordTrans = _osr.CoordinateTransformation(source_srs, to_srs)
                 ds_geom.Transform(coordTrans)
                 driver = _ogr.GetDriverByName('Memory')
@@ -423,22 +424,23 @@ class unified_coverage:
         "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
         (https://gis.stackexchange.com/a/278965)]
 
-        This function takes an array input of coverage objects, a destination path (for
-        ouput saving), and a list the names of the input coverage objects.
+        This function takes an array input of coverage objects, a destination
+        path (for ouput saving), and a list the names of the input coverage
+        objects.
 
-        Takes the arrays of each coverage object and combines them along the z axis of
-        each::
+        Takes the arrays of each coverage object and combines them along the z
+        axis of each::
 
             [[za,zb],[za,zb],[za,zb],
              [za,zb],[za,zb],[za,zb],
              [za,zb],[za,zb],[za,zb]]
 
         Then takes the mean of the values along the z axis. The reslult is then
-        modified to a binary raster by making all values that are not the nodata
-        value 1 and the values that are nodata 0.
+        modified to a binary raster by making all values that are not the
+        nodata value 1 and the values that are nodata 0.
 
-        This binary raster is saved at the input path and also returned with the
-        new full path for the output
+        This binary raster is saved at the input path and also returned with
+        the new full path for the output
 
         Parameters
         ----------
@@ -449,11 +451,6 @@ class unified_coverage:
         rasters: list :
 
         name: str :
-
-
-        Returns
-        -------
-
         """
 
         print('_combine')
@@ -462,25 +459,25 @@ class unified_coverage:
         coverageList = []
         x = 0
         for raster in rasters:
-            #            print (raster.shape)
+            #            print(raster.shape)
             maxVal = raster.nodata
-            #            print (maxVal)
+            #            print(maxVal)
             cols, rows = raster.shape
             if x == 0:
-                #                print ('original', shape)
+                #                print('original', shape)
                 if cols >= shape[0]:
                     shape[0] = cols
                 if rows >= shape[1]:
                     shape[1] = rows
-                #                print ('original', shape)
+                #                print('original', shape)
                 coverageList.append([x, raster.array])
             elif x != 0:
                 if [cols, rows] != shape:
-                    #                    print ('nope')
+                    #                    print('nope')
                     pass
                 else:
                     coverageList.append([x, raster.array])
-            #                    print ('yup')1
+            #                    print('yup')1
             x += 1
         #        plt.figure()
         covDict = dict(coverageList)
@@ -513,8 +510,9 @@ class unified_coverage:
 
     def _align(self, rasters: list):
         """
-        Takes an input of an array of coverage objects. The goal of this function
-        is to fit the provided coverage objects to the largest combined area of the inputs.
+        Takes an input of an array of coverage objects. The goal of this
+        function is to fit the provided coverage objects to the largest
+        combined area of the inputs.
 
 
         1. Find NW and SE corners of the first input array and the number of rows and columns in the input.
@@ -529,14 +527,8 @@ class unified_coverage:
 
         Parameters
         ----------
-        rasters :
-            List of coverage objects created by :func:`_open_data`
         rasters: list :
-
-
-        Returns
-        -------
-
+            List of coverage objects created by :func:`_open_data`
         """
 
         print('_align')
@@ -552,7 +544,7 @@ class unified_coverage:
             if x == 0:
                 nw = ul
                 se = lr
-                #                print (nw, se)
+                #                print(nw, se)
                 x += 1
             else:
                 ulx, uly = ul
@@ -579,50 +571,50 @@ class unified_coverage:
                     scy = lry
                 elif lry >= scy:
                     syd = scy - lry
-                #                print (nxd, nyd, sxd, syd)
-                #                print (sxd, nyd)
+                #                print(nxd, nyd, sxd, syd)
+                #                print(sxd, nyd)
                 nw = [nwx, nwy]
                 se = [scx, scy]
-                cols, rows = int(_np.round(nwy - scy)), int(_np.round(scx - nwx))
+                cols, rows = (int(_np.round(nwy - scy)),
+                              int(_np.round(scx - nwx)))
         #                print('cols: ' , nwy - scy, '\nrows: ', scx - nwx)
-        #        print (nw, se)
+        #        print(nw, se)
         sizedCoverage = []
-        #        print ('resize?')
+        #        print('resize?')
         if nxd != 0 or nyd != 0 or sxd != 0 or syd != 0:
             #            plt.figure()
-            #            print ('yes')#, _dt.now())
+            #            print('yes')#, _dt.now())
             #            ref = _np.full((cols, rows), 0)
-            #            print (ref.shape)
+            #            print(ref.shape)
             for grid in rasters:
                 maxVal = grid.nodata
                 bndx, bndy = grid.bounds[0]
                 nwx, nwy = nw
-                #                print ('old:', bndx, bndy)
-                #                print ('new', nwx, nwy)
+                #                print('old:', bndx, bndy)
+                #                print('new', nwx, nwy)
                 arr = grid.array
-                bef = arr.shape
                 y, x = arr.shape
-                #                print (y, rows)
-                #                print (x, cols)
+                #                print(y, rows)
+                #                print(x, cols)
                 if x != cols:
                     exp = int(abs(rows - x))
-                    #                    print (exp)
+                    #                    print(exp)
                     add = _np.full((y, exp), maxVal)
                     arr = _np.column_stack([arr, add])
                     y, x = arr.shape
                 if y != rows:
                     exp = int(abs(cols - y))
-                    #                    print (exp)
+                    #                    print(exp)
                     add = _np.full((exp, x), maxVal)
                     arr = _np.vstack([arr, add])
-                #                print (bef, arr.shape)
+                #                print(bef, arr.shape)
                 if nwx != bndx:
                     rollx = bndx - nwx
-                    #                    print (rollx)
+                    #                    print(rollx)
                     arr = _np.roll(arr, int(rollx), axis=1)
                 if nwy != bndy:
                     rolly = nwy - bndy
-                    #                    print (rolly)
+                    #                    print(rolly)
                     arr = _np.roll(arr, int(rolly), axis=0)
                 grid.array = arr
                 #                plt.imshow(grid.array)
@@ -630,11 +622,11 @@ class unified_coverage:
                 grid.bounds = (nw, se)
                 sizedCoverage.append(grid)
             bounds = (nw, se)
-            #            print (bounds)
-            #            print ('done')#, _dt.now())
+            #            print(bounds)
+            #            print('done')#, _dt.now())
             return sizedCoverage, bounds
         else:
-            #            print ('same')
+            #            print('same')
             bounds = (nw, se)
             return rasters, bounds
 
@@ -694,33 +686,34 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
 
     print('align2grid')
 
-    ##1
+    # 1
     covRes = coverage.resolution[0]
 
-    ##2
+    # 2
     bagRes = resolution[0]
 
-    ## 3
+    # 3
     zres = covRes / bagRes
     print(bagRes, zres)
 
-    ## 4
+    # 4
     print(coverage.array)
     if zres == 1:
         newarr = coverage.array
     else:
         print('_zoom', _dt.now())
-        newarr = _zoom(coverage.array, zoom=[zres, zres], order=3, prefilter=False)
+        newarr = _zoom(coverage.array, zoom=[zres, zres], order=3,
+                       prefilter=False)
         print('zoomed', _dt.now())
 
-    ## 5
+    # 5
     newarr = newarr.astype('float64')
     newarr[newarr > 0] = _np.nan
     newarr[newarr < 1] = float(nodata)
     print(newarr)
     print(coverage.shape, newarr.shape)
 
-    ## 6
+    # 6
     bagBounds = bounds
     covBounds = coverage.bounds
     print(bagBounds)
@@ -745,7 +738,7 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     print(dulx, duly)
     print(dlrx, dlry)
 
-    ## 7
+    # 7
     bShape = shape
     bSy, bSx = bShape
     cSy, cSx = newarr.shape
@@ -765,7 +758,7 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     rollx = int(dulx * zres)
     rolly = int(duly * zres)
 
-    ## 8
+    # 8
     up, left = 0, 0
     down, right = 0, 0
     if duly < 0:
@@ -783,7 +776,8 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
         print('rollz', up, left, down, right)
         temp = newarr[up:, left:]
         print(temp.shape)
-        ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[:, :]
+        ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[down:ay.shape[0] + down,
+                                                                     right:ay.shape[1] + right]
         temp = None
     else:
         ay[:] = newarr[:]
@@ -803,8 +797,9 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     return coverage
 
 
-def write_raster(coverage, outputpath: str, out_verdat: str = 'MLLW', dtype=_gdal.GDT_UInt32,
-                 options: int = 0, color_table: int = 0, nbands: int = 1, nodata: bool = False):
+def write_raster(coverage, outputpath: str, out_verdat: str = 'MLLW',
+                 dtype=_gdal.GDT_UInt32, options: int = 0, color_table: int = 0, nbands: int = 1,
+                 nodata: bool = False):
     """
     Directly From:
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
@@ -893,7 +888,6 @@ def coverage2gdal(coverage) -> gdal.Dataset:
         gdal dataset
 
     """
-
     proj = coverage.wkt
     height, width = coverage.shape
     sw, ne = coverage.bounds

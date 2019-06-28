@@ -19,17 +19,22 @@ from get_access import *
 
 
 class bdb51_io:
-    """TODO write description"""
+    """
+    An object for handling CARIS BDB I/O through the Python interface.
+    """
 
-    def __init__(self, port: int):
+    def __init__(self, port):
         """
-        TODO write description
+        Initialize the object.
 
         Parameters
         ----------
         port
         """
+
+        self.sock = None
         self.port = port
+        self.host = 'localhost'
         self.alive = True
         self.connected = False
         self.node_manager = None
@@ -38,20 +43,42 @@ class bdb51_io:
         self._db = None
         self._command = []
         self._response = []
+        # open the socket
+        self._call_home(self.host, self.port)
+        # listen for a command
+        self.get_commands()
 
-    def request_commands(self):
-        """Call the provided port on the host and ask for something to do."""
+    def _call_home(self, host, port):
+        """
+        Connect back to the calling environment.
+        """
+        # set up the socket
+        try:
+            self.sock = socket.create_connection((host, port))
+            self.connected = True
+        except OSError:
+            self.sock.close()
+            self.sock = None
+        # send a message saying we are alive
+        if self.sock is None:
+            print('could not open socket')
+            sys.exit(1)
+        else:
+            hello_im_here = self.status({'command': None})
+            self.sock.sendall(pickle.dumps(hello_im_here))
 
-        conn = socket.create_connection(('', self.port))
-        conn.setblocking(True)
-        # need to build a packet to send to open the connection
-        hello_im_here = self.status({})
-        conn.send(hello_im_here)
+    def get_commands(self):
+        """
+        Listen on the provided socket and wait for something to do.
+        """
         while self.alive:
-            command = conn.recv()
-            response = self.take_commands(command)
-            conn.send(response)
-        conn.close()
+            data = self.sock.recv(1024)
+            if data:
+                command = pickle.loads(data)
+                response = self.take_commands(command)
+                print('Response', response)
+                self.sock.sendall(pickle.dumps(response))
+        self.sock.close()
 
     def take_commands(self, command_dict: dict):
         """
@@ -73,18 +100,17 @@ class bdb51_io:
 
         """
 
-        self._command.append(command_dict)
+        # self._command.append(command_dict)
         command = command_dict['command']
         if command == 'connect':
-            print('connected')
-        #            response = self.connect(command_dict)
+            response = self.connect(command_dict)
         elif command == 'status':
             response = self.status(command_dict)
         elif command == 'upload':
             response = self.upload(command_dict)
         elif command == 'die':
             response = self.die(command_dict)
-        self._response.append(response)
+        # self._response.append(response)
         return response
 
     def connect(self, command_dict: dict) -> dict:
@@ -112,18 +138,20 @@ class bdb51_io:
         self.database = command_dict['database']
         try:
             self._nm = bdb.NodeManager(username, password, self.node_manager)
-            msg = msg + f'Connected to Node Manager {self.node_manager}'
-        except RuntimeError as e:
-            sys.stderr(pickle.dumps(e))
+            msg += f'Connected to Node Manager {self.node_manager}\n'
+        except RuntimeError as error:
+            msg += f'{error}'
         if self._nm is not None:
             try:
                 self._db = self._nm.get_database(self.database)
-                msg = msg + f', Connected to database {self.database}'
+                msg += f', Connected to database {self.database}'
                 self.connected = True
-            except RuntimeError as e:
-                sys.stderr(pickle.dumps(e))
-        response = {'command': 'connect', 'response': 'success', 'log': msg}
-        return response
+                command_dict['success'] = True
+            except RuntimeError as error:
+                msg = msg + str(error)
+                command_dict['success'] = False
+        command_dict['log'] = msg
+        return command_dict
 
     def _check_connection(self):
         """Check to see if the database connection is alive."""
@@ -148,8 +176,9 @@ class bdb51_io:
 
         """
 
-        response = {'command': 'status', 'alive': self.alive}
-        return response
+        command_dict['success'] = True
+        command_dict['alive'] = self.alive
+        return command_dict
 
     def upload(self, command_dict: dict) -> dict:
         """
@@ -173,11 +202,16 @@ class bdb51_io:
         # what to upload, new or updated data
         action = command_dict['action']
         # the name of the file to get data from
-        name = command_dict['name']
-        if action == 'new':
-            msg = self._upload_new(name)
-        response = {'command': 'upload', 'response': 'success', 'log': msg}
-        return response
+        file_path = command_dict['path']
+        try:
+            if action == 'new':
+                msg = self._upload_new(file_path)
+            command_dict['success'] = True
+            command_dict['log'] = msgexcept
+            Exception as error:
+            command_dict['success'] = False
+            command_dict['log'] = str(error)
+        return command_dict
 
     def _upload_new(self, file_path: str):
         """
@@ -216,10 +250,9 @@ class bdb51_io:
         # commit the feature to the database
         self._db.commit()
         # upload coverage
-        try:
-            surface.upload_coverage(file_path)
-        except RuntimeError as e:
-            sys.stderr(pickle.dumps(e))
+        surface.upload_coverage(file_path)
+        info = 'Uploaded {} to {}'.format(file_path, self.database)
+        return info
 
     def query(self, command_dict: dict):
         """
@@ -263,9 +296,10 @@ class bdb51_io:
         time.sleep(int(action))
         self._nm = None
         self._db = None
-        response = {'response': 'log', 'message': f'Stopping I/O with {self.database}'}
+        command_dict['success'] = True
+        command_dict['log'] = f'Stopping I/O with {self.database}'
         self.alive = False
-        return response
+        return command_dict
 
 
 def main(port: int):
@@ -285,7 +319,6 @@ def main(port: int):
     """
 
     db_io = bdb51_io(port)
-    db_io.request_commands()
 
 
 if __name__ == '__main__':

@@ -13,10 +13,15 @@ The objective is to interpolate both XYZ data and BAGs.
 
 
 Sources:
-    Make ogr dataset from numpy array: https://pcjericks.github.io/py-gdalogr-cookbook/geometry.html
-    ogr data set to gdal for gridding: http://osgeo-org.1560.x6.nabble.com/gdal-dev-DataSource-Dataset-using-gdal-Grid-td5322689.html
-    GDAL gridding information: http://www.gdal.org/grid_tutorial.html#grid_tutorial_interpolation
-    gdal_grid: http://www.gdal.org/gdal_grid.html
+    Make ogr dataset from numpy array:
+        https://pcjericks.github.io/py-gdalogr-cookbook/geometry.html
+    ogr data set to gdal for gridding:
+        http://osgeo-org.1560.x6.nabble.com/gdal-dev-DataSource-Dataset-using-
+        gdal-Grid-td5322689.html
+    GDAL gridding information:
+        http://www.gdal.org/grid_tutorial.html#grid_tutorial_interpolation
+    gdal_grid:
+        http://www.gdal.org/gdal_grid.html
 
 """
 
@@ -66,6 +71,7 @@ def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, floa
         valmax = val
 
     return valmin, valmax
+
 
 
 class point_interpolator:
@@ -119,11 +125,11 @@ class point_interpolator:
         if interpolation_type == 'linear':
             linear = True
         elif interpolation_type == 'natural':
-            if shapefile == None:
+            if shapefile is None:
                 raise ValueError('Supporting shapefile required')
             natural = True
         elif interpolation_type == 'invdist_scilin':
-            if shapefile == None:
+            if shapefile is None:
                 raise ValueError('Supporting shapefile required')
             invlin = True
         elif interpolation_type == 'invdist':
@@ -138,27 +144,30 @@ class point_interpolator:
             ds2 = self._gdal_linear_interp_points(dataset, resolution)
         elif natural:
             ds2 = self._gdal_mlab_natural_interp_points(dataset, resolution)
-            if shrink == True:
+            if shrink:
                 ds4 = self._shrink_coverage(ds2, resolution, window)
         elif invlin:
-            ds2 = self._gdal_invdist_scilin_interp_points(dataset, resolution, window)
-            if shrink == True:
+            ds2 = self._gdal_invdist_scilin_interp_points(dataset, resolution,
+                                                          window)
+            if shrink:
                 ds4 = self._shrink_coverage(ds2, resolution, window)
         elif invdist:
             # do the inverse distance interpolation
             ds3 = self._gdal_invdist_interp_points(dataset, resolution, window)
-            # shrink the coverage back on the edges and in the holidays on the inv dist
-            if shrink == True:
+            # shrink the coverage back on the edges and in the holidays on the
+            # inv dist
+            if shrink:
                 ds4 = self._shrink_coverage(ds3, resolution, window)
         else:
             print('No interpolation method recognized')
         if linear:
-            # trim the triangulated interpolation back using the inv dist as a mask
+            # trim the triangulated interpolation back using the inv dist as a
+            # mask
             ds3 = self._get_mask(dataset, resolution, window)
             ds5 = self._mask_with_raster(ds2, ds3)
         elif natural or invlin:
             ds3 = self._get_shape_mask(ds2, shapefile, resolution)
-            if shrink == True:
+            if shrink:
                 ds5 = self._mask_with_raster(ds4, ds3)
             else:
                 ds5 = self._mask_with_raster(ds2, ds3)
@@ -166,7 +175,7 @@ class point_interpolator:
         if linear or natural or invlin:
             return ds5
         elif invdist:
-            if shrink == True:
+            if shrink:
                 return ds4
             else:
                 return ds3
@@ -223,7 +232,8 @@ class point_interpolator:
 
         count = len(dataset)
         min_dist = np.zeros(count) + np.inf
-        # roll the array through, comparing all points and saving the minimum dist.
+        # roll the array through, comparing all points and saving the minimum
+        # dist.
         for n in np.arange(1, count):
             tmp = np.roll(dataset, n, axis=0)
             dist = (np.sqrt(np.square(dataset[:, 0] - tmp[:, 0])
@@ -312,11 +322,11 @@ class point_interpolator:
         source_srs = source_layer.GetSpatialRef()
 
         for feature in source_layer:
-            if feature != None:
+            if feature is not None:
                 geom = feature.GetGeometryRef()
-                #                print (geom.ExportToWkt())
+                #                print(geom.ExportToWkt())
                 ds_geom = ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-                #                print (source_srs, to_proj, sep='\n')
+                #                print(source_srs, to_proj, sep='\n')
                 coordTrans = osr.CoordinateTransformation(source_srs, to_proj)
                 ds_geom.Transform(coordTrans)
                 driver = ogr.GetDriverByName('Memory')
@@ -362,7 +372,7 @@ class point_interpolator:
         plt.imshow(newarr)
         plt.show()
 
-        ## 6
+        # 6
         print(x_orig, y_orig)
         print(x_min, y_min)
         ollx, olly = x_orig, y_orig
@@ -376,7 +386,7 @@ class point_interpolator:
             print(olly, rlly, dlly)
         print(dllx, dlly)
 
-        ## 7
+        # 7
         oShape = (to_y, to_x)
         oSy, oSx = oShape
         rSy, rSx = newarr.shape
@@ -396,18 +406,18 @@ class point_interpolator:
         rollx = int(dllx / to_res)
         rolly = int(dlly / to_res)
 
-        ## 8
+        # 8
         up, left = 0, 0
         down, right = 0, 0
         if dlly < 0:
-            down = rolly
+            down = abs(rolly)
             up = 0
         elif dlly > 0:
             up = -int(rolly)
         if dllx < 0:
             left = -int(rollx)
         elif dllx > 0:
-            right = rollx
+            right = abs(rollx)
             left = 0
 
         if dllx != 0 or dlly != 0:
@@ -592,7 +602,8 @@ class point_interpolator:
         print('stop')
 
         interp_data = gdal.GetDriverByName('MEM').Create('', numcolumns,
-                                                         numrows, 1, gdal.GDT_Float32)
+                                                         numrows, 1,
+                                                         gdal.GDT_Float32)
         interp_gt = (xbound, resolution, 0,
                      ybound, 0, resolution)
         interp_data.SetGeoTransform(interp_gt)
@@ -664,8 +675,7 @@ class point_interpolator:
         xa, ya = np.arange(numcolumns), np.arange(numrows)
         xi, yi = np.meshgrid(xa, ya)
         interp_grid = scipy.interpolate.griddata((xcoord, ycoord), zvals, (xi, yi), method='linear', fill_value=nodata)
-        #        interp_obj = mlab_griddata(xcoord,ycoord,zvals,xi,yi,interp='nn')
-        #        interp_grid, interp_mask = interp_obj.data, interp_obj.mask
+
         interp_grid[np.isnan(interp_grid)] = nodata
         plt.figure()
         plt.imshow(interp_grid)
@@ -907,7 +917,7 @@ class point_interpolator:
         data[idx] = np.nan
         # divide the window size by the resolution to get the number of cells
         rem_cells = int(np.round(radius / resolution))
-        # print ('Shrinking coverage back ' + str(rem_cells) + ' cells.')
+        # print('Shrinking coverage back ' + str(rem_cells) + ' cells.')
         for n in np.arange(rem_cells):
             ew = np.diff(data, axis=0)
             idx_ew = np.nonzero(np.isnan(ew))
