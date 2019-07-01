@@ -6,18 +6,21 @@ Created on Thu Feb 14 15:13:52 2019
 
 @author: grice
 """
+
 import logging
 import os
 import pickle
 import subprocess
+import sys
 from tempfile import TemporaryDirectory as tempdir
+from typing import Tuple, List
 
 import fiona
 import numpy as np
-from osgeo import gdal, ogr
+from osgeo import gdal, ogr, osr
 
 gdal.UseExceptions()
-from fuse.proc_io.caris import helper
+from fuse.proc_io import caris
 
 __version__ = 'Test'
 
@@ -27,9 +30,8 @@ class proc_io:
     A class to abstract the reading and writing of bathymetry.
     """
 
-    def __init__(self, in_data_type, out_data_type, work_dir=None,
-                 z_up=True, nodata=1000000.0, caris_env_name='CARIS35',
-                 overwrite=True):
+    def __init__(self, in_data_type: str, out_data_type: str, work_dir: str = None, z_up: bool = True,
+                 nodata: float = 1000000.0, caris_env_name: str = 'CARIS35', overwrite: bool = True):
         """
         Initialize with the data type to be worked.
 
@@ -52,8 +54,8 @@ class proc_io:
         overwrite : bool, optional
             Default is ``True``. If a file with an existing name is input, this
             will determine whether the file is overwritten or kept
-
         """
+
         self._in_data_type = in_data_type
         self._out_data_type = out_data_type
         self._z_up = z_up
@@ -66,26 +68,23 @@ class proc_io:
         else:
             self._work_dir_name = work_dir
         self._logger = logging.getLogger('fuse')
+        if len(self._logger.handlers) == 0:
+            ch = logging.StreamHandler(sys.stdout)
+            ch.setLevel(logging.DEBUG)
+            self._logger.addHandler(ch)
         if self._out_data_type == "carisbdb51":
-            self._bdb51 = bdb51()
+            self._bdb51 = caris.bdb51()
 
-    def write(self, dataset, instruction, metadata=None):
+    def write(self, dataset: gdal.Dataset, instruction: str, metadata: dict = None):
         """
         Write the provided data to the predefined data type.
 
-        Parameters
-        ----------
-        dataset : A georeferenced gdal raster object.
-        instruction : str
-            A string defining the path and filename of the file to be
-            written.
-        metadata : dict, optional
-            A dictionary containing the metadata to be written to to
-            the standard gdal bag xml.  Keys to the written must corrispond to
-            the standard xml tags.  Defaults to None which writes nothing.
+        :param dataset:
+        :param instruction:
+        :param metadata:  (Default value = None)
         """
-        self._logger.log(logging.DEBUG,
-                         'Begin {} write'.format(self._out_data_type))
+
+        self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write')
         if os.path.exists(instruction) and self.overwrite:
             self._logger.log(logging.DEBUG, 'Overwriting ' + instruction)
             os.remove(instruction)
@@ -105,20 +104,17 @@ class proc_io:
             raise ValueError('writer type unknown: ' +
                              str(self._out_data_type))
 
-    def _write_csar(self, dataset, outfilename):
+    def _write_csar(self, dataset: gdal.Dataset, outfilename: str):
         """
         Convert the provided gdal dataset into a csar file.
 
         The data and metadata are saved out to a file and then loaded into the
         wrapper around the csar writer.
 
-        Parameters
-        ----------
-        dataset : A georeferenced gdal/ogr raster or point dataset object.
-        outfilename : str
-            string representing the file path of the saved csar object
-
+        :param dataset:
+        :param outfilename:
         """
+
         conda_env_name = self._caris_environment_name
         # put the provided data into the right form for the csar conversion.
         if self._in_data_type == 'gdal':
@@ -134,7 +130,7 @@ class proc_io:
             raise ValueError('input data type unknown: ' +
                              str(self._in_data_type))
         metadata['z_up'] = self._z_up
-        conda_env_path = helper.retrieve_env_path(conda_env_name)
+        conda_env_path = caris.helper.retrieve_env_path(conda_env_name)
         python_path = os.path.join(conda_env_path, 'python')
         # save the provided dataset and metadata to a file
         datafilename = os.path.join(self._work_dir_name, 'rasterdata.npy')
@@ -145,7 +141,7 @@ class proc_io:
         # set the locations for running the wrap_csar script
         start = os.path.realpath(os.path.dirname(__file__))
         write_csar = os.path.join(start, 'caris', 'wrap_csar.py')
-        activate_file = helper.retrieve_activate_batch()
+        activate_file = caris.helper.retrieve_activate_batch()
         if os.path.exists(write_csar):
             args = ["cmd.exe", "/K", "set pythonpath= &&",  # setup the commandline
                     activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
@@ -172,29 +168,23 @@ class proc_io:
                 print(err)
                 self._logger.log(logging.DEBUG, err)
             if not os.path.exists(metadata['outfilename']):
-                err = "Unable to create {}".format(metadata['outfilename'])
+                err = f"Unable to create {metadata['outfilename']}"
                 self._logger.log(logging.DEBUG, err)
                 raise RuntimeError(err)
         else:
-            err = "Unable to overwrite {}".format(metadata['outfilename'])
+            err = f"Unable to overwrite {metadata['outfilename']}"
             self._logger.log(logging.DEBUG, err)
             raise RuntimeError(err)
 
-    def _write_bag(self, dataset, outfilename, metadata=None):
+    def _write_bag(self, dataset: gdal.Dataset, outfilename: str, metadata=None):
         """
         Convert the provided gdal dataset into a bag file.
 
-        Parameters
-        ----------
-        dataset : A georeferenced gdal raster object.
-        outfilename : str
-            A string defining the path and filename of the file to be
-            written.
-        metadata : dict, optional
-            A dictionary containing the metadata to be written to to
-            the standard gdal bag xml.  Keys to the written must corrispond to
-            the standard xml tags.  Defaults to None which writes nothing.
+        :param dataset:
+        :param outfilename:
+        :param metadata:  (Default value = None)
         """
+
         if self._in_data_type == 'gdal':
             dataset = self._set_gdalndv(dataset)
         else:
@@ -202,6 +192,9 @@ class proc_io:
                              str(self._in_data_type))
         if metadata is not None:
             raise NotImplementedError('bag xml metadata write has not been implemented')
+
+        print(dataset.GetGeoTransform())
+
         # Prepare destination file
         driver = gdal.GetDriverByName("BAG")
         # write and close output raster dataset
@@ -209,16 +202,12 @@ class proc_io:
         dest = None
         self._logger.log(logging.DEBUG, 'BAG file created')
 
-    def _write_points(self, dataset, outfilename):
+    def _write_points(self, dataset: gdal.Dataset, outfilename: str):
         """
         Convert the provided gdal dataset into a geopackage file.
 
-        Parameters
-        ----------
-        dataset : A georeferenced gdal points object.
-        outfilename : str
-            A string defining the path and filename of the file to be
-            written.
+        :param dataset:
+        :param outfilename:
         """
 
         layer_name = 'Elevation'
@@ -258,26 +247,49 @@ class proc_io:
                         layer=layer_name) as output_file:
             output_file.writerecords(point_records)
 
-    def _gdal2array(self, dataset):
+    def _write_vector(self, dataset: gdal.Dataset, outfilename: str):
+        """
+        TODO write description
+
+        :param dataset:
+        :param outfilename:
+        """
+
+        splits = os.path.split(outfilename)[1]
+        name = os.path.splitext(outfilename)[0]
+        outfilename = os.path.join(splits[0], name + '_Vector.gpkg')
+
+        proj = dataset.GetProjection()
+        proj = osr.SpatialReference(wkt=proj)
+        band = dataset.GetRasterBand(1)
+
+        driver = ogr.GetDriverByName('GPKG')
+        ds = driver.CreateDataSource(outfilename)
+        layer = ds.CreateLayer(name, proj, ogr.wkbMultiPolygon)
+
+        # Add one attribute
+        layer.CreateField(ogr.FieldDefn('Survey', ogr.OFTString))
+        defn = layer.GetLayerDefn()
+
+        # Create a new feature (attribute and geometry)
+        feat = ogr.Feature(defn)
+        feat.SetField('Survey', name)
+
+        gdal.Polygonize(band, None, layer, 0, [], callback=None)
+
+        ds = band = None
+
+    def _gdal2array(self, dataset: gdal.Dataset) -> np.array:
         """
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
 
         The gdal dataset should have he no data value set appropriately.
 
-        Parameters
-        ----------
-        dataset : A georeferenced gdal/ogr raster object.
-
-        Returns
-        -------
-        data : numpy.array
-            :obj:`np.array` holding raster data from the input dataset
-        meta : dict
-            dictionary containing the needed definitions from the input dataset
-            object
-
+        :param dataset:
+        :returns: array
         """
+
         meta = {}
         # get the logisitics for converting the gdal dataset to csar
         gt = dataset.GetGeoTransform()
@@ -296,26 +308,17 @@ class proc_io:
         data = rb.ReadAsArray()
         return data, meta
 
-    def _point2array(self, dataset):
+    def _point2array(self, dataset: gdal.Dataset) -> np.array:
         """
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
 
         The gdal dataset should have he no data value set appropriately.
 
-        Parameters
-        ----------
-        dataset : A georeferenced gdal/ogr points object.
-
-        Returns
-        -------
-        data : numpy.array
-            :obj:`np.array` holding the xyz point data from the input dataset
-        meta : dict
-            dictionary containing the needed definitions from the input dataset
-            object
-
+        :param dataset:
+        :returns: array
         """
+
         meta = {}
 
         lyr = dataset.GetLayerByIndex(0)
@@ -335,26 +338,17 @@ class proc_io:
 
         return data, meta
 
-    def _point2wkt(self, dataset):
+    def _point2wkt(self, dataset: gdal.Dataset) -> Tuple[List[dict], dict]:
         """
         Convert the gdal dataset into a WKT Points object and a dictionary of
         metadata of the geotransform information and return.
 
         The gdal dataset should have he no data value set appropriately.
 
-        Parameters
-        ----------
-        dataset : A georeferenced gdal/ogr points object.
-
-        Returns
-        -------
-        data : WKT Points object
-            WKT Points object holding the xyz point data from the input dataset
-        meta : dict
-            dictionary containing the needed definitions from the input dataset
-            object
-
+        :param dataset:
+        :returns: points and metadata
         """
+
         meta = {}
         points = []
         lyr = dataset.GetLayerByIndex(0)
@@ -384,21 +378,14 @@ class proc_io:
 
         return points, meta
 
-    def _set_gdalndv(self, dataset):
+    def _set_gdalndv(self, dataset: gdal.Dataset) -> gdal.Dataset:
         """
         Update the gdal raster object no data value and the raster no data
         values in to corrispond with the object no data value.
 
-        Parameters
-        ----------
-        dataset : A georeferenced gdal/ogr raster object.
-
-        Returns
-        -------
-        dataset : A georeferenced gdal/ogr raster object with the correct no
-            data value assigned to dataset
-
+        :param dataset:
         """
+
         # check the no data value
         rb = dataset.GetRasterBand(1)  # should this be hardcoded for 1?
         ndv = rb.GetNoDataValue()

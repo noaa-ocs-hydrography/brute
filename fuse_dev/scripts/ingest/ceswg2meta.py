@@ -13,12 +13,13 @@ into the metadata file for qualification.
 
 import os
 from glob import glob
+
 import fuse.fuse_ehydro as ffe
 
-ceswg = ffe.fuse_ehydro('ceswg.config') # this config is local for testing
-for path in ceswg.rawdata_path:
-    flist = glob(os.path.join(path,'*.xyz'))
-    for f in flist:
-        ceswg.read(f)
-        ceswg.process(f)
-
+if __name__ == '__main__':
+    ceswg = ffe.fuse_ehydro('ceswg.config')  # this config is local for testing
+    for path in ceswg.rawdata_path:
+        flist = glob(os.path.join(path, '*.xyz'))
+        for f in flist:
+            ceswg.read(f)
+            ceswg.process(f)
