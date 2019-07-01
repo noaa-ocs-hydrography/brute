@@ -145,6 +145,14 @@ class bdb51_io:
         try:
             if action == 'new':
                 msg = self._upload_new(file_path)
+            elif action == 'bathy':
+                pass
+                # query for the object and replace the bathy
+            elif action == 'metadata':
+                pass
+                # query for the object and replace the metadata
+            else:
+                raise ValueError('Upload action type not understood')
             command_dict['success'] = True
             command_dict['log'] = msg
         except Exception as error:
