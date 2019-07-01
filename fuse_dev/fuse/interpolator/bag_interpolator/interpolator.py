@@ -4,15 +4,19 @@ Created on Thu Jun  6 15:31:40 2019
 
 @author: Casiano.Koprowski
 """
+
+from datetime import datetime as _dt
+from typing import Union, Tuple
+
+import astropy.convolution as _apc
+import matplotlib.pyplot as plt
 import numpy as _np
 import scipy as _scipy
-import astropy.convolution as _apc
-from datetime import datetime as _dt
 
-import matplotlib.pyplot as plt
 
-def tupleGrid(grid, nodata):
-    """Takes an input matrix and an assumed nodata value. The function iterates
+def tupleGrid(grid: _np.array, nodata: int):
+    """
+    Takes an input matrix and an assumed nodata value. The function iterates
     through the matrix and compiles a list of 'edge' points [[x, y, z], ...]
     where:
 
@@ -24,27 +28,32 @@ def tupleGrid(grid, nodata):
 
     Parameters
     ----------
-    grid : numpy.array
+    grid :
         An input array
-    nodata : int
+    nodata : float
         The array's nodata value
+    grid: _np.array :
+
+    nodata: int :
+
 
     Returns
     -------
-    np.array
+    numpy.array
         Array of indecies where nodata values meet data values
         in order x, y, z
 
     """
+
     points = []
     a = 0
     for x in range(grid.shape[1]):
         io = False
         for y in range(grid.shape[0]):
-            if grid[y,x] == nodata:
-                if grid[y-1,x] != nodata:
-                    val = grid[y-1,x]
-                    point = [x, y-1, val]
+            if grid[y, x] == nodata:
+                if grid[y - 1, x] != nodata:
+                    val = grid[y - 1, x]
+                    point = [x, y - 1, val]
                     if a == 1:
                         a += 1
                     points.append(point)
@@ -52,8 +61,8 @@ def tupleGrid(grid, nodata):
                 else:
                     pass
             else:
-                if io == False:
-                    val = grid[y,x]
+                if not io:
+                    val = grid[y, x]
                     point = [x, y, val]
 
                     if a == 0:
@@ -62,8 +71,10 @@ def tupleGrid(grid, nodata):
                     io = True
     return _np.array(points)
 
-def concatGrid(arr_1, arr_2, nodata):
-    """Takes an input of an array of grid objects and the assumed nodata value
+
+def concatGrid(arr_1, arr_2, nodata: int):
+    """
+    Takes an input of an array of grid objects and the assumed nodata value
     Passes the assumed nodata value and the arrays held within each of the
     listed grid objects to :func:`tupleGrid` for a return of an array of
     edge points for each grid [[x, y, z], ...]
@@ -77,21 +88,20 @@ def concatGrid(arr_1, arr_2, nodata):
 
     Parameters
     ----------
-    grids : list
-        The BAG and GeoTiff objects
-    maxVal : int
+    arr_1 :
+        param arr_2:
+    nodata :
         The BAG data's nodata value
+    arr_2 :
+
+    nodata: int :
+
 
     Returns
     -------
-    xy : numpy.array
-        Array of indecies where nodata values meet data values
-        in order x, y
-    z : numpy.array
-        Array of values where nodata values meet data values
-        in order z
 
     """
+
     points_1 = tupleGrid(arr_1, nodata)
     points_2 = tupleGrid(arr_2, nodata)
     if len(points_1) == 0 or len(points_2) == 0:
@@ -104,29 +114,13 @@ def concatGrid(arr_1, arr_2, nodata):
         xy = grid[0]
     return xy, z
 
-def rePrint(bag_elev, bag_uncr, cov_array, ugrids, maxVal, ioVal, debug=False):
-    """Uses a mix of interpolated and original bag and tif data in order to
+
+def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugrids: list, maxVal: _np.array,
+            ioVal: Union[int, bool], debug: Union[int, bool] = False):
+    """
+    Uses a mix of interpolated and original bag and tif data in order to
     determine where new interpolated data should be applied. No interpolated
     data is used where original bag data exists.
-
-
-    bag : numpy.array
-        orignal bag data
-    interp : numpy.array
-        interpolated bag data (smoothed)
-    pbag : numpy.array
-        interpolated bag data (before smooth)
-    poly : numpy.array
-        binary raster of tif coverage
-    uncr : numpy.array
-        original uncertainty
-    iuncrt : numpy.array
-        interpolated uncertainty
-    maxVal : numpy.array
-        bag no-data value
-    ioVal : numpy.array
-        user option to include all data or interpolated data only
-
 
     Steps:
 
@@ -139,33 +133,44 @@ def rePrint(bag_elev, bag_uncr, cov_array, ugrids, maxVal, ioVal, debug=False):
     7. Use npoly and dpoly to create a binary grid where only data is present; fpoly, numpy.logical_and of dpoly, nopoly.
     8. Finalize results by using fpoly to apply interpolated data where appropriate and original bag data everywhere else.
 
-
     Parameters
     ----------
-    grids : list
-        List of original data objects for BAG and GeoTiff data
-    ugrids : list
+    bag_elev :
+        orignal bag data
+    bag_uncr :
+        param cov_array:
+    ugrids :
         List of interpolated data objects for BAG depth and uncertainty data
-    ioVal : int, bool
-        User input. Determines whether origninal and interpolated or only
-        interpolated data is output
-    debug : int, bool
-        Whether or not polyList includes all or only the last step in the
-        evaluation process
+    maxVal :
+        bag no-data value
+    ioVal :
+        User input. Determines whether origninal and interpolated or only interpolated data is output
+    debug :
+        Whether or not polyList includes all or only the last step in the evaluation process (Default value = False)
+    bag_elev: _np.array :
+
+    bag_uncr: _np.array :
+
+    cov_array: _np.array :
+
+    ugrids: list :
+
+    maxVal: _np.array :
+
+    ioVal: Union[int :
+
+    bool] :
+         (Default value = False)
+    debug: Union[int :
+
 
     Returns
     -------
-    nbag : numpy.array
-        Interpolated BAG bathymetry
-    nunc : numpy.array
-        Interpolated BAG uncertainty
-    polyList : list
-        List of numpy.array objects containting all or only the last step in
-        the evaluation process
 
     """
-    print ('rePrint', _dt.now())
-    print (maxVal)
+
+    print('rePrint', _dt.now())
+    print(maxVal)
     poly = cov_array
     bag = bag_elev
     uncr = bag_uncr
@@ -173,155 +178,172 @@ def rePrint(bag_elev, bag_uncr, cov_array, ugrids, maxVal, ioVal, debug=False):
     iuncrt = ugrids[1]
     pbag = ugrids[2]
     rows, cols = bag.shape
-    ## 1
+    # 1
     tpoly = _np.nan_to_num(poly)
     tpoly = (tpoly < maxVal).astype(_np.int)
-    ## 2
+    # 2
     bpoly = (bag < maxVal).astype(_np.int)
-    ## 3
+    # 3
     cpoly = _np.logical_or(bpoly, tpoly)
-    ## 4
+    # 4
     dpoly = _np.logical_xor(bpoly, cpoly)
-    ## 5
+    # 5
     ibag = _np.where(dpoly, pbag, bag)
-    ## 6
+    # 6
     npoly = (ibag < maxVal).astype(_np.int)
-    ## 7
+    # 7
     fpoly = _np.logical_and(dpoly, npoly)
-    ## 8
-    if ioVal == False:
+    # 8
+    if not ioVal:
         nbag = _np.where(fpoly, interp, bag)
         nunc = _np.where(fpoly, iuncrt, uncr)
-    elif ioVal == True:
+    elif ioVal:
         nbag = _np.where(fpoly, interp, maxVal)
         nunc = _np.where(fpoly, iuncrt, maxVal)
-    print ('done', _dt.now())
-    polyList = [tpoly,bpoly,cpoly,dpoly,npoly,fpoly,ibag]
+    print('done', _dt.now())
+    polyList = [tpoly, bpoly, cpoly, dpoly, npoly, fpoly, ibag]
     plt.figure()
     for rast in polyList:
         plt.imshow(rast)
         plt.show()
-    if debug == False:
-#        polyList = [fpoly, cpoly]
-        return nbag, nunc, cpoly.astype(_np.int)
-    elif debug == True:
-        return nbag, nunc, polyList
+    #polyList = [fpoly, cpoly]
+    return nbag, nunc, polyList if debug else cpoly.astype(_np.int)
+
+
 
 class linear:
-    """Interpolates input data and convolves the ouput of the interpolation, if
+    """
+    Interpolates input data and convolves the ouput of the interpolation, if
     applicable.
-
-    Takes input bathy and coverage arrays (tile or complete data) as well as
-    the uncertainty array.  This data is used to inform the shape/size of the
-    resulting output of the interpolation function.
-
-    The input bathy and covrg arrays are passed to :func:`concatGrid` in order
-    to gather the edges of the each of the arrays and combine them into a
-    single list of combined xy and z egde values. If xy and z are empty, the
-    interpolation process is skipped and the original tile or complete data is
-    passed back from the function. Otherwise, the lists xy, z, and the shape of
-    the BAG data input are passed to :func:`scipy.interpolate.griddata` an
-    output to the variable "grid_pre". The output of this function is also
-    saved to a seperate variable "grid" while the original output is left
-    untouched. The seperate output is then passed to
-    :func:`astropy.convolution.convolve` to smooth the output.
-
-    The uncertainty layer is calculated using catzoc and grid::
-
-        >>> m, b = catzoc
-        >>> uncrt = (grid*m)+b
 
     Parameters
     ----------
-    bathy : numpy.array
-        The input bathemetry data
-    uncrt : numpy.array
-        The input uncertainty data
-    covrg : numpy.array
-        The input coverage data
-    catzoc : tuple
-        The input values for uncertainty calculation
-    nodata : float, optional
-        The default value is 1000000.0, the nodata value associated with the
-        BAG format
 
     Returns
     -------
-    bathy : numpy.array
-        The interpolated and convolved bathemetry
-    uncrt : numpy.array
-        The calculated uncertainty from the interpolated and convolved
-        bathemetry
-    unint : numpy.array
-        The interpolated bathemetry before convolution is performed
 
     """
-    def __init__(self, bathy, uncrt, covrg, catzoc, nodata=1000000.0):
+
+    def __init__(self, bathy: _np.array, uncrt: _np.array, covrg: _np.array, catzoc: tuple, nodata: float = 1000000.0):
+        """
+        Takes input bathy and coverage arrays (tile or complete data) as well as
+        the uncertainty array.  This data is used to inform the shape/size of the
+        resulting output of the interpolation function.
+
+        The input bathy and covrg arrays are passed to :func:`concatGrid` in order
+        to gather the edges of the each of the arrays and combine them into a
+        single list of combined xy and z egde values. If xy and z are empty, the
+        interpolation process is skipped and the original tile or complete data is
+        passed back from the function. Otherwise, the lists xy, z, and the shape of
+        the BAG data input are passed to :func:`scipy.interpolate.griddata` an
+        output to the variable "grid_pre". The output of this function is also
+        saved to a seperate variable "grid" while the original output is left
+        untouched. The seperate output is then passed to
+        :func:`astropy.convolution.convolve` to smooth the output.
+
+        The uncertainty layer is calculated using catzoc and grid:
+        >>> m, b = catzoc
+        >>> uncrt = (grid*m)+b
+
+        :param bathy: The input bathemetry data
+        :param uncrt: The input uncertainty data
+        :param covrg: The input coverage data
+        :param catzoc: The input values for uncertainty calculation
+        :param nodata: The default value is 1000000.0, the nodata value associated with the BAG format
+        """
+
         x, y = _np.arange(bathy.shape[1]), _np.arange(bathy.shape[0])
         xi, yi = _np.meshgrid(x, y)
         xy, z = concatGrid(bathy, covrg, nodata)
-        print (xy, z)
+        print(xy, z)
         if len(xy) != 0:
             self.bathy, self.uncrt, self.unint = self._interpolate(xy, z, xi,
-                                                                  yi, catzoc,
-                                                                  nodata)
+                                                                   yi, catzoc,
+                                                                   nodata)
         else:
-           self.bathy, self.uncrt, self.unint = bathy, uncrt, bathy
+            self.bathy, self.uncrt, self.unint = bathy, uncrt, bathy
 
     def _interpolate(self, xy, z, xi, yi, uval, nodata):
+        """
+        TODO write description
+
+        Parameters
+        ----------
+        xy :
+            param z:
+        xi :
+            param yi:
+        uval :
+            param nodata:
+        z :
+
+        yi :
+
+        nodata :
+
+
+        Returns
+        -------
+
+        """
+
         m, b = uval
         grid_pre = _scipy.interpolate.griddata(xy, z, (xi, yi),
-                                            method='linear', fill_value=nodata)
+                                               method='linear',
+                                               fill_value=nodata)
         grid = grid_pre
         grid = _np.asarray(grid, dtype='float64')
-        grid[grid>0] = _np.nan
+        grid[grid > 0] = _np.nan
         kernel = _apc.Gaussian2DKernel(3)
-        grid = _apc.convolve(grid,kernel)
-        grid[_np.isnan(grid)]=nodata
-        grid[grid>=0] = nodata
-        uncr = (grid*m)+b
+        grid = _apc.convolve(grid, kernel)
+        grid[_np.isnan(grid)] = nodata
+        grid[grid >= 0] = nodata
+        uncr = (grid * m) + b
         return grid, uncr, grid_pre
 
-def sliceFinder(size, shape, res, var=5000):
-    """Uses the file size of the bag to determine if the grid should be tiled.
+
+def sliceFinder(size: int, shape: Tuple[int, int], res: float, var: int = 5000):
+    """
+    Uses the file size of the bag to determine if the grid should be tiled.
     If the file is less than 100Mb, the file will not be tiled.  If the file is
     large enough to tile, the number of tiles and index size of each tile will
     be calculated based on the ratio of the total size of each array.
 
-    yChunk = 5000\*sqrt(height/width)
-    xChunk = 5000\*sqrt(width/height)
+    yChunk = var*sqrt(height/width)
+    xChunk = var*sqrt(width/height)
 
     ny = _np.ceil(height/yChunk)
     nx = _np.ceil(width/xChunk)
 
-    tiles = nx\*ny
+    tiles = nx*ny
 
     chunkgird is both the arrangement of tiles in relation to the grid and the
     order in which the tiles are processed.
 
     Parameters
     ----------
-    value : int
+    size :
         Size of the input BAG file
-    res : float
-        Resolution of the input BAG data
-    shape : tuple
+    shape :
         Dimensions of the input BAG data (y, x)
-    var : int, optional
-        Arbitrary value for determining chunk size
+    res :
+        Resolution of the input BAG data
+    var :
+        Arbitrary value for determining chunk size (Default value = 5000)
+    size: int :
+
+    shape: Tuple[int :
+
+    int] :
+
+    res: float :
+
+    var: int :
+         (Default value = 5000)
 
     Returns
     -------
-    tiles : int
-        Number of tiles used to process the data
-    chunkGrid : numpy.array, None
-        The arrangement of tiles in relation to the grid and the
-        order in which the tiles are proceced
-    sliceInfo : list, None
-        The value for the tile buffer and dimensions of each tile
 
-    Example
-    -------
     >>> chunkGrid = _np.arrange(tiles).reshape((ny, nx))
     array([[ 0,  1,  2,  3,  4,  5],
            [ 6,  7,  8,  9, 10, 11],
@@ -331,54 +353,83 @@ def sliceFinder(size, shape, res, var=5000):
            [30, 31, 32, 33, 34, 35]])
     # 36 Total Tiles
     # Tile 3 is index [0,3] and has a value of 2
-
     """
-    print ('sliceFinder')
+
+    print('sliceFinder')
     if res < 1:
-        b = 25/res
+        b = 25 / res
     elif res >= 1:
         b = 25
     if size <= 100000:
         tiles = 0
         return tiles, None, None
     elif size > 100000:
-        yChunk = int(_np.round(var*_np.sqrt(shape[0]/shape[1]))) #y
-        xChunk = int(_np.round(var*_np.sqrt(shape[1]/shape[0]))) #x
-        ny = int(_np.ceil(shape[0]/yChunk)) #ny
-        nx = int(_np.ceil(shape[1]/xChunk)) #nx
-        print (ny, nx)
-        tiles = ny*nx
+        yChunk = int(_np.round(var * _np.sqrt(shape[0] / shape[1])))  # y
+        xChunk = int(_np.round(var * _np.sqrt(shape[1] / shape[0])))  # x
+        ny = int(_np.ceil(shape[0] / yChunk))  # ny
+        nx = int(_np.ceil(shape[1] / xChunk))  # nx
+        print(ny, nx)
+        tiles = ny * nx
         chunckGrid = _np.arange(tiles).reshape((ny, nx))
         sliceInfo = [b, yChunk, xChunk]
-        print (tiles, chunckGrid, sliceInfo)
+        print(tiles, chunckGrid, sliceInfo)
         return tiles, chunckGrid, sliceInfo
 
+
 def chunk(arr, tile, mode=None, copy=None):
+    """
+    TODO write description
+
+    Parameters
+    ----------
+    arr :
+        param tile:
+    mode :
+        Default value = None)
+    copy :
+        Default value = None)
+    tile :
+
+
+    Returns
+    -------
+
+    """
+
     if mode == 'a':
-        arr = arr[tile.yMin:tile.yMax,tile.xMin:tile.xMax]
+        arr = arr[tile.yMin:tile.yMax, tile.xMin:tile.xMax]
         return arr
     elif mode == 'b':
-        arr = arr[tile.yIMin:tile.yIMax,tile.xIMin:tile.xIMax]
+        arr = arr[tile.yIMin:tile.yIMax, tile.xIMin:tile.xIMax]
         return arr
     elif mode == 'c':
-        copy[tile.yBMin:tile.yBMax,tile.xBMin:tile.xBMax] = arr[tile.yIMin:tile.yIMax,tile.xIMin:tile.xIMax]
+        copy[tile.yBMin:tile.yBMax, tile.xBMin:tile.xBMax] = arr[tile.yIMin:tile.yIMax, tile.xIMin:tile.xIMax]
         return copy
-    elif mode == None:
+    elif mode is None:
         raise ValueError("Mode value required.")
 
+
 class tile:
-    """tiles() serves as the data container for individual tile data. It's
+    """
+    tiles() serves as the data container for individual tile data. It's
     inputs inlcude sliceInfo=[buffer, height, width], chunkSlice=tile[y,x]
     (tile position), and the total height and width of the BAG grid.  This
     information is then used to calculate the indices of each tile (with and
     without a buffer) and the indices of the data within the buffered tiles.
 
+    Parameters
+    ----------
+
+    Returns
+    -------
+
     """
+
     def __init__(self, sliceInfo, chunkSlice, shape):
-        """Takes the complete information of a give individual tile and
+        """
+        Takes the complete information of a give individual tile and
         calculates the indices of each tile (with and without a buffer) and the
         indices of the data within the buffered tiles.
-
 
         The calculations are the same, regardless of axis:
 
@@ -412,7 +463,6 @@ class tile:
                 IMax = chunk + buffer
             if ma != 0:
                 IMax = -(yma)
-
 
         Example
         -------
@@ -449,8 +499,11 @@ class tile:
             [4285, 8570, 5835, 11670]
             [40, -40, 40, -40]
 
-
+        :param sliceInfo:
+        :param chunkSlice:
+        :param shape:
         """
+
         self.yMin, self.yMax, self.xMin, self.xMax = 0, 0, 0, 0
         self.yBMin, self.yBMax, self.xBMin, self.xBMax = 0, 0, 0, 0
         self.yIMin, self.yIMax, self.xIMin, self.xIMax = 0, 0, 0, 0
@@ -460,10 +513,10 @@ class tile:
         self._calcSlice(buffer, yChunk, xChunk, chunkSlice, shape)
 
     def _calcSlice(self, buffer, yChunk, xChunk, chunkSlice, shape):
-        """Takes the complete information of a give individual tile and
+        """
+        Takes the complete information of a give individual tile and
         calculates the indices of each tile (with and without a buffer) and the
         indices of the data within the buffered tiles.
-
 
         The calculations are the same, regardless of axis:
 
@@ -498,22 +551,8 @@ class tile:
             if ma != 0:
                 IMax = -(yma)
 
-
         Example
         -------
-        >>> tiles, chunkGrid, sliceInfo = sliceFinder(20, .5, [25710,35010])
-        >>> print(tiles)
-        36 # 36 Total Tiles
-        >>> print(chunkGrid)
-        array([[ 0,  1,  2,  3,  4,  5],
-               [ 6,  7,  8,  9, 10, 11],
-               [12, 13, 14, 15, 16, 17],
-               [18, 19, 20, 21, 22, 23],
-               [24, 25, 26, 27, 28, 29],
-               [30, 31, 32, 33, 34, 35]])
-        # Tile 3 is index [0,3] and has a value of 2
-        >>> print(sliceInfo)
-        [40.0, 4285, 5835]
 
         For a shape of::
 
@@ -534,35 +573,64 @@ class tile:
             [4285, 8570, 5835, 11670]
             [40, -40, 40, -40]
 
+        Parameters
+        ----------
+        buffer :
+            param yChunk:
+        xChunk :
+            param chunkSlice:
+        shape :
 
+        yChunk :
+
+        chunkSlice :
+
+
+        Returns
+        -------
+
+        >>> tiles, chunkGrid, sliceInfo = sliceFinder(20, .5, [25710,35010])
+        >>> print(tiles)
+        36 # 36 Total Tiles
+        >>> print(chunkGrid)
+        array([[ 0,  1,  2,  3,  4,  5],
+               [ 6,  7,  8,  9, 10, 11],
+               [12, 13, 14, 15, 16, 17],
+               [18, 19, 20, 21, 22, 23],
+               [24, 25, 26, 27, 28, 29],
+               [30, 31, 32, 33, 34, 35]])
+        # Tile 3 is index [0,3] and has a value of 2
+        >>> print(sliceInfo)
+        [40.0, 4285, 5835]
         """
-        ## 1
+
+        # 1
         self.yMin = int(max(0, (yChunk * chunkSlice[0]) - buffer))
-        self.yMax = int(min(yChunk * (chunkSlice[0]+1) + buffer, shape[0]))
+        self.yMax = int(min(yChunk * (chunkSlice[0] + 1) + buffer, shape[0]))
         self.xMin = int(max(0, (xChunk * chunkSlice[1]) - buffer))
-        self.xMax = int(min(xChunk * (chunkSlice[1]+1) + buffer, shape[1]))
+        self.xMax = int(min(xChunk * (chunkSlice[1] + 1) + buffer, shape[1]))
         slices = [self.yMin, self.yMax, self.xMin, self.xMax]
 
-        ## 2
+        # 2
         self.yBMin = int(max(0, (yChunk * chunkSlice[0])))
-        self.yBMax = int(min(yChunk * (chunkSlice[0]+1), shape[0]))
+        self.yBMax = int(min(yChunk * (chunkSlice[0] + 1), shape[0]))
         self.xBMin = int(max(0, (xChunk * chunkSlice[1])))
-        self.xBMax = int(min(xChunk * (chunkSlice[1]+1), shape[1]))
+        self.xBMax = int(min(xChunk * (chunkSlice[1] + 1), shape[1]))
         tiles = [self.yBMin, self.yBMax, self.xBMin, self.xBMax]
 
-        ## 3
-        self.yIMin = int(max(0,(self.yBMin-self.yMin)))
-        yma = int(min((self.yMax-self.yBMax), shape[0]))
+        # 3
+        self.yIMin = int(max(0, (self.yBMin - self.yMin)))
+        yma = int(min((self.yMax - self.yBMax), shape[0]))
         if yma == 0:
             self.yIMax = int(yChunk + buffer)
         else:
             self.yIMax = -int(yma)
-        self.xIMin = int(max(0,(self.xBMin-self.xMin)))
-        xma = int(min((self.xMax-self.xBMax), shape[1]))
+        self.xIMin = int(max(0, (self.xBMin - self.xMin)))
+        xma = int(min((self.xMax - self.xBMax), shape[1]))
         if xma == 0:
             self.xIMax = int(xChunk + buffer)
         else:
             self.xIMax = -int(xma)
         borders = [self.yIMin, self.yIMax, self.xIMin, self.xIMax]
 
-        print (slices, tiles, borders, sep='\n')
+        print(slices, tiles, borders, sep='\n')

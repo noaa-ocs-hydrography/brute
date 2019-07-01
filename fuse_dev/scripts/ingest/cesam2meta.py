@@ -14,12 +14,13 @@ into the metadata file for qualification.
 
 import os
 from glob import glob
+
 import fuse.fuse_ehydro as ffe
 
-cesam = ffe.fuse_ehydro('cesam.config') # this config is local for testing
-for path in cesam.rawdata_path:
-    flist = glob(os.path.join(path,'*.xyz'))
-    for f in flist:
-        cesam.read(f)
-        cesam.process(f)
-
+if __name__ == '__main__':
+    cesam = ffe.fuse_ehydro('cesam.config')  # this config is local for testing
+    for path in cesam.rawdata_path:
+        flist = glob(os.path.join(path, '*.xyz'))
+        for f in flist:
+            cesam.read(f)
+            cesam.process(f)

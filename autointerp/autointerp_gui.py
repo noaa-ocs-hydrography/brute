@@ -6,34 +6,68 @@ Created on Mon Mar 25 11:55:07 2019
 """
 
 import os
-import wx
-import autointerp
-import autointerp_ui
 from datetime import datetime as _dt
 
+import autointerp_ui
+import wx
+
+import autointerp
+
+
 class Form(autointerp_ui.Form):
-    """Load ui and: define tif storage columns, overwrite ui defined fucntions
-    with desired function behaviour
     """
+    Load ui and: define tif storage columns, overwrite ui defined fucntions
+    with desired function behaviour
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+
     def __init__(self, parent):
         autointerp_ui.Form.__init__(self, parent)
         self.insInd = 0
-        #Instantiation of 'GeoTIFF File List' box Columns:
+        # Instantiation of 'GeoTIFF File List' box Columns:
         self.list_tif.InsertColumn(0, 'File', width=200)
         self.list_tif.InsertColumn(1, 'Path', width=500)
 
     def programQuit(self, event):
-        """Closes GUI, ends program.
-        Maps to Cancel button, File->Quit, and CTRL+Q
         """
+        Closes GUI, ends program.
+        Maps to Cancel button, File->Quit, and CTRL+Q
+
+        Parameters
+        ----------
+        event :
+            
+
+        Returns
+        -------
+
+        """
+
         self.Close()
 
     def itemInsert(self, event):
-        """Adds files selected from the 'Add GeoTIFF File' to the 'GeoTIFF File
+        """
+        Adds files selected from the 'Add GeoTIFF File' to the 'GeoTIFF File
         List' box. 'File' holds the name of the file and 'Path' holds the
         complete file path
+
+        Parameters
+        ----------
+        event :
+            
+
+        Returns
+        -------
+
         """
-        print (self.picker_tif.GetPath())
+
+        print(self.picker_tif.GetPath())
         tif = self.picker_tif.GetPath()
         self.gettifList()
         if tif not in self.tifList:
@@ -43,9 +77,20 @@ class Form(autointerp_ui.Form):
             self.insInd += 1
 
     def itemRemove(self, event):
-        """Removes selected files from the 'GeoTIFF File List' box when the
-        'Remove' button is clicked
         """
+        Removes selected files from the 'GeoTIFF File List' box when the
+        'Remove' button is clicked
+
+        Parameters
+        ----------
+        event :
+            
+
+        Returns
+        -------
+
+        """
+
         selected = self.list_tif.SelectedItemCount
         for x in range(0, selected):
             sel = self.list_tif.GetFirstSelected()
@@ -55,10 +100,19 @@ class Form(autointerp_ui.Form):
         self.gettifList()
 
     def main(self):
-        """Main function run as a thread by programProg(). This function
+        """
+        Main function run as a thread by programProg(). This function
         collects the input field values and passes them to autointerp.py's
         'main' function interp()
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         """
+
         st = 'Started - ' + str(_dt.now())
         self.bar_status.SetStatusText(st)
         self.progressBar.Pulse()
@@ -75,25 +129,49 @@ class Form(autointerp_ui.Form):
         self.progressBar.SetValue(100)
 
     def programProg(self, event):
-        """Start thread to run main()
         """
+        Start thread to run main()
+
+        Parameters
+        ----------
+        event :
+            
+
+        Returns
+        -------
+
+        """
+
         import threading
         th = threading.Thread(target=self.main)
         th.start()
 
     def gettifList(self):
-        """Used for checking and updating the contents of current collection
-        of .tiff files
         """
+        Used for checking and updating the contents of current collection
+        of .tiff files
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
+        """
+
         tifCount = self.list_tif.GetItemCount()
         self.tifList = []
         for x in range(0, tifCount):
             self.tifList.append(self.list_tif.GetItemText(x, col=1))
-        print (self.tifList)
+        print(self.tifList)
+
 
 class Done(autointerp_ui.Done):
+    """ """
+
     def __init__(self, parent):
         autointerp_ui.Done.__init__(self, parent)
+
 
 if __name__ == '__main__':
     app = wx.App()

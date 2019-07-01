@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 Edited by Juliet Kinney
-extract_ehydro_meta_class_CESAM.py
+extract_ehydro_meta_class_CESAJ.py
 
-This script takes as an input the filename and path of an USACE e-Hydro .xyz 
+This script takes as an input the filename and path of an USACE e-Hydro .xyz
 text file and pull the metadata from the xyz header and file name.
-Additionally, it passes the matching .xml file and utilizes 
+Additionally, it passes the matching .xml file and utilizes
 the parse_usace_xml script to pull out the relevant metadata if it
 is either FGDC or ISO FGDC USACE metadata format.
 
@@ -19,6 +19,8 @@ import pickle as _pickle
 import re as _re
 
 _ussft2m = 0.30480060960121924  # US survey feet to meters
+# import datetime as _datetime
+import dateutil.parser as parser
 from datetime import datetime
 import numpy as _np
 
@@ -29,37 +31,22 @@ except:
         from . import parse_usace_xml as p_usace_xml
     except:
         print('importing fuse.raw_read.usace.parse_usace_xml as p_usace_xml did not work')
-    ##-----------------------------------------------------------------------------
 
+
+##-----------------------------------------------------------------------------
 
 class read_raw:
     """
     This class passes back bathymetry
     & a metadata dictionary from the e-Hydro files
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-
     """
 
     def read_metadata(self, infilename):
         """
         Read all available meta data.
         returns dictionary
-
-        Parameters
-        ----------
-        infilename :
-            
-
-        Returns
-        -------
-
         """
-        version = 'CESAM'
+        version = 'CESPL'
         self.version = version
         return retrieve_meta_for_Ehydro_out_onefile(
             infilename)  # return retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)
@@ -68,15 +55,6 @@ class read_raw:
         """
         Read the bathymetry from the .dat file. The dat file is less precise,
         but had no header and is in a standardized format
-
-        Parameters
-        ----------
-        infilename :
-            
-
-        Returns
-        -------
-
         """
         # get the dat file for CESAJ# Jacksonville
         stub, ext = os.path.splitext(infilename)
@@ -89,51 +67,20 @@ class read_raw:
         """
         Read the bathymetry from the xyz files, this tells it to not include
         the header when reading the file
-        
+
         Note: The high resolution multibeam files are available as .xyz on E-Hydro
-
-        Parameters
-        ----------
-        infilename :
-            
-
-        Returns
-        -------
-
         """
-        version = 'CESAM'
+        version = 'CESAJ'
         self.version = version
         first_instance, commas_present = _start_xyz(infilename)
-        print(infilename)  # remove debugging
+        print(infilename)  # remove later
         if first_instance != '':
-            if commas_present == ',':
-                xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
-            else:
-                xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
-
+            xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
         else:
-            if commas_present == ',':
-                xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
-            else:
-                xyz = _np.loadtxt(infilename, delimiter=' ', usecols=(0, 1, 2))
+            xyz = _np.loadtxt(infilename, delimiter=' ',
+                              usecols=(0, 1, 2))  # ignoring anything after the first 3 columns on import
+            # other option from np.loadtxt(infilename, converters={4:datestr2num})
         return xyz
-
-    def read_bathymetry_by_point(self, infilename):
-        """
-        Read the bathymetry and return point by point.
-
-        Parameters
-        ----------
-        infilename :
-            
-
-        Returns
-        -------
-
-        """
-        xyz = self.read_bathymetry(infilename)
-        for n in xyz:
-            yield n
 
 
 # ------------------------------------------------------------------------------
@@ -141,17 +88,6 @@ def return_surveyid(filenamepath, ex_string):
     """
     strip end of filename off
     surveybasename =return_surveyid(filenamepath, ex_string)
-
-    Parameters
-    ----------
-    filenamepath :
-        param ex_string:
-    ex_string :
-        
-
-    Returns
-    -------
-
     """
     basename = os.path.basename(filenamepath)
     surveybasename = basename.rstrip(ex_string)
@@ -164,17 +100,8 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     """
     retrieve metadata for USACE E-Hydro files
     function returns metadata dictionary
-    
+
     input is filename of .xyz file with path
-
-    Parameters
-    ----------
-    filename :
-        
-
-    Returns
-    -------
-
     """
     # next if pull the subset of the table in the dataframe related to the list of files passed to it.
     merged_meta = {}
@@ -203,20 +130,20 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
         xmlbasename = os.path.basename(xmlfilename)
         xml_data = p_usace_xml.XML_Meta(xml_txt, filename=xmlbasename)
         if xml_data.version == 'USACE_FGDC':
-            meta_xml = xml_data._extract_meta_USACE_FGDC()  # xml_data._extract_meta_CEMVN() is the version it is pulling#xml_data.my_etree_dict1#
+            meta_xml = xml_data._extract_meta_USACE_FGDC()  # CEMVN()
         elif xml_data.version == 'ISO-8859-1':
-            meta_xml = xml_data._extract_meta_USACE_ISO()  # is the version it is pulling  #xml_data.my_etree_dict1#
+            meta_xml = xml_data._extract_meta_USACE_ISO()
             if 'ISO_xml' not in meta_xml:
                 meta_xml = xml_data._extract_meta_USACE_FGDC(
                     override='Y')  # xml_data._extract_meta_ISOlabel_USACE_FGDC()
         else:
-            meta_xml = xml_data.convert_xml_to_dict2()  # specify how to handle
+            meta_xml = xml_data.convert_xml_to_dict2()
         ext_dict = xml_data.extended_xml_fgdc()
         ext_dict = p_usace_xml.ext_xml_map_enddate(ext_dict)
     else:
         ext_dict = {}
         meta_xml = {}
-    meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESAM', default_meta='')  #
+    meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESAJ', default_meta='')  #
     list_keys_empty = []
     combined_row = {}
     subset_row = {}
@@ -255,45 +182,38 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row}  # this one excluded 'unknown' keys, and
     # in merging sources from the text file and xml it will show any values that do not match as a list.
     merged_meta = {**meta, **meta_from_ehydro, **meta_xml}  # this method overwrites
-    merged_meta = check_date_order(merged_meta, merged_meta)
+    try:
+        merged_meta = check_date_order(merged_meta, merged_meta)
+    except:
+        err_file = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\CESAJ\metadata\Error_file_if_date_checkfail.txt"
+        with open(err_file, 'a') as error:
+            error.write(f + ' : extra dict END DATE SEARCH call fail \n')
+
     return merged_meta
 
 
 ###----------------------------------------------------------------------------
 class Extract_Txt(object):
-    """Extract both information from the filename as well as from the text file's header"""
+    """
+    Extract both information from the filename as well as from the text file's header
+    """
 
     def __init__(self, preloadeddata, version='', filename=''):
         self.filename = preloadeddata
         if filename != "" or None:
             self.filename_1 = filename
-            self.errorfile = os.path.dirname(filename) + 'TEST_extract_ehdyro_meta_class_CESAM_ErrorFile1.txt'
+            self.errorfile = os.path.dirname(filename) + 'TEST_extract_ehdyro_meta_class_CESAJ_ErrorFile1.txt'
         else:
-            self.errorfile = os.path.dirname(filename) + 'Default_extract_ehdyro_meta_class_CESAM_error.txt'
+            self.errorfile = os.path.dirname(filename) + 'Default_extract_ehdyro_meta_class_CESAJ_error.txt'
 
-    def parse_ehydro_xyz(self, infilename, meta_source='xyz', version='CESAM',
+    def parse_ehydro_xyz(self, infilename, meta_source='xyz', version='CESAJ',
                          default_meta=''):  # need to change version to None
         """
-        'CESAM'
-
-        Parameters
-        ----------
-        infilename :
-            param meta_source:  (Default value = 'xyz')
-        version :
-            Default value = 'CESAM')
-        default_meta :
-            Default value = '')
-        meta_source :
-             (Default value = 'xyz')
-
-        Returns
-        -------
-
+        'CESAJ' Jacksonville USACE
         """
         """
         Parse an USACE eHydro file for the available meta data.
-        
+
         Default metadata (values predetermined for the file but not in the file)
         can be stored at the location defined by 'default_meta' as a pickled
         dicitonary.  If no path is provided the dictionary in the same folder as
@@ -344,15 +264,6 @@ class Extract_Txt(object):
             optional : this is the contents of the condition field
             from_path : this is named to match other scripts downstream
             from_filename : this is also named to match other file downstream
-
-        Parameters
-        ----------
-        infilename :
-            
-
-        Returns
-        -------
-
         """
         base = os.path.basename(infilename)
         name, ext = os.path.splitext(base)
@@ -388,22 +299,12 @@ class Extract_Txt(object):
             PROJECT_NAME
             SURVEY_NAME
             DATES_OF_SURVEY
-
-        Parameters
-        ----------
-        infilename :
-            param version:  (Default value = None)
-        version :
-             (Default value = None)
-
-        Returns
-        -------
-
         """
         header = []
         metalist = []
+        more_metalist = []
         # get the header
-        if version == 'CESAM':
+        if version == 'CESAJ':
             with open(infilename, 'r') as infile:
                 for line in infile.readlines():
                     if line == '\n':
@@ -412,31 +313,11 @@ class Extract_Txt(object):
                         header.append(line)
                     else:
                         break
-                    # do header check:
-                    # within header:
-            for line in header:
-                term = 'Notes_chart='
-                if line.startswith(term):
-                    metalist.append(_parse_note(line))
-                    metalist.append(_parse_notes_chart(line))
-                elif line.startswith('notes_chart== 1.'):
-                    metalist.append(_parse_note(line))
-                    metalist.append(_parse_notes_chart(line))
-                    # do something with this line metaline.append()
-                    # tokens = line.split('\n')#tokens= ['value', 'value2', etc]
-                elif line.startswith('Notes_chart== 1.'):
-                    metalist.append(_parse_note(line))
-                    metalist.append(_parse_notes_chart(line))
-                elif line.startswith('notes_chart=='):
-                    metalist.append(_parse_note(line))
-                    metalist.append(_parse_notes_chart(line))
-                if line.startswith('ProcessedBy=='):
-                    metalist.append(_parse_processedBy(line))
-                if line.startswith('CheckedBy=='):
-                    metalist.append(_parse_CheckedBy(line))
-                if line.startswith('ReviewedBy=='):
-                    metalist.append(_parse_ReviewedBy(line))
-            meta = {}
+                for line in infile.readlines():
+                    if line.startswith('Survey_Number=='):
+                        metalist.append(_parse_Survey_Number(line))
+                    if line.startswith('Survey_Type=='):
+                        metalist.append(_parse_Survey_Type(line))
         try:
             for m in metalist:
                 meta = {**meta, **m}
@@ -454,17 +335,6 @@ class Extract_Txt(object):
         picked dictionary), look for the default file.  If that files does not
         exist, look for a file named 'default.pkl' in the same directory as the
         provided file name.
-
-        Parameters
-        ----------
-        infilename :
-            param default_meta:
-        default_meta :
-            
-
-        Returns
-        -------
-
         """
         if len(default_meta) == 0:
             path, infile = os.path.split(infilename)
@@ -478,20 +348,12 @@ class Extract_Txt(object):
 
 
 ##-----------------------------------------------------------------------------
+
 def get_xml(filename):
     """
     input USACE .xyz/.XYZ filename or any last extension and return .xml
     xmlname = get_xml(filename) this makes this friendlier to .ppxyz files
     for instance
-
-    Parameters
-    ----------
-    filename :
-        
-
-    Returns
-    -------
-
     """
     basef = filename.rpartition('.')[0]
     xml_name = basef + '.xml'
@@ -504,17 +366,6 @@ def get_xml_xt(filename, extension):
     output will be the .xml file name
     (_A.xyz for instance or _FULL.XYZ are examples of extensions)
     xmlname = get_xml_xt(filename, extension)
-
-    Parameters
-    ----------
-    filename :
-        param extension:
-    extension :
-        
-
-    Returns
-    -------
-
     """
     end_len = len(extension)
     if filename[-end_len:] == extension:
@@ -530,15 +381,6 @@ def get_xml_match(f):
     input USACE .xyz/.XYZ filename or any last extension and return .xml
     it will try to match the non-full survey to the full density survey
     inorder to use the matching xml
-
-    Parameters
-    ----------
-    f :
-        
-
-    Returns
-    -------
-
     """
     if '_A.xyz' in f:
         xmlfilename = get_xml_xt(f, '_A.xyz')
@@ -559,15 +401,6 @@ def _start_xyz(infilename):
     """
     looks for the first line of the xyz data after the header
     returns the row number of first line of data
-
-    Parameters
-    ----------
-    infilename :
-        
-
-    Returns
-    -------
-
     """
     first_instance = ''
     numberofrows = []
@@ -585,23 +418,9 @@ def _start_xyz(infilename):
 
 
 def _is_header2(line, version=None):
-    """
-    
-
-    Parameters
-    ----------
-    line :
-        param version:  (Default value = None)
-    version :
-         (Default value = None)
-
-    Returns
-    -------
-
-    """
     if version == None:
         version = ''
-    if version == 'CESAM':
+    if version == 'CESAJ':
         pattern_coordinates = '[\d][\d][\d][\d][\d][\d]'  # at least six digits# should be seven then . plus two digits
         if _re.match(pattern_coordinates, line) is not None:
             return False
@@ -624,15 +443,6 @@ def _is_header2(line, version=None):
 def _parse_projectname(line):
     """
     Parse the project name line.
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
     """
     name = line.split('=')[-1]
     name = name.strip('\n')
@@ -640,129 +450,58 @@ def _parse_projectname(line):
     return metadata
 
 
-def _parse_notes_chart(line):
-    """
-    
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
-    """
-    lines = line.split('\\n')
-    metadata = {}
-    metadata['notes_chart'] = line
-    for aline in lines:
-        if aline != '':
-            if aline.find('ALL ELEVATIONS SHOWN ARE REFERENCED') >= 0:
-                if aline.find('FEET') >= 0:
-                    metadata['from_vert_units'] = 'US Survey Foot'
-                else:
-                    metadata['from_vert_units'] = aline.split('ALL ELEVATIONS SHOWN ARE REFERENCED')[-1]
-            if aline.find('COORDINATES ARE REFERENCED TO') >= 0:
-                metadata['horiz_sys'] = aline.split('COORDINATES ARE REFERENCED TO')[-1]
-            if aline.find('COORDINATE SYSTEM') >= 0:
-                metadata['COORDINATE SYSTEM'] = aline.split('COORDINATE SYSTEM')[-1]
-            if aline.find('SURVEY VESSEL') >= 0:
-                metadata['SURVEY VESSEL'] = aline.split('SURVEY VESSEL:')[-1]
-            if aline.find('SURVEY DATE:') >= 0:
-                metadata['SURVEY DATE'] = aline.split(':')[-1]
-                # metadata =_parse_surveydates(aline.split(':')[-1])
-            if aline.find('SURVEYED BY:') >= 0:
-                metadata['SURVEYED_BY'] = aline.split(':')[-1]  # metadata = _split_at_colon(key, line)
-            if aline.find('FREQUENCY SOUNDINGS') >= 0:
-                metadata['FREQUENCY SOUNDINGS'] = aline.split(':')[-1]
-
-            if 'horiz_sys' in metadata and 'COORDINATE SYSTEM' in metadata:
-                horiz_datum = metadata['horiz_sys'].split(' STATE PLANE')[0] + \
-                              metadata['COORDINATE SYSTEM'].split('83 DATUM')[-1].strip('.')
-                horiz_datum = horiz_datum.lstrip()
-                SPCS = horiz_datum
-                metadata['from_horiz_datum'] = SPCS
-                for key in p_usace_xml.SOURCEPROJECTION_dict:
-                    if key.upper() in metadata['from_horiz_datum']:
-                        metadata['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
-                                                                           " ".join(key.split()))
-    return metadata
-
-
 def _parse_note(line):
     """
     Parse the notes line.
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
     """
     metadata = {}
     # find the horizontal datum information.
-    #    zone_idx = line.find('ZONE')
-    #    zone_len = line[zone_idx:].find('.')
-    #    horiz_datum = line[zone_idx:zone_idx + zone_len]
-    #    if len(horiz_datum) > 0:
-    #        fips = horiz_datum.split()[1]
-    #        fips = fips.rstrip(',')
-    #        metadata['from_fips'] = fips
-    #        horiz_units = horiz_datum.split(',')[1]
-    #        if horiz_units.lstrip(' ') == 'US SURVEY FEET':
-    #            metadata['from_horiz_units'] = 'US Survey Foot'
-    #        else:
-    #            metadata['from_horiz_units'] = horiz_units.lstrip(' ')
-    #        metadata['from_horiz_datum'] = horiz_datum
-    #    else:
-    #        metadata['from_horiz_units'] = 'unknown'
-    #        metadata['from_horiz_datum'] = 'unknown'
+    zone_idx = line.find('ZONE')
+    zone_len = line[zone_idx:].find('.')
+    horiz_datum = line[zone_idx:zone_idx + zone_len]
+    if len(horiz_datum) > 0:
+        fips = horiz_datum.split()[1]
+        fips = fips.rstrip(',')
+        metadata['from_fips'] = fips
+        horiz_units = horiz_datum.split(',')[1]
+        if horiz_units.lstrip(' ') == 'US SURVEY FEET':
+            metadata['from_horiz_units'] = 'US Survey Foot'
+        else:
+            metadata['from_horiz_units'] = horiz_units.lstrip(' ')
+        metadata['from_horiz_datum'] = horiz_datum
+    else:
+        metadata['from_horiz_units'] = 'unknown'
+        metadata['from_horiz_datum'] = 'unknown'
     # find the vertical datum information
     if line.find('MEAN LOWER LOW WATER') >= 0:
         metadata['from_vert_key'] = 'MLLW'
-        metadata['script: from_vert_key'] = 'MLLW'
     elif line.find('MLLW') >= 0:
         metadata['from_vert_key'] = 'MLLW'
-        metadata['script: from_vert_key'] = 'MLLW'
     elif line.find('MEAN LOW WATER') >= 0:
         metadata['from_vert_key'] = 'MLW'
-        metadata['script: from_vert_key'] = 'MLW'
     else:
         metadata['vert_key'] = 'unknown'
-    #    vert_units_tags = ['NAVD88','NAVD1988','NAVD 1988']
-    #    for tag in vert_units_tags:
-    #        vert_units_end = line.find(tag)
-    #        if vert_units_end >= 0:
-    #            vert_units_end += len(tag)
-    #            break
-    #        else:
-    #            vert_units_end = 0
-    #    vert_units_start = vert_units_end - line[vert_units_end::-1].find('>krb<')
-    #    vert_units = line[vert_units_start+1:vert_units_end]
-    #    metadata['from_vert_datum'] = vert_units
-    #    if vert_units.find('FEET') >= 0:
-    #        metadata['from_vert_units'] = 'US Survey Foot'
-    #    else:
-    #        metadata['from_vert_units'] = 'unknown'
+    vert_units_tags = ['NAVD88', 'NAVD1988', 'NAVD 1988']
+    for tag in vert_units_tags:
+        vert_units_end = line.find(tag)
+        if vert_units_end >= 0:
+            vert_units_end += len(tag)
+            break
+        else:
+            vert_units_end = 0
+    vert_units_start = vert_units_end - line[vert_units_end::-1].find('>krb<')
+    vert_units = line[vert_units_start + 1:vert_units_end]
+    metadata['from_vert_datum'] = vert_units
+    if vert_units.find('FEET') >= 0:
+        metadata['from_vert_units'] = 'US Survey Foot'
+    else:
+        metadata['from_vert_units'] = 'unknown'
     return metadata
 
 
 def _parse_surveyname(line):
     """
     Parse the survey name line.
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
     """
     name = line.split('=')[-1]
     name = name.strip('\n')
@@ -773,15 +512,6 @@ def _parse_surveyname(line):
 def _parse_surveydates(line):
     """
     Parse the project dates line.
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
     """
     metadata = {}
     datestr = line.split('=')[-1]
@@ -805,15 +535,6 @@ def _xyztext2date(textdate):
     """
     Take the date as provided in a text string as "day month year" as in
     "20 March 2017" and return the format "YearMonthDay" as in "20170320".
-
-    Parameters
-    ----------
-    textdate :
-        
-
-    Returns
-    -------
-
     """
     try:
         date = datetime.strptime(textdate, '%d %B %Y')
@@ -834,15 +555,6 @@ def _parse_sounding_frequency(line):
     Note: LOW & HIGH are usually settings for the
     single beam in New Orleans
     400kHz seems to be their multibeam.
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
     """
     name = line.split('SOUNDING_FREQUENCY==')[-1].strip('\n')
     metadata = {'sounding_frequency': name}
@@ -852,15 +564,6 @@ def _parse_sounding_frequency(line):
 def _parse_survey_type(line):
     """
     returns survey type
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
     """
     name = line.split('SURVEY_TYPE==')[-1]
     name = name.strip('\n')
@@ -871,15 +574,6 @@ def _parse_survey_type(line):
 def _parse_survey_crew(line):
     """
     returns survey crew
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
     """
     name = line.split('SURVEY_CREW==')[-1]
     name = name.strip('\n')
@@ -890,15 +584,6 @@ def _parse_survey_crew(line):
 def _parse_sea_condition(line):
     """
     sea conditions
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
     """
     name = line.split('SEA_CONDITION==')[-1]
     name = name.strip('\n')
@@ -909,15 +594,6 @@ def _parse_sea_condition(line):
 def _parse_vessel_name(line):
     """
     vessel name
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
     """
     name = line.split('VESSEL_NAME==')[-1]
     name = name.strip('\n')
@@ -928,15 +604,6 @@ def _parse_vessel_name(line):
 def _parse_LWRP_(line):
     """
     Checks to see if its in Low Water Reference Plane
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
     """
     name = line.split('LWRP==')[-1]
     name = name.split('LWRP=')[-1]
@@ -960,17 +627,6 @@ def _parse_LWRP_(line):
 def _parse_Gage_Reading(line, allcap1):
     """
     Looks for the water level Gage
-
-    Parameters
-    ----------
-    line :
-        param allcap1:
-    allcap1 :
-        
-
-    Returns
-    -------
-
     """
     if allcap1 == 1:
         name = line.split('GAGE_READING==')[-1]
@@ -986,15 +642,6 @@ def _parse_Gage_Reading(line, allcap1):
 def _parse_sound_velocity(line):
     """
     Looks for Sound Velocity
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
     """
     name = line.split('SOUND VELOCITY')[-1]
     name = name.strip('\n')
@@ -1003,18 +650,6 @@ def _parse_sound_velocity(line):
 
 
 def _parse_Ranges(line):
-    """
-    
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
-    """
     name = line.split('Range:')[-1]
     name = name.strip('\n')
     metadata = {'Range': name}
@@ -1022,18 +657,6 @@ def _parse_Ranges(line):
 
 
 def _is_RTK(line):
-    """
-    
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
-    """
     pattern_coordinates = '[RTK]'  # at least six digits# should be seven then . plus two digits
     if _re.findall(pattern_coordinates, line) is not None:
         return False
@@ -1042,72 +665,25 @@ def _is_RTK(line):
 
 
 def _is_RTK_Tide(line):
-    """
-    
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
-    """
     if _re.findall('[VRS RTK TIDES]', line) is not None:
         return False
     else:
         return True
 
 
-def _parse_processedBy(line):
+def _parse_Survey_Type(line):
     """
-    
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
+    parse Survey Type
     """
-    metadata = {'ProcessedBy': line}
+    metadata = {'Survey_Type==': line.split('Survey_Type==')[1]}
     return metadata
 
 
-def _parse_CheckedBy(line):
+def _parse_Survey_Number(line):
     """
-    
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
+    parse Survey Number
     """
-    metadata = {'CheckedBy': line.split('CheckedBy==')[1]}
-    return metadata
-
-
-def _parse_ReviewedBy(line):
-    """
-    
-
-    Parameters
-    ----------
-    line :
-        
-
-    Returns
-    -------
-
-    """
-    metadata = {'ReviewedBy': line.split('ReviewedBy==')[1]}
+    metadata = {'Survey_Number==': line.split('Survey_Number==')[1]}
     return metadata
 
 
@@ -1116,16 +692,6 @@ def check_date_order(m, mm):
     """
     ingest dates from e-hydro file name, and xml if available
     do a date check.
-
-    Parameters
-    ----------
-    m :
-        param mm:
-    mm :
-        
-
-    Returns
-    -------
 
     """
     date_list = []  # date_list = [begdate, enddate,filename_date]
@@ -1163,24 +729,12 @@ def check_date_order(m, mm):
 
 
 ##-----------------------------------------------------------------------------
-
 def check_abst_date(filename_date, daterange):
     """
     check_abst_date(filename_date, daterange)
     Expecting values from:
     #filename_date = m['filename_date']
     #dateramge = xml_meta['daterange']
-
-    Parameters
-    ----------
-    filename_date :
-        param daterange:
-    daterange :
-        
-
-    Returns
-    -------
-
     """
     next_date = []
     mnum = ''
@@ -1259,18 +813,6 @@ def check_abst_date(filename_date, daterange):
 
 
 def check_datelist(next_date):
-    """
-    
-
-    Parameters
-    ----------
-    next_date :
-        
-
-    Returns
-    -------
-
-    """
     dateonly_list = []
     for day in next_date:
         day = datetime.date(day)
@@ -1279,20 +821,6 @@ def check_datelist(next_date):
 
 
 def check_date_format_hasday(date_string, b_or_e=None):
-    """
-    
-
-    Parameters
-    ----------
-    date_string :
-        param b_or_e:  (Default value = None)
-    b_or_e :
-         (Default value = None)
-
-    Returns
-    -------
-
-    """
     pattern_missing_valid_day = '[\d][\d][\d][\d][\d][\d][0][0]'
 
     if b_or_e == None:

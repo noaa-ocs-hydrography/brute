@@ -7,26 +7,27 @@ Last Modified: Apr 19 12:12:42 2019
 @author: Casiano.Koprowski <casiano.koprowski@noaa.gov>
 """
 
-import os
-import re
+import configparser
 import csv
-import time
+import datetime
+import os
 import pickle
+import re
 import socket
+import time
 import urllib
 import zipfile
-import datetime
-import requests
-import configparser
-import numpy as np
-from osgeo import gdal, osr, ogr
+from typing import Tuple, List, Union, TextIO, Any
 
+import numpy as np
+import requests
+from osgeo import osr, ogr
 
 __version__ = '1.2'
 
 """Known global constants"""
 # print (datetime.datetime.now().strftime('%b %d %X %Y'))
-#progLoc = '\\eHydro_scrape'
+# progLoc = '\\eHydro_scrape'
 progLoc = os.getcwd()
 """progLoc is the program's own file location / current working directory (cwd)
 obtained by :func:`os.getcwd()`"""
@@ -45,14 +46,14 @@ config.read('config.ini')
 csvName = 'eHydro_csv.txt'
 """Default name for csv.txt output"""
 csvLocation = os.path.join(progLoc, csvName)
-#csvLocation = progLoc + '\\' + csvName
+# csvLocation = progLoc + '\\' + csvName
 """Default location for :attr:`csvName`"""
 logName = 'eHydro_log.txt'
 """Default name for log.txt output"""
 logLocation = os.path.join(progLoc, logName)
-#logLocation = progLoc + '\\' + logName
+# logLocation = progLoc + '\\' + logName
 """Default location for :attr:`logName`"""
-#"""Default location for """
+# """Default location for """
 holding = progLoc + '\\downloads\\'
 """Default location for all downloaded data, regardless of the type of query
 performed. Data is broken up into folders representing each district (ex.
@@ -67,7 +68,7 @@ running = progLoc + '\\runs\\'
 ``YYYYMMDD_0_eHydro_csv.txt``
 """
 # eHydro survey entry attributes
-attributes = [ "OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
+attributes = ["OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
               "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION",
               "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
               "SURVEYTYPE", "PROJECTEDAREA", "SOURCEDATAFORMAT",
@@ -82,30 +83,32 @@ if not os.path.exists(logging):
 if not os.path.exists(running):
     os.mkdir(running)
 
-def query():
-    """Holds the Queries for the eHydro REST API, asks for responses, and uses
+
+def query() -> Tuple[List[str], int, str]:
+    """
+    Holds the Queries for the eHydro REST API, asks for responses, and uses
     the json library to make it readable by the program. Returns the json
     responses for number of surveys and surveys in the response.
-
+    
     -REMOVED- It also saves a prettyprinted version of the response as a text
     file.
-
+    
     The funtion uses the requests library to retrieve the API's response(s) and
     uses the json library to make them readable by the program.
-
+    
     The function returns the json object containing the contents of the query
     and the integer number of surveys contained by the query
 
+    Parameters
+    ----------
+
     Returns
     -------
-    surveyIDs : list
-        List of survey ids from query
-    newSurveysNum : int
-        Total number of surveys returned by the query
-    paramString : str
-        String containing the parameters gathered from the config file
+    type
+        List of survey ids from query, total number of surveys returned by the query, and a string containing the parameters gathered from the config file
 
     """
+
     # Today (ex. '2018-08-08'), unformatted
     today = datetime.datetime.today()
     strToday = str(today.strftime('%Y-%m-%d'))
@@ -121,7 +124,7 @@ def query():
     else:
         end = strToday
     if (config['Agencies']['Only Listed'] == 'yes'
-        and config['Agencies']['Agencies'] != ''):
+            and config['Agencies']['Agencies'] != ''):
         areas = ''
         agencies = config['Agencies']['Agencies'].split(',')
         if len(agencies) > 1:
@@ -151,8 +154,8 @@ def query():
 
     # The main query parameters that will determine the contents of the response
     # Survey Date Uploaded
-    if config ['Timeframe']['Ignore Date'] == 'no' and areas != '':
-        print ('\nStart:', start, '\nEnd:', end)
+    if config['Timeframe']['Ignore Date'] == 'no' and areas != '':
+        print('\nStart:', start, '\nEnd:', end)
         # %27 is ' (Apostrophe)
         where = ('SURVEYDATEUPLOADED+>=+%27'
                  + start
@@ -160,8 +163,8 @@ def query():
                  + end
                  + 'T11:59:00.000Z%27+AND+'
                  + areas)
-    elif config ['Timeframe']['Ignore Date'] == 'no' and areas == '':
-        print ('\nStart:', start, '\nEnd:', end)
+    elif config['Timeframe']['Ignore Date'] == 'no' and areas == '':
+        print('\nStart:', start, '\nEnd:', end)
         # %27 is ' (Apostrophe)
         where = ('SURVEYDATEUPLOADED+>=+%27'
                  + start
@@ -169,7 +172,7 @@ def query():
                  + end
                  + 'T11:59:00.000Z%27')
     else:
-        print ('\nStart: Ignored', '\nEnd: Ignored')
+        print('\nStart: Ignored', '\nEnd: Ignored')
         start = 'Ignored'
         end = 'Ignored'
         if areas != '':
@@ -185,7 +188,7 @@ def query():
     # The query for returning the object IDs for the given timeframe
     objIDs = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?&where=' + where + '&outFields=*&returnGeometry=false&returnIdsOnly=true&outSR=&f=json'
 
-    print (objIDs, newSurveys)
+    print(objIDs, newSurveys)
 
     # Initial Query execution
     surveyNumRequest = requests.get(newSurveys)
@@ -193,13 +196,13 @@ def query():
 
     # Response for number of surveys used as a json object
     surveyNumJSON = surveyNumRequest.json()
-    print (surveyNumJSON)
+    print(surveyNumJSON)
     newSurveysNum = int(surveyNumJSON['count'])
 
     # Response for survey Object IDs as a json object
     surveyIDsJSON = surveyIDsRequest.json()
     surveyIDs = surveyIDsJSON['objectIds']
-    print (surveyIDs, newSurveysNum)
+    print(surveyIDs, newSurveysNum)
 
     if areas == '':
         dist = 'none'
@@ -212,25 +215,32 @@ def query():
                       + '\n\t\tQuery Only Districts: ' + config['Agencies']['Only Listed']
                       + '\n\t\tKeep All Data: ' + config['Resolutions']['Override'])
 
-    return (surveyIDs, newSurveysNum, paramString)
+    return surveyIDs, newSurveysNum, paramString
 
-def create_polygon(coords):
-    """Creates an ogr.Geometry/wkbLinearRing object from a list of coordinates.
 
+def create_polygon(coords: List[Tuple[float, float]]) -> ogr.Geometry:
+    """
+    Creates an ogr.Geometry/wkbLinearRing object from a list of coordinates.
+    
     with considerations from:
     https://gis.stackexchange.com/q/217165
 
     Parameters
     ----------
-    coords : list
-        A list of [x, y] points to be made into an ogr.Geometry/wkbLinearRing
-        object
+    coords :
+        A list of [x, y] points to be made into an ogr.Geometry/wkbLinearRing object
+    coords: List[Tuple[float :
+        
+    float]] :
+        
 
     Returns
     -------
-    poly : ogr.Geometry/wkbLinearRing object
+    type
+        ogr.Geometry/wkbLinearRing object
 
     """
+
     ring = ogr.Geometry(ogr.wkbLinearRing)
     for coord in coords:
         ring.AddPoint(coord[0], coord[1], 1)
@@ -239,11 +249,13 @@ def create_polygon(coords):
     poly.AddGeometry(ring)
     return poly
 
-def create_multipolygon(polys):
-    """Creates an ogr.Geometry/wkbMultiPolygon object from a list of
+
+def create_multipolygon(polys: List[ogr.Geometry]) -> str:
+    """
+    Creates an ogr.Geometry/wkbMultiPolygon object from a list of
     ogr.Geometry/wkbLinearRing objects.  The ogr.Geometry/wkbMultiPolygon is
     transelated and returned as a WTK Multipolygon object.
-
+    
     with considerations from:
     https://gis.stackexchange.com/q/217165
     and:
@@ -251,79 +263,86 @@ def create_multipolygon(polys):
 
     Parameters
     ----------
-    polys : list
+    polys :
         A list of ogr.Geometry/wkbLinearRing objects
+    polys: List[ogr.Geometry] :
+        
 
     Returns
     -------
-    str : WTK Multipolygon object
+    type
+        WTK Multipolygon object
 
     """
+
     multipolygon = ogr.Geometry(ogr.wkbMultiPolygon)
     for poly in polys:
         multipolygon.AddGeometry(poly)
     return multipolygon.ExportToWkt()
 
 
-def geometryToShape(coordinates):
-    """Uses a list of coordinate point 'rings' and creates a WTK Multipolygon
+def geometryToShape(coordinates: list):
+    """
+    Uses a list of coordinate point 'rings' and creates a WTK Multipolygon
     object from them.  This object represents the survey outline.
-
+    
     eHydro data object geometries are returned as a list of lists/'rings'
     meaning that a survey may have one or many polygons included in it's
     geometry.
-
+    
     This function takes each 'ring' and determines it's extents and creates a
     ogr.Geometry object for it using :func:`create_polygon`
-
+    
     The polygons for each 'ring' are then combined into a single WTK
     Multipolygon object using :func:`create_multipolygon`
-
+    
     The total extent of the geometry and the WTK Multipolygon object are
     returned
 
     Parameters
     ----------
-    coordinates : list
-        A list of coordinate point 'rings' returned by an eHydro survey query
-        in the Geometry attribute
+    coordinates :
+        A list of coordinate point 'rings' returned by an eHydro survey query in the Geometry attribute
+    coordinates: list :
+        
 
     Returns
     -------
-    bounds : tuple
-        The maximum extents of the survey outline
-    multipoly : WTK Multipolygon object
+    type
         A WTK Multipolygon object representing the survey outline
 
     """
+
     polys = []
     bounds = []
     for ring in coordinates:
         ring = np.array(ring)
-        x = ring[:,0]
-        y = ring[:,1]
+        x = ring[:, 0]
+        y = ring[:, 1]
         bound = [[np.amin(x), np.amax(y)], [np.amax(x), np.amin(y)]]
         bounds.extend(bound)
         poly = create_polygon(ring)
         polys.append(poly)
     multipoly = create_multipolygon(polys)
     bounds = np.array(bounds)
-    xb = bounds[:,0]
-    yb = bounds[:,1]
+    xb = bounds[:, 0]
+    yb = bounds[:, 1]
     bounds = (np.amin(xb), np.amax(yb)), (np.amax(xb), np.amin(yb))
     return multipoly
 
-def surveyCompile(surveyIDs, newSurveysNum, pb=None):
-    """Uses the json object return of the each queried survey id and the total
+
+def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
+    """
+    Uses the json object return of the each queried survey id and the total
     number of surveys included to compile a list of complete returned survey
     data, as provided in the response. The function also takes into account
     that the survey data returns for any date/time are returned as timestamps.
     The function looks for these fields and converts them to datetime objects
     and finally strings.
-
+    
     The function returns the lists of returned survey data as a list 'rows'.
     The specific :attr:`attributes` for each survey are:
-
+    
     - OBJECTID.
     - SDSFEATURENAME.
     - SURVEYTYPE.
@@ -340,7 +359,7 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
     - SOURCEDATAFORMAT.
     - Shape__Area.
     - Shape__Length.
-
+    
     Added to the end of this list but not included in the list for csv export
     is a dictionary of the same information and the survey outline/shape as a
     WTK Multipolygon object. This data is used to writa a metadata pickle
@@ -348,27 +367,35 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
 
     Parameters
     ----------
-    surveyIDs : list
+    surveyIDs :
         List of survey ids usualy generated by :func:`query`
-    newSurveysNum : int
+    newSurveysNum :
         Total number of surveys usualy returned by :func:`query`
+    surveyIDs: list :
+        
+    newSurveysNum: int :
+        
+    pb :
+         (Default value = None)
 
     Returns
     -------
-    rows : list
+    type
         A list compiled of the attributes for every survey in surveyIDs
 
     """
+
     x = 0
     rows = []
-    if pb!= None:
+    if pb != None:
         pb.SetRange(newSurveysNum)
         pb.SetValue(x)
     while x < newSurveysNum:
-        print (x, end=' ')
-        query = ('https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID+=+'
-                 + str(surveyIDs[x])
-                 + '&outFields=*&returnGeometry=true&outSR=4326&f=json')
+        print(x, end=' ')
+        query = (
+                'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID+=+'
+                + str(surveyIDs[x])
+                + '&outFields=*&returnGeometry=true&outSR=4326&f=json')
         response = requests.get(query)
         page = response.json()
         row = []
@@ -380,42 +407,44 @@ def surveyCompile(surveyIDs, newSurveysNum, pb=None):
                     row.append('null')
                     metadata[attribute] = 'null'
                 elif (attribute == "SURVEYDATEUPLOADED"
-                    or attribute == "SURVEYDATEEND"
-                    or attribute == "SURVEYDATESTART"):
-                        if page['features'][0]['attributes'][attribute] == None:
-                            row.append('null')
-                            metadata[attribute] = 'null'
-                        else:
-                            date = (page['features'][0]['attributes'][attribute])
-                            date = datetime.datetime.utcfromtimestamp(date/1000)
-                            row.append(str(date.strftime('%Y-%m-%d')))
-                            metadata[attribute] = str(date.strftime('%Y-%m-%d'))
+                      or attribute == "SURVEYDATEEND"
+                      or attribute == "SURVEYDATESTART"):
+                    if page['features'][0]['attributes'][attribute] == None:
+                        row.append('null')
+                        metadata[attribute] = 'null'
+                    else:
+                        date = (page['features'][0]['attributes'][attribute])
+                        date = datetime.datetime.utcfromtimestamp(date / 1000)
+                        row.append(str(date.strftime('%Y-%m-%d')))
+                        metadata[attribute] = str(date.strftime('%Y-%m-%d'))
                 else:
                     row.append(str(page['features'][0]['attributes'][attribute]))
                     metadata[attribute] = str(page['features'][0]['attributes'][attribute])
             except KeyError as e:
-                print (e, page)
+                print(e, page)
                 row.append('error')
                 metadata[attribute] = 'error'
         try:
             coords = page['features'][0]['geometry']['rings']
-            metadata['poly']  = geometryToShape(coords)
+            metadata['poly'] = geometryToShape(coords)
         except KeyError as e:
-            print (e, page)
+            print(e, page)
             metadata['poly'] = 'error'
         row.append(metadata)
         rows.append(row)
         x += 1
-        if pb!= None:
+        if pb != None:
             pb.SetValue(x)
-    print (len(rows))
-    print ('rows complete')
+    print(len(rows))
+    print('rows complete')
     return rows
 
-def write_geopackage(out_path, name, poly, spcs):
-    """Writes out a geopackage containing the bounding geometry of
-    of the given query.
 
+def write_geopackage(out_path: str, name: str, poly: str, spcs: Union[str, int]):
+    """
+    Writes out a geopackage containing the bounding geometry of
+    of the given query.
+    
     Derived from:
     https://gis.stackexchange.com/a/52708/8104
     via
@@ -423,16 +452,30 @@ def write_geopackage(out_path, name, poly, spcs):
 
     Parameters
     ----------
-    out_shp : str
+    out_path :
         String representing the complete file path for the output geopackage
-    name : str
+    name :
         String representing the name of the survey; Used to name the layer
-    poly : WTK Multipolygon object
+    poly :
         The WTK Multipolygon object that holds the survey's bounding data
-    proj : str, int
+    spcs :
         The ESPG code for the data
+    out_path: str :
+        
+    name: str :
+        
+    poly: str :
+        
+    spcs: Union[str :
+        
+    int] :
+        
+
+    Returns
+    -------
 
     """
+
     # Reference
     if type(spcs) == str:
         proj = osr.SpatialReference(wkt=spcs)
@@ -445,7 +488,7 @@ def write_geopackage(out_path, name, poly, spcs):
     driver = ogr.GetDriverByName('GPKG')
     ds = driver.CreateDataSource(out_path)
     layer = ds.CreateLayer(name, proj, ogr.wkbMultiPolygon)
-#    layer = ds.CreateLayer(name, None, ogr.wkbMultiPolygon)
+    #    layer = ds.CreateLayer(name, None, ogr.wkbMultiPolygon)
     # Add one attribute
     layer.CreateField(ogr.FieldDefn('Survey', ogr.OFTString))
     defn = layer.GetLayerDefn()
@@ -466,56 +509,63 @@ def write_geopackage(out_path, name, poly, spcs):
     # Save and close everything
     ds = layer = feat = geom = None
 
-def contentSearch(contents):
-    """This funtion takes a list of zipfile contents.
 
+def contentSearch(contents: List[str]) -> int:
+    """
+    This funtion takes a list of zipfile contents.
+    
     Using the zipfile contents, it parses the files for any file containing the
     full string '_FULL.xyz'.  If a file name contains this string, it returns a
     Boolean True
 
     Parameters
     ----------
-    contents : list
+    contents :
         A list of file names
+    contents: List[str] :
+        
 
     Returns
     -------
-    int, bool
+    type
         If search conditions are met, return 1 for True
 
     """
+
     x = 0
     for content in contents:
         if full.search(content) or full_a.search(content):
-            print ('\nvive le resolution', content, end=' ') #link + '\n')
+            print('\nvive le resolution', content, end=' ')  # link + '\n')
             x = 1
             return x
         else:
             x = 0
 
-def downloadAndCheck(rows, pb=None, to=None):
-    """This function takes a list of complete survey data as provided by the
-    query response `rows`.
 
+def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
+    """
+    This function takes a list of complete survey data as provided by the
+    query response `rows`.
+    
     For each survey object in rows, along with the list of arrtibute values, a
     dictionary of the same values is inlcuded as well as a WTK Multipolygon
     object
-
+    
     For each link provided, it saves the returned data localy. All downloaded
     files are expected to be zip files.  The funtion attempts to open the files
     as zipfile objects:
-
+    
     1. If it succeeds, the function requests a list of included contents
     of the zipfile objects and passes that list, the download link, and
     location of the local download to contentSearch() to determine if the
     desired data exists. The downloaded content is kept.
     2. If it fails, the link, downloaded
     contents, and survey data in 'rows' are immediately removed.
-
+    
     Through each of these steps a value is appended to the end of each 'row' or
     survey data object in list 'rows' to indicate the result of the search for
     highest resolution data.  The full range of possible values are:
-
+    
     1. Yes; the survey contains a FULL.xyz file.
     2. No; the survey does not contain a FULL.xyz file.
     3. BadURL; the survey URL from query response was bad/yeilded no results.
@@ -523,24 +573,26 @@ def downloadAndCheck(rows, pb=None, to=None):
 
     Parameters
     ----------
-    rows : list
-        A list compiled of the attributes for every survey in surveyIDs usually
-        generated by :func:`surveyCompile`
+    rows :
+        A list compiled of the attributes for every survey in surveyIDs usually generated by :func:`surveyCompile`
+    pb :
+        param to: (Default value = None)
+    rows: list :
+        
+    to :
+         (Default value = None)
 
     Returns
     -------
-    rows : list
-        The list compiled of the attributes for every survey in surveyIDs with
-        the results of checking for high-res data appended to the end of each
-        entry
-    hr : int
-        The total number of high-res surveys found
+    type
+        The list compiled of the attributes for every survey in surveyIDs with the results of checking for high-res data appended to the end of each entry and the total number of high-res surveys found
 
     """
+
     x = len(rows)
     hr = 0
     agencies = config['Agencies']['Agencies']
-    if pb!= None:
+    if pb != None:
         pb.SetRange(x)
         i = 0
         pb.SetValue(i)
@@ -550,7 +602,7 @@ def downloadAndCheck(rows, pb=None, to=None):
         agency = row[2]
         meta = row[-1]
         spcs = 4326
-#        spcs = row[5]
+        #        spcs = row[5]
         poly = meta['poly']
         name = link.split('/')[-1]
         saved = holding + '/' + agency + '/' + name
@@ -575,11 +627,11 @@ def downloadAndCheck(rows, pb=None, to=None):
             pickle.dump(meta, metafile)
         pfile = os.path.relpath(surname + '.pickle')
 
-        print  (x, agency, end=' ')
+        print(x, agency, end=' ')
         dwntime = datetime.datetime.now()
         while True:
             if os.path.exists(saved):
-                print ('x', end=' ')
+                print('x', end=' ')
                 break
             else:
                 if link != 'null' and link != 'Not in cloud':
@@ -588,28 +640,28 @@ def downloadAndCheck(rows, pb=None, to=None):
                     except socket.timeout:
                         urllib.request.urlretrieve(link, saved)
                     except urllib.error.HTTPError as e:
-                        print ('e \n' + link, e)
+                        print('e \n' + link, e)
                         row.append('No')
                         row.append('BadURL')
                         break
                     except urllib.error.URLError as e:
-                        print ('e \n' + link, e)
+                        print('e \n' + link, e)
                         row.append('No')
                         row.append('BadURL')
                         break
                 elif time.time() - dwntime > 295:
-                    print ('e \n' + link)
+                    print('e \n' + link)
                     row.append('No')
                     row.append('TimeOut')
                     break
                 else:
-                    print ('e \n' + link)
+                    print('e \n' + link)
                     row.append('No')
                     row.append('BadURL')
                     break
         if os.path.exists(saved):
             if (config['Resolutions']['Override'] == 'yes'
-                and (agency in agencies or agencies == '')):
+                    and (agency in agencies or agencies == '')):
                 try:
                     zipped = zipfile.ZipFile(saved, mode='a')
                     os.chdir(holding + '/' + agency + '/')
@@ -621,21 +673,21 @@ def downloadAndCheck(rows, pb=None, to=None):
                     os.chdir(progLoc)
                     contents = zipped.namelist()
                     if contentSearch(contents) != True:
-                        print ('n', end=' ')
+                        print('n', end=' ')
                         zipped.close()
                         row.append('No')
                     else:
                         zipped.close()
-                        print ('y', end=' ')
+                        print('y', end=' ')
                         row.append('Yes')
                         hr += 1
                 except zipfile.BadZipfile:
                     os.remove(saved)
-                    print ('z', end=' ')
+                    print('z', end=' ')
                     row.append('BadZip')
-                print ('o', end=' ')
+                print('o', end=' ')
                 if to != None:
-                    to.write('\t\t' + agency + '\\' + name  + '\n')
+                    to.write('\t\t' + agency + '\\' + name + '\n')
                 row.append('Yes')
             else:
                 try:
@@ -649,21 +701,21 @@ def downloadAndCheck(rows, pb=None, to=None):
                     os.chdir(progLoc)
                     contents = zipped.namelist()
                     if contentSearch(contents) != True:
-                        print ('n', end=' ')
+                        print('n', end=' ')
                         zipped.close()
                         os.remove(saved)
-                        print ('r', end=' ')
+                        print('r', end=' ')
                         row.append('No')
                     else:
                         zipped.close()
-                        print ('y', end=' ')
+                        print('y', end=' ')
                         row.append('Yes')
                         hr += 1
                         if to != None:
-                            to.write('\t\t' + agency + '\\' + name  + '\n')
+                            to.write('\t\t' + agency + '\\' + name + '\n')
                 except zipfile.BadZipfile:
                     os.remove(saved)
-                    print ('z', end=' ')
+                    print('z', end=' ')
                     row.append('BadZip')
                 row.append('No')
         x -= 1
@@ -672,37 +724,42 @@ def downloadAndCheck(rows, pb=None, to=None):
             pb.SetValue(i)
     if to != None:
         to.write('\n')
-    print ('\nrow downloads verified')
+    print('\nrow downloads verified')
     return rows, hr
 
-def csvCompare(rows, csvFile, newSurveysNum, pb=None):
-    """Takes list 'rows' and list 'csvFile'.  It proceeds to compare each list
+
+def csvCompare(rows: list, csvFile: List[str], newSurveysNum: int, pb=None) -> Tuple[Union[list, str], str]:
+    """
+    Takes list 'rows' and list 'csvFile'.  It proceeds to compare each list
     item's contents against each other.  If they match, the relevant list item
     is removed from list 'rows'.  If all items are identical, the function
     returns a string 'No Changes'. If not empty, returns the list 'changes'
 
     Parameters
     ----------
-    rows : list
-        The list compiled of the attributes for every survey in surveyIDs. This
-        uses the list generated by :func:`downloadAndCheck` but can also use
-        the original list generated by :func:`surveyCompile`
-    csvFile : list
-        The list of all compiled survey attributes stored in a dedicated .txt
-        file generated by :func:`csvOpen`
-    newSurveysNum : int
+    rows :
+        The list compiled of the attributes for every survey in surveyIDs. This uses the list generated by :func:`downloadAndCheck` but can also use the original list generated by :func:`surveyCompile`
+    csvFile :
+        The list of all compiled survey attributes stored in a dedicated .txt file generated by :func:`csvOpen`
+    newSurveysNum :
         Total number of surveys usualy returned by :func:`query`
+    pb :
+        returns: A list compiled of the attributes for every survey in surveyIDs minus the surveys found in the csvFile list or returns a string 'No Changes' (Default value = None)
+    rows: list :
+        
+    csvFile: List[str] :
+        
+    newSurveysNum: int :
+        
 
     Returns
     -------
-    list, str
-        returns A list compiled of the attributes for every survey in surveyIDs
-        minus the surveys found in the csvFile list or returns a string 'No
-        Changes'
+    type
+        A list compiled of the attributes for every survey in surveyIDs minus the surveys found in the csvFile list or returns a string 'No Changes'
 
     """
 
-    print(len(rows), end = ' ')
+    print(len(rows), end=' ')
     before = str(len(rows))
     if pb != None:
         pb.SetRange(len(rows))
@@ -727,44 +784,60 @@ def csvCompare(rows, csvFile, newSurveysNum, pb=None):
     else:
         return 'No Changes', numstring
 
-def csvOpen():
-    """Uses global variable csvLocation to open eHydro_csv.txt for use.
+
+def csvOpen() -> List[str]:
+    """
+    Uses global variable csvLocation to open eHydro_csv.txt for use.
     Populates a list 'csvFile' with it's contents. Returns list and
     closes file
 
+    Parameters
+    ----------
+
     Returns
     -------
-    csvFile : list
+    type
         The list of all compiled survey attributes stored in eHydro_csv.txt
 
     """
+
     if not os.path.exists(csvLocation):
         create = open(csvLocation, 'w', newline='')
         create.close()
     fileOpened = open(csvLocation, 'r', newline='')
-    opened = csv.reader(fileOpened, delimiter = ',')
+    opened = csv.reader(fileOpened, delimiter=',')
     csvFile = []
     for row in opened:
         csvFile.append(row[:13])
     fileOpened.close()
     return csvFile[1:]
 
-def csvWriter(csvFile, csvLocation, pb=None):
-    """Uses global variable csvLocation. Opens file at csvLocation for
+
+def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
+    """
+    Uses global variable csvLocation. Opens file at csvLocation for
     writing. Iterates line by line through csvFile and imediatly writes
     to eHydro_csv.txt.
 
     Parameters
     ----------
-    csvFile : list
-        A list of survey attributes each containing a row of data to be written
-        to eHydro_csv.txt
-    csvLocation : string
+    csvFile :
+        A list of survey attributes each containing a row of data to be written to eHydro_csv.txt
+    csvLocation :
         Complete file path string for a text file to be created
+    pb :
+         (Default value = None)
+    csvFile: List[str] :
+        
+    csvLocation: str :
+        
+
+    Returns
+    -------
 
     """
     csvOpen = open(csvLocation, 'w', newline='')
-    save = csv.writer(csvOpen, delimiter = ',')
+    save = csv.writer(csvOpen, delimiter=',')
     if pb != None:
         pb.SetRange(len(csvFile))
         pb.SetValue(0)
@@ -778,26 +851,31 @@ def csvWriter(csvFile, csvLocation, pb=None):
             pb.SetValue(x)
     csvOpen.close()
 
-def logOpen(logType, to=None):
-    """Uses global variable logLocation. Opens file at logLocation
+
+def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str]:
+    """
+    Uses global variable logLocation. Opens file at logLocation
     for appending. Writes text stating when the function was called.
     Returns the file object for future writing.
 
     Parameters
     ----------
-    logType : str, bool
-        Boolean expression that determines whether or not the object for the
-        continuous log is passed back or a new log is created for an individual
-        run
+    logType :
+        Boolean expression that determines whether or not the object for the continuous log is passed back or a new log is created for an individual run
+    to :
+        returns: A text document object representing the output log, and the file path for the output log object (Default value = None)
+    logType: Union[str :
+        
+    bool] :
+        
 
     Returns
     -------
-    fileLog : text file object
-        A text document object representing the output log
-    nameLog : str
-        File path for the output log object
+    type
+        A text document object representing the output log, and the file path for the output log object
 
     """
+
     timestamp = ntime()
     message = timestamp + ' - Program Initiated, Log Opened'
     if logType == 'False' or False:
@@ -807,7 +885,7 @@ def logOpen(logType, to=None):
         x = 0
         datestamp = date()
         while True:
-            name = datestamp +'_' + str(x) + '_' + logName
+            name = datestamp + '_' + str(x) + '_' + logName
             logPath = logging + name
             if os.path.exists(logPath):
                 x += 1
@@ -819,85 +897,142 @@ def logOpen(logType, to=None):
     logWriter(fileLog, message)
     return fileLog, nameLog
 
-def logWriter(fileLog, message):
-    """Takes a file object 'fileLog' and a string 'message'. Writes
+
+def logWriter(fileLog: Tuple[TextIO, Any], message: str):
+    """
+    Takes a file object 'fileLog' and a string 'message'. Writes
     'messege' to 'fileLog'
 
     Parameters
     ----------
-    fileLog : text file object
+    fileLog :
         A text document object representing the output log
-    message : string
+    message :
         A string of text to be written to the fileLog input
+    fileLog: Tuple[TextIO :
+        
+    Any] :
+        
+    message: str :
+        
+
+    Returns
+    -------
 
     """
-    print (message)
+
+    print(message)
     fl, to = fileLog
     fl.write(message + '\n')
     if to != None:
         to.write(message + '\n')
 
-def logClose(fileLog):
-    """Takes a file object 'fileLog'. Writes text stating when the
+
+def logClose(fileLog: Tuple[TextIO, Any]):
+    """
+    Takes a file object 'fileLog'. Writes text stating when the
     function was called. Closes the file object upon completion
 
     Parameters
     ----------
-    fileLog : text file object
+    fileLog :
         A text document object representing the output log
+    fileLog: Tuple[TextIO :
+        
+    Any] :
+        
+
+    Returns
+    -------
 
     """
+
     fo = fileLog[0]
     timestamp = ntime()
-    message = timestamp +' - Program Finished, Log Closed\n'
+    message = timestamp + ' - Program Finished, Log Closed\n'
     logWriter(fileLog, message)
     fo.close()
 
-def ntime():
-    """Creates and returns a string 'timestamp' that contains a
+
+def ntime() -> str:
+    """
+    Creates and returns a string 'timestamp' that contains a
     formated current date and time at the time of calling.  Generated by
     :obj:`datetime.datetime.now` and formated using
     :obj:`datetime.datetime.strftime` to reflect 'YYYY-MM-DD Time'
 
+    Parameters
+    ----------
+
     Returns
     -------
-    timestamp : string
+    type
         A string with the current date and time
 
     """
+
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d %X')
     return timestamp
 
-def date():
-    """Creates and returns a string 'datestamp' that contains a
+
+def date() -> str:
+    """
+    Creates and returns a string 'datestamp' that contains a
     formated current date at the time of calling.  Generated by
     :obj:`datetime.datetime.now` and formated using
     :obj:`datetime.datetime.strftime` to reflect 'YYYY-MM-DD'
 
+    Parameters
+    ----------
+
     Returns
     -------
-    timestamp : string
+    type
         A string with the current date and time
 
     """
+
     datestamp = datetime.datetime.now().strftime('%Y-%m-%d')
     return datestamp
 
-def fileTime():
-    """Creates and returns a string 'timestamp' that contains a
+
+def fileTime() -> str:
+    """
+    Creates and returns a string 'timestamp' that contains a
     formated current date and time at the time of calling.  Generated by
     :obj:`datetime.datetime.now` and formated using
     :obj:`datetime.datetime.strftime` to reflect 'YYYYMMDD'
 
+    Parameters
+    ----------
+
     Returns
     -------
-    timestamp : string
+    type
         A string with the current date and time
+
     """
+
     timestamp = datetime.datetime.now().strftime('%Y%m%d')
     return timestamp
 
-def main(pb=None,to=None):
+
+def main(pb=None, to=None):
+    """
+    Main function.
+
+    Parameters
+    ----------
+    pb :
+        param to: (Default value = None)
+    to :
+         (Default value = None)
+
+    Returns
+    -------
+
+    """
+
     runType = config['Data Checking']['Override']
     logType = config['Output Log']['Log Type']
     fileLog, nameLog = logOpen(logType, to)
@@ -936,7 +1071,7 @@ def main(pb=None,to=None):
                 logWriter(fileLog, '\tNew Survey Details:')
                 for row in checked:
                     txt = ''
-                    for i in [1,4,5,6,-2]:
+                    for i in [1, 4, 5, 6, -2]:
                         txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
                     logWriter(fileLog, '\t\t' + txt)
             logWriter(fileLog, '\t\tTotal High Resloution Surveys: '
@@ -970,8 +1105,8 @@ def main(pb=None,to=None):
     logClose(fileLog)
     print('log closed')
 
+
 if __name__ == '__main__':
     """Function call to initiate program"""
-    print (__version__)
+    print(__version__)
     main()
-

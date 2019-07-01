@@ -13,12 +13,13 @@ into the metadata file for qualification.
 
 import os
 from glob import glob
+
 import fuse.fuse_ehydro as ffe
 
-cemvn = ffe.fuse_ehydro('cemvn.config') # this config is local for testing
-for path in cemvn.rawdata_path:
-    flist = glob(os.path.join(path,'*.xyz'))
-    for f in flist:
-        cemvn.read(f)
-        cemvn.process(f)
-
+if __name__ == '__main__':
+    cemvn = ffe.fuse_ehydro('cemvn.config')  # this config is local for testing
+    for path in cemvn.rawdata_path:
+        flist = glob(os.path.join(path, '*.xyz'))
+        for f in flist:
+            cemvn.read(f)
+            cemvn.process(f)
