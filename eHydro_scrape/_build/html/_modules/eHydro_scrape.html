@@ -1,16 +1,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 
 <html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>eHydro_scrape &#8212; eHydro_scrape  documentation</title>
-    
-    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type"/>
+
+    <title>eHydro_scrape &#8212; eHydro_scrape documentation</title>
+
+    <link href="../_static/classic.css" rel="stylesheet" type="text/css"/>
+    <link href="../_static/pygments.css" rel="stylesheet" type="text/css"/>
+
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
@@ -20,34 +20,37 @@
         HAS_SOURCE:  true,
         SOURCELINK_SUFFIX: '.txt'
       };
-    </script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
-  </head>
-  <body role="document">
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="../genindex.html" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="../py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">eHydro_scrape  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Module code</a> &#187;</li> 
-      </ul>
-    </div>  
 
-    <div class="document">
-      <div class="documentwrapper">
+    </script>
+    <script src="../_static/jquery.js" type="text/javascript"></script>
+    <script src="../_static/underscore.js" type="text/javascript"></script>
+    <script src="../_static/doctools.js" type="text/javascript"></script>
+    <link href="../genindex.html" rel="index" title="Index"/>
+    <link href="../search.html" rel="search" title="Search"/>
+</head>
+<body role="document">
+<div aria-label="related navigation" class="related" role="navigation">
+    <h3>Navigation</h3>
+    <ul>
+        <li class="right" style="margin-right: 10px">
+            <a accesskey="I" href="../genindex.html"
+               title="General Index">index</a></li>
+        <li class="right">
+            <a href="../py-modindex.html" title="Python Module Index"
+            >modules</a> |
+        </li>
+        <li class="nav-item nav-item-0"><a href="../index.html">eHydro_scrape documentation</a> &#187;</li>
+        <li class="nav-item nav-item-1"><a accesskey="U" href="index.html">Module code</a> &#187;</li>
+    </ul>
+</div>
+
+<div class="document">
+    <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body" role="main">
-            
-  <h1>Source code for eHydro_scrape</h1><div class="highlight"><pre>
+            <div class="body" role="main">
+
+                <h1>Source code for eHydro_scrape</h1>
+                <div class="highlight"><pre>
 <span></span><span class="c1"># -*- coding: utf-8 -*-</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Created on Tue Oct 2 13:44:14 2018</span>
@@ -70,61 +73,99 @@
 <span class="sd">&quot;&quot;&quot;Known global constants&quot;&quot;&quot;</span>
 <span class="c1"># print (datetime.datetime.now().strftime(&#39;%b %d %X %Y&#39;))</span>
 <span class="c1">#progLoc = &#39;\\eHydro_scrape&#39;</span>
-<span class="n">progLoc</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+<span class="n">progLoc</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span
+                        class="n">getcwd</span><span class="p">()</span>
 <span class="sd">&quot;&quot;&quot;progLoc is the program&#39;s own file location / current working directory (cwd)</span>
 <span class="sd">obtained by :func:`os.getcwd()`&quot;&quot;&quot;</span>
-<span class="n">full</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;FULL.xyz&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">full</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span
+                        class="p">(</span><span class="sa">r</span><span class="s1">&#39;FULL.xyz&#39;</span><span
+                        class="p">,</span> <span class="n">re</span><span class="o">.</span><span
+                        class="n">IGNORECASE</span><span class="p">)</span>
 <span class="sd">&quot;&quot;&quot;regex object for searching zipfile contents for high-res data ending in </span>
 <span class="sd">``FULL.xyz``</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="n">full_a</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;_A.xyz&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">full_a</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span
+                        class="p">(</span><span class="sa">r</span><span class="s1">&#39;_A.xyz&#39;</span><span
+                        class="p">,</span> <span class="n">re</span><span class="o">.</span><span
+                        class="n">IGNORECASE</span><span class="p">)</span>
 <span class="sd">&quot;&quot;&quot;regex object for searching zipfile contents for high-res data ending in </span>
 <span class="sd">``_A.xyz``</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="c1"># location of data items</span>
-<span class="n">config</span> <span class="o">=</span> <span class="n">configparser</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">()</span>
-<span class="n">config</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;config.ini&#39;</span><span class="p">)</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">configparser</span><span class="o">.</span><span
+                        class="n">ConfigParser</span><span class="p">()</span>
+<span class="n">config</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span
+                        class="s1">&#39;config.ini&#39;</span><span class="p">)</span>
 <span class="c1">#txtName = &#39;eHydro_txt.txt&#39;</span>
 <span class="c1">#txtLocation = os.path.join(progLoc, txtName)</span>
 <span class="n">csvName</span> <span class="o">=</span> <span class="s1">&#39;eHydro_csv.txt&#39;</span>
 <span class="sd">&quot;&quot;&quot;Default name for csv.txt output&quot;&quot;&quot;</span>
-<span class="n">csvLocation</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">progLoc</span><span class="p">,</span> <span class="n">csvName</span><span class="p">)</span>
+<span class="n">csvLocation</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span
+                        class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span
+                        class="n">progLoc</span><span class="p">,</span> <span class="n">csvName</span><span
+                        class="p">)</span>
 <span class="sd">&quot;&quot;&quot;Default location for :attr:`csvName`&quot;&quot;&quot;</span>
 <span class="n">logName</span> <span class="o">=</span> <span class="s1">&#39;eHydro_log.txt&#39;</span>
 <span class="sd">&quot;&quot;&quot;Default name for log.txt output&quot;&quot;&quot;</span>
-<span class="n">logLocation</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">progLoc</span><span class="p">,</span> <span class="n">logName</span><span class="p">)</span>
+<span class="n">logLocation</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span
+                        class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span
+                        class="n">progLoc</span><span class="p">,</span> <span class="n">logName</span><span
+                        class="p">)</span>
 <span class="sd">&quot;&quot;&quot;Default location for :attr:`logName`&quot;&quot;&quot;</span>
 <span class="c1">#&quot;&quot;&quot;Default location for &quot;&quot;&quot;</span>
-<span class="n">holding</span> <span class="o">=</span> <span class="n">progLoc</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">downloads</span><span class="se">\\</span><span class="s1">&#39;</span>
+<span class="n">holding</span> <span class="o">=</span> <span class="n">progLoc</span> <span class="o">+</span> <span
+                        class="s1">&#39;</span><span class="se">\\</span><span class="s1">downloads</span><span
+                        class="se">\\</span><span class="s1">&#39;</span>
 <span class="sd">&quot;&quot;&quot;Default location for all downloaded data, regardless of the type of query </span>
 <span class="sd">performed. Data is broken up into folders representing each district (ex.</span>
 <span class="sd">``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="n">logging</span> <span class="o">=</span> <span class="n">progLoc</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">logs</span><span class="se">\\</span><span class="s1">&#39;</span>
+<span class="n">logging</span> <span class="o">=</span> <span class="n">progLoc</span> <span class="o">+</span> <span
+                        class="s1">&#39;</span><span class="se">\\</span><span class="s1">logs</span><span
+                        class="se">\\</span><span class="s1">&#39;</span>
 <span class="sd">&quot;&quot;&quot;Default location for individual query logs. These are named like </span>
 <span class="sd">``YYYYMMDD_0_eHydro_log.txt``</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="n">running</span> <span class="o">=</span> <span class="n">progLoc</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">runs</span><span class="se">\\</span><span class="s1">&#39;</span>
+<span class="n">running</span> <span class="o">=</span> <span class="n">progLoc</span> <span class="o">+</span> <span
+                        class="s1">&#39;</span><span class="se">\\</span><span class="s1">runs</span><span
+                        class="se">\\</span><span class="s1">&#39;</span>
 <span class="sd">&quot;&quot;&quot;Default location for individual query csv outputs. These are named like </span>
 <span class="sd">``YYYYMMDD_0_eHydro_csv.txt``</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="c1"># eHydro survey entry attributes</span>
-<span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;OBJECTID&quot;</span><span class="p">,</span> <span class="s2">&quot;SURVEYJOBIDPK&quot;</span><span class="p">,</span> <span class="s2">&quot;SURVEYAGENCY&quot;</span><span class="p">,</span> <span class="s2">&quot;CHANNELAREAIDFK&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;SDSFEATURENAME&quot;</span><span class="p">,</span> <span class="s2">&quot;SOURCEPROJECTION&quot;</span><span class="p">,</span> <span class="s2">&quot;SOURCEDATALOCATION&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;SURVEYDATEUPLOADED&quot;</span><span class="p">,</span> <span class="s2">&quot;SURVEYDATEEND&quot;</span><span class="p">,</span> <span class="s2">&quot;SURVEYDATESTART&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;SURVEYTYPE&quot;</span><span class="p">,</span> <span class="s2">&quot;PROJECTEDAREA&quot;</span><span class="p">]</span>
+<span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;OBJECTID&quot;</span><span
+                        class="p">,</span> <span class="s2">&quot;SURVEYJOBIDPK&quot;</span><span
+                        class="p">,</span> <span class="s2">&quot;SURVEYAGENCY&quot;</span><span
+                        class="p">,</span> <span class="s2">&quot;CHANNELAREAIDFK&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;SDSFEATURENAME&quot;</span><span class="p">,</span> <span class="s2">&quot;SOURCEPROJECTION&quot;</span><span
+                        class="p">,</span> <span class="s2">&quot;SOURCEDATALOCATION&quot;</span><span
+                        class="p">,</span>
+              <span class="s2">&quot;SURVEYDATEUPLOADED&quot;</span><span class="p">,</span> <span class="s2">&quot;SURVEYDATEEND&quot;</span><span
+                        class="p">,</span> <span class="s2">&quot;SURVEYDATESTART&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;SURVEYTYPE&quot;</span><span class="p">,</span> <span class="s2">&quot;PROJECTEDAREA&quot;</span><span
+                        class="p">]</span>
 <span class="sd">&quot;&quot;&quot;The specific attributes queried for each survey in :func:`surveyCompile`&quot;&quot;&quot;</span>
 
 <span class="c1"># check to see if the downloaded data folder exists, will create it if not</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">holding</span><span class="p">):</span>
-    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">holding</span><span class="p">)</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">logging</span><span class="p">):</span>
-    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">logging</span><span class="p">)</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">running</span><span class="p">):</span>
-    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">running</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span
+                        class="o">.</span><span class="n">exists</span><span class="p">(</span><span
+                        class="n">holding</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span
+                        class="n">holding</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span
+                        class="o">.</span><span class="n">exists</span><span class="p">(</span><span
+                        class="n">logging</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span
+                        class="n">logging</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span
+                        class="o">.</span><span class="n">exists</span><span class="p">(</span><span
+                        class="n">running</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span
+                        class="n">running</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="query"><a class="viewcode-back" href="../index.html#eHydro_scrape.query">[docs]</a><span class="k">def</span> <span class="nf">query</span><span class="p">():</span>
+<div class="viewcode-block" id="query"><a class="viewcode-back" href="../index.html#eHydro_scrape.query">[docs]</a><span
+        class="k">def</span> <span class="nf">query</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;Holds the Queries for the eHydro REST API, asks for responses, and uses</span>
 <span class="sd">    the json library to make it readable by the program. Returns the json</span>
 <span class="sd">    responses for number of surveys and surveys in the response.</span>
@@ -149,104 +190,198 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Today (ex. &#39;2018-08-08&#39;), unformatted</span>
-    <span class="n">today</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()</span>
-    <span class="n">strToday</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">today</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">today</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span
+            class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()</span>
+    <span class="n">strToday</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span
+            class="n">today</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span
+            class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span
+            class="p">))</span>
     <span class="c1"># Today - 1 (ex. &#39;2018-08-06&#39;), unformatted</span>
-    <span class="n">yesterday</span> <span class="o">=</span> <span class="n">today</span> <span class="o">-</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">strYesterday</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">yesterday</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">))</span>
-    <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Timeframe&#39;</span><span class="p">][</span><span class="s1">&#39;Start Date&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
-        <span class="n">start</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Timeframe&#39;</span><span class="p">][</span><span class="s1">&#39;Start Date&#39;</span><span class="p">]</span>
+    <span class="n">yesterday</span> <span class="o">=</span> <span class="n">today</span> <span
+            class="o">-</span> <span class="n">datetime</span><span class="o">.</span><span
+            class="n">timedelta</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">strYesterday</span> <span class="o">=</span> <span class="nb">str</span><span
+            class="p">(</span><span class="n">yesterday</span><span class="o">.</span><span
+            class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span
+            class="si">%d</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span
+            class="s1">&#39;Timeframe&#39;</span><span class="p">][</span><span
+            class="s1">&#39;Start Date&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span
+            class="p">:</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span
+            class="s1">&#39;Timeframe&#39;</span><span class="p">][</span><span
+            class="s1">&#39;Start Date&#39;</span><span class="p">]</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">start</span> <span class="o">=</span> <span class="n">strYesterday</span>
-    <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Timeframe&#39;</span><span class="p">][</span><span class="s1">&#39;End Date&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
-        <span class="n">end</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Timeframe&#39;</span><span class="p">][</span><span class="s1">&#39;End Date&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span
+            class="s1">&#39;Timeframe&#39;</span><span class="p">][</span><span
+            class="s1">&#39;End Date&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span
+            class="p">:</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span
+            class="s1">&#39;Timeframe&#39;</span><span class="p">][</span><span
+            class="s1">&#39;End Date&#39;</span><span class="p">]</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">end</span> <span class="o">=</span> <span class="n">strToday</span>
-    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Start:&#39;</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">End:&#39;</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;Agencies&#39;</span><span class="p">][</span><span class="s1">&#39;Only Listed&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;yes&#39;</span>
-        <span class="ow">and</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Agencies&#39;</span><span class="p">][</span><span class="s1">&#39;Agencies&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">):</span>
+    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span
+            class="s1">Start:&#39;</span><span class="p">,</span> <span class="n">start</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\n</span><span
+            class="s1">End:&#39;</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">config</span><span class="p">[</span><span
+            class="s1">&#39;Agencies&#39;</span><span class="p">][</span><span
+            class="s1">&#39;Only Listed&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;yes&#39;</span>
+        <span class="ow">and</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Agencies&#39;</span><span
+            class="p">][</span><span class="s1">&#39;Agencies&#39;</span><span class="p">]</span> <span
+            class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">):</span>
         <span class="n">areas</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
-        <span class="n">agencies</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Agencies&#39;</span><span class="p">][</span><span class="s1">&#39;Agencies&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+        <span class="n">agencies</span> <span class="o">=</span> <span class="n">config</span><span
+            class="p">[</span><span class="s1">&#39;Agencies&#39;</span><span class="p">][</span><span class="s1">&#39;Agencies&#39;</span><span
+            class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span
+            class="s1">&#39;,&#39;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">agencies</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span
+            class="n">agencies</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span
+            class="p">:</span>
             <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="n">areas</span> <span class="o">+=</span> <span class="s1">&#39;(&#39;</span>
-            <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">agencies</span><span class="p">):</span>
-                <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">areas</span> <span class="o">+=</span> <span class="p">(</span><span class="s1">&#39;UPPER(SURVEYAGENCY)</span><span class="si">%20li</span><span class="s1">ke</span><span class="si">%20%</span><span class="s1">27%25&#39;</span>
-                              <span class="o">+</span> <span class="n">agencies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-                              <span class="o">+</span> <span class="s1">&#39;</span><span class="si">%25%</span><span class="s1">27&#39;</span><span class="p">)</span>
+            <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span
+            class="nb">len</span><span class="p">(</span><span class="n">agencies</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span
+            class="mi">0</span><span class="p">:</span>
+                    <span class="n">areas</span> <span class="o">+=</span> <span class="p">(</span><span class="s1">&#39;UPPER(SURVEYAGENCY)</span><span
+            class="si">%20li</span><span class="s1">ke</span><span class="si">%20%</span><span
+            class="s1">27%25&#39;</span>
+                              <span class="o">+</span> <span class="n">agencies</span><span class="p">[</span><span
+            class="mi">0</span><span class="p">]</span>
+                              <span class="o">+</span> <span class="s1">&#39;</span><span class="si">%25%</span><span
+            class="s1">27&#39;</span><span class="p">)</span>
                     <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">areas</span> <span class="o">+=</span> <span class="p">(</span><span class="s1">&#39;%20OR%20UPPER(SURVEYAGENCY)</span><span class="si">%20li</span><span class="s1">ke</span><span class="si">%20%</span><span class="s1">27%25&#39;</span>
-                              <span class="o">+</span> <span class="n">agencies</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-                              <span class="o">+</span> <span class="s1">&#39;</span><span class="si">%25%</span><span class="s1">27&#39;</span><span class="p">)</span>
+                    <span class="n">areas</span> <span class="o">+=</span> <span class="p">(</span><span class="s1">&#39;%20OR%20UPPER(SURVEYAGENCY)</span><span
+            class="si">%20li</span><span class="s1">ke</span><span class="si">%20%</span><span
+            class="s1">27%25&#39;</span>
+                              <span class="o">+</span> <span class="n">agencies</span><span class="p">[</span><span
+            class="n">i</span><span class="p">]</span>
+                              <span class="o">+</span> <span class="s1">&#39;</span><span class="si">%25%</span><span
+            class="s1">27&#39;</span><span class="p">)</span>
                     <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="n">areas</span> <span class="o">+=</span> <span class="s1">&#39;)%20&#39;</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">areas</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;UPPER(SURVEYAGENCY)</span><span class="si">%20li</span><span class="s1">ke</span><span class="si">%20%</span><span class="s1">27%25&#39;</span>
-                     <span class="o">+</span> <span class="n">agencies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-                     <span class="o">+</span> <span class="s1">&#39;</span><span class="si">%25%</span><span class="s1">27&#39;</span><span class="p">)</span>
+            <span class="n">areas</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;UPPER(SURVEYAGENCY)</span><span
+            class="si">%20li</span><span class="s1">ke</span><span class="si">%20%</span><span
+            class="s1">27%25&#39;</span>
+                     <span class="o">+</span> <span class="n">agencies</span><span class="p">[</span><span
+            class="mi">0</span><span class="p">]</span>
+                     <span class="o">+</span> <span class="s1">&#39;</span><span class="si">%25%</span><span class="s1">27&#39;</span><span
+            class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">areas</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
 
     <span class="c1"># The main query parameters that will determine the contents of the response</span>
     <span class="c1"># Survey Date Uploaded</span>
-    <span class="k">if</span> <span class="n">config</span> <span class="p">[</span><span class="s1">&#39;Timeframe&#39;</span><span class="p">][</span><span class="s1">&#39;Ignore Date&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;no&#39;</span> <span class="ow">and</span> <span class="n">areas</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
-        <span class="n">where</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;SURVEYDATEUPLOADED</span><span class="si">%20%</span><span class="s1">3E%3D</span><span class="si">%20%</span><span class="s1">27&#39;</span>
+    <span class="k">if</span> <span class="n">config</span> <span class="p">[</span><span
+            class="s1">&#39;Timeframe&#39;</span><span class="p">][</span><span
+            class="s1">&#39;Ignore Date&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;no&#39;</span> <span
+            class="ow">and</span> <span class="n">areas</span> <span class="o">!=</span> <span
+            class="s1">&#39;&#39;</span><span class="p">:</span>
+        <span class="n">where</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;SURVEYDATEUPLOADED</span><span
+            class="si">%20%</span><span class="s1">3E%3D</span><span class="si">%20%</span><span
+            class="s1">27&#39;</span>
                  <span class="o">+</span> <span class="n">start</span>
-                 <span class="o">+</span> <span class="s1">&#39;T00%3A01%3A00.000Z</span><span class="si">%27%</span><span class="s1">20AND%20SURVEYDATEUPLOADED</span><span class="si">%20%</span><span class="s1">3C%3D</span><span class="si">%20%</span><span class="s1">27&#39;</span>
+                 <span class="o">+</span> <span class="s1">&#39;T00%3A01%3A00.000Z</span><span
+            class="si">%27%</span><span class="s1">20AND%20SURVEYDATEUPLOADED</span><span class="si">%20%</span><span
+            class="s1">3C%3D</span><span class="si">%20%</span><span class="s1">27&#39;</span>
                  <span class="o">+</span> <span class="n">end</span>
-                 <span class="o">+</span> <span class="s1">&#39;T11%3A59%3A00.000Z</span><span class="si">%27%</span><span class="s1">20AND%20&#39;</span>
+                 <span class="o">+</span> <span class="s1">&#39;T11%3A59%3A00.000Z</span><span
+            class="si">%27%</span><span class="s1">20AND%20&#39;</span>
                  <span class="o">+</span> <span class="n">areas</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">config</span> <span class="p">[</span><span class="s1">&#39;Timeframe&#39;</span><span class="p">][</span><span class="s1">&#39;Ignore Date&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;no&#39;</span> <span class="ow">and</span> <span class="n">areas</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
-        <span class="n">where</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;SURVEYDATEUPLOADED</span><span class="si">%20%</span><span class="s1">3E%3D</span><span class="si">%20%</span><span class="s1">27&#39;</span>
+    <span class="k">elif</span> <span class="n">config</span> <span class="p">[</span><span class="s1">&#39;Timeframe&#39;</span><span
+            class="p">][</span><span class="s1">&#39;Ignore Date&#39;</span><span class="p">]</span> <span
+            class="o">==</span> <span class="s1">&#39;no&#39;</span> <span class="ow">and</span> <span
+            class="n">areas</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+        <span class="n">where</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;SURVEYDATEUPLOADED</span><span
+            class="si">%20%</span><span class="s1">3E%3D</span><span class="si">%20%</span><span
+            class="s1">27&#39;</span>
                  <span class="o">+</span> <span class="n">start</span>
-                 <span class="o">+</span> <span class="s1">&#39;T00%3A01%3A00.000Z</span><span class="si">%27%</span><span class="s1">20AND%20SURVEYDATEUPLOADED</span><span class="si">%20%</span><span class="s1">3C%3D</span><span class="si">%20%</span><span class="s1">27&#39;</span>
+                 <span class="o">+</span> <span class="s1">&#39;T00%3A01%3A00.000Z</span><span
+            class="si">%27%</span><span class="s1">20AND%20SURVEYDATEUPLOADED</span><span class="si">%20%</span><span
+            class="s1">3C%3D</span><span class="si">%20%</span><span class="s1">27&#39;</span>
                  <span class="o">+</span> <span class="n">end</span>
-                 <span class="o">+</span> <span class="s1">&#39;T11%3A59%3A00.000Z%27&#39;</span><span class="p">)</span>
+                 <span class="o">+</span> <span class="s1">&#39;T11%3A59%3A00.000Z%27&#39;</span><span
+            class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">areas</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">areas</span> <span class="o">!=</span> <span
+            class="s1">&#39;&#39;</span><span class="p">:</span>
             <span class="n">where</span> <span class="o">=</span> <span class="n">areas</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">where</span> <span class="o">=</span> <span class="s1">&#39;1%3D1&#39;</span>
 
     <span class="c1"># The query for determining how many responses will be returned</span>
-    <span class="n">newSurveys</span> <span class="o">=</span> <span class="s1">&#39;https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=&#39;</span> <span class="o">+</span> <span class="n">where</span> <span class="o">+</span> <span class="s1">&#39;&amp;outFields=*&amp;returnGeometry=false&amp;returnCountOnly=true&amp;outSR=&amp;f=json&#39;</span>
+    <span class="n">newSurveys</span> <span class="o">=</span> <span class="s1">&#39;https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=&#39;</span> <span
+            class="o">+</span> <span class="n">where</span> <span class="o">+</span> <span class="s1">&#39;&amp;outFields=*&amp;returnGeometry=false&amp;returnCountOnly=true&amp;outSR=&amp;f=json&#39;</span>
 
     <span class="c1"># The query for returning the object IDs for the given timeframe</span>
-    <span class="n">objIDs</span> <span class="o">=</span> <span class="s1">&#39;https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?&amp;where=&#39;</span> <span class="o">+</span> <span class="n">where</span> <span class="o">+</span> <span class="s1">&#39;&amp;outFields=*&amp;returnGeometry=false&amp;returnIdsOnly=true&amp;outSR=&amp;f=json&#39;</span>
+    <span class="n">objIDs</span> <span class="o">=</span> <span class="s1">&#39;https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?&amp;where=&#39;</span> <span
+            class="o">+</span> <span class="n">where</span> <span class="o">+</span> <span class="s1">&#39;&amp;outFields=*&amp;returnGeometry=false&amp;returnIdsOnly=true&amp;outSR=&amp;f=json&#39;</span>
 
-    <span class="nb">print</span> <span class="p">(</span><span class="n">objIDs</span><span class="p">,</span> <span class="n">newSurveys</span><span class="p">)</span>
+    <span class="nb">print</span> <span class="p">(</span><span class="n">objIDs</span><span class="p">,</span> <span
+            class="n">newSurveys</span><span class="p">)</span>
 
     <span class="c1"># Initial Query execution</span>
-    <span class="n">surveyNumRequest</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">newSurveys</span><span class="p">)</span>
-    <span class="n">surveyIDsRequest</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">objIDs</span><span class="p">)</span>
+    <span class="n">surveyNumRequest</span> <span class="o">=</span> <span class="n">requests</span><span
+            class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">newSurveys</span><span
+            class="p">)</span>
+    <span class="n">surveyIDsRequest</span> <span class="o">=</span> <span class="n">requests</span><span
+            class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">objIDs</span><span
+            class="p">)</span>
 
     <span class="c1"># Response for number of surveys used as a json object</span>
-    <span class="n">surveyNumJSON</span> <span class="o">=</span> <span class="n">surveyNumRequest</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="n">surveyNumJSON</span> <span class="o">=</span> <span class="n">surveyNumRequest</span><span
+            class="o">.</span><span class="n">json</span><span class="p">()</span>
     <span class="nb">print</span> <span class="p">(</span><span class="n">surveyNumJSON</span><span class="p">)</span>
-    <span class="n">newSurveysNum</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">surveyNumJSON</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">])</span>
+    <span class="n">newSurveysNum</span> <span class="o">=</span> <span class="nb">int</span><span
+            class="p">(</span><span class="n">surveyNumJSON</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span
+            class="p">])</span>
 
     <span class="c1"># Response for survey Object IDs as a json object</span>
-    <span class="n">surveyIDsJSON</span> <span class="o">=</span> <span class="n">surveyIDsRequest</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
-    <span class="n">surveyIDs</span> <span class="o">=</span> <span class="n">surveyIDsJSON</span><span class="p">[</span><span class="s1">&#39;objectIds&#39;</span><span class="p">]</span>
-    <span class="nb">print</span> <span class="p">(</span><span class="n">surveyIDs</span><span class="p">,</span> <span class="n">newSurveysNum</span><span class="p">)</span>
+    <span class="n">surveyIDsJSON</span> <span class="o">=</span> <span class="n">surveyIDsRequest</span><span
+            class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="n">surveyIDs</span> <span class="o">=</span> <span class="n">surveyIDsJSON</span><span
+            class="p">[</span><span class="s1">&#39;objectIds&#39;</span><span class="p">]</span>
+    <span class="nb">print</span> <span class="p">(</span><span class="n">surveyIDs</span><span class="p">,</span> <span
+            class="n">newSurveysNum</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">areas</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">areas</span> <span class="o">==</span> <span
+            class="s1">&#39;&#39;</span><span class="p">:</span>
         <span class="n">dist</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">dist</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Agencies&#39;</span><span class="p">][</span><span class="s1">&#39;Agencies&#39;</span><span class="p">]</span>
+        <span class="n">dist</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span
+            class="s1">&#39;Agencies&#39;</span><span class="p">][</span><span class="s1">&#39;Agencies&#39;</span><span
+            class="p">]</span>
 
-    <span class="n">paramString</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Parameters:</span><span class="se">\n\t\t</span><span class="s1">Start Date: &#39;</span> <span class="o">+</span> <span class="n">start</span>
-                      <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n\t\t</span><span class="s1">End Date: &#39;</span> <span class="o">+</span> <span class="n">end</span>
-                      <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n\t\t</span><span class="s1">Districts: &#39;</span> <span class="o">+</span> <span class="n">dist</span>
-                      <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n\t\t</span><span class="s1">Query Only Districts: &#39;</span> <span class="o">+</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Agencies&#39;</span><span class="p">][</span><span class="s1">&#39;Only Listed&#39;</span><span class="p">]</span>
-                      <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n\t\t</span><span class="s1">Keep All Data: &#39;</span> <span class="o">+</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Resolutions&#39;</span><span class="p">][</span><span class="s1">&#39;Override&#39;</span><span class="p">])</span>
+    <span class="n">paramString</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span
+            class="s1">&#39;</span><span class="se">\t</span><span class="s1">Parameters:</span><span
+            class="se">\n\t\t</span><span class="s1">Start Date: &#39;</span> <span class="o">+</span> <span class="n">start</span>
+                      <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n\t\t</span><span
+            class="s1">End Date: &#39;</span> <span class="o">+</span> <span class="n">end</span>
+                      <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n\t\t</span><span
+            class="s1">Districts: &#39;</span> <span class="o">+</span> <span class="n">dist</span>
+                      <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n\t\t</span><span
+            class="s1">Query Only Districts: &#39;</span> <span class="o">+</span> <span class="n">config</span><span
+            class="p">[</span><span class="s1">&#39;Agencies&#39;</span><span class="p">][</span><span class="s1">&#39;Only Listed&#39;</span><span
+            class="p">]</span>
+                      <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n\t\t</span><span
+            class="s1">Keep All Data: &#39;</span> <span class="o">+</span> <span class="n">config</span><span
+            class="p">[</span><span class="s1">&#39;Resolutions&#39;</span><span class="p">][</span><span class="s1">&#39;Override&#39;</span><span
+            class="p">])</span>
 
-    <span class="k">return</span> <span class="p">(</span><span class="n">surveyIDs</span><span class="p">,</span> <span class="n">newSurveysNum</span><span class="p">,</span> <span class="n">paramString</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="p">(</span><span class="n">surveyIDs</span><span class="p">,</span> <span
+            class="n">newSurveysNum</span><span class="p">,</span> <span class="n">paramString</span><span
+            class="p">)</span></div>
 
-<div class="viewcode-block" id="surveyCompile"><a class="viewcode-back" href="../index.html#eHydro_scrape.surveyCompile">[docs]</a><span class="k">def</span> <span class="nf">surveyCompile</span><span class="p">(</span><span class="n">surveyIDs</span><span class="p">,</span> <span class="n">newSurveysNum</span><span class="p">):</span>
+<div class="viewcode-block" id="surveyCompile"><a class="viewcode-back"
+                                                  href="../index.html#eHydro_scrape.surveyCompile">[docs]</a><span
+        class="k">def</span> <span class="nf">surveyCompile</span><span class="p">(</span><span
+        class="n">surveyIDs</span><span class="p">,</span> <span class="n">newSurveysNum</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Uses the json object return of the each queried survey id and the total</span>
 <span class="sd">    number of surveys included to compile a list of complete returned survey</span>
 <span class="sd">    data, as provided in the response. The function also takes into account</span>
@@ -285,39 +420,81 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">while</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">newSurveysNum</span><span class="p">:</span>
-        <span class="nb">print</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
-        <span class="n">query</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID</span><span class="si">%20%</span><span class="s1">3D%20&#39;</span>
-                 <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">surveyIDs</span><span class="p">[</span><span class="n">x</span><span class="p">])</span>
-                 <span class="o">+</span> <span class="s1">&#39;&amp;outFields=OBJECTID,SDSFEATURENAME,SURVEYTYPE,CHANNELAREAIDFK,SURVEYAGENCY,SURVEYDATEUPLOADED,SURVEYDATESTART,SURVEYDATEEND,SOURCEDATALOCATION,SOURCEPROJECTION,SURVEYJOBIDPK,PROJECTEDAREA&amp;returnGeometry=false&amp;outSR=&amp;f=json&#39;</span><span class="p">)</span>
-        <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
-        <span class="n">page</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="k">while</span> <span class="n">x</span> <span class="o">&lt;</span> <span
+            class="n">newSurveysNum</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span
+            class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID</span><span
+            class="si">%20%</span><span class="s1">3D%20&#39;</span>
+                 <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span
+            class="n">surveyIDs</span><span class="p">[</span><span class="n">x</span><span class="p">])</span>
+                 <span class="o">+</span> <span class="s1">&#39;&amp;outFields=OBJECTID,SDSFEATURENAME,SURVEYTYPE,CHANNELAREAIDFK,SURVEYAGENCY,SURVEYDATEUPLOADED,SURVEYDATESTART,SURVEYDATEEND,SOURCEDATALOCATION,SOURCEPROJECTION,SURVEYJOBIDPK,PROJECTEDAREA&amp;returnGeometry=false&amp;outSR=&amp;f=json&#39;</span><span
+            class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span
+            class="n">get</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        <span class="n">page</span> <span class="o">=</span> <span class="n">response</span><span
+            class="o">.</span><span class="n">json</span><span class="p">()</span>
         <span class="n">row</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">attribute</span> <span class="ow">in</span> <span class="n">attributes</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">attribute</span> <span class="ow">in</span> <span class="n">attributes</span><span
+            class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;attributes&#39;</span><span class="p">][</span><span class="n">attribute</span><span class="p">]</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;null&#39;</span><span class="p">)</span>
-                <span class="k">elif</span> <span class="p">(</span><span class="n">attribute</span> <span class="o">==</span> <span class="s2">&quot;SURVEYDATEUPLOADED&quot;</span>
-                    <span class="ow">or</span> <span class="n">attribute</span> <span class="o">==</span> <span class="s2">&quot;SURVEYDATEEND&quot;</span>
-                    <span class="ow">or</span> <span class="n">attribute</span> <span class="o">==</span> <span class="s2">&quot;SURVEYDATESTART&quot;</span><span class="p">):</span>
-                        <span class="k">if</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;attributes&#39;</span><span class="p">][</span><span class="n">attribute</span><span class="p">]</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
-                            <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;null&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span
+            class="p">][</span><span class="mi">0</span><span class="p">][</span><span
+            class="s1">&#39;attributes&#39;</span><span class="p">][</span><span class="n">attribute</span><span
+            class="p">]</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;null&#39;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="p">(</span><span class="n">attribute</span> <span
+            class="o">==</span> <span class="s2">&quot;SURVEYDATEUPLOADED&quot;</span>
+                    <span class="ow">or</span> <span class="n">attribute</span> <span class="o">==</span> <span
+            class="s2">&quot;SURVEYDATEEND&quot;</span>
+                    <span class="ow">or</span> <span class="n">attribute</span> <span class="o">==</span> <span
+            class="s2">&quot;SURVEYDATESTART&quot;</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span
+            class="p">][</span><span class="mi">0</span><span class="p">][</span><span
+            class="s1">&#39;attributes&#39;</span><span class="p">][</span><span class="n">attribute</span><span
+            class="p">]</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;null&#39;</span><span class="p">)</span>
                         <span class="k">else</span><span class="p">:</span>
-                            <span class="n">date</span> <span class="o">=</span> <span class="p">(</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;attributes&#39;</span><span class="p">][</span><span class="n">attribute</span><span class="p">])</span>
-                            <span class="n">date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcfromtimestamp</span><span class="p">(</span><span class="n">date</span><span class="o">/</span><span class="mi">1000</span><span class="p">)</span>
-                            <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">date</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)))</span>
+                            <span class="n">date</span> <span class="o">=</span> <span class="p">(</span><span
+            class="n">page</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span
+            class="p">][</span><span class="mi">0</span><span class="p">][</span><span
+            class="s1">&#39;attributes&#39;</span><span class="p">][</span><span class="n">attribute</span><span
+            class="p">])</span>
+                            <span class="n">date</span> <span class="o">=</span> <span class="n">datetime</span><span
+            class="o">.</span><span class="n">datetime</span><span class="o">.</span><span
+            class="n">utcfromtimestamp</span><span class="p">(</span><span class="n">date</span><span class="o">/</span><span
+            class="mi">1000</span><span class="p">)</span>
+                            <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">date</span><span
+            class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span
+            class="si">%d</span><span class="s1">&#39;</span><span class="p">)))</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;attributes&#39;</span><span class="p">][</span><span class="n">attribute</span><span class="p">]))</span>
-            <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="nb">print</span> <span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">page</span><span class="p">)</span>
-                <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;error&#39;</span><span class="p">)</span>
-        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+                    <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">page</span><span
+            class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">][</span><span
+            class="mi">0</span><span class="p">][</span><span class="s1">&#39;attributes&#39;</span><span
+            class="p">][</span><span class="n">attribute</span><span class="p">]))</span>
+            <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span
+            class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span> <span class="p">(</span><span class="n">e</span><span
+            class="p">,</span> <span class="n">page</span><span class="p">)</span>
+                <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;error&#39;</span><span class="p">)</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span
+            class="n">row</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
-    <span class="nb">print</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">))</span>
-    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;rows complete&#39;</span><span class="p">)</span>
+    <span class="nb">print</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span
+            class="n">rows</span><span class="p">))</span>
+    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;rows complete&#39;</span><span
+            class="p">)</span>
     <span class="k">return</span> <span class="n">rows</span></div>
 
-<div class="viewcode-block" id="contentSearch"><a class="viewcode-back" href="../index.html#eHydro_scrape.contentSearch">[docs]</a><span class="k">def</span> <span class="nf">contentSearch</span><span class="p">(</span><span class="n">contents</span><span class="p">):</span>
+<div class="viewcode-block" id="contentSearch"><a class="viewcode-back"
+                                                  href="../index.html#eHydro_scrape.contentSearch">[docs]</a><span
+        class="k">def</span> <span class="nf">contentSearch</span><span class="p">(</span><span
+        class="n">contents</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;This funtion takes a list of zipfile contents, the download link the</span>
 <span class="sd">    contents came from and the current local file location where the downloaded</span>
 <span class="sd">    data resides.</span>
@@ -338,15 +515,25 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="k">for</span> <span class="n">content</span> <span class="ow">in</span> <span class="n">contents</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">full</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">content</span><span class="p">)</span> <span class="ow">or</span> <span class="n">full_a</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">content</span><span class="p">):</span>
-            <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">vive le resolution&#39;</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span> <span class="c1">#link + &#39;\n&#39;)</span>
+    <span class="k">for</span> <span class="n">content</span> <span class="ow">in</span> <span class="n">contents</span><span
+            class="p">:</span>
+        <span class="k">if</span> <span class="n">full</span><span class="o">.</span><span class="n">search</span><span
+            class="p">(</span><span class="n">content</span><span class="p">)</span> <span class="ow">or</span> <span
+            class="n">full_a</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span
+            class="n">content</span><span class="p">):</span>
+            <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;</span><span
+            class="se">\n</span><span class="s1">vive le resolution&#39;</span><span class="p">,</span> <span class="n">content</span><span
+            class="p">,</span> <span class="n">end</span><span class="o">=</span><span
+            class="s1">&#39; &#39;</span><span class="p">)</span> <span class="c1">#link + &#39;\n&#39;)</span>
             <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span>
             <span class="k">return</span> <span class="n">x</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span></div>
 
-<div class="viewcode-block" id="downloadAndCheck"><a class="viewcode-back" href="../index.html#eHydro_scrape.downloadAndCheck">[docs]</a><span class="k">def</span> <span class="nf">downloadAndCheck</span><span class="p">(</span><span class="n">rows</span><span class="p">):</span>
+<div class="viewcode-block" id="downloadAndCheck"><a class="viewcode-back"
+                                                     href="../index.html#eHydro_scrape.downloadAndCheck">[docs]</a><span
+        class="k">def</span> <span class="nf">downloadAndCheck</span><span class="p">(</span><span class="n">rows</span><span
+        class="p">):</span>
     <span class="sd">&quot;&quot;&quot;This function takes a list of complete survey data as provided by the</span>
 <span class="sd">    query response (&#39;rows&#39;).</span>
 
@@ -386,90 +573,191 @@
 <span class="sd">        The total number of high-res surveys found</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span
+            class="n">rows</span><span class="p">)</span>
     <span class="n">hr</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">agencies</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Agencies&#39;</span><span class="p">][</span><span class="s1">&#39;Agencies&#39;</span><span class="p">]</span>
-    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
-        <span class="n">link</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span>
-        <span class="n">agency</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="n">link</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">saved</span> <span class="o">=</span> <span class="n">holding</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">agency</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">name</span>
-        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">holding</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">agency</span><span class="p">):</span>
+    <span class="n">agencies</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span
+            class="s1">&#39;Agencies&#39;</span><span class="p">][</span><span class="s1">&#39;Agencies&#39;</span><span
+            class="p">]</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span
+            class="p">:</span>
+        <span class="n">link</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span
+            class="mi">6</span><span class="p">]</span>
+        <span class="n">agency</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span
+            class="mi">2</span><span class="p">]</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">link</span><span class="o">.</span><span
+            class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span
+            class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">saved</span> <span class="o">=</span> <span class="n">holding</span> <span
+            class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span
+            class="n">agency</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span
+            class="o">+</span> <span class="n">name</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span
+            class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">holding</span> <span
+            class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span
+            class="n">agency</span><span class="p">):</span>
             <span class="k">pass</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">holding</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">agency</span><span class="p">)</span>
-        <span class="n">saved</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">normpath</span><span class="p">(</span><span class="n">saved</span><span class="p">)</span>
-        <span class="nb">print</span>  <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">agency</span><span class="p">,</span>  <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span
+            class="n">holding</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span
+            class="o">+</span> <span class="n">agency</span><span class="p">)</span>
+        <span class="n">saved</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span
+            class="n">path</span><span class="o">.</span><span class="n">normpath</span><span class="p">(</span><span
+            class="n">saved</span><span class="p">)</span>
+        <span class="nb">print</span>  <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span
+            class="n">agency</span><span class="p">,</span>  <span class="n">end</span><span class="o">=</span><span
+            class="s1">&#39; &#39;</span><span class="p">)</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">saved</span><span class="p">):</span>
-                <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span
+            class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">saved</span><span
+            class="p">):</span>
+                <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;x&#39;</span><span
+            class="p">,</span> <span class="n">end</span><span class="o">=</span><span
+            class="s1">&#39; &#39;</span><span class="p">)</span>
                 <span class="k">break</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">link</span> <span class="o">!=</span> <span class="s1">&#39;null&#39;</span> <span class="ow">and</span> <span class="n">link</span> <span class="o">!=</span> <span class="s1">&#39;Not in cloud&#39;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">link</span> <span class="o">!=</span> <span class="s1">&#39;null&#39;</span> <span
+            class="ow">and</span> <span class="n">link</span> <span class="o">!=</span> <span class="s1">&#39;Not in cloud&#39;</span><span
+            class="p">:</span>
                     <span class="k">try</span><span class="p">:</span>
-                        <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlretrieve</span><span class="p">(</span><span class="n">link</span><span class="p">,</span> <span class="n">saved</span><span class="p">)</span>
-                    <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">timeout</span><span class="p">:</span>
-                        <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlretrieve</span><span class="p">(</span><span class="n">link</span><span class="p">,</span> <span class="n">saved</span><span class="p">)</span>
-                    <span class="k">except</span> <span class="n">urllib</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">HTTPError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;e </span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">link</span><span class="p">)</span>
-                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;No&#39;</span><span class="p">)</span>
-                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;BadURL&#39;</span><span class="p">)</span>
+                        <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span
+            class="o">.</span><span class="n">urlretrieve</span><span class="p">(</span><span class="n">link</span><span
+            class="p">,</span> <span class="n">saved</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">timeout</span><span
+            class="p">:</span>
+                        <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span
+            class="o">.</span><span class="n">urlretrieve</span><span class="p">(</span><span class="n">link</span><span
+            class="p">,</span> <span class="n">saved</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="n">urllib</span><span class="o">.</span><span class="n">error</span><span
+            class="o">.</span><span class="n">HTTPError</span> <span class="k">as</span> <span class="n">e</span><span
+            class="p">:</span>
+                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;e </span><span
+            class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">link</span><span
+            class="p">)</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;No&#39;</span><span class="p">)</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;BadURL&#39;</span><span class="p">)</span>
                         <span class="k">break</span>
-                    <span class="k">except</span> <span class="n">urllib</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">URLError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;e </span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">link</span><span class="p">)</span>
-                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;No&#39;</span><span class="p">)</span>
-                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;BadURL&#39;</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="n">urllib</span><span class="o">.</span><span class="n">error</span><span
+            class="o">.</span><span class="n">URLError</span> <span class="k">as</span> <span class="n">e</span><span
+            class="p">:</span>
+                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;e </span><span
+            class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">link</span><span
+            class="p">)</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;No&#39;</span><span class="p">)</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;BadURL&#39;</span><span class="p">)</span>
                         <span class="k">break</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;e </span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">link</span><span class="p">)</span>
-                    <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;No&#39;</span><span class="p">)</span>
-                    <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;BadURL&#39;</span><span class="p">)</span>
+                    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;e </span><span
+            class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">link</span><span
+            class="p">)</span>
+                    <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;No&#39;</span><span class="p">)</span>
+                    <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;BadURL&#39;</span><span class="p">)</span>
                     <span class="k">break</span>
-        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">saved</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Resolutions&#39;</span><span class="p">][</span><span class="s1">&#39;Override&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;yes&#39;</span> <span class="ow">and</span> <span class="p">(</span><span class="n">agency</span> <span class="ow">in</span> <span class="n">agencies</span> <span class="ow">or</span> <span class="n">agencies</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span
+            class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">saved</span><span
+            class="p">):</span>
+            <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Resolutions&#39;</span><span
+            class="p">][</span><span class="s1">&#39;Override&#39;</span><span class="p">]</span> <span
+            class="o">==</span> <span class="s1">&#39;yes&#39;</span> <span class="ow">and</span> <span
+            class="p">(</span><span class="n">agency</span> <span class="ow">in</span> <span
+            class="n">agencies</span> <span class="ow">or</span> <span class="n">agencies</span> <span
+            class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">):</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">zipped</span> <span class="o">=</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">saved</span><span class="p">)</span>
-                    <span class="n">contents</span> <span class="o">=</span> <span class="n">zipped</span><span class="o">.</span><span class="n">namelist</span><span class="p">()</span>
-                    <span class="k">if</span> <span class="n">contentSearch</span><span class="p">(</span><span class="n">contents</span><span class="p">)</span> <span class="o">!=</span> <span class="kc">True</span><span class="p">:</span>
-                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;n&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
-                        <span class="n">zipped</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;No&#39;</span><span class="p">)</span>
+                    <span class="n">zipped</span> <span class="o">=</span> <span class="n">zipfile</span><span
+            class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">saved</span><span
+            class="p">)</span>
+                    <span class="n">contents</span> <span class="o">=</span> <span class="n">zipped</span><span
+            class="o">.</span><span class="n">namelist</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">contentSearch</span><span class="p">(</span><span
+            class="n">contents</span><span class="p">)</span> <span class="o">!=</span> <span
+            class="kc">True</span><span class="p">:</span>
+                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;n&#39;</span><span
+            class="p">,</span> <span class="n">end</span><span class="o">=</span><span
+            class="s1">&#39; &#39;</span><span class="p">)</span>
+                        <span class="n">zipped</span><span class="o">.</span><span class="n">close</span><span
+            class="p">()</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;No&#39;</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="n">zipped</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
-                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Yes&#39;</span><span class="p">)</span>
+                        <span class="n">zipped</span><span class="o">.</span><span class="n">close</span><span
+            class="p">()</span>
+                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;y&#39;</span><span
+            class="p">,</span> <span class="n">end</span><span class="o">=</span><span
+            class="s1">&#39; &#39;</span><span class="p">)</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;Yes&#39;</span><span class="p">)</span>
                         <span class="n">hr</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="k">except</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">BadZipfile</span><span class="p">:</span>
-                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">saved</span><span class="p">)</span>
-                    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
-                    <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;BadZip&#39;</span><span class="p">)</span>
-                <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
-                <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Yes&#39;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">BadZipfile</span><span
+            class="p">:</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span
+            class="p">(</span><span class="n">saved</span><span class="p">)</span>
+                    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;z&#39;</span><span
+            class="p">,</span> <span class="n">end</span><span class="o">=</span><span
+            class="s1">&#39; &#39;</span><span class="p">)</span>
+                    <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;BadZip&#39;</span><span class="p">)</span>
+                <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;o&#39;</span><span
+            class="p">,</span> <span class="n">end</span><span class="o">=</span><span
+            class="s1">&#39; &#39;</span><span class="p">)</span>
+                <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;Yes&#39;</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">zipped</span> <span class="o">=</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">saved</span><span class="p">)</span>
-                    <span class="n">contents</span> <span class="o">=</span> <span class="n">zipped</span><span class="o">.</span><span class="n">namelist</span><span class="p">()</span>
-                    <span class="k">if</span> <span class="n">contentSearch</span><span class="p">(</span><span class="n">contents</span><span class="p">)</span> <span class="o">!=</span> <span class="kc">True</span><span class="p">:</span>
-                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;n&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
-                        <span class="n">zipped</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">saved</span><span class="p">)</span>
-                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
-                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;No&#39;</span><span class="p">)</span>
+                    <span class="n">zipped</span> <span class="o">=</span> <span class="n">zipfile</span><span
+            class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">saved</span><span
+            class="p">)</span>
+                    <span class="n">contents</span> <span class="o">=</span> <span class="n">zipped</span><span
+            class="o">.</span><span class="n">namelist</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">contentSearch</span><span class="p">(</span><span
+            class="n">contents</span><span class="p">)</span> <span class="o">!=</span> <span
+            class="kc">True</span><span class="p">:</span>
+                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;n&#39;</span><span
+            class="p">,</span> <span class="n">end</span><span class="o">=</span><span
+            class="s1">&#39; &#39;</span><span class="p">)</span>
+                        <span class="n">zipped</span><span class="o">.</span><span class="n">close</span><span
+            class="p">()</span>
+                        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span
+            class="p">(</span><span class="n">saved</span><span class="p">)</span>
+                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;r&#39;</span><span
+            class="p">,</span> <span class="n">end</span><span class="o">=</span><span
+            class="s1">&#39; &#39;</span><span class="p">)</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;No&#39;</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="n">zipped</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
-                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Yes&#39;</span><span class="p">)</span>
+                        <span class="n">zipped</span><span class="o">.</span><span class="n">close</span><span
+            class="p">()</span>
+                        <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;y&#39;</span><span
+            class="p">,</span> <span class="n">end</span><span class="o">=</span><span
+            class="s1">&#39; &#39;</span><span class="p">)</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;Yes&#39;</span><span class="p">)</span>
                         <span class="n">hr</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="k">except</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">BadZipfile</span><span class="p">:</span>
-                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">saved</span><span class="p">)</span>
-                    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
-                    <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;BadZip&#39;</span><span class="p">)</span>
-                <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;No&#39;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">BadZipfile</span><span
+            class="p">:</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span
+            class="p">(</span><span class="n">saved</span><span class="p">)</span>
+                    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;z&#39;</span><span
+            class="p">,</span> <span class="n">end</span><span class="o">=</span><span
+            class="s1">&#39; &#39;</span><span class="p">)</span>
+                    <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;BadZip&#39;</span><span class="p">)</span>
+                <span class="n">row</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;No&#39;</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">-=</span> <span class="mi">1</span>
-    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">row downloads verified&#39;</span><span class="p">)</span>
+    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span
+            class="s1">row downloads verified&#39;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">rows</span><span class="p">,</span> <span class="n">hr</span></div>
 
-<div class="viewcode-block" id="csvCompare"><a class="viewcode-back" href="../index.html#eHydro_scrape.csvCompare">[docs]</a><span class="k">def</span> <span class="nf">csvCompare</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">csvFile</span><span class="p">,</span> <span class="n">newSurveysNum</span><span class="p">):</span>
+<div class="viewcode-block" id="csvCompare"><a class="viewcode-back" href="../index.html#eHydro_scrape.csvCompare">[docs]</a><span
+        class="k">def</span> <span class="nf">csvCompare</span><span class="p">(</span><span class="n">rows</span><span
+        class="p">,</span> <span class="n">csvFile</span><span class="p">,</span> <span
+        class="n">newSurveysNum</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Takes list &#39;rows&#39; and list &#39;csvFile&#39;.  It proceeds to compare each list</span>
 <span class="sd">    item&#39;s contents against each other.  If they match, the relevant list item</span>
 <span class="sd">    is removed from list &#39;rows&#39;.  If all items are identical, the function</span>
@@ -495,23 +783,38 @@
 <span class="sd">        Changes&#39;</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">),</span> <span class="n">end</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">csvFile</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span
+            class="n">rows</span><span class="p">),</span> <span class="n">end</span> <span class="o">=</span> <span
+            class="s1">&#39; &#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span
+            class="n">csvFile</span><span class="p">:</span>
         <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
-        <span class="k">while</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">y</span><span class="p">:</span>
-            <span class="n">row</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-                <span class="n">rows</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
-                <span class="n">y</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span
+            class="n">rows</span><span class="p">)</span>
+        <span class="k">while</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">y</span><span
+            class="p">:</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span
+            class="n">x</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span
+            class="p">]</span> <span class="o">==</span> <span class="n">row</span><span class="p">[</span><span
+            class="mi">0</span><span class="p">]:</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span
+            class="n">row</span><span class="p">)</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="nb">len</span><span
+            class="p">(</span><span class="n">rows</span><span class="p">)</span>
             <span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
-    <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">))</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span
+            class="n">rows</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span
+            class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">rows</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">return</span> <span class="s1">&#39;No Changes&#39;</span></div>
 
-<div class="viewcode-block" id="txtWriter"><a class="viewcode-back" href="../index.html#eHydro_scrape.txtWriter">[docs]</a><span class="k">def</span> <span class="nf">txtWriter</span><span class="p">(</span><span class="n">fileText</span><span class="p">,</span> <span class="n">txtLocation</span><span class="p">):</span>
+<div class="viewcode-block" id="txtWriter"><a class="viewcode-back"
+                                              href="../index.html#eHydro_scrape.txtWriter">[docs]</a><span
+        class="k">def</span> <span class="nf">txtWriter</span><span class="p">(</span><span
+        class="n">fileText</span><span class="p">,</span> <span class="n">txtLocation</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;String &quot;fileText&quot; is writen to the &quot;txtLocation&quot; save path</span>
 
 <span class="sd">    Parameters</span>
@@ -523,12 +826,18 @@
 <span class="sd">        Complete file path string for a text file to be created</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">save</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">txtLocation</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">fileText</span><span class="p">:</span>
-        <span class="n">save</span><span class="o">.</span><span class="n">writelines</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+    <span class="n">save</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span
+            class="n">txtLocation</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span
+            class="p">)</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span
+            class="n">fileText</span><span class="p">:</span>
+        <span class="n">save</span><span class="o">.</span><span class="n">writelines</span><span
+            class="p">(</span><span class="n">row</span><span class="p">)</span>
     <span class="n">save</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="csvOpen"><a class="viewcode-back" href="../index.html#eHydro_scrape.csvOpen">[docs]</a><span class="k">def</span> <span class="nf">csvOpen</span><span class="p">():</span>
+<div class="viewcode-block" id="csvOpen"><a class="viewcode-back"
+                                            href="../index.html#eHydro_scrape.csvOpen">[docs]</a><span
+        class="k">def</span> <span class="nf">csvOpen</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;Uses global variable csvLocation to open eHydro_csv.txt for use.</span>
 <span class="sd">    Populates a list &#39;csvFile&#39; with it&#39;s contents. Returns list and</span>
 <span class="sd">    closes file</span>
@@ -539,18 +848,34 @@
 <span class="sd">        The list of all compiled survey attributes stored in eHydro_csv.txt</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">csvLocation</span><span class="p">):</span>
-        <span class="n">create</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">csvLocation</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span
+            class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span
+            class="n">csvLocation</span><span class="p">):</span>
+        <span class="n">create</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span
+            class="n">csvLocation</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span
+            class="p">)</span>
         <span class="n">create</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-    <span class="n">fileOpened</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">csvLocation</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">opened</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="n">fileOpened</span><span class="p">,</span> <span class="n">delimiter</span> <span class="o">=</span> <span class="s1">&#39;,&#39;</span><span class="p">)</span>
+    <span class="n">fileOpened</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span
+            class="n">csvLocation</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span
+            class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s1">&#39;</span><span
+            class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">opened</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span
+            class="n">reader</span><span class="p">(</span><span class="n">fileOpened</span><span
+            class="p">,</span> <span class="n">delimiter</span> <span class="o">=</span> <span
+            class="s1">&#39;,&#39;</span><span class="p">)</span>
     <span class="n">csvFile</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">opened</span><span class="p">:</span>
-        <span class="n">csvFile</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">[:</span><span class="mi">13</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">opened</span><span
+            class="p">:</span>
+        <span class="n">csvFile</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span
+            class="n">row</span><span class="p">[:</span><span class="mi">13</span><span class="p">])</span>
     <span class="n">fileOpened</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">csvFile</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span></div>
+    <span class="k">return</span> <span class="n">csvFile</span><span class="p">[</span><span class="mi">1</span><span
+            class="p">:]</span></div>
 
-<div class="viewcode-block" id="csvWriter"><a class="viewcode-back" href="../index.html#eHydro_scrape.csvWriter">[docs]</a><span class="k">def</span> <span class="nf">csvWriter</span><span class="p">(</span><span class="n">csvFile</span><span class="p">,</span> <span class="n">csvLocation</span><span class="p">):</span>
+<div class="viewcode-block" id="csvWriter"><a class="viewcode-back"
+                                              href="../index.html#eHydro_scrape.csvWriter">[docs]</a><span
+        class="k">def</span> <span class="nf">csvWriter</span><span class="p">(</span><span
+        class="n">csvFile</span><span class="p">,</span> <span class="n">csvLocation</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Uses global variable csvLocation. Opens file at csvLocation for</span>
 <span class="sd">    writing. Iterates line by line through csvFile and imediatly writes</span>
 <span class="sd">    to eHydro_csv.txt.</span>
@@ -564,13 +889,23 @@
 <span class="sd">        Complete file path string for a text file to be created</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">csvOpen</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">csvLocation</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
-    <span class="n">save</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">csvOpen</span><span class="p">,</span> <span class="n">delimiter</span> <span class="o">=</span> <span class="s1">&#39;,&#39;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">csvFile</span><span class="p">:</span>
-        <span class="n">save</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+    <span class="n">csvOpen</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span
+            class="n">csvLocation</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span
+            class="p">)</span>
+    <span class="n">save</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span
+            class="n">writer</span><span class="p">(</span><span class="n">csvOpen</span><span class="p">,</span> <span
+            class="n">delimiter</span> <span class="o">=</span> <span class="s1">&#39;,&#39;</span><span
+            class="p">)</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">csvFile</span><span
+            class="p">:</span>
+        <span class="n">save</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span
+            class="n">row</span><span class="p">)</span>
     <span class="n">csvOpen</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="logOpen"><a class="viewcode-back" href="../index.html#eHydro_scrape.logOpen">[docs]</a><span class="k">def</span> <span class="nf">logOpen</span><span class="p">(</span><span class="n">logType</span><span class="p">):</span>
+<div class="viewcode-block" id="logOpen"><a class="viewcode-back"
+                                            href="../index.html#eHydro_scrape.logOpen">[docs]</a><span
+        class="k">def</span> <span class="nf">logOpen</span><span class="p">(</span><span class="n">logType</span><span
+        class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Uses global variable logLocation. Opens file at logLocation</span>
 <span class="sd">    for appending. Writes text stating when the function was called.</span>
 <span class="sd">    Returns the file object for future writing.</span>
@@ -591,27 +926,47 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
-    <span class="n">message</span> <span class="o">=</span> <span class="n">timestamp</span> <span class="o">+</span> <span class="s1">&#39; - Program Initiated, Log Opened&#39;</span>
-    <span class="k">if</span> <span class="n">logType</span> <span class="o">==</span> <span class="s1">&#39;False&#39;</span> <span class="ow">or</span> <span class="kc">False</span><span class="p">:</span>
-        <span class="n">fileLog</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">logLocation</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">timestamp</span> <span
+            class="o">+</span> <span class="s1">&#39; - Program Initiated, Log Opened&#39;</span>
+    <span class="k">if</span> <span class="n">logType</span> <span class="o">==</span> <span
+            class="s1">&#39;False&#39;</span> <span class="ow">or</span> <span class="kc">False</span><span
+            class="p">:</span>
+        <span class="n">fileLog</span> <span class="o">=</span> <span class="nb">open</span><span
+            class="p">(</span><span class="n">logLocation</span><span class="p">,</span> <span
+            class="s1">&#39;a&#39;</span><span class="p">)</span>
         <span class="n">nameLog</span> <span class="o">=</span> <span class="n">logLocation</span>
-    <span class="k">elif</span> <span class="n">logType</span> <span class="o">==</span> <span class="s1">&#39;True&#39;</span> <span class="ow">or</span> <span class="kc">True</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">logType</span> <span class="o">==</span> <span
+            class="s1">&#39;True&#39;</span> <span class="ow">or</span> <span class="kc">True</span><span
+            class="p">:</span>
         <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">datestamp</span> <span class="o">=</span> <span class="n">date</span><span class="p">()</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="n">name</span> <span class="o">=</span> <span class="n">datestamp</span> <span class="o">+</span><span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">logName</span>
-            <span class="n">logPath</span> <span class="o">=</span> <span class="n">logging</span> <span class="o">+</span> <span class="n">name</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">datestamp</span> <span
+            class="o">+</span><span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span
+            class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span
+            class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span
+            class="n">logName</span>
+            <span class="n">logPath</span> <span class="o">=</span> <span class="n">logging</span> <span
+            class="o">+</span> <span class="n">name</span>
 <span class="c1">#            print (logPath)</span>
-            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">logPath</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span
+            class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">logPath</span><span
+            class="p">):</span>
                 <span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">break</span>
-        <span class="n">fileLog</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">logPath</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+        <span class="n">fileLog</span> <span class="o">=</span> <span class="nb">open</span><span
+            class="p">(</span><span class="n">logPath</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span
+            class="p">)</span>
         <span class="n">nameLog</span> <span class="o">=</span> <span class="n">logPath</span>
-    <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+    <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span
+            class="n">message</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">fileLog</span><span class="p">,</span> <span class="n">nameLog</span></div>
 
-<div class="viewcode-block" id="logWriter"><a class="viewcode-back" href="../index.html#eHydro_scrape.logWriter">[docs]</a><span class="k">def</span> <span class="nf">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+<div class="viewcode-block" id="logWriter"><a class="viewcode-back"
+                                              href="../index.html#eHydro_scrape.logWriter">[docs]</a><span
+        class="k">def</span> <span class="nf">logWriter</span><span class="p">(</span><span
+        class="n">fileLog</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Takes a file object &#39;fileLog&#39; and a string &#39;message&#39;. Writes</span>
 <span class="sd">    &#39;messege&#39; to &#39;fileLog&#39;</span>
 
@@ -624,9 +979,14 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="nb">print</span> <span class="p">(</span><span class="n">message</span><span class="p">)</span>
-    <span class="n">fileLog</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">message</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
+    <span class="n">fileLog</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span
+            class="n">message</span> <span class="o">+</span> <span class="s1">&#39;</span><span
+            class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="logClose"><a class="viewcode-back" href="../index.html#eHydro_scrape.logClose">[docs]</a><span class="k">def</span> <span class="nf">logClose</span><span class="p">(</span><span class="n">fileLog</span><span class="p">):</span>
+<div class="viewcode-block" id="logClose"><a class="viewcode-back"
+                                             href="../index.html#eHydro_scrape.logClose">[docs]</a><span
+        class="k">def</span> <span class="nf">logClose</span><span class="p">(</span><span class="n">fileLog</span><span
+        class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Takes a file object &#39;fileLog&#39;. Writes text stating when the</span>
 <span class="sd">    function was called. Closes the file object upon completion</span>
 
@@ -637,11 +997,15 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
-    <span class="n">message</span> <span class="o">=</span> <span class="n">timestamp</span> <span class="o">+</span><span class="s1">&#39; - Program Finished, Log Closed</span><span class="se">\n</span><span class="s1">&#39;</span>
-    <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">timestamp</span> <span
+            class="o">+</span><span class="s1">&#39; - Program Finished, Log Closed</span><span
+            class="se">\n</span><span class="s1">&#39;</span>
+    <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span
+            class="n">message</span><span class="p">)</span>
     <span class="n">fileLog</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="time"><a class="viewcode-back" href="../index.html#eHydro_scrape.time">[docs]</a><span class="k">def</span> <span class="nf">time</span><span class="p">():</span>
+<div class="viewcode-block" id="time"><a class="viewcode-back" href="../index.html#eHydro_scrape.time">[docs]</a><span
+        class="k">def</span> <span class="nf">time</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;Creates and returns a string &#39;timestamp&#39; that contains a</span>
 <span class="sd">    formated current date and time at the time of calling.  Generated by</span>
 <span class="sd">    :obj:`datetime.now` and formated using</span>
@@ -653,11 +1017,17 @@
 <span class="sd">        A string with the current date and time</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strftime</span>
-    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> </span><span class="si">%X</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span
+            class="n">strftime</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span
+            class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span
+            class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span
+            class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> </span><span
+            class="si">%X</span><span class="s1">&#39;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">timestamp</span></div>
 
-<div class="viewcode-block" id="date"><a class="viewcode-back" href="../index.html#eHydro_scrape.date">[docs]</a><span class="k">def</span> <span class="nf">date</span><span class="p">():</span>
+<div class="viewcode-block" id="date"><a class="viewcode-back" href="../index.html#eHydro_scrape.date">[docs]</a><span
+        class="k">def</span> <span class="nf">date</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;Creates and returns a string &#39;datestamp&#39; that contains a</span>
 <span class="sd">    formated current date at the time of calling.  Generated by</span>
 <span class="sd">    :obj:`datetime.datetime.now` and formated using</span>
@@ -669,10 +1039,15 @@
 <span class="sd">        A string with the current date and time</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">datestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">datestamp</span> <span class="o">=</span> <span class="n">datetime</span><span
+            class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span
+            class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span
+            class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">datestamp</span></div>
 
-<div class="viewcode-block" id="fileTime"><a class="viewcode-back" href="../index.html#eHydro_scrape.fileTime">[docs]</a><span class="k">def</span> <span class="nf">fileTime</span><span class="p">():</span>
+<div class="viewcode-block" id="fileTime"><a class="viewcode-back"
+                                             href="../index.html#eHydro_scrape.fileTime">[docs]</a><span
+        class="k">def</span> <span class="nf">fileTime</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;Creates and returns a string &#39;timestamp&#39; that contains a</span>
 <span class="sd">    formated current date and time at the time of calling.  Generated by</span>
 <span class="sd">    :obj:`datetime.datetime.now` and formated using</span>
@@ -683,119 +1058,205 @@
 <span class="sd">    timestamp : string</span>
 <span class="sd">        A string with the current date and time</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span
+            class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span
+            class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span
+            class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">timestamp</span></div>
 
-<div class="viewcode-block" id="main"><a class="viewcode-back" href="../index.html#eHydro_scrape.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-    <span class="n">runType</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Data Checking&#39;</span><span class="p">][</span><span class="s1">&#39;Override&#39;</span><span class="p">]</span>
-    <span class="n">logType</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Output Log&#39;</span><span class="p">][</span><span class="s1">&#39;Log Type&#39;</span><span class="p">]</span>
-    <span class="n">fileLog</span><span class="p">,</span> <span class="n">nameLog</span> <span class="o">=</span> <span class="n">logOpen</span><span class="p">(</span><span class="n">logType</span><span class="p">)</span>
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../index.html#eHydro_scrape.main">[docs]</a><span
+        class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">runType</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span
+            class="s1">&#39;Data Checking&#39;</span><span class="p">][</span><span class="s1">&#39;Override&#39;</span><span
+            class="p">]</span>
+    <span class="n">logType</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span
+            class="s1">&#39;Output Log&#39;</span><span class="p">][</span><span
+            class="s1">&#39;Log Type&#39;</span><span class="p">]</span>
+    <span class="n">fileLog</span><span class="p">,</span> <span class="n">nameLog</span> <span class="o">=</span> <span
+            class="n">logOpen</span><span class="p">(</span><span class="n">logType</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">surveyIDs</span><span class="p">,</span> <span class="n">newSurveysNum</span><span class="p">,</span> <span class="n">paramString</span> <span class="o">=</span> <span class="n">query</span><span class="p">()</span>
-        <span class="n">rows</span> <span class="o">=</span> <span class="n">surveyCompile</span><span class="p">(</span><span class="n">surveyIDs</span><span class="p">,</span> <span class="n">newSurveysNum</span><span class="p">)</span>
-        <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Surveys queried from eHydro</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">paramString</span><span class="p">)</span>
+        <span class="n">surveyIDs</span><span class="p">,</span> <span class="n">newSurveysNum</span><span
+            class="p">,</span> <span class="n">paramString</span> <span class="o">=</span> <span
+            class="n">query</span><span class="p">()</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="n">surveyCompile</span><span
+            class="p">(</span><span class="n">surveyIDs</span><span class="p">,</span> <span
+            class="n">newSurveysNum</span><span class="p">)</span>
+        <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Surveys queried from eHydro</span><span
+            class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span
+            class="n">paramString</span><span class="p">)</span>
     <span class="k">except</span><span class="p">:</span>
-        <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">eHydro query failed&#39;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">runType</span> <span class="o">==</span> <span class="s1">&#39;no&#39;</span><span class="p">:</span>
+        <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">eHydro query failed&#39;</span><span
+            class="p">)</span>
+    <span class="k">if</span> <span class="n">runType</span> <span class="o">==</span> <span
+            class="s1">&#39;no&#39;</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">csvFile</span> <span class="o">=</span> <span class="n">csvOpen</span><span class="p">()</span>
-            <span class="n">txtWriter</span><span class="p">(</span><span class="n">csvFile</span><span class="p">,</span> <span class="n">csvLocation</span><span class="p">)</span>
-            <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">eHydro_csv.txt opened for reading&#39;</span><span class="p">)</span>
+            <span class="n">csvFile</span> <span class="o">=</span> <span class="n">csvOpen</span><span
+            class="p">()</span>
+            <span class="n">txtWriter</span><span class="p">(</span><span class="n">csvFile</span><span
+            class="p">,</span> <span class="n">csvLocation</span><span class="p">)</span>
+            <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">eHydro_csv.txt opened for reading&#39;</span><span
+            class="p">)</span>
         <span class="k">except</span><span class="p">:</span>
-            <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">eHydro_csv.txt unable to be opened&#39;</span><span class="p">)</span>
+            <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">eHydro_csv.txt unable to be opened&#39;</span><span
+            class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Comparing query results to eHydro_csv.txt&#39;</span><span class="p">)</span>
-            <span class="n">changes</span> <span class="o">=</span> <span class="n">csvCompare</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">csvFile</span><span class="p">,</span> <span class="n">newSurveysNum</span><span class="p">)</span>
+            <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Comparing query results to eHydro_csv.txt&#39;</span><span
+            class="p">)</span>
+            <span class="n">changes</span> <span class="o">=</span> <span class="n">csvCompare</span><span
+            class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">csvFile</span><span
+            class="p">,</span> <span class="n">newSurveysNum</span><span class="p">)</span>
         <span class="k">except</span><span class="p">:</span>
-            <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t\t</span><span class="s1">Unable to compare query results to eHydro_csv.txt&#39;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">runType</span> <span class="o">==</span> <span class="s1">&#39;yes&#39;</span><span class="p">:</span>
+            <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t\t</span><span class="s1">Unable to compare query results to eHydro_csv.txt&#39;</span><span
+            class="p">)</span>
+    <span class="k">elif</span> <span class="n">runType</span> <span class="o">==</span> <span
+            class="s1">&#39;yes&#39;</span><span class="p">:</span>
         <span class="n">csvFile</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">changes</span> <span class="o">=</span> <span class="n">rows</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Parsing new entries for resolution:&#39;</span><span class="p">)</span>
-        <span class="n">attributes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Hi-Res?&#39;</span><span class="p">)</span>
-        <span class="n">attributes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Override?&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">changes</span> <span class="o">!=</span> <span class="s1">&#39;No Changes&#39;</span><span class="p">:</span>
-            <span class="n">checked</span><span class="p">,</span> <span class="n">hiRes</span> <span class="o">=</span> <span class="n">downloadAndCheck</span><span class="p">(</span><span class="n">changes</span><span class="p">)</span>
-            <span class="n">csvFile</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">checked</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Output Log&#39;</span><span class="p">][</span><span class="s1">&#39;Query List&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;yes&#39;</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">checked</span><span class="p">:</span>
+        <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Parsing new entries for resolution:&#39;</span><span
+            class="p">)</span>
+        <span class="n">attributes</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;Hi-Res?&#39;</span><span class="p">)</span>
+        <span class="n">attributes</span><span class="o">.</span><span class="n">append</span><span
+            class="p">(</span><span class="s1">&#39;Override?&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">changes</span> <span class="o">!=</span> <span class="s1">&#39;No Changes&#39;</span><span
+            class="p">:</span>
+            <span class="n">checked</span><span class="p">,</span> <span class="n">hiRes</span> <span class="o">=</span> <span
+            class="n">downloadAndCheck</span><span class="p">(</span><span class="n">changes</span><span
+            class="p">)</span>
+            <span class="n">csvFile</span><span class="o">.</span><span class="n">extend</span><span
+            class="p">(</span><span class="n">checked</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;Output Log&#39;</span><span
+            class="p">][</span><span class="s1">&#39;Query List&#39;</span><span class="p">]</span> <span
+            class="o">==</span> <span class="s1">&#39;yes&#39;</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span
+            class="n">checked</span><span class="p">:</span>
                     <span class="n">txt</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
-                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">12</span><span class="p">]:</span>
-                        <span class="n">txt</span> <span class="o">=</span> <span class="n">txt</span> <span class="o">+</span> <span class="n">attributes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; : &#39;</span> <span class="o">+</span> <span class="n">row</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n\t\t</span><span class="s1">&#39;</span>
-                    <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t\t</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">txt</span><span class="p">)</span>
-            <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t\t</span><span class="s1">Total High Resloution Surveys: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">hiRes</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">changes</span><span class="p">))</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span
+            class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span
+            class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span
+            class="mi">12</span><span class="p">]:</span>
+                        <span class="n">txt</span> <span class="o">=</span> <span class="n">txt</span> <span
+            class="o">+</span> <span class="n">attributes</span><span class="p">[</span><span class="n">i</span><span
+            class="p">]</span> <span class="o">+</span> <span class="s1">&#39; : &#39;</span> <span
+            class="o">+</span> <span class="n">row</span><span class="p">[</span><span class="n">i</span><span
+            class="p">]</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n\t\t</span><span
+            class="s1">&#39;</span>
+                    <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t\t</span><span
+            class="s1">&#39;</span> <span class="o">+</span> <span class="n">txt</span><span class="p">)</span>
+            <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t\t</span><span class="s1">Total High Resloution Surveys: &#39;</span> <span
+            class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">hiRes</span><span
+            class="p">)</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span
+            class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span
+            class="p">(</span><span class="n">changes</span><span class="p">))</span> <span class="o">+</span> <span
+            class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t\t</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">changes</span><span class="p">)</span>
+            <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t\t</span><span
+            class="s1">&#39;</span> <span class="o">+</span> <span class="n">changes</span><span class="p">)</span>
     <span class="k">except</span><span class="p">:</span>
-        <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Parsing for resolution failed&#39;</span><span class="p">)</span>
+        <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Parsing for resolution failed&#39;</span><span
+            class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">csvFile</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">attributes</span><span class="p">)</span>
+        <span class="n">csvFile</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span
+            class="mi">0</span><span class="p">,</span> <span class="n">attributes</span><span class="p">)</span>
         <span class="n">csvSave</span> <span class="o">=</span> <span class="n">csvFile</span>
-        <span class="k">if</span> <span class="n">runType</span> <span class="o">==</span> <span class="s1">&#39;no&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">runType</span> <span class="o">==</span> <span
+            class="s1">&#39;no&#39;</span><span class="p">:</span>
             <span class="n">csvPath</span> <span class="o">=</span> <span class="n">csvLocation</span>
-            <span class="n">csvWriter</span><span class="p">(</span><span class="n">csvSave</span><span class="p">,</span> <span class="n">csvPath</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">runType</span> <span class="o">==</span> <span class="s1">&#39;yes&#39;</span><span class="p">:</span>
+            <span class="n">csvWriter</span><span class="p">(</span><span class="n">csvSave</span><span
+            class="p">,</span> <span class="n">csvPath</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">runType</span> <span class="o">==</span> <span class="s1">&#39;yes&#39;</span><span
+            class="p">:</span>
             <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="n">datestamp</span> <span class="o">=</span> <span class="n">date</span><span class="p">()</span>
+            <span class="n">datestamp</span> <span class="o">=</span> <span class="n">date</span><span
+            class="p">()</span>
             <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-                <span class="n">name</span> <span class="o">=</span> <span class="n">datestamp</span> <span class="o">+</span><span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">csvName</span>
-                <span class="n">csvPath</span> <span class="o">=</span> <span class="n">running</span> <span class="o">+</span> <span class="n">name</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">datestamp</span> <span
+            class="o">+</span><span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span
+            class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span
+            class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span
+            class="n">csvName</span>
+                <span class="n">csvPath</span> <span class="o">=</span> <span class="n">running</span> <span
+            class="o">+</span> <span class="n">name</span>
 <span class="c1">#                print (csvPath)</span>
-                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">csvPath</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span
+            class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span
+            class="n">csvPath</span><span class="p">):</span>
                     <span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">break</span>
-            <span class="n">csvWriter</span><span class="p">(</span><span class="n">csvSave</span><span class="p">,</span> <span class="n">csvPath</span><span class="p">)</span>
-        <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Adding results to &#39;</span> <span class="o">+</span> <span class="n">csvPath</span><span class="p">)</span>
+            <span class="n">csvWriter</span><span class="p">(</span><span class="n">csvSave</span><span
+            class="p">,</span> <span class="n">csvPath</span><span class="p">)</span>
+        <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Adding results to &#39;</span> <span
+            class="o">+</span> <span class="n">csvPath</span><span class="p">)</span>
     <span class="k">except</span><span class="p">:</span>
-        <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Unable to add results to &#39;</span> <span class="o">+</span> <span class="n">csvPath</span><span class="p">)</span>
+        <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span
+            class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Unable to add results to &#39;</span> <span
+            class="o">+</span> <span class="n">csvPath</span><span class="p">)</span>
 
-    <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Output Log saved as &#39;</span> <span class="o">+</span> <span class="n">nameLog</span><span class="p">)</span>
+    <span class="n">logWriter</span><span class="p">(</span><span class="n">fileLog</span><span class="p">,</span> <span
+            class="s1">&#39;</span><span class="se">\t</span><span class="s1">Output Log saved as &#39;</span> <span
+            class="o">+</span> <span class="n">nameLog</span><span class="p">)</span>
     <span class="n">logClose</span><span class="p">(</span><span class="n">fileLog</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;log closed&#39;</span><span class="p">)</span></div>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;log closed&#39;</span><span
+            class="p">)</span></div>
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span
+                        class="s1">&#39;__main__&#39;</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Function call to initiate program&quot;&quot;&quot;</span>
     <span class="n">main</span><span class="p">()</span>
 
-</pre></div>
+</pre>
+                </div>
 
-          </div>
+            </div>
         </div>
-      </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+    </div>
+    <div aria-label="main navigation" class="sphinxsidebar" role="navigation">
         <div class="sphinxsidebarwrapper">
-<div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
-    <form class="search" action="../search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
-    </form>
-</div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+            <div id="searchbox" role="search" style="display: none">
+                <h3>Quick search</h3>
+                <form action="../search.html" class="search" method="get">
+                    <div><input name="q" type="text"/></div>
+                    <div><input type="submit" value="Go"/></div>
+                    <input name="check_keywords" type="hidden" value="yes"/>
+                    <input name="area" type="hidden" value="default"/>
+                </form>
+            </div>
+            <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
-      </div>
-      <div class="clearer"></div>
     </div>
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
+    <div class="clearer"></div>
+</div>
+<div aria-label="related navigation" class="related" role="navigation">
+    <h3>Navigation</h3>
+    <ul>
         <li class="right" style="margin-right: 10px">
-          <a href="../genindex.html" title="General Index"
-             >index</a></li>
-        <li class="right" >
-          <a href="../py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">eHydro_scrape  documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="index.html" >Module code</a> &#187;</li> 
-      </ul>
-    </div>
-    <div class="footer" role="contentinfo">
-        &#169; Copyright .
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
-    </div>
-  </body>
+            <a href="../genindex.html" title="General Index"
+            >index</a></li>
+        <li class="right">
+            <a href="../py-modindex.html" title="Python Module Index"
+            >modules</a> |
+        </li>
+        <li class="nav-item nav-item-0"><a href="../index.html">eHydro_scrape documentation</a> &#187;</li>
+        <li class="nav-item nav-item-1"><a href="index.html">Module code</a> &#187;</li>
+    </ul>
+</div>
+<div class="footer" role="contentinfo">
+    &#169; Copyright .
+    Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.3.
+</div>
+</body>
 </html>
