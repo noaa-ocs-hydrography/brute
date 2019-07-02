@@ -80,7 +80,7 @@ class read_raw:
         """
         # get the dat file for CESAJ# Jacksonville
         stub, ext = os.path.splitext(infilename)
-        bathyfilename = stub + '.dat'
+        bathyfilename = f'{stub}.dat'
         xyz = _np.loadtxt(bathyfilename, delimiter=' ')
         self.xyz
         return xyz
@@ -267,9 +267,11 @@ class Extract_Txt(object):
         self.filename = preloadeddata
         if filename != "" or None:
             self.filename_1 = filename
-            self.errorfile = os.path.dirname(filename) + 'TEST_extract_ehdyro_meta_class_CESAM_ErrorFile1.txt'
+            self.errorfile = os.path.join(os.path.dirname(filename),
+                                          'TEST_extract_ehdyro_meta_class_CESAM_ErrorFile1.txt')
         else:
-            self.errorfile = os.path.dirname(filename) + 'Default_extract_ehdyro_meta_class_CESAM_error.txt'
+            self.errorfile = os.path.join(os.path.dirname(filename),
+                                          'Default_extract_ehdyro_meta_class_CESAM_error.txt')
 
     def parse_ehydro_xyz(self, infilename, meta_source='xyz', version='CESAM',
                          default_meta=''):  # need to change version to None
@@ -374,7 +376,7 @@ class Extract_Txt(object):
             else:
                 meta['statuscode'] = ''
         else:
-            print(name + ' appears to have a nonstandard naming convention.')
+            print(f'{name} appears to have a nonstandard naming convention.')
         return meta
 
     def parse_xyz_header(self, infilename, version=None):
@@ -442,7 +444,7 @@ class Extract_Txt(object):
             meta = {}
             errorfile = self.errorfile
             with open(errorfile, 'a') as metafail:
-                metafail.write(infilename + '\n')
+                metafail.write(f'{infilename}\n')
             return meta
 
     def load_default_metadata(self, infilename, default_meta):
@@ -491,7 +493,7 @@ def get_xml(filename):
 
     """
     basef = filename.rpartition('.')[0]
-    xml_name = basef + '.xml'
+    xml_name = f'{basef}.xml'
     return xml_name
 
 
@@ -518,7 +520,7 @@ def get_xml_xt(filename, extension):
         basef = filename[:-end_len]
     else:
         basef = filename
-    xml_name = basef + '.xml'
+    xml_name = f'{basef}.xml'
     return xml_name
 
 

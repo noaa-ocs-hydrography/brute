@@ -216,7 +216,7 @@ def read_bathymetry_dat(infilename: str):
 
     # get the dat file for CEMVN
     stub, ext = os.path.splitext(infilename)
-    bathyfilename = stub + '.dat'
+    bathyfilename = f'{stub}.dat'
     xyz = _np.loadtxt(bathyfilename, usecols=(0, 1, 2))
     return xyz
 

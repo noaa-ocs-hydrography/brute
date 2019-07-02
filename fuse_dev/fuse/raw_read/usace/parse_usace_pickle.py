@@ -52,7 +52,7 @@ class pickle_file:
 
         froot, fname = _os.path.split(infilename)
         fname, fext = _os.path.splitext(fname)
-        fpickle = _os.path.join(froot, fname + '.pickle')
+        fpickle = _os.path.join(froot, f'{fname}.pickle')
         fpickle = _os.path.normpath(fpickle)
         if _os.path.exists(fpickle):
             opened = open(fpickle, 'rb')
@@ -60,5 +60,5 @@ class pickle_file:
             opened.close()
             return pickle_meta
         else:
-            print(fpickle + ' not found')
+            print(f'{fpickle} not found')
             return {}

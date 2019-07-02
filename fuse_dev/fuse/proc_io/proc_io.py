@@ -93,7 +93,7 @@ class proc_io:
             self._logger.log(logging.DEBUG, f'Overwriting {instruction}')
             os.remove(instruction)
             if self._out_data_type == 'bag':
-                caris_xml = instruction + '.aux.xml'
+                caris_xml = f'{instruction}.aux.xml'
                 if os.path.exists(caris_xml):
                     os.remove(caris_xml)
 

@@ -313,7 +313,7 @@ class point_interpolator:
         fName = os.path.split(file)[-1]
         splits = os.path.splitext(fName)
         name = splits[0]
-        #        tif = splits[0] + '.tif'
+        # tif = f'{splits[0]}.tif'
 
         # Open the data source and read in the extent
         source_ds = ogr.Open(file)

@@ -54,16 +54,16 @@ logLocation = os.path.join(progLoc, logName)
 # logLocation = os.path.join(progLoc, logName)
 """Default location for :attr:`logName`"""
 # """Default location for """
-holding = progLoc + '\\downloads\\'
+holding = os.path.join(progLoc, 'downloads')
 """Default location for all downloaded data, regardless of the type of query
 performed. Data is broken up into folders representing each district (ex.
 ``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)
 """
-logging = progLoc + '\\logs\\'
+logging = os.path.join(progLoc, 'logs')
 """Default location for individual query logs. These are named like
 ``YYYYMMDD_0_eHydro_log.txt``
 """
-running = progLoc + '\\runs\\'
+running = os.path.join(progLoc, 'runs')
 """Default location for individual query csv outputs. These are named like
 ``YYYYMMDD_0_eHydro_csv.txt``
 """
@@ -519,7 +519,7 @@ def contentSearch(contents: List[str]) -> int:
     x = 0
     for content in contents:
         if full.search(content) or full_a.search(content):
-            print('\nvive le resolution', content, end=' ')  # link + '\n')
+            print(f'\nvive le resolution {content}', end=' ')  # link + '\n')
             x = 1
             return x
         else:
@@ -611,7 +611,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
         with open(metafilename, 'wb') as metafile:
             pickle.dump(meta, metafile)
 
-        pfile = os.path.relpath(surname + '.pickle')
+        pfile = os.path.relpath(f'{surname}.pickle')
 
         print(f'{x} {agency}', end=' ')
         dwntime = datetime.datetime.now()
@@ -919,9 +919,9 @@ def logWriter(fileLog: Tuple[TextIO, Any], message: str):
 
     print(message)
     fl, to = fileLog
-    fl.write(message + '\n')
+    fl.write(f'{message}\n')
     if to is not None:
-        to.write(message + '\n')
+        to.write(f'{message}\n')
 
 
 def logClose(fileLog: Tuple[TextIO, Any]):
@@ -945,7 +945,7 @@ def logClose(fileLog: Tuple[TextIO, Any]):
 
     fo = fileLog[0]
     timestamp = ntime()
-    message = timestamp + ' - Program Finished, Log Closed\n'
+    message = f'{timestamp} - Program Finished, Log Closed\n'
     logWriter(fileLog, message)
     fo.close()
 

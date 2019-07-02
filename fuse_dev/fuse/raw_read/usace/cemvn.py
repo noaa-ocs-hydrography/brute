@@ -78,10 +78,8 @@ class read_raw:
 
         # get the dat file for CEMVN#New Orleans
         stub, ext = os.path.splitext(infilename)
-        bathyfilename = stub + '.dat'
-        xyz = _np.loadtxt(bathyfilename, delimiter=' ')
-        self.xyz
-        return xyz
+        bathyfilename = f'{stub}.dat'
+        return _np.loadtxt(bathyfilename, delimiter=' ')
 
     def read_bathymetry(self, infilename: str) -> _np.array:
         """
@@ -259,9 +257,11 @@ class Extract_Txt(object):
         self.filename = preloadeddata
         if filename != "" or None:
             self.filename_1 = filename
-            self.errorfile = os.path.dirname(filename) + 'TEST_extract_ehdyro_meta_class_CEMVN_ErrorFile1.txt'
+            self.errorfile = os.path.join(os.path.dirname(filename),
+                                          'TEST_extract_ehdyro_meta_class_CEMVN_ErrorFile1.txt')
         else:
-            self.errorfile = os.path.dirname(filename) + 'Default_extract_ehdyro_meta_class_CEMVN_error.txt'
+            self.errorfile = os.path.join(os.path.dirname(filename),
+                                          'Default_extract_ehdyro_meta_class_CEMVN_error.txt')
 
     def parse_ehydro_xyz(self, infilename: str, meta_source: str = 'xyz', version: str = 'CEMVN',
                          default_meta: str = '') -> dict:  # need to change version to None
@@ -368,7 +368,7 @@ class Extract_Txt(object):
             else:
                 meta['statuscode'] = ''
         else:
-            print(name + ' appears to have a nonstandard naming convention.')
+            print(f'{name} appears to have a nonstandard naming convention.')
         return meta
 
     def parse_xyz_header(self, infilename: str, version: str = None) -> dict:
@@ -459,7 +459,7 @@ class Extract_Txt(object):
             meta = {}
             errorfile = self.errorfile
             with open(errorfile, 'a') as metafail:
-                metafail.write(infilename + '\n')
+                metafail.write(f'{infilename}\n')
             return meta
 
     def load_default_metadata(self, infilename: str, default_meta: dict) -> dict:
@@ -514,7 +514,7 @@ def get_xml(filename: str) -> str:
     """
 
     basef = filename.rpartition('.')[0]
-    xml_name = basef + '.xml'
+    xml_name = f'{basef}.xml'
     return xml_name
 
 
@@ -544,7 +544,7 @@ def get_xml_xt(filename: str, extension: str) -> str:
         basef = filename[:-end_len]
     else:
         basef = filename
-    xml_name = basef + '.xml'
+    xml_name = f'{basef}.xml'
     return xml_name
 
 

@@ -264,8 +264,8 @@ def fileCollect(path: str, bounds: str) -> list:
                         # ehyd_geom, ehyd_proj = open_ogr(path)
                         # coordTrans = _osr.CoordinateTransformation(meta_proj, ehyd_proj)
                         # meta_geom.Transform(coordTrans)
-                        # fpath = spath + f'_2_{ehyd_name}.gpkg'
-                        # fname = bname + f'_2_{ehyd_name}'
+                        # fpath = f'{spath}_2_{ehyd_name}.gpkg'
+                        # fname = f'{bname}_2_{ehyd_name}'
                         #
                         # if not _os.path.exists(fpath):
                         #     ehyd_tproj = ehyd_proj.ExportToWkt()

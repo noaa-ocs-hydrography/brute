@@ -32,9 +32,10 @@ def test_from_existing_file():
 
     """
     mv_to_dir = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\CEMVN"
-    df_export_to_csv = mv_to_dir + "\metadata\ehydro_allscript_meta_v1.txt"  # r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt'
+    df_export_to_csv = os.path.join(mv_to_dir, 'metadata',
+                                    'ehydro_allscript_meta_v1.txt')  # r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt'
     merged_dataframe = pd.read_csv(df_export_to_csv, sep='\t', index_col=0)
-    # metafile = mv_to_dir + "\metadata\ehydro_meta_dict_out.txt"
+    # metafile = os.path.join(mv_to_dir, 'metadata', 'ehydro_meta_dict_out.txt')
     # alternative
     # merged_dataframe = pd.read_csv(metafile, sep = ",", index_col = 1)
     move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir)
@@ -86,12 +87,12 @@ def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
         basename = return_surveyid(basename, ex_string4)
         basename = basename.rstrip('.xyz')
         basename = basename.rstrip('.XYZ')
-        survey_files = glob(os.path.join(filepath, basename + '*'))
+        survey_files = glob(os.path.join(filepath, f'{basename}*'))
         print(survey_files)
 
         if newpathroot is not None:
             if os.path.exists(newpathroot):
-                filedatumpath = newpathroot + d_folder + '\\Original'
+                filedatumpath = os.path.join(newpathroot, d_folder, 'Original')
                 # redirect to a new folder path
 
                 if os.path.isdir(filedatumpath) and os.path.exists(filedatumpath):
@@ -112,7 +113,7 @@ def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
         elif os.path.dirname(f).find('USACE\ehydro') >= 0 or os.path.dirname(f).find(
                 'USACE\E-Hydro') >= 0 or os.path.dirname(f).find('USACE\eHydro' >= 0):
             filepath = os.path.dirname(f)
-            filedatumpath = filepath + d_folder + '\\Original'  # '\MLLW'
+            filedatumpath = os.path.join(filepath, d_folder, 'Original')  # '\MLLW'
             if os.path.isdir(filedatumpath) and os.path.exists(filedatumpath):
                 # move the file here
                 for ff in survey_files:

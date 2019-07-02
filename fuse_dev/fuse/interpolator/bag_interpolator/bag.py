@@ -276,7 +276,7 @@ class bag_file:
 
         """
 
-        name = self.name + '_INTERP_ONLY.bag' if io else '_INTERP_FULL.bag'
+        name = f'{self.name}_INTERP_{"ONLY" if io else "FULL"}.bag'
         self.outfilename = _os.path.join(outlocation, name)
 
 

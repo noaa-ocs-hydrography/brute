@@ -187,7 +187,7 @@ class read_raw:
                         option += f'_{splitname[n]}'
                 meta['optional'] = option
         else:
-            print(name + ' appears to have a nonstandard naming convention.')
+            print(f'{name} appears to have a nonstandard naming convention.')
         return meta
 
     def _parse_xyz_header(self, infilename):

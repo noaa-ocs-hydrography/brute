@@ -246,7 +246,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         metapath, metafile = _os.path.split(self._config['metapath'])
         filepath, filename = _os.path.split(infilename)
         fname, ext = _os.path.splitext(filename)
-        logname = _os.path.join(metapath, fname + '.log')
+        logname = _os.path.join(metapath, f'{fname}.log')
         self._meta['logfilename'] = logname
         # remove handlers that might have existed from previous files
         for h in self.logger.handlers:

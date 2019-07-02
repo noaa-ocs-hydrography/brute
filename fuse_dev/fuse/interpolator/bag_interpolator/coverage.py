@@ -504,7 +504,7 @@ class unified_coverage:
         fullname = _os.path.split(name)[1]
         justname = _os.path.splitext(fullname)[0]
         snum = justname.split('_')[0]
-        outputname = snum + '_COMBINEDPOLY'
+        outputname = f'{snum}_COMBINEDPOLY'
 
         return meanCoverage, outputname, tuple(shape)
 
@@ -925,7 +925,7 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW'):
     -------
 
     """
-    name = coverage.name + '.gpkg'
+    name = f'{coverage.name}.gpkg'
     outfilename = _os.path.join(outputpath, name)
 
     proj = _osr.SpatialReference(wkt=coverage.wkt)

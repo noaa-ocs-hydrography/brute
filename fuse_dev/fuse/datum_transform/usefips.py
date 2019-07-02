@@ -34,9 +34,9 @@ def fips2wkt(fips: int, units: str = 'FEET'):
     # combine the fips code with units to get the ERSI code
     fipsstr = str(fips)
     if units == 'FEET':
-        esri_code = fipsstr + '2,'
+        esri_code = f'{fipsstr}2,'
     elif units == 'METER':
-        esri_code = fipsstr + '1,'
+        esri_code = f'{fipsstr}1,'
     else:
         print("Unit type not recognized")
         esri_code = "-1"

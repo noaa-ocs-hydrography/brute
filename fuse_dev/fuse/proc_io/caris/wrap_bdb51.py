@@ -265,7 +265,7 @@ class bdb51_io:
         #         except:
         #             surface.attribute['OBJNAM']  = 'MetaDataFail'
         #             with open('metadata_error_file.txt','a') as metafail:
-        #                 metafail.write(file_path + '\n')
+        #                 metafail.write(f'{file_path}\n')
 
         # commit the feature to the database
         self._db.commit()

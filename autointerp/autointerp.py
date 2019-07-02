@@ -156,7 +156,7 @@ def getShpRast(file: str, y, pixel_size=1, nodata=255):
     fName = _os.path.split(file)[-1]
     splits = _os.path.splitext(fName)
     name = splits[0]
-    tif = splits[0] + '.tif'
+    # tif = f'{splits[0]}.tif'
 
     # Open the data source and read in the extent
     source_ds = _ogr.Open(file)
@@ -1283,9 +1283,9 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
     print(fName)
     split = fName.split('_')[:2]
     if res < 1:
-        res = str(int(res * 100)) + 'cm'
+        res = f'{int(res * 100)}cm'
     else:
-        res = str(res) + 'm'
+        res = f'{res}m'
 
     bagName = f'{"_".join([x for x in split])}_{res}_INTERP_{"ONLY" if ioVal == 1 else "FULL"}'
     outputpath2 = _os.path.join(path, f'{bagName}.bag')
