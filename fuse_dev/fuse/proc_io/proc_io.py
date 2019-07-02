@@ -17,7 +17,7 @@ from typing import Tuple, List
 
 import fiona
 import numpy as np
-from osgeo import gdal, ogr, osr
+from osgeo import gdal, ogr
 
 gdal.UseExceptions()
 from fuse.proc_io import caris
@@ -224,14 +224,8 @@ class proc_io:
 
         layer_name = 'Elevation'
 
-        outfilename = os.path.splitext(outfilename)[0] + '_Points.gpkg'
-
         points, meta = self._point2wkt(dataset)
-        crs = meta['crs']
-        proj = osr.SpatialReference(wkt=crs)
-
-        splits = os.path.splitext(outfilename)
-        outfilename = f'{splits[0]}_Points.gpkg'
+        outfilename = f'{os.path.splitext(outfilename)[0]}_Points.gpkg'
 
         layer_schema = {
             'geometry': 'Point',
@@ -259,7 +253,7 @@ class proc_io:
             }
         } for point in points]
 
-        with fiona.open(outfilename, 'w', 'GPKG', schema=layer_schema, crs=fiona.crs.from_string(crs),
+        with fiona.open(outfilename, 'w', 'GPKG', schema=layer_schema, crs=fiona.crs.from_string(meta['crs']),
                         layer=layer_name) as output_file:
             output_file.writerecords(point_records)
 
@@ -271,29 +265,36 @@ class proc_io:
         :param outfilename:
         """
 
-        splits = os.path.split(outfilename)[1]
-        name = os.path.splitext(outfilename)[0]
-        outfilename = os.path.join(splits[0], f'{name}_Vector.gpkg')
+        layer_name = 'Elevation'
 
-        proj = dataset.GetProjection()
-        proj = osr.SpatialReference(wkt=proj)
-        band = dataset.GetRasterBand(1)
+        points, meta = self._point2wkt(dataset)
+        directory, filename = os.path.split(outfilename)
+        outfilename = f'{directory}{os.path.splitext(filename)[0]}_Vector.gpkg'
 
-        driver = ogr.GetDriverByName('GPKG')
-        ds = driver.CreateDataSource(outfilename)
-        layer = ds.CreateLayer(name, proj, ogr.wkbMultiPolygon)
+        layer_schema = {
+            'geometry': 'Multipolygon',
+            'properties': {
+                'Survey': 'str',
+            }
+        }
 
-        # Add one attribute
-        layer.CreateField(ogr.FieldDefn('Survey', ogr.OFTString))
-        defn = layer.GetLayerDefn()
+        # TODO install rasterio and also test this
+        multipolygon = rasterio.features.shapes(dataset.GetRasterBand(1))
 
-        # Create a new feature (attribute and geometry)
-        feat = ogr.Feature(defn)
-        feat.SetField('Survey', name)
+        # in fiona features are input as dictionary "records"
+        multipolygon_record = {
+            'geometry': {
+                'type': 'Multipolygon',
+                'coordinates': ()
+            },
+            'properties': {
+                'Survey': filename
+            }
+        }
 
-        gdal.Polygonize(band, None, layer, 0, [], callback=None)
-
-        ds = band = None
+        with fiona.open(outfilename, 'w', 'GPKG', schema=layer_schema, crs=fiona.crs.from_string(meta['crs']),
+                        layer=layer_name) as output_file:
+            output_file.writerecord(multipolygon_record)
 
     def _gdal2array(self, dataset: gdal.Dataset) -> np.array:
         """
