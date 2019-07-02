@@ -289,21 +289,21 @@ def getBagLyrs(fileObj: str):
                                  namespaces=ns)[0].text.split()
             a = 1
         except (_et.Error, IndexError) as e:
-            print(f"Unable to read corners SW and NE: {e}", '\nAttempting to read via a different namespace')
+            print("Unable to read corners SW and NE: {}\nAttempting to read via a different namespace".format(e))
             try:
                 ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
                                      'cornerPoints/gml:Point/gml:coordinates',
                                      namespaces=ns2)[0].text.split()
                 a = 2
             except (_et.Error, IndexError) as e:
-                print(f"Unable to read corners SW and NE: {e}")
+                print("Unable to read corners SW and NE: {}".format(e))
                 return
 
         try:
             sw = [float(c) for c in ret[0].split(',')]
             ne = [float(c) for c in ret[1].split(',')]
         except (ValueError, IndexError) as e:
-            print(f"Unable to parse corners SW and NE from xml: {e}")
+            print("Unable to parse corners SW and NE from xml: {}".format(e))
             return
         print(a, ret, sw, ne)
         sx, sy = sw

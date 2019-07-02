@@ -168,7 +168,7 @@ class bdb51:
                 args,
                 creationflags=subprocess.CREATE_NEW_CONSOLE)
         except:
-            err = f'Error executing: {args}'
+            err = 'Error executing: {}'.format(args)
             print(err)
             self._logger.log(logging.DEBUG, err)
         try:
@@ -182,7 +182,7 @@ class bdb51:
         #                print(msg)
         #                self._logger.log(logging.DEBUG, msg)
         except Exception as e:
-            err = f'Error in handling error output: {e}'
+            err = 'Error in handling error output: {}'.format(e)
             print(err)
             self._logger.log(logging.DEBUG, err)
 
@@ -267,7 +267,7 @@ class bdb51:
                     response = self._response
                     self._logger.log(logging.DEBUG, str(response))
                     if not response['success']:
-                        print('{} failed!').format(response['command'])
+                        print('{} failed!'.format(response['command']))
                     self._response = None
                     break
         else:

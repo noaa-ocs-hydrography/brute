@@ -138,13 +138,13 @@ class bdb51_io:
         self.database = command_dict['database']
         try:
             self._nm = bdb.NodeManager(username, password, self.node_manager)
-            msg += f'Connected to Node Manager {self.node_manager}\n'
+            msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
         except RuntimeError as error:
-            msg += f'{error}'
+            msg += '{}'.format(error)
         if self._nm is not None:
             try:
                 self._db = self._nm.get_database(self.database)
-                msg += f', Connected to database {self.database}'
+                msg += ', Connected to database {}'.format(self.database)
                 self.connected = True
                 command_dict['success'] = True
             except RuntimeError as error:
@@ -305,7 +305,7 @@ class bdb51_io:
         self._nm = None
         self._db = None
         command_dict['success'] = True
-        command_dict['log'] = f'Stopping I/O with {self.database}'
+        command_dict['log'] = 'Stopping I/O with {}'.format(self.database)
         self.alive = False
         return command_dict
 

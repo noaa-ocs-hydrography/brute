@@ -83,7 +83,7 @@ class proc_io:
         :param metadata:  (Default value = None)
         """
 
-        self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write')
+        self._logger.log(logging.DEBUG, 'Begin {} write'.format(self._out_data_type))
         if os.path.exists(instruction) and self.overwrite:
             self._logger.log(logging.DEBUG, 'Overwriting ' + instruction)
             os.remove(instruction)
@@ -167,11 +167,11 @@ class proc_io:
                 print(err)
                 self._logger.log(logging.DEBUG, err)
             if not os.path.exists(metadata['outfilename']):
-                err = f"Unable to create {metadata['outfilename']}"
+                err = "Unable to create {}".format(metadata['outfilename'])
                 self._logger.log(logging.DEBUG, err)
                 raise RuntimeError(err)
         else:
-            err = f"Unable to overwrite {metadata['outfilename']}"
+            err = "Unable to overwrite {}".format(metadata['outfilename'])
             self._logger.log(logging.DEBUG, err)
             raise RuntimeError(err)
 

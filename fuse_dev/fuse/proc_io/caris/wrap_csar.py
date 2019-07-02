@@ -178,36 +178,23 @@ def check_metadata(meta: dict, meta_type: str):
     """
 
     if meta_type == 'gdal':
-        req_attrib = {'resx',
-                      'resy',
-                      'originx',
-                      'originy',
-                      'dimx',
-                      'dimy',
-                      'crs',
-                      'nodata',
-                      'outfilename',
-                      'z_up',
-                      }
+        req_attrib = {'resx', 'resy', 'originx', 'originy', 'dimx', 'dimy', 'crs', 'nodata', 'outfilename', 'z_up'}
         mkeys = ''
         for key in req_attrib:
             if key not in meta:
                 mkeys = mkeys + key + ', '
         if len(mkeys) > 0:
-            raise ValueError(f'Metadata missing to write csar {mkeys}')
+            raise ValueError('Metadata missing to write csar {}'.format(mkeys))
     elif meta_type == 'point':
-        req_attrib = {'crs',
-                      'outfilename',
-                      'z_up',
-                      }
+        req_attrib = {'crs', 'outfilename', 'z_up'}
         mkeys = ''
         for key in req_attrib:
             if key not in meta:
                 mkeys = mkeys + key + ', '
         if len(mkeys) > 0:
-            raise ValueError(f'Metadata missing to write csar {mkeys}')
+            raise ValueError('Metadata missing to write csar {}'.format(mkeys))
     else:
-        raise ValueError(f'Metadata missing to write csar {mkeys}')
+        raise ValueError('Unknown metadata typ: {}'.format(meta_type))
 
 
 def main():
