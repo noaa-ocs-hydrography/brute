@@ -226,6 +226,14 @@ class fuse_ehydro(_fbc.fuse_base_class):
             self._meta['to_filename'] = outfilename
         else:
             self.logger.log(_logging.DEBUG, 'No fips code found')
+            
+    def post(self, infilename):
+        """
+        Make the data available for amalgamation.
+        """
+        self._get_stored_meta(infilename)
+        self._set_log(infilename)
+        
 
     def _set_log(self, infilename: str):
         """
