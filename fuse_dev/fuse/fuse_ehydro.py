@@ -174,7 +174,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         meta['to_vert_datum'] = self._config['to_vert_datum']
         meta['to_vert_units'] = 'metres'
         meta['interpolated'] = 'True'
-        # meta['script_version'] = meta['script_version'] #+ ',' + __version__ + i2c.__version__
+        # meta['script_version'] = f'{meta['script_version']}' #,{__version__}{i2c.__version__}'
         self._meta.update(meta)
         # write the metadata
         self._meta_obj.write_meta_record(meta)
@@ -208,7 +208,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
             infileroot, ext = _os.path.splitext(infilebase)
             outfilename = _os.path.join(outpath, infileroot)
             new_ext = self._config['bathymetry_intermediate_file']
-            outfilename = outfilename + '.' + new_ext
+            outfilename = f'{outfilename}.{new_ext}'
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
             dataset = self._transform.translate(infilename, self._meta)
@@ -246,7 +246,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         metapath, metafile = _os.path.split(self._config['metapath'])
         filepath, filename = _os.path.split(infilename)
         fname, ext = _os.path.splitext(filename)
-        logname = _os.path.join(metapath, fname + '.log')
+        logname = _os.path.join(metapath, f'{fname}.log')
         self._meta['logfilename'] = logname
         # remove handlers that might have existed from previous files
         for h in self.logger.handlers:

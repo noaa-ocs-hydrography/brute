@@ -80,7 +80,7 @@ class bdb51_io:
                 self.sock.sendall(pickle.dumps(response))
         self.sock.close()
 
-    def take_commands(self, command_dict: dict):
+    def take_commands(self, command_dict: dict) -> dict:
         """
         Act on commands the provided command dictionary, such as to upload
         data, read and return data, destroy the object and exit the
@@ -102,16 +102,17 @@ class bdb51_io:
 
         # self._command.append(command_dict)
         command = command_dict['command']
+
         if command == 'connect':
-            response = self.connect(command_dict)
+            return self.connect(command_dict)
         elif command == 'status':
-            response = self.status(command_dict)
+            return self.status(command_dict)
         elif command == 'upload':
-            response = self.upload(command_dict)
+            return self.upload(command_dict)
         elif command == 'die':
-            response = self.die(command_dict)
+            return self.die(command_dict)
+
         # self._response.append(response)
-        return response
 
     def connect(self, command_dict: dict) -> dict:
         """
@@ -136,25 +137,30 @@ class bdb51_io:
         msg = ''
         self.node_manager = command_dict['node_manager']
         self.database = command_dict['database']
+
         try:
-            self._nm = bdb.NodeManager(username, password, self.node_manager)
-            msg += f'Connected to Node Manager {self.node_manager}\n'
+            self._nm = bdb.NodeManager(command_dict['username'], command_dict['password'], self.node_manager)
+            msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
         except RuntimeError as error:
-            msg += f'{error}'
+            msg += str(error)
+
         if self._nm is not None:
             try:
                 self._db = self._nm.get_database(self.database)
-                msg += f', Connected to database {self.database}'
+                msg += ', Connected to database {}'.format(self.database)
                 self.connected = True
                 command_dict['success'] = True
             except RuntimeError as error:
                 msg = msg + str(error)
                 command_dict['success'] = False
+
         command_dict['log'] = msg
         return command_dict
 
     def _check_connection(self):
-        """Check to see if the database connection is alive."""
+        """
+        Check to see if the database connection is alive.
+        """
 
         pass
 
@@ -201,19 +207,31 @@ class bdb51_io:
 
         # what to upload, new or updated data
         action = command_dict['action']
+
         # the name of the file to get data from
         file_path = command_dict['path']
+
         try:
             if action == 'new':
                 msg = self._upload_new(file_path)
+            elif action == 'bathy':
+                pass
+                # query for the object and replace the bathy
+            elif action == 'metadata':
+                pass
+                # query for the object and replace the metadata
+            else:
+                raise ValueError('Upload action type not understood')
+
             command_dict['success'] = True
-            command_dict['log'] = msgexcept
-            Exception as error:
+            command_dict['log'] = msg
+        except Exception as error:
             command_dict['success'] = False
             command_dict['log'] = str(error)
+
         return command_dict
 
-    def _upload_new(self, file_path: str):
+    def _upload_new(self, file_path: str) -> str:
         """
         Upload both bathymetry and the metadata.
 
@@ -236,6 +254,7 @@ class bdb51_io:
         surface = self._db.create_feature('surfac', geom)
         surface['OBJNAM'] = file_path
         surface['srcfil'] = file_path
+
         # get a metadata container to put stuff into
         #        metadata = surface.attributes
         #        # need to load the metadata dictionary that was put on disk here.
@@ -246,15 +265,16 @@ class bdb51_io:
         #         except:
         #             surface.attribute['OBJNAM']  = 'MetaDataFail'
         #             with open('metadata_error_file.txt','a') as metafail:
-        #                 metafail.write(file_path + '\n')
+        #                 metafail.write(f'{file_path}\n')
+
         # commit the feature to the database
         self._db.commit()
+
         # upload coverage
         surface.upload_coverage(file_path)
-        info = 'Uploaded {} to {}'.format(file_path, self.database)
-        return info
+        return 'Uploaded {} to {}'.format(file_path, self.database)
 
-    def query(self, command_dict: dict):
+    def query(self, command_dict: dict) -> dict:
         """
         Query for and return data from the db.
 
@@ -297,7 +317,7 @@ class bdb51_io:
         self._nm = None
         self._db = None
         command_dict['success'] = True
-        command_dict['log'] = f'Stopping I/O with {self.database}'
+        command_dict['log'] = 'Stopping I/O with {}'.format(self.database)
         self.alive = False
         return command_dict
 

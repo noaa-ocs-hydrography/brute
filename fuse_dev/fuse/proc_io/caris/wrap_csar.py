@@ -40,13 +40,8 @@ def write_csar(dataset: gdal.Dataset, m: dict):
     print(m, dataset, dataset.shape)
     z_dir = cc.Direction.HEIGHT
     layerName = "Elevation"
-    band_info = cc.BandInfo(name=layerName,
-                            type=cc.DataType.FLOAT32,
-                            tuple_length=1,
-                            direction=z_dir,
-                            units='m',
-                            category=cc.Category.SCALAR,
-                            level_policy=cc.LevelPolicy.BICUBIC)
+    band_info = cc.BandInfo(name=layerName, type=cc.DataType.FLOAT32, tuple_length=1, direction=z_dir, units='m',
+                            category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.BICUBIC)
     resolution = [m['resy'], m['resx']]
     origin = [m['originx'], m['originy']]
     #    origin = [0,0]
@@ -66,12 +61,15 @@ def write_csar(dataset: gdal.Dataset, m: dict):
             os.remove(name + '0')
         except:
             pass
+
     raster = cc.create_raster(name, crs, origin, resolution, dimensions, bands)
     idx = (dataset < m['nodata']).astype(np.int)
+
     if not m['z_up']:
         dataset = np.where(idx, -dataset, raster.band_info['Elevation'].ndv)
     else:
         dataset = np.where(idx, dataset, raster.band_info['Elevation'].ndv)
+
     # write the data into the csar container
     band_dtype = raster.band_info['Elevation'].numpy_dtype
     area = ((0, 0), (dimensions[0], dimensions[1]))
@@ -104,6 +102,7 @@ def write_cloud(dataset: gdal.Dataset, m: dict):
     print(m)
     outfilename = m['outfilename']
     print(outfilename + '0')
+
     while os.path.exists(outfilename) and os.path.exists(outfilename + '0'):
         try:
             os.remove(outfilename)
@@ -123,20 +122,12 @@ def write_cloud(dataset: gdal.Dataset, m: dict):
     z_dir = cc.Direction.HEIGHT
     layerName = "Elevation"
     print(m['z_up'], layerName, z_dir)
-    bandInfo[layerName] = cc.BandInfo(type=cc.DataType.FLOAT64,
-                                      tuple_length=1,
-                                      name=layerName,
-                                      direction=z_dir,
-                                      units='m',
-                                      category=cc.Category.SCALAR,
-                                      ndv=-1.0)
-    bandInfo['Position'] = cc.BandInfo(type=cc.DataType.FLOAT64,
-                                       tuple_length=3,
-                                       name='Position',
-                                       direction=cc.Direction.NAP,
-                                       units='',
-                                       category=cc.Category.SCALAR,
+    bandInfo[layerName] = cc.BandInfo(type=cc.DataType.FLOAT64, tuple_length=1, name=layerName, direction=z_dir,
+                                      units='m', category=cc.Category.SCALAR, ndv=-1.0)
+    bandInfo['Position'] = cc.BandInfo(type=cc.DataType.FLOAT64, tuple_length=3, name='Position',
+                                       direction=cc.Direction.NAP, units='', category=cc.Category.SCALAR,
                                        ndv=(-1.0, -1.0, 0.0))
+
     # set up the CSAR
     opts = cc.Options();
     opts.open_type = cc.OpenType.WRITE
@@ -145,6 +136,7 @@ def write_cloud(dataset: gdal.Dataset, m: dict):
     opts.extents = ((dataset[:, 0].min(), dataset[:, 1].min(), dataset[:, 2].min()),
                     (dataset[:, 0].max(), dataset[:, 1].max(), dataset[:, 2].max()))
     opts.wkt_cosys = crs
+
     # Create data for iterator
     if not m['z_up']:
         blocks = [{layerName: list(-dataset[:, 2]), 'Position': list(dataset)}]
@@ -178,36 +170,27 @@ def check_metadata(meta: dict, meta_type: str):
     """
 
     if meta_type == 'gdal':
-        req_attrib = {'resx',
-                      'resy',
-                      'originx',
-                      'originy',
-                      'dimx',
-                      'dimy',
-                      'crs',
-                      'nodata',
-                      'outfilename',
-                      'z_up',
-                      }
+        req_attrib = {'resx', 'resy', 'originx', 'originy', 'dimx', 'dimy', 'crs', 'nodata', 'outfilename', 'z_up'}
         mkeys = ''
+
         for key in req_attrib:
             if key not in meta:
                 mkeys = mkeys + key + ', '
+
         if len(mkeys) > 0:
-            raise ValueError(f'Metadata missing to write csar {mkeys}')
+            raise ValueError('Metadata missing to write csar {}'.format(mkeys))
     elif meta_type == 'point':
-        req_attrib = {'crs',
-                      'outfilename',
-                      'z_up',
-                      }
+        req_attrib = {'crs', 'outfilename', 'z_up'}
         mkeys = ''
+
         for key in req_attrib:
             if key not in meta:
                 mkeys = mkeys + key + ', '
+
         if len(mkeys) > 0:
-            raise ValueError(f'Metadata missing to write csar {mkeys}')
+            raise ValueError('Metadata missing to write csar {}'.format(mkeys))
     else:
-        raise ValueError(f'Metadata missing to write csar {mkeys}')
+        raise ValueError('Unknown metadata typ: {}'.format(meta_type))
 
 
 def main():
@@ -215,13 +198,17 @@ def main():
 
     # check to make sure the file exists
     data = np.load(sys.argv[1])
+
     # check to make sure the metadata file exists
     with open(sys.argv[2], 'rb') as metafile:
         metadata = pickle.load(metafile)
+
     # write type argument
     outfile_type = sys.argv[3]
+
     # read the metadata into variables and send to the write method
     check_metadata(metadata, outfile_type)
+
     if outfile_type == 'gdal':
         write_csar(data, metadata)
     elif outfile_type == 'point':

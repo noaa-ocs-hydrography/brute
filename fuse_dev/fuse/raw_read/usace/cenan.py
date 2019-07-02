@@ -135,12 +135,9 @@ class read_raw:
                 val = read_raw._ussft2m * float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
-        sorind = (name_meta['projid'] + '_' +
-                  name_meta['uniqueid'] + '_' +
-                  name_meta['subprojid'] + '_' +
-                  name_meta['start_date'] + '_' +
-                  name_meta['statuscode'])
-        merged_meta['source_indicator'] = 'US,US,graph,' + sorind
+        sorind = f"{name_meta['projid']}_{name_meta['uniqueid']}_{name_meta['subprojid']}_{name_meta['start_date']}_" + \
+                 f"{name_meta['statuscode']}"
+        merged_meta['source_indicator'] = f'US,US,graph,{sorind}'
         # merged_meta['script_version'] = __version__
         return merged_meta
 
@@ -187,10 +184,10 @@ class read_raw:
                 option = splitname[5]
                 if len(splitname) > 6:
                     for n in range(6, len(splitname)):
-                        option = option + '_' + splitname[n]
+                        option += f'_{splitname[n]}'
                 meta['optional'] = option
         else:
-            print(name + ' appears to have a nonstandard naming convention.')
+            print(f'{name} appears to have a nonstandard naming convention.')
         return meta
 
     def _parse_xyz_header(self, infilename):
@@ -510,7 +507,7 @@ class read_raw:
                         meta_key = txt_keys[key]
                         txt_meta[meta_key] = line
         for key in txt_meta:
-            if key == 'from_vert_acc' or key == 'from_horiz_acc':
+            if key in ('from_vert_acc', 'from_horiz_acc'):
                 line = txt_meta[key]
                 val = line.split()[-2]
                 txt_meta[key] = val

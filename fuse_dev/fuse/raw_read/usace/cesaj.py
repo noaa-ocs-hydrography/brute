@@ -82,9 +82,8 @@ class read_raw:
         """
         # get the dat file for CESAJ# Jacksonville
         stub, ext = os.path.splitext(infilename)
-        bathyfilename = stub + '.dat'
+        bathyfilename = f'{stub}.dat'
         xyz = _np.loadtxt(bathyfilename, delimiter=' ')
-        self.xyz
         return xyz
 
     def read_bathymetry(self, infilename):
@@ -204,7 +203,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     subset_no_overlap = {}
     subset_dict = {}
     for key in meta:
-        if meta[key] == 'unknown' or meta[key] == '':
+        if meta[key] in ('unknown', ''):
             list_keys_empty.append(key)
         else:
             subset_row[key] = meta[key]
@@ -216,21 +215,19 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
                     only make list within cell if values from different sources are different
                     """
                 else:
-                    combined_row[key] = meta[key] + ' , ' + meta_xml[key]
+                    combined_row[key] = f'{meta[key]} , {meta_xml[key]}'
             else:
                 subset_no_overlap[key] = meta[key]
     for key in ext_dict:
-        if ext_dict[key] == 'unknown' or ext_dict[key] == '' or ext_dict[key] == None:
+        if ext_dict[key] is None or ext_dict[key] in ('unknown', ''):
             list_keys_empty.append(key)
         else:
             if key in meta_xml:
                 if meta_xml[key] == ext_dict[key]:
                     combined_row[key] = ext_dict[key]
-                    """
-                    only make list within cell if values from different sources are different
-                    """
+                    # only make list within cell if values from different sources are different
                 else:
-                    combined_row[key] = ext_dict[key] + ' , ' + meta_xml[key]
+                    combined_row[key] = f'{ext_dict[key]} , {meta_xml[key]}'
             else:
                 subset_dict[key] = ext_dict[key]
     merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row}  # this one excluded 'unknown' keys, and
@@ -241,7 +238,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     except:
         err_file = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\CESAJ\metadata\Error_file_if_date_checkfail.txt"
         with open(err_file, 'a') as error:
-            error.write(f + ' : extra dict END DATE SEARCH call fail \n')
+            error.write(f'{f} : extra dict END DATE SEARCH call fail \n')
 
     return merged_meta
 
@@ -254,9 +251,11 @@ class Extract_Txt(object):
         self.filename = preloadeddata
         if filename != "" or None:
             self.filename_1 = filename
-            self.errorfile = os.path.dirname(filename) + 'TEST_extract_ehdyro_meta_class_CESAJ_ErrorFile1.txt'
+            self.errorfile = os.path.join(os.path.dirname(filename),
+                                          'TEST_extract_ehdyro_meta_class_CESAJ_ErrorFile1.txt')
         else:
-            self.errorfile = os.path.dirname(filename) + 'Default_extract_ehdyro_meta_class_CESAJ_error.txt'
+            self.errorfile = os.path.join(os.path.dirname(filename),
+                                          'Default_extract_ehdyro_meta_class_CESAJ_error.txt')
 
     def parse_ehydro_xyz(self, infilename, meta_source='xyz', version='CESAJ',
                          default_meta=''):  # need to change version to None
@@ -307,12 +306,9 @@ class Extract_Txt(object):
                 val = _ussft2m * float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
-        sorind = (name_meta['projid'] + '_' +
-                  name_meta['uniqueid'] + '_' +
-                  name_meta['subprojid'] + '_' +
-                  name_meta['start_date'] + '_' +
-                  name_meta['statuscode'])
-        merged_meta['source_indicator'] = 'US,US,graph,' + sorind
+        sorind = f"{name_meta['projid']}_{name_meta['uniqueid']}_{name_meta['subprojid']}_{name_meta['start_date']}_" + \
+                 f"{name_meta['statuscode']}"
+        merged_meta['source_indicator'] = f'US,US,graph,{sorind}'
         merged_meta['script_version'] = __version__
         return merged_meta
 
@@ -359,12 +355,12 @@ class Extract_Txt(object):
                     option = splitname[5]
                     if len(splitname) > 6:
                         for n in range(6, len(splitname)):
-                            option = option + '_' + splitname[n]
+                            option += f'_{splitname[n]}'
                     meta['optional'] = option
             else:
                 meta['statuscode'] = ''
         else:
-            print(name + ' appears to have a nonstandard naming convention.')
+            print(f'{name} appears to have a nonstandard naming convention.')
         return meta
 
     def parse_xyz_header(self, infilename, version=None):
@@ -413,7 +409,7 @@ class Extract_Txt(object):
             meta = {}
             errorfile = self.errorfile
             with open(errorfile, 'a') as metafail:
-                metafail.write(infilename + '\n')
+                metafail.write(f'{infilename}\n')
             return meta
 
     def load_default_metadata(self, infilename, default_meta):
@@ -463,7 +459,7 @@ def get_xml(filename):
 
     """
     basef = filename.rpartition('.')[0]
-    xml_name = basef + '.xml'
+    xml_name = f'{basef}.xml'
     return xml_name
 
 
@@ -490,7 +486,7 @@ def get_xml_xt(filename, extension):
         basef = filename[:-end_len]
     else:
         basef = filename
-    xml_name = basef + '.xml'
+    xml_name = f'{basef}.xml'
     return xml_name
 
 
@@ -549,7 +545,7 @@ def _start_xyz(infilename):
                 if line.find(',') > 0:
                     commas_present = ','
         first_instance = numberofrows[0]
-        return first_instance, commas_present
+
     return first_instance, commas_present
 
 
@@ -568,7 +564,7 @@ def _is_header2(line, version=None):
     -------
 
     """
-    if version == None:
+    if version is None:
         version = ''
     if version == 'CESAJ':
         pattern_coordinates = '[\d][\d][\d][\d][\d][\d]'  # at least six digits# should be seven then . plus two digits
@@ -1030,14 +1026,14 @@ def check_date_order(m, mm):
     date_list = []  # date_list = [begdate, enddate,filename_date]
     if 'begdate' in m:
         # parser.parse(text_date, dayfirst=False)
-        if m['begdate'] != '' and m['begdate'] != None:
+        if m['begdate'] != '' and m['begdate'] is not None:
             est_begdate, ans1 = check_date_format_hasday(m['begdate'])
             if ans1 == 'yes':
                 begdate = datetime.date(datetime.strptime(m['begdate'], '%Y%m%d'))
                 date_list.append(begdate)
                 # m['start_date'] = m['begdate']
     if 'enddate' in m:
-        if m['enddate'] != '' and m['enddate'] != None:
+        if m['enddate'] != '' and m['enddate'] is not None:
             est_enddate, ans1 = check_date_format_hasday(m['begdate'], int(
                 '30'))  # may want better logic here other date modules can handle this better once situation flagged
             if ans1 == 'yes':
@@ -1083,7 +1079,7 @@ def check_abst_date(filename_date, daterange):
     next_date = []
     mnum = ''
     XX = datetime.strptime(filename_date, '%Y%m%d')  # Create default value based on filename date
-    if daterange != '' and daterange != None:
+    if daterange != '' and daterange is not None:
         dates = []
         if '&' in daterange:
             dates = daterange.split('&')
@@ -1193,7 +1189,7 @@ def check_date_format_hasday(date_string, b_or_e=None):
     """
     pattern_missing_valid_day = '[\d][\d][\d][\d][\d][\d][0][0]'
 
-    if b_or_e == None:
+    if b_or_e is None:
         day = '1'
     elif type(b_or_e) == int:
         day = str(b_or_e)
