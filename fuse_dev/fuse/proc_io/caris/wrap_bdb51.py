@@ -55,7 +55,6 @@ class bdb51_io:
         # set up the socket
         try:
             self.sock = socket.create_connection((host, port))
-            self.connected = True
         except OSError:
             self.sock.close()
             self.sock = None
@@ -76,8 +75,11 @@ class bdb51_io:
             if data:
                 command = pickle.loads(data)
                 response = self.take_commands(command)
-                print('Response', response)
-                self.sock.sendall(pickle.dumps(response))
+                print('Response', response, end = '\n\n')
+                data = pickle.dumps(response)
+                lensent = self.sock.send(data)
+                if lensent != len(data):
+                    print('Failed to send all data. {} sent.').format(lensent)
         self.sock.close()
 
     def take_commands(self, command_dict: dict):
@@ -138,13 +140,14 @@ class bdb51_io:
         self.database = command_dict['database']
         try:
             self._nm = bdb.NodeManager(username, password, self.node_manager)
-            msg += f'Connected to Node Manager {self.node_manager}\n'
+            msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
         except RuntimeError as error:
-            msg += f'{error}'
+            msg += str(error)
+            command_dict['success'] = False
         if self._nm is not None:
             try:
                 self._db = self._nm.get_database(self.database)
-                msg += f', Connected to database {self.database}'
+                msg += ', Connected to database {}'.format(self.database)
                 self.connected = True
                 command_dict['success'] = True
             except RuntimeError as error:
@@ -178,6 +181,7 @@ class bdb51_io:
 
         command_dict['success'] = True
         command_dict['alive'] = self.alive
+        command_dict['connected'] = self.connected
         return command_dict
 
     def upload(self, command_dict: dict) -> dict:
@@ -198,30 +202,31 @@ class bdb51_io:
             response
 
         """
-
-        # what to upload, new or updated data
-        action = command_dict['action']
-        # the name of the file to get data from
-        file_path = command_dict['path']
         try:
+            # what to upload, new or updated data
+            action = command_dict['action']
+            # the name of the file to get data from
+            bathy_path = command_dict['bathy_path']
+            with open(command_dict['meta_path'], 'rb') as f:
+                metadata = pickle.load(f)
             if action == 'new':
-                msg = self._upload_new(file_path)
+                msg = self._upload_new(bathy_path, metadata)
             elif action == 'bathy':
-                pass
+                msg = 'Updating only bathy is not implemented yet'
                 # query for the object and replace the bathy
             elif action == 'metadata':
-                pass
+                msg = 'Updating only metadata is not implemented yet'
                 # query for the object and replace the metadata
             else:
                 raise ValueError('Upload action type not understood')
             command_dict['success'] = True
-            command_dict['log'] = msgexcept
-            Exception as error:
+            command_dict['log'] = msg
+        except Exception as error:
             command_dict['success'] = False
             command_dict['log'] = str(error)
         return command_dict
 
-    def _upload_new(self, file_path: str):
+    def _upload_new(self, file_path: str, new_metadata: dict):
         """
         Upload both bathymetry and the metadata.
 
@@ -245,16 +250,10 @@ class bdb51_io:
         surface['OBJNAM'] = file_path
         surface['srcfil'] = file_path
         # get a metadata container to put stuff into
-        #        metadata = surface.attributes
-        #        # need to load the metadata dictionary that was put on disk here.
-        #        metafilename = get the name here
-        #        with pickle.load(metafilename) as new_meta:
-        #         try:
-        #             metadata = new_meta
-        #         except:
-        #             surface.attribute['OBJNAM']  = 'MetaDataFail'
-        #             with open('metadata_error_file.txt','a') as metafail:
-        #                 metafail.write(file_path + '\n')
+        current_metadata = surface.attributes
+        # need to load the metadata dictionary that was put on disk here.
+        for key in new_metadata:
+            current_metadata[key] = new_metadata[key]
         # commit the feature to the database
         self._db.commit()
         # upload coverage
@@ -305,7 +304,7 @@ class bdb51_io:
         self._nm = None
         self._db = None
         command_dict['success'] = True
-        command_dict['log'] = f'Stopping I/O with {self.database}'
+        command_dict['log'] = 'Stopping I/O with {}'.format(self.database)
         self.alive = False
         return command_dict
 
