@@ -48,7 +48,8 @@ horz_datum = {
     'WGS84': '2',
     'NAD27': '74',
     'NAD83': '75',
-    'Local': '131'}
+    'Local': '131'
+}
 
 _ussft2m = 0.30480060960121924  # US survey feet to meters
 
@@ -67,11 +68,14 @@ def extract_s57_dict(xmlfilename):
     -------
 
     """
+
     with open(xmlfilename, 'r') as xml_file:
         xml_txt = xml_file.read()
+
     xmlbasename = path.basename(xmlfilename)
     xml_data = XML_Meta(xml_txt, filename=xmlbasename)
     s57_dict = xml_data.get_s57_dict()
+
     return s57_dict
 
 
@@ -247,12 +251,12 @@ class XML_Meta(object):
                 if value1 is None:
                     value1 = ''
                 if my_etree_dict1:
-                    if bool(my_etree_dict1.get(key)) == False:
+                    if not bool(my_etree_dict1.get(key)):
                         # if this key is not populated for the dictionary yet, then populate it
                         my_etree_dict1[key] = value1
                     else:  # if this key already exists, then append to it
                         SI = my_etree_dict1[key]
-                        my_etree_dict1[key] = SI + ',' + value1
+                        my_etree_dict1[key] = f'{SI},{value1}'
                 else:  # if no dictionary exists yet populate
                     my_etree_dict1[key] = value1
             self.my_etree_dict1 = my_etree_dict1
@@ -267,7 +271,7 @@ class XML_Meta(object):
         my_etree_dict1={}
         Example:
         for key in xml_path_to_baseattribute:
-            my_etree_dict1[xml_path_to_baseattribute[key]] = self.xml_tree.findall('./' + key[8:])[0].text
+            my_etree_dict1[xml_path_to_baseattribute[key]] = self.xml_tree.findall(f'./{key[8:]}')[0].text
         self.my_etree_dict1 = my_etree_dict1
 
         Parameters
@@ -280,12 +284,12 @@ class XML_Meta(object):
         my_etree_dict1 = {}
         len_root_name_to_remove = len(self.xml_tree.tag)
         for key in xml_path_to_baseattribute:
-            if self.xml_tree.findall('./' + key[len_root_name_to_remove:]):
-                if self.xml_tree.findall('./' + key[len_root_name_to_remove:]) is None:
+            if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
+                if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is None:
                     my_etree_dict1[xml_path_to_baseattribute[key]] = ''
-                elif len(self.xml_tree.findall('./' + key[len_root_name_to_remove:])) > 0:
+                elif len(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}')) > 0:
                     my_etree_dict1[xml_path_to_baseattribute[key]] = \
-                        self.xml_tree.findall('./' + key[len_root_name_to_remove:])[0].text
+                        self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}')[0].text
             # editing path to add ./ and then remove root name ('metadata'), the first 8 characters in this case.
         for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
             # pulling in Z units from attrs
@@ -332,7 +336,7 @@ class XML_Meta(object):
         my_etree_dict1={}
         Example:
         for key in xml_path_to_baseattribute:
-            my_etree_dict1[iso_xml_path_to_baseattribute[key]] = self.xml_tree.findall('./' + key[8:])[0].text
+            my_etree_dict1[iso_xml_path_to_baseattribute[key]] = self.xml_tree.findall(f'./{key[8:]}')[0].text
         self.my_etree_dict1 = my_etree_dict1
         
         vertical datum is returned in my_etree_dict1['from_vert_key']
@@ -348,36 +352,34 @@ class XML_Meta(object):
         len_root_name_to_remove = len(self.xml_tree.tag)
         vertdatum = {'metadata/spref/vertdef/altsys/altdatum': 'altdatum'}
         for key in iso_xml_path_to_baseattribute:
-            if self.xml_tree.findall('./' + key[len_root_name_to_remove:]):
-                if self.xml_tree.findall('./' + key[len_root_name_to_remove:]) is None:
+            if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
+                if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is None:
                     my_etree_dict1[iso_xml_path_to_baseattribute[key]] = ''
-                elif isinstance(self.xml_tree.findall('./' + key[len_root_name_to_remove:]),
-                                list) == True:  # check if list
-                    if len(self.xml_tree.find('./' + key[len_root_name_to_remove:])) > 0:
+                elif self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:  # check if list
+                    if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:
                         my_etree_dict1[iso_xml_path_to_baseattribute[key]] = \
-                            self.xml_tree.find('./' + key[len_root_name_to_remove:])[0].text
+                            self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')[0].text
                     else:
                         my_etree_dict1[iso_xml_path_to_baseattribute[key]] = self.xml_tree.find(
-                            './' + key[len_root_name_to_remove:]).text
+                            f'./{key[len_root_name_to_remove:]}').text
             else:
                 my_etree_dict1[iso_xml_path_to_baseattribute[key]] = ''
         for key in vertdatum:  #
-            if self.xml_tree.findall('./' + key[len_root_name_to_remove:]):
-                if isinstance(self.xml_tree.findall('./' + key[len_root_name_to_remove:]),
-                              list) == True:  # check if list
-                    if len(self.xml_tree.find('./' + key[len_root_name_to_remove:])) > 0:
+            if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
+                if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:  # check if list
+                    if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:
                         if self.xml_tree.find(
-                                './' + key[len_root_name_to_remove:]) is None:  # Checks for NoneType object ('None')
+                                f'./{key[len_root_name_to_remove:]}') is None:  # Checks for NoneType object ('None')
                             my_etree_dict1['script: from_vert_key'] = ''
                             my_etree_dict1['from_vert_key'] = ''
                         else:
                             my_etree_dict1[vertdatum[key]] = self.xml_tree.find(
-                                './' + key[len_root_name_to_remove:]).text
+                                f'./{key[len_root_name_to_remove:]}').text
                             my_etree_dict1['from_vert_key'] = my_etree_dict1[vertdatum[key]]
                     else:
-                        my_etree_dict1['from_vert_key'] = self.xml_tree.find('./' + key[len_root_name_to_remove:]).text
+                        my_etree_dict1['from_vert_key'] = self.xml_tree.find(f'./{key[len_root_name_to_remove:]}').text
                 else:
-                    my_etree_dict1['from_vert_key'] = self.xml_tree.find('./' + key[len_root_name_to_remove:])
+                    my_etree_dict1['from_vert_key'] = self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')
             else:
                 my_etree_dict1['from_vert_key'] = ''
             my_etree_dict1['script: from_vert_key'] = my_etree_dict1['from_vert_key']
@@ -405,17 +407,16 @@ class XML_Meta(object):
         my_etree_dict1 = {}
         len_root_name_to_remove = len(self.xml_tree.tag)
         for key in fgdc_additional_values:
-            if self.xml_tree.findall('./' + key[len_root_name_to_remove:]):
-                if self.xml_tree.findall('./' + key[len_root_name_to_remove:]) is None:
+            if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
+                if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is None:
                     my_etree_dict1[fgdc_additional_values[key]] = ''
-                elif isinstance(self.xml_tree.findall('./' + key[len_root_name_to_remove:]),
-                                list) == True:  # check if list
-                    if len(self.xml_tree.find('./' + key[len_root_name_to_remove:])) > 0:
+                elif self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:  # check if list
+                    if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:
                         my_etree_dict1[fgdc_additional_values[key]] = \
-                            self.xml_tree.find('./' + key[len_root_name_to_remove:])[0].text
+                            self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')[0].text
                     else:
                         my_etree_dict1[fgdc_additional_values[key]] = self.xml_tree.find(
-                            './' + key[len_root_name_to_remove:]).text
+                            f'./{key[len_root_name_to_remove:]}').text
             else:
                 my_etree_dict1[fgdc_additional_values[key]] = ''
         self.my_etree_dict2 = my_etree_dict1
@@ -446,12 +447,12 @@ class XML_Meta(object):
                 print(si_key, si_value)
                 try:
                     if Survey_Instruments:
-                        if bool(Survey_Instruments.get(
-                                si_key)) == False:  # if this key is not populated for the dictionary yet, then populate it
+                        # if this key is not populated for the dictionary yet, then populate it
+                        if not bool(Survey_Instruments.get(si_key)):
                             Survey_Instruments[si_key] = si_value
                         else:  # if this key already exists, then append to it
                             SI = Survey_Instruments[si_key]
-                            Survey_Instruments[si_key] = SI + ',' + si_value
+                            Survey_Instruments[si_key] = f'{SI},{si_value}'
                     else:  # if no dictionary exists yet populate
                         Survey_Instruments[si_key] = si_value
                 except:
@@ -552,7 +553,7 @@ class XML_Meta(object):
         -------
 
         """
-        if override != None:
+        if override is not None:
             override = 'Y'
             meta_xml = self.convert_xml_to_dict2()
             meta = {}
@@ -624,7 +625,7 @@ class XML_Meta(object):
         try:
             self.data['filename'] = ret.text
         except Exception as e:
-            log.warning("unable to read the survey name attribute: {}".format(e))
+            log.warning(f"unable to read the survey name attribute: {e}")
             return
 
     # --------------------------------------------------------------------------
@@ -647,7 +648,7 @@ class XML_Meta(object):
                 parsed_date = parser.parse(text_date)
                 tm_date = parsed_date.strftime('%Y%m%d')
             except Exception:
-                log.warning("unable to handle the date string: {}".format(text_date))
+                log.warning(f"unable to handle the date string: {text_date}")
         elif self.version == 'HSMDB':
             date1 = parser.parse(self.source['SORDAT'])
             tm_date = date1.strftime('%Y%m%d')
@@ -685,7 +686,7 @@ class XML_Meta(object):
             try:
                 self.data['SURATH'] = self.source['SURATH']
             except Exception as e:
-                log.warning("unable to read the survey authority name attribute: {}".format(e))
+                log.warning(f"unable to read the survey authority name attribute: {e}")
                 return
 
     def _read_survey_start_date(self):
@@ -717,7 +718,7 @@ class XML_Meta(object):
                 parsed_date = parser.parse(text_start_date)
                 tms_date = parsed_date.strftime('%Y%m%d')  # S-57/S-101 date format
             except Exception:
-                log.warning("unable to handle the survey start string: {}".format(text_start_date))
+                log.warning(f"unable to handle the survey start string: {text_start_date}")
 
             if tms_date is None:
                 self.data['SURSTA'] = text_start_date
@@ -753,7 +754,7 @@ class XML_Meta(object):
                 parsed_date = parser.parse(text_end_date)
                 tme_date = parsed_date.strftime('%Y%m%d')
             except Exception:
-                log.warning("unable to handle the survey end string: {}".format(text_end_date))
+                log.warning(f"unable to handle the survey end string: {text_end_date}")
             if tme_date is None:
                 self.data['SUREND'] = text_end_date
             else:
@@ -810,7 +811,7 @@ class XML_Meta(object):
                 for r in ret:
                     self.data['DATUM'].append(r.text)
         except Exception as e:
-            log.warning("unable to read the survey datum name attribute: {}".format(e))
+            log.warning(f"unable to read the survey datum name attribute: {e}")
             return
 
     def _read_survey_name(self):
@@ -840,14 +841,14 @@ class XML_Meta(object):
             if ret is not None:
                 self.data['planam'] = ret.text
         except Exception as e:
-            log.warning("unable to read the survey platform name attribute: {}".format(e))
+            log.warning(f"unable to read the survey platform name attribute: {e}")
             return
 
     def _read_sensor_desc(self):
         """Read a description of the survey sensor."""
+
         try:
-            ret = self.xml_tree.findall(self.source['sensor'],
-                                        namespaces=self.ns)
+            ret = self.xml_tree.findall(self.source['sensor'], namespaces=self.ns)
         except:
             log.warning("unable to read the sensor description name string")
             return
@@ -1479,7 +1480,7 @@ def VERDAT_iso_check(xml_meta):
     """
     m = {}
     if 'depthdn' in xml_meta:
-        if xml_meta['depthdn'] != None and xml_meta['depthdn'] != '':
+        if xml_meta['depthdn'] is not None and xml_meta['depthdn'] != '':
             if xml_meta['depthdn'].upper().find('MEAN LOWER LOW WATER') >= 0:
                 m['VERTDAT'] = 'MLLW'
             elif xml_meta['depthdn'].find('MLLW') >= 0:
@@ -1516,7 +1517,7 @@ def extract_from_iso_meta(xml_meta):
     """
 
     if 'abstract' in xml_meta:
-        if xml_meta['abstract'] != '' and xml_meta['abstract'] != None:
+        if xml_meta['abstract'] != '' and xml_meta['abstract'] is not None:
             # pull vertical datum information
             m = parse_abstract_iso_ex(xml_meta['abstract'])
             for k in m:
@@ -1535,12 +1536,12 @@ def extract_from_iso_meta(xml_meta):
         xml_meta['from_vert_units'] = xml_meta['depthdu']
         # vertical datum (#vert_key is later)
     if 'altdatum' in xml_meta:
-        if xml_meta['altdatum'] != '' and xml_meta['altdatum'] != None:
+        if xml_meta['altdatum'] != '' and xml_meta['altdatum'] is not None:
             xml_meta['from_vert_datum'] = xml_meta['altdatum']
     if 'depthdn' in xml_meta:
-        if xml_meta['depthdn'] != '' and xml_meta['depthdn'] != None:
+        if xml_meta['depthdn'] != '' and xml_meta['depthdn'] is not None:
             if 'from_vert_datum' in xml_meta:
-                xml_meta['from_vert_datum'] = xml_meta['from_vert_datum'] + ':' + xml_meta['depthdn']
+                xml_meta['from_vert_datum'] += f':{xml_meta["depthdn"]}'
             else:
                 xml_meta['from_vert_datum'] = xml_meta['depthdn']
     if 'VERTDAT' not in xml_meta:
@@ -1548,8 +1549,7 @@ def extract_from_iso_meta(xml_meta):
     if 'Vertical Datum Description' in xml_meta:
         if 'VERTDAT' in xml_meta:
             if 'from_vert_datum' in xml_meta:
-                xml_meta['from_vert_datum'] = xml_meta['from_vert_datum'] + ':' + xml_meta[
-                    'Vertical Datum Description'] + ':' + xml_meta['VERTDAT']
+                xml_meta['from_vert_datum'] += f":{xml_meta['Vertical Datum Description']}:{xml_meta['VERTDAT']}"
             else:
                 xml_meta['from_vert_datum'] = xml_meta['Vertical Datum Description']
     # horizontal units
@@ -1578,8 +1578,8 @@ def extract_from_iso_meta(xml_meta):
             xml_meta[
                 'TECSOU'] = '8'  # could also consider it just multiple single beams in this water depth range#Ross SmartSweep example modle
             # see _print_TECSOU_defs() for more TECSOU definitions
-        xml_meta['from_horiz_datum'] = xml_meta['Projected_Coordinate_System'] + ',' + xml_meta[
-            'Horizontal_Zone'] + ',' + xml_meta['Units']
+        xml_meta['from_horiz_datum'] = f"{xml_meta['Projected_Coordinate_System']},{xml_meta['Horizontal_Zone']}," + \
+                                       f"{xml_meta['Units']}"
         if len(xml_meta['Horizontal_Zone']) > 0:
             code = xml_meta['Horizontal_Zone'].split(' ')[1]
             print(code)
@@ -1635,10 +1635,10 @@ def ext_xml_map_enddate(xml_meta):
 
     # place holder would more be needed?
     # if 'rngdate' in xml_meta:
-    #    if  xml_meta['rngdate'] != '' and xml_meta['rngdate'] != None:
+    #    if  xml_meta['rngdate'] != '' and xml_meta['rngdate'] is not None:
     #        print(xml_meta['rngdate'])
     if 'enddate' in xml_meta:
-        if xml_meta['enddate'] != '' and xml_meta['enddate'] != None:
+        if xml_meta['enddate'] != '' and xml_meta['enddate'] is not None:
             xml_meta['end_date'] = xml_meta['enddate']
     return xml_meta
 
@@ -1904,7 +1904,7 @@ def parse_xml_info_text_ISO(xml_txt, m):
                 if len(other_lines_str) == 0:
                     other_lines_str = line
                 else:
-                    other_lines_str = other_lines_str + ',' + line
+                    other_lines_str += f',{line}'
     # other_lines_str=convert_list_to_str(other_lines)
     m['other_xml_metadata'] = other_lines_str
     return m
@@ -1928,7 +1928,7 @@ def convert_list_to_str(other_lines):
         if len(other_lines_str) == 0:
             other_lines_str = x
         else:
-            other_lines_str = other_lines_str + ',' + x
+            other_lines_str += f',{x}'
     return other_lines_str
 
 
@@ -1953,7 +1953,7 @@ def convert_meta_to_input(m):
             m['from_vert_datum'] = m['VERTDAT']
     # m['script: from_vert_units'] = m['from_vert_units']#needs to be added
     if 'SPCS' in m and 'horizontal_datum_i' in m:
-        m['from_horiz_datum'] = m['horizontal_datum_i'].split('Vertical Datum:')[0] + ',' + m['SPCS']
+        m['from_horiz_datum'] = f"{m['horizontal_datum_i'].split('Vertical Datum:')[0]},{m['SPCS']}"
     elif 'horizontal_datum_i' in m:
         m['from_horiz_datum'] = m['horizontal_datum_i'].split('Vertical Datum:')[0]
     if 'Horizontal_Units' in m:
@@ -1968,10 +1968,10 @@ def convert_meta_to_input(m):
     if 'from_horiz_unc' not in m and 'horiz_uncert' in m:
         m['from_horiz_unc'] = m['horiz_uncert']
     if 'begdate' in m:
-        if m['begdate'] != '' and m['begdate'] != None:
+        if m['begdate'] != '' and m['begdate'] is not None:
             m['start_date'] = m['begdate']
     if 'enddate' in m:
-        if m['enddate'] != '' and m['enddate'] != None:
+        if m['enddate'] != '' and m['enddate'] is not None:
             m['end_date'] = m['enddate']
     return m
 
@@ -2027,7 +2027,7 @@ def _print_TECSOU_defs(myvalue=None):
 
     print(TECSOU_def)
     print(TECSOU_S57codes)
-    if myvalue == None:
+    if myvalue is None:
         myvalue = 'no'
         print('Just printing codes')
     else:
@@ -2035,7 +2035,7 @@ def _print_TECSOU_defs(myvalue=None):
         return TECSOU_def, TECSOU_S57codes
     """
     _print_TECSOU_defs(myvalue = None)
-        if myvalue == None:
+        if myvalue is None:
         myvalue = 'no'
         print('Just printing codes')
     else:

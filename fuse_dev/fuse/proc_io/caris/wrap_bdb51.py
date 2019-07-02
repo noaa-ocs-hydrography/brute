@@ -137,11 +137,13 @@ class bdb51_io:
         msg = ''
         self.node_manager = command_dict['node_manager']
         self.database = command_dict['database']
+
         try:
             self._nm = bdb.NodeManager(command_dict['username'], command_dict['password'], self.node_manager)
             msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
         except RuntimeError as error:
-            msg += '{}'.format(error)
+            msg += str(error)
+
         if self._nm is not None:
             try:
                 self._db = self._nm.get_database(self.database)
@@ -151,11 +153,14 @@ class bdb51_io:
             except RuntimeError as error:
                 msg = msg + str(error)
                 command_dict['success'] = False
+
         command_dict['log'] = msg
         return command_dict
 
     def _check_connection(self):
-        """Check to see if the database connection is alive."""
+        """
+        Check to see if the database connection is alive.
+        """
 
         pass
 
@@ -202,8 +207,10 @@ class bdb51_io:
 
         # what to upload, new or updated data
         action = command_dict['action']
+
         # the name of the file to get data from
         file_path = command_dict['path']
+
         try:
             if action == 'new':
                 msg = self._upload_new(file_path)
@@ -215,11 +222,13 @@ class bdb51_io:
                 # query for the object and replace the metadata
             else:
                 raise ValueError('Upload action type not understood')
+
             command_dict['success'] = True
             command_dict['log'] = msg
         except Exception as error:
             command_dict['success'] = False
             command_dict['log'] = str(error)
+
         return command_dict
 
     def _upload_new(self, file_path: str) -> str:
@@ -245,6 +254,7 @@ class bdb51_io:
         surface = self._db.create_feature('surfac', geom)
         surface['OBJNAM'] = file_path
         surface['srcfil'] = file_path
+
         # get a metadata container to put stuff into
         #        metadata = surface.attributes
         #        # need to load the metadata dictionary that was put on disk here.
@@ -256,12 +266,13 @@ class bdb51_io:
         #             surface.attribute['OBJNAM']  = 'MetaDataFail'
         #             with open('metadata_error_file.txt','a') as metafail:
         #                 metafail.write(file_path + '\n')
+
         # commit the feature to the database
         self._db.commit()
+
         # upload coverage
         surface.upload_coverage(file_path)
-        info = 'Uploaded {} to {}'.format(file_path, self.database)
-        return info
+        return 'Uploaded {} to {}'.format(file_path, self.database)
 
     def query(self, command_dict: dict) -> dict:
         """

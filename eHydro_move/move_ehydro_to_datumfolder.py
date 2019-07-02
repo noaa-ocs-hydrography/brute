@@ -71,7 +71,8 @@ def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
     if datumfolder == 'unknown' or datumfolder == '':
         d_folder = '\\unknown'
     else:
-        d_folder = '\\' + str(datumfolder)
+        d_folder = f'\\{datumfolder}'
+
     if os.path.exists(f):
         filepath = os.path.dirname(f)
         basename = os.path.basename(f)
@@ -87,24 +88,27 @@ def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
         basename = basename.rstrip('.XYZ')
         survey_files = glob(os.path.join(filepath, basename + '*'))
         print(survey_files)
+
         if newpathroot is not None:
             if os.path.exists(newpathroot):
                 filedatumpath = newpathroot + d_folder + '\\Original'
                 # redirect to a new folder path
+
                 if os.path.isdir(filedatumpath) and os.path.exists(filedatumpath):
                     # move the file here
                     for ff in survey_files:
                         shutil.move(ff, filedatumpath)  #
-                        print('moved to ' + filedatumpath)
+                        print(f'moved to {filedatumpath}')
                     print('did it work?')
                 else:
                     # make directory #os.mkdir(r'N:\New_Directory_1\GulfCoast\Mississippi\USACE\ehydro\the_vertical_datum_folder')
                     os.makedirs(filedatumpath)  # os.mkdir(filedatumpath)# add one leaf of folder structure
                     # use os.makedirs(filedatumpath) if one is adding multiple new folder layers
+
                     if os.path.isdir(filedatumpath) and os.path.exists(filedatumpath):
                         for ff in survey_files:
                             shutil.move(ff, filedatumpath)  # shutil.move(f,filedatumpath)
-                            print('moved ' + str(ff) + ' to datum folder: ' + str(datumfolder))
+                            print(f'moved {ff} to datum folder: {datumfolder}')
         elif os.path.dirname(f).find('USACE\ehydro') >= 0 or os.path.dirname(f).find(
                 'USACE\E-Hydro') >= 0 or os.path.dirname(f).find('USACE\eHydro' >= 0):
             filepath = os.path.dirname(f)
@@ -113,14 +117,14 @@ def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
                 # move the file here
                 for ff in survey_files:
                     shutil.move(ff, filedatumpath)  #
-                print('moved to ' + filedatumpath)
+                print(f'moved to {filedatumpath}')
             else:
                 # make directory #example os.mkdir(r'N:\New_Directory_1\GulfCoast\Mississippi\USACE\ehydro\the_vertical_datum_folder')
                 os.makedirs(filedatumpath)  # os.mkdir(filedatumpath)# add one leaf of folder structure
                 if os.path.isdir(filedatumpath) and os.path.exists(filedatumpath):
                     for ff in survey_files:
                         shutil.move(ff, filedatumpath)  # shutil.move(f,filedatumpath)
-                        print('moved ' + str(ff) + ' to datum folder: ' + str(datumfolder))
+                        print(f'moved {ff} to datum folder: {datumfolder}')
 
 
 # ------------------------------------------------------------------------------

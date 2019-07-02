@@ -295,16 +295,15 @@ def tupleGrid(grid: _np.array, maxVal: int):
                     io = False
                 else:
                     pass
-            else:
-                if io == False:
-                    val = grid[y, x]
-                    point = [x, y, val]
+            elif not io:
+                val = grid[y, x]
+                point = [x, y, val]
 
-                    if a == 0:
-                        print(point, val)
-                        a += 1
-                    points.append(point)
-                    io = True
+                if a == 0:
+                    print(point, val)
+                    a += 1
+                points.append(point)
+                io = True
     return _np.array(points)
 
 

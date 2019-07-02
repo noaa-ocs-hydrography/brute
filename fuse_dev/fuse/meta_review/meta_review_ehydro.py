@@ -247,9 +247,9 @@ class meta_review_ehydro(mrb.meta_review_base):
                     new_row[key] = row[key]
                 elif key is 'script_version':
                     pass
-                    # new_row[key] = row[key] + ',' + __version__
+                    # new_row[key] = f'{row[key]},{__version__}'
                 else:
-                    new_row['script: ' + key] = row[key]
+                    new_row[f'script: {key}'] = row[key]
             new_meta.append(new_row)
         return new_meta
 

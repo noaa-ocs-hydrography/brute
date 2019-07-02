@@ -68,7 +68,7 @@ class Form(autointerp_ui.Form):
         collects the input field values and passes them to autointerp.py's
         'main' function interp()
         """
-        st = 'Started - ' + str(_dt.now())
+        st = f'Started - {_dt.now()}'
         self.bar_status.SetStatusText(st)
         self.progressBar.Pulse()
         bagPath = self.picker_bag.GetPath()

@@ -289,7 +289,7 @@ def getBagLyrs(fileObj: str):
                                  namespaces=ns)[0].text.split()
             a = 1
         except (_et.Error, IndexError) as e:
-            print("Unable to read corners SW and NE: {}\nAttempting to read via a different namespace".format(e))
+            print(f"Unable to read corners SW and NE: {e}\nAttempting to read via a different namespace")
             try:
                 ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
                                      'cornerPoints/gml:Point/gml:coordinates',
@@ -303,7 +303,7 @@ def getBagLyrs(fileObj: str):
             sw = [float(c) for c in ret[0].split(',')]
             ne = [float(c) for c in ret[1].split(',')]
         except (ValueError, IndexError) as e:
-            print("Unable to parse corners SW and NE from xml: {}".format(e))
+            print(f"Unable to parse corners SW and NE from xml: {e}")
             return
         print(a, ret, sw, ne)
         sx, sy = sw
@@ -457,7 +457,7 @@ def tupleGrid(grid: _np.array, maxVal: int):
                 else:
                     pass
             else:
-                if io == False:
+                if not io:
                     val = grid[y, x]
                     point = [x, y, val]
 
@@ -762,9 +762,9 @@ def polyTifVals(tifs: list, path: str, names: List[str], extent: list):
         else:
             meanTiff = (meanTiff > maxVal).astype(_np.int)
 
-    outputname = path + '\\' + names[0] + '_COMBINEDPOLY'
-    outputtiff = outputname + '.tif'
-    outputhdf5 = outputname + '.h5'
+    outputname = f'{path}\\{names[0]}_COMBINEDPOLY'
+    outputtiff = f'{outputname}.tif'
+    outputhdf5 = f'{outputname}.h5'
 
     print(outputname)
     while True:
@@ -1144,12 +1144,14 @@ def rePrint(grids: list, ugrids: list, maxVal, ioVal: Union[int, bool], debug: U
     ## 7
     fpoly = _np.logical_and(dpoly, npoly)
     ## 8
-    if ioVal == False:
-        nbag = _np.where(fpoly, interp, bag)
-        nunc = _np.where(fpoly, iuncrt, uncr)
-    elif ioVal == True:
+
+    if ioVal is None:
         nbag = _np.where(fpoly, interp, maxVal)
         nunc = _np.where(fpoly, iuncrt, maxVal)
+    elif not ioVal:
+        nbag = _np.where(fpoly, interp, bag)
+        nunc = _np.where(fpoly, iuncrt, uncr)
+
     print('done', _dt.now())
     if debug == 0:
         polyList = [fpoly]
@@ -1284,36 +1286,42 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
         res = str(int(res * 100)) + 'cm'
     else:
         res = str(res) + 'm'
-    if ioVal == 1:
-        bagName = '_'.join([x for x in split]) + '_' + res + '_INTERP_ONLY'
-    else:
-        bagName = '_'.join([x for x in split]) + '_' + res + '_INTERP_FULL'
-    outputpath2 = path + '\\' + bagName + '.bag'
+
+    bagName = f'{"_".join([x for x in split])}_{res}_INTERP_{"ONLY" if ioVal == 1 else "FULL"}'
+    outputpath2 = _os.path.join(path, f'{bagName}.bag')
     #    print(outputpath)
+
     while True:
         #        if _os.path.exists(outputpath):
         #            _os.remove(outputpath)
         #        elif not _os.path.exists(outputpath):
         #            break
+
         if _os.path.exists(outputpath2):
             _os.remove(outputpath2)
         elif not _os.path.exists(outputpath2):
             break
+
     for num in range(len(polyList)):
-        outputpath = path + '\\' + bagName + '_' + str(num) + '.tif'
+        outputpath = f'{path}\\{bagName}_{num}.tif'
         print(outputpath)
-        write_raster(polyList[num], gtran, gd_obj, outputpath,
-                     dtype=_gdal.GDT_Float64, nodata=0, options=['COMPRESS=LZW'])
+        write_raster(polyList[num], gtran, gd_obj, outputpath, dtype=_gdal.GDT_Float64, nodata=0,
+                     options=['COMPRESS=LZW'])
+
     polyList = None
     _shutil.copy2(bag[1], outputpath2)
+
     with _tb.open_file(outputpath2, mode='a') as bagfile:
         new = _np.flipud(new)
         bagfile.root.BAG_root.elevation[:, :] = new
         newu = _np.flipud(newu)
         bagfile.root.BAG_root.uncertainty[:, :] = newu
+
         if ioVal == 1:
             bagfile.root.BAG_root.tracking_list.remove_rows(0, bagfile.root.BAG_root.tracking_list.nrows)
+
         bagfile.flush()
+
     bagfile.close()
     gd_obj = None
     print('done')
@@ -1574,9 +1582,9 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
     ugrids = None
     bagSave(bag, saveBag, tifGrids, res, ext, desPath, saveUnc, polyList, ioVal)
     done = _dt.now()
-    print('acually done', done)
+    print(f'acually done {done}')
     delta = done - start
-    msg = 'Done! Took: ' + str(delta)
+    msg = f'Done! Took: {delta}'
     print(msg)
     return msg
 

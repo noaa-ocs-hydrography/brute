@@ -15,23 +15,31 @@ import sys
 
 # helper function to retrieve the path to the "Scripts" folder in PydroXL
 def retrieve_scripts_folder() -> str:
-    """TODO write description"""
+    """
+    TODO write description
+    """
 
     install_prefix = sys.exec_prefix
     folder_path = os.path.realpath(os.path.join(install_prefix, os.pardir, os.pardir, "Scripts"))
+
     if not os.path.exists(folder_path):
         raise RuntimeError("The Scripts folder does not exist at: {}".format(folder_path))
+
     return folder_path
 
 
 # helper function to retrieve the path to the "activate.bat" batch file in PydroXL
 def retrieve_activate_batch() -> str:
-    """TODO write description"""
+    """
+    TODO write description
+    """
 
     scripts_prefix = retrieve_scripts_folder()
     file_path = os.path.realpath(os.path.join(scripts_prefix, "activate.bat"))
+
     if not os.path.exists(file_path):
         raise RuntimeError("The activate file does not exist at: {}".format(file_path))
+
     return file_path
 
 
@@ -53,6 +61,7 @@ def retrieve_env_path(env_name: str) -> str:
 
     current_env_loc = os.environ['conda_prefix']
     desired_env_loc = os.path.join(current_env_loc, os.pardir, env_name)
+
     if os.path.exists(desired_env_loc):
         return desired_env_loc
     else:
