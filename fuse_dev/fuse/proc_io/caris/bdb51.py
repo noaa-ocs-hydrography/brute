@@ -41,13 +41,6 @@ class bdb51:
     Replies from the CARIS environment can be
         status : connectivity to the database and the last file uploaded.
         log : returning a log message
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-
     """
 
     def __init__(self, database_loc: str, database_name: str, caris_env_name: str = 'NBS35',
@@ -62,6 +55,7 @@ class bdb51:
         database_name
         caris_env_name
         """
+
         self.host = host
         self.port = None
         self.sock = None
@@ -76,10 +70,12 @@ class bdb51:
         self.database_name = database_name
         self.caris_environment_name = caris_env_name
         self._logger = logging.getLogger('fuse')
+
         if len(self._logger.handlers) == 0:
             ch = logging.StreamHandler(sys.stdout)
             ch.setLevel(logging.DEBUG)
             self._logger.addHandler(ch)
+
         self._thread = threading.Thread(target=self._form_connection)
         self._thread.start()
 
@@ -101,16 +97,20 @@ class bdb51:
         self.port = self.sock.getsockname()[1]
         self.sock.listen(1)
         self._start_env(self.port)
+
         while True:
             self._conn, addr = self.sock.accept()
-            self._logger.log(logging.DEBUG, 'accepted connection from {} at {}'.format(str(addr), str(self._conn)))
+            self._logger.log(logging.DEBUG, 'accepted connection from {} at {}'.format(addr, self._conn))
             data = self._conn.recv(1024)
+
             if len(data) > 0:
                 response = pickle.loads(data)
+
                 if response['success']:
                     self.alive = response['alive']
             else:
                 print('No response from subprocess received')
+
             while self.alive:
                 ''' 
                 TO DO: should we should try to detect if the connection is 
@@ -153,45 +153,47 @@ class bdb51:
         conda_env_name = self.caris_environment_name
         conda_env_path = helper.retrieve_env_path(conda_env_name)
         python_path = os.path.join(conda_env_path, 'python')
+
         # set the location for running the database i/o object
         start = os.path.realpath(os.path.dirname(__file__))
         db_obj = os.path.join(start, 'wrap_bdb51.py')
         activate_file = helper.retrieve_activate_batch()
+
         args = ["cmd.exe", "/K", "set pythonpath= &&",  # setup the commandline
                 activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
                 python_path, db_obj, str(port),  # call the script for the object
                 ]
         args = ' '.join(args)
         self._logger.log(logging.DEBUG, args)
+
         try:
-            self.db = subprocess.Popen(
-                args,
-                creationflags=subprocess.CREATE_NEW_CONSOLE)
+            self.db = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
         except:
-            err = f'Error executing: {args}'
+            err = 'Error executing: {}'.format(args)
             print(err)
             self._logger.log(logging.DEBUG, err)
+
         try:
+            # if len(out) > 0:
+            #     msg = out.decode(encoding='UTF-8')
+            #     print(msg)
+            #     self._logger.log(logging.DEBUG, msg)
+            # if len(err) > 0:
+            #     msg = err.decode(encoding='UTF-8')
+            #     print(msg)
+            #     self._logger.log(logging.DEBUG, msg)
             pass
-        #            if len(out) > 0:
-        #                msg = out.decode(encoding='UTF-8')
-        #                print(msg)
-        #                self._logger.log(logging.DEBUG, msg)
-        #            if len(err) > 0:
-        #                msg = err.decode(encoding='UTF-8')
-        #                print(msg)
-        #                self._logger.log(logging.DEBUG, msg)
         except Exception as e:
-            err = f'Error in handling error output: {e}'
+            err = 'Error in handling error output: {}'.format(e)
             print(err)
             self._logger.log(logging.DEBUG, err)
 
     def connect(self):
-        """Form and send the connect command to the BDB51 wapper."""
+        """
+        Form and send the connect command to the BDB51 wapper.
+        """
 
-        command = {'command': 'connect'}
-        command['node_manager'] = self.database_loc
-        command['database'] = self.database_name
+        command = {'command': 'connect', 'node_manager': self.database_loc, 'database': self.database_name}
         response = self._set_command(command)
 
     def status(self):
@@ -247,9 +249,9 @@ class bdb51:
 
         """
 
-        command = {'command': 'die'}
-        command['action'] = int(delay)
+        command = {'command': 'die', 'action': int(delay)}
         response = self._set_command(command)
+
         if response['command'] == 'die' and response['success']:
             self.alive = False
 
@@ -258,18 +260,24 @@ class bdb51:
         Set the object command variable and wait for a response from
         the subprocess.
         """
+
         command['id'] = self.msg_id
         self.msg_id += 1
+
         if self._command is None and self._response is None:
             self._command = command
+
             while True:
                 if self._response is not None:  # we need a way to check if the connection is alive
                     response = self._response
                     self._logger.log(logging.DEBUG, str(response))
+
                     if not response['success']:
-                        print('{} failed!').format(response['command'])
+                        print('{} failed!'.format(response['command']))
+
                     self._response = None
                     break
         else:
             raise ValueError('command / response state is unexpected')
+
         return response

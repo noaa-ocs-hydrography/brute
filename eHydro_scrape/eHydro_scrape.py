@@ -46,24 +46,24 @@ config.read('config.ini')
 csvName = 'eHydro_csv.txt'
 """Default name for csv.txt output"""
 csvLocation = os.path.join(progLoc, csvName)
-# csvLocation = progLoc + '\\' + csvName
+# csvLocation = f'{progLoc}\\{csvName}'
 """Default location for :attr:`csvName`"""
 logName = 'eHydro_log.txt'
 """Default name for log.txt output"""
 logLocation = os.path.join(progLoc, logName)
-# logLocation = progLoc + '\\' + logName
+# logLocation = os.path.join(progLoc, logName)
 """Default location for :attr:`logName`"""
 # """Default location for """
-holding = progLoc + '\\downloads\\'
+holding = os.path.join(progLoc, 'downloads')
 """Default location for all downloaded data, regardless of the type of query
 performed. Data is broken up into folders representing each district (ex.
 ``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)
 """
-logging = progLoc + '\\logs\\'
+logging = os.path.join(progLoc, 'logs')
 """Default location for individual query logs. These are named like
 ``YYYYMMDD_0_eHydro_log.txt``
 """
-running = progLoc + '\\runs\\'
+running = os.path.join(progLoc, 'runs')
 """Default location for individual query csv outputs. These are named like
 ``YYYYMMDD_0_eHydro_csv.txt``
 """
@@ -133,44 +133,29 @@ def query() -> Tuple[List[str], int, str]:
             while i < len(agencies):
                 if i == 0:
                     # %27 is ' (Apostrophe); %25 is % (Percent sign)
-                    areas += ('UPPER(SURVEYAGENCY)+like+%27%25'
-                              + agencies[0].strip()
-                              + '%25%27')
+                    areas += f'UPPER(SURVEYAGENCY)+like+%27%25{agencies[0].strip()}%25%27'
                     i += 1
                 else:
                     # %27 is ' (Apostrophe); %25 is % (Percent sign)
-                    areas += ('+OR+UPPER(SURVEYAGENCY)+like+%27%25'
-                              + agencies[i].strip()
-                              + '%25%27')
+                    areas += f'+OR+UPPER(SURVEYAGENCY)+like+%27%25{agencies[i].strip()}%25%27'
                     i += 1
             areas += ')+'
         else:
             # %27 is ' (Apostrophe); %25 is % (Percent sign)
-            areas = ('UPPER(SURVEYAGENCY)+like+%27%25'
-                     + agencies[0].strip()
-                     + '%25%27')
+            areas = f'UPPER(SURVEYAGENCY)+like+%27%25{agencies[0].strip()}%25%27'
     else:
         areas = ''
 
     # The main query parameters that will determine the contents of the response
     # Survey Date Uploaded
     if config['Timeframe']['Ignore Date'] == 'no' and areas != '':
-        print('\nStart:', start, '\nEnd:', end)
+        print(f'\nStart: {start}\nEnd: {end}')
         # %27 is ' (Apostrophe)
-        where = ('SURVEYDATEUPLOADED+>=+%27'
-                 + start
-                 + 'T00:01:00.000Z%27+AND+SURVEYDATEUPLOADED+<=+%27'
-                 + end
-                 + 'T11:59:00.000Z%27+AND+'
-                 + areas)
+        where = f'SURVEYDATEUPLOADED+>=+%27{start}T00:01:00.000Z%27+AND+SURVEYDATEUPLOADED+<=+%27{end}T11:59:00.000Z%27+AND+{areas}'
     elif config['Timeframe']['Ignore Date'] == 'no' and areas == '':
         print('\nStart:', start, '\nEnd:', end)
         # %27 is ' (Apostrophe)
-        where = ('SURVEYDATEUPLOADED+>=+%27'
-                 + start
-                 + 'T00:01:00.000Z%27+AND+SURVEYDATEUPLOADED+<=+%27'
-                 + end
-                 + 'T11:59:00.000Z%27')
+        where = f'SURVEYDATEUPLOADED+>=+%27{start}T00:01:00.000Z%27+AND+SURVEYDATEUPLOADED+<=+%27{end}T11:59:00.000Z%27'
     else:
         print('\nStart: Ignored', '\nEnd: Ignored')
         start = 'Ignored'
@@ -183,10 +168,12 @@ def query() -> Tuple[List[str], int, str]:
             where = '1%3D1'
 
     # The query for determining how many responses will be returned
-    newSurveys = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=' + where + '&outFields=*&returnGeometry=false&returnCountOnly=true&outSR=&f=json'
+    newSurveys = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query' + \
+                 f'?where={where}&outFields=*&returnGeometry=false&returnCountOnly=true&outSR=&f=json'
 
     # The query for returning the object IDs for the given timeframe
-    objIDs = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?&where=' + where + '&outFields=*&returnGeometry=false&returnIdsOnly=true&outSR=&f=json'
+    objIDs = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query' + \
+             f'?&where={where}&outFields=*&returnGeometry=false&returnIdsOnly=true&outSR=&f=json'
 
     print(objIDs, newSurveys)
 
@@ -209,11 +196,10 @@ def query() -> Tuple[List[str], int, str]:
     else:
         dist = config['Agencies']['Agencies']
 
-    paramString = str('\tParameters:\n\t\tStart Date: ' + start
-                      + '\n\t\tEnd Date: ' + end
-                      + '\n\t\tDistricts: ' + dist
-                      + '\n\t\tQuery Only Districts: ' + config['Agencies']['Only Listed']
-                      + '\n\t\tKeep All Data: ' + config['Resolutions']['Override'])
+    paramString = f'\tParameters:\n\t\tStart Date: {start}' + \
+                  f'\n\t\tEnd Date: {end}\n\t\tDistricts: {dist}' + \
+                  f'\n\t\tQuery Only Districts: {config["Agencies"]["Only Listed"]}' + \
+                  f'\n\t\tKeep All Data: {config["Resolutions"]["Override"]}'
 
     return surveyIDs, newSurveysNum, paramString
 
@@ -387,29 +373,26 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
 
     x = 0
     rows = []
-    if pb != None:
+    if pb is not None:
         pb.SetRange(newSurveysNum)
         pb.SetValue(x)
+
     while x < newSurveysNum:
         print(x, end=' ')
-        query = (
-                'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID+=+'
-                + str(surveyIDs[x])
-                + '&outFields=*&returnGeometry=true&outSR=4326&f=json')
+        query = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query' + \
+                f'?where=OBJECTID+=+{surveyIDs[x]}&outFields=*&returnGeometry=true&outSR=4326&f=json'
         response = requests.get(query)
         page = response.json()
         row = []
-        metadata = {}
-        metadata['version'] = __version__
+        metadata = {'version': __version__}
+
         for attribute in attributes:
             try:
-                if page['features'][0]['attributes'][attribute] == None:
+                if page['features'][0]['attributes'][attribute] is None:
                     row.append('null')
                     metadata[attribute] = 'null'
-                elif (attribute == "SURVEYDATEUPLOADED"
-                      or attribute == "SURVEYDATEEND"
-                      or attribute == "SURVEYDATESTART"):
-                    if page['features'][0]['attributes'][attribute] == None:
+                elif attribute in ("SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART"):
+                    if page['features'][0]['attributes'][attribute] is None:
                         row.append('null')
                         metadata[attribute] = 'null'
                     else:
@@ -433,7 +416,7 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
         row.append(metadata)
         rows.append(row)
         x += 1
-        if pb != None:
+        if pb is not None:
             pb.SetValue(x)
     print(len(rows))
     print('rows complete')
@@ -535,7 +518,7 @@ def contentSearch(contents: List[str]) -> int:
     x = 0
     for content in contents:
         if full.search(content) or full_a.search(content):
-            print('\nvive le resolution', content, end=' ')  # link + '\n')
+            print(f'\nvive le resolution {content}', end=' ')  # link + '\n')
             x = 1
             return x
         else:
@@ -592,7 +575,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
     x = len(rows)
     hr = 0
     agencies = config['Agencies']['Agencies']
-    if pb != None:
+    if pb is not None:
         pb.SetRange(x)
         i = 0
         pb.SetValue(i)
@@ -605,30 +588,33 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
         #        spcs = row[5]
         poly = meta['poly']
         name = link.split('/')[-1]
-        saved = holding + '/' + agency + '/' + name
-        if os.path.exists(holding + '/' + agency):
+
+        if os.path.exists(os.path.join(holding, agency)):
             pass
         else:
-            os.mkdir(holding + '/' + agency)
-        saved = os.path.normpath(saved)
+            os.mkdir(os.path.join(holding, agency))
+
+        saved = os.path.join(holding, agency, name)
+
         if os.path.exists(saved):
             os.remove(saved)
 
         if poly != 'error':
-            shpfilename = os.path.join(holding + '\\' + agency,
-                                       surname + '.gpkg')
-            meta['poly_name'] = surname + '.gpkg'
+            shpfilename = os.path.join(holding, agency, f'{surname}.gpkg')
+            meta['poly_name'] = f'{surname}.gpkg'
             write_geopackage(shpfilename, surname, poly, spcs)
-            sfile = os.path.relpath(surname + '.gpkg')
+            sfile = os.path.relpath(f'{surname}.gpkg')
 
-        metafilename = os.path.join(holding + '\\' + agency,
-                                    surname + '.pickle')
+        metafilename = os.path.join(holding, agency, f'{surname}.pickle')
+
         with open(metafilename, 'wb') as metafile:
             pickle.dump(meta, metafile)
-        pfile = os.path.relpath(surname + '.pickle')
 
-        print(x, agency, end=' ')
+        pfile = os.path.relpath(f'{surname}.pickle')
+
+        print(f'{x} {agency}', end=' ')
         dwntime = datetime.datetime.now()
+
         while True:
             if os.path.exists(saved):
                 print('x', end=' ')
@@ -640,22 +626,22 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                     except socket.timeout:
                         urllib.request.urlretrieve(link, saved)
                     except urllib.error.HTTPError as e:
-                        print('e \n' + link, e)
+                        print(f'e \n{link} {e}')
                         row.append('No')
                         row.append('BadURL')
                         break
                     except urllib.error.URLError as e:
-                        print('e \n' + link, e)
+                        print(f'e \n{link} {e}')
                         row.append('No')
                         row.append('BadURL')
                         break
                 elif time.time() - dwntime > 295:
-                    print('e \n' + link)
+                    print(f'e \n{link} ')
                     row.append('No')
                     row.append('TimeOut')
                     break
                 else:
-                    print('e \n' + link)
+                    print(f'e \n {link}')
                     row.append('No')
                     row.append('BadURL')
                     break
@@ -664,7 +650,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                     and (agency in agencies or agencies == '')):
                 try:
                     zipped = zipfile.ZipFile(saved, mode='a')
-                    os.chdir(holding + '/' + agency + '/')
+                    os.chdir(os.path.join(holding, agency))
                     zipped.write(pfile)
                     os.remove(pfile)
                     if poly != 'error':
@@ -672,7 +658,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                         os.remove(sfile)
                     os.chdir(progLoc)
                     contents = zipped.namelist()
-                    if contentSearch(contents) != True:
+                    if not contentSearch(contents):
                         print('n', end=' ')
                         zipped.close()
                         row.append('No')
@@ -686,13 +672,15 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                     print('z', end=' ')
                     row.append('BadZip')
                 print('o', end=' ')
-                if to != None:
-                    to.write('\t\t' + agency + '\\' + name + '\n')
+
+                if to is not None:
+                    to.write(f'\t\t{os.path.join(agency, name)}\n')
+
                 row.append('Yes')
             else:
                 try:
                     zipped = zipfile.ZipFile(saved, mode='a')
-                    os.chdir(holding + '/' + agency + '/')
+                    os.chdir(os.path.join(holding, agency))
                     zipped.write(pfile)
                     os.remove(pfile)
                     if poly != 'error':
@@ -700,7 +688,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                         os.remove(sfile)
                     os.chdir(progLoc)
                     contents = zipped.namelist()
-                    if contentSearch(contents) != True:
+                    if not contentSearch(contents):
                         print('n', end=' ')
                         zipped.close()
                         os.remove(saved)
@@ -711,18 +699,19 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                         print('y', end=' ')
                         row.append('Yes')
                         hr += 1
-                        if to != None:
-                            to.write('\t\t' + agency + '\\' + name + '\n')
+
+                        if to is not None:
+                            to.write(f'\t\t{os.path.join(agency, name)}\n')
                 except zipfile.BadZipfile:
                     os.remove(saved)
                     print('z', end=' ')
                     row.append('BadZip')
                 row.append('No')
         x -= 1
-        if pb != None:
+        if pb is not None:
             i += 1
             pb.SetValue(i)
-    if to != None:
+    if to is not None:
         to.write('\n')
     print('\nrow downloads verified')
     return rows, hr
@@ -761,24 +750,28 @@ def csvCompare(rows: list, csvFile: List[str], newSurveysNum: int, pb=None) -> T
 
     print(len(rows), end=' ')
     before = str(len(rows))
-    if pb != None:
+
+    if pb is not None:
         pb.SetRange(len(rows))
         pb.SetValue(0)
+
     for line in csvFile:
         x = 0
         y = len(rows)
+
         while x < y:
             row = rows[x]
             if line[0] == row[0]:
                 rows.remove(row)
                 y = len(rows)
             x += 1
-            if pb != None:
+            if pb is not None:
                 pb.SetValue(x)
+
     print(len(rows))
     after = str(len(rows))
-    numstring = ('\t\tSurveys in Query: ' + before
-                 + '\n\t\tNew Surveys: ' + after)
+    numstring = f'\t\tSurveys in Query: {before}\n\t\tNew Surveys: {after}'
+
     if len(rows) != 0:
         return rows, numstring
     else:
@@ -838,7 +831,7 @@ def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
     """
     csvOpen = open(csvLocation, 'w', newline='')
     save = csv.writer(csvOpen, delimiter=',')
-    if pb != None:
+    if pb is not None:
         pb.SetRange(len(csvFile))
         pb.SetValue(0)
         x = 0
@@ -846,7 +839,7 @@ def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
         truncate = row[:12]
         truncate.extend(row[-2:])
         save.writerow(truncate)
-        if pb != None:
+        if pb is not None:
             x += 1
             pb.SetValue(x)
     csvOpen.close()
@@ -877,15 +870,17 @@ def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str
     """
 
     timestamp = ntime()
-    message = timestamp + ' - Program Initiated, Log Opened'
+    message = f'{timestamp} - Program Initiated, Log Opened'
+
     if logType == 'False' or False:
         fo = open(logLocation, 'a')
         nameLog = logLocation
     elif logType == 'True' or True:
         x = 0
         datestamp = date()
+
         while True:
-            name = datestamp + '_' + str(x) + '_' + logName
+            name = f'{datestamp}_{x}_{logName}'
             logPath = logging + name
             if os.path.exists(logPath):
                 x += 1
@@ -923,9 +918,9 @@ def logWriter(fileLog: Tuple[TextIO, Any], message: str):
 
     print(message)
     fl, to = fileLog
-    fl.write(message + '\n')
-    if to != None:
-        to.write(message + '\n')
+    fl.write(f'{message}\n')
+    if to is not None:
+        to.write(f'{message}\n')
 
 
 def logClose(fileLog: Tuple[TextIO, Any]):
@@ -949,7 +944,7 @@ def logClose(fileLog: Tuple[TextIO, Any]):
 
     fo = fileLog[0]
     timestamp = ntime()
-    message = timestamp + ' - Program Finished, Log Closed\n'
+    message = f'{timestamp} - Program Finished, Log Closed\n'
     logWriter(fileLog, message)
     fo.close()
 
@@ -1038,7 +1033,7 @@ def main(pb=None, to=None):
     fileLog, nameLog = logOpen(logType, to)
     try:
         surveyIDs, newSurveysNum, paramString = query()
-        logWriter(fileLog, '\tSurvey IDs queried from eHydro\n' + paramString)
+        logWriter(fileLog, f'\tSurvey IDs queried from eHydro\n{paramString}')
         logWriter(fileLog, '\tCompiling survey objects from Survey IDs')
         rows = surveyCompile(surveyIDs, newSurveysNum, pb)
         logWriter(fileLog, '\tSurvey objects compiled from eHydro')
@@ -1072,36 +1067,38 @@ def main(pb=None, to=None):
                 for row in checked:
                     txt = ''
                     for i in [1, 4, 5, 6, -2]:
-                        txt = txt + attributes[i] + ' : ' + row[i] + '\n\t\t'
-                    logWriter(fileLog, '\t\t' + txt)
-            logWriter(fileLog, '\t\tTotal High Resloution Surveys: '
-                      + str(hiRes) + '/' + str(len(changes)) + '\n')
+                        txt += f'{attributes[i]} : {row[i]}\n\t\t'
+                    logWriter(fileLog, f'\t\t{txt}')
+            logWriter(fileLog, f'\t\tTotal High Resloution Surveys: {hiRes}/{len(changes)}\n')
         else:
-            logWriter(fileLog, '\t\t' + changes)
+            logWriter(fileLog, f'\t\t{changes}')
     except:
         logWriter(fileLog, '\tParsing for resolution failed')
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
+
         if runType == 'no':
             csvPath = csvLocation
             csvWriter(csvSave, csvPath, pb)
         elif runType == 'yes':
             x = 0
             datestamp = date()
+
             while True:
-                name = datestamp + '_' + str(x) + '_' + csvName
+                name = f'{datestamp}_{x}_{csvName}'
                 csvPath = running + name
+
                 if os.path.exists(csvPath):
                     x += 1
                 else:
                     break
             csvWriter(csvSave, csvPath, pb)
-        logWriter(fileLog, '\tAdding results to ' + csvPath)
+        logWriter(fileLog, f'\tAdding results to {csvPath}')
     except:
-        logWriter(fileLog, '\tUnable to add results to ' + csvPath)
+        logWriter(fileLog, f'\tUnable to add results to {csvPath}')
 
-    logWriter(fileLog, '\tOutput Log saved as ' + nameLog)
+    logWriter(fileLog, f'\tOutput Log saved as {nameLog}')
     logClose(fileLog)
     print('log closed')
 

@@ -51,7 +51,7 @@ class intitialize:
         ----------
         filepath: str :
 
-        coverage_list list :
+        coverage_list: list :
 
 
         Returns
@@ -76,7 +76,7 @@ class intitialize:
                 for xSlice in range(tiles.shape[1]):
                     ts = _dt.now()
                     index = ySlice, xSlice
-                    print('\nTile', tiles[index] + 1, 'of', z, '-', ts)
+                    print(f'\nTile {tiles[index] + 1} of {z} - {ts}')
                     tile = _itp.tile(tile_info, index, bagShape)
                     covgTile = _itp.chunk(coverage.array, tile, mode='a')
                     bathTile = _itp.chunk(bag.elevation, tile, mode='a')
