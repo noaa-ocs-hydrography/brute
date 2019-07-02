@@ -137,7 +137,7 @@ class bdb51_io:
         self.node_manager = command_dict['node_manager']
         self.database = command_dict['database']
         try:
-            self._nm = bdb.NodeManager(username, password, self.node_manager)
+            self._nm = bdb.NodeManager(command_dict['username'], command_dict['password'], self.node_manager)
             msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
         except RuntimeError as error:
             msg += '{}'.format(error)
@@ -215,8 +215,8 @@ class bdb51_io:
             else:
                 raise ValueError('Upload action type not understood')
             command_dict['success'] = True
-            command_dict['log'] = msgexcept
-            Exception as error:
+            command_dict['log'] = msg
+        except Exception as error:
             command_dict['success'] = False
             command_dict['log'] = str(error)
         return command_dict
