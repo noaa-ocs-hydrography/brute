@@ -436,7 +436,7 @@ def natInterp(grid: _np.array, xy: _np.array, z: _np.array, shape: tuple, diff: 
     return mask_int
 
 
-class xyz_grid():
+class xyz_grid:
     """TODO write description"""
 
     def __init__(self, grid, vals, extents, shape, res, diff):

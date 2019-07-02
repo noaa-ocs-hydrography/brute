@@ -778,7 +778,7 @@ def polyTifVals(tifs: list, path: str, names: List[str], extent: list):
             break
     ny, nx = extent[0]
     reso = 1
-    gtran = (ny, reso, 0.0, nx, 0.0, -(reso))
+    gtran = (ny, reso, 0.0, nx, 0.0, -reso)
     #    write_raster(meanTiff, gtran, gd_obj, outputtiff, options = ['COMPRESS=LZW'])
     #    gd_obj = None
 
@@ -1020,7 +1020,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     #    f.close()
     print('tiff')
     temp = targs[0]
-    gt = (bulx, bagRes, temp[2], buly, temp[4], -(bagRes))
+    gt = (bulx, bagRes, temp[2], buly, temp[4], -bagRes)
     write_raster(ax, gt, gd_obj, targs[2], options=['COMPRESS=LZW'])
     ax = None
 
@@ -1277,7 +1277,7 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
     sy, sx = ext[-1]
     reso = float(res)
     print(sx, sy, nx, ny)
-    gtran = (ny, reso, 0.0, nx, 0.0, -(reso))
+    gtran = (ny, reso, 0.0, nx, 0.0, -reso)
     print(gtran)
     fName = bag[1].split('\\')[-1]
     print(fName)
@@ -1589,7 +1589,7 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
     return msg
 
 
-class chunk():
+class chunk:
     """
     chunk() serves as the data container for individual tile data. It's
     inputs inlcude sliceInfo=[buffer, height, width], chunkSlice=tile[y,x]

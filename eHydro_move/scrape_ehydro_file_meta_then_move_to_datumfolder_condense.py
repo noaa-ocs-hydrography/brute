@@ -248,7 +248,7 @@ def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, meta
                            metafile)  # could also try merged_meta, but merge2 outputs a list within a cell if inputs from text and xml for the same variable are different
 
     # save pandas dataframe export here
-    nn.to_csv(path_or_buf=(df_export_to_csv), encoding='UTF-8', sep='\t')
+    nn.to_csv(path_or_buf=df_export_to_csv, encoding='UTF-8', sep='\t')
     return merged_meta, nn
 
 

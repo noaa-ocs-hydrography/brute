@@ -193,9 +193,7 @@ class bdb51:
         Form and send the connect command to the BDB51 wapper.
         """
 
-        command = {'command': 'connect'}
-        command['node_manager'] = self.database_loc
-        command['database'] = self.database_name
+        command = {'command': 'connect', 'node_manager': self.database_loc, 'database': self.database_name}
         response = self._set_command(command)
 
     def status(self):
@@ -251,8 +249,7 @@ class bdb51:
 
         """
 
-        command = {'command': 'die'}
-        command['action'] = int(delay)
+        command = {'command': 'die', 'action': int(delay)}
         response = self._set_command(command)
 
         if response['command'] == 'die' and response['success']:

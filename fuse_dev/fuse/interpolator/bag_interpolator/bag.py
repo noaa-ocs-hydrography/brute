@@ -191,7 +191,7 @@ class bag_file:
 
         sx, sy = meta.sw
         nx, ny = meta.ne
-        return ([sx, ny], [nx, sy])
+        return [sx, ny], [nx, sy]
 
     def _gt2bounds(self, meta, shape: Tuple[int, int]) -> Tuple[Tuple[Tuple[float, float], Tuple[float, float]], float]:
         """

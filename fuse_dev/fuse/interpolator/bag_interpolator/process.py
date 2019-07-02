@@ -51,7 +51,7 @@ class intitialize:
         ----------
         filepath: str :
 
-        coverage_list list :
+        coverage_list: list :
 
 
         Returns

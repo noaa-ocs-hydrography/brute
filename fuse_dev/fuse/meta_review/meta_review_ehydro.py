@@ -28,7 +28,6 @@ class meta_review_ehydro(mrb.meta_review_base):
                   'horiz_uncert': 'POSACC',
                   'to_horiz_datum': 'HORDAT',
                   'agency': 'AGENCY',
-                  'source_indicator': 'SORIND',
                   'source_type': 's_ftyp',
                   'complete_coverage': 'flcvrg',
                   'complete_bathymetry': 'flbath',

@@ -82,7 +82,6 @@ class read_raw:
         stub, ext = os.path.splitext(infilename)
         bathyfilename = f'{stub}.dat'
         xyz = _np.loadtxt(bathyfilename, delimiter=' ')
-        self.xyz
         return xyz
 
     def read_bathymetry(self, infilename):
@@ -579,7 +578,7 @@ def _start_xyz(infilename):
                 if line.find(',') > 0:
                     commas_present = ','
         first_instance = numberofrows[0]
-        return first_instance, commas_present
+
     return first_instance, commas_present
 
 
@@ -653,8 +652,7 @@ def _parse_notes_chart(line):
 
     """
     lines = line.split('\\n')
-    metadata = {}
-    metadata['notes_chart'] = line
+    metadata = {'notes_chart': line}
     for aline in lines:
         if aline != '':
             if aline.find('ALL ELEVATIONS SHOWN ARE REFERENCED') >= 0:

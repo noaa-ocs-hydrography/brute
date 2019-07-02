@@ -545,7 +545,7 @@ def _start_xyz(infilename):
                 if line.find(',') > 0:
                     commas_present = ','
         first_instance = numberofrows[0]
-        return first_instance, commas_present
+
     return first_instance, commas_present
 
 

@@ -151,22 +151,20 @@ class Form(wx.Frame):
 
         """
 
-    event.Skip()
+        event.Skip()
+
+    def programProg(self, event):
+        """
 
 
-def programProg(self, event):
-    """
+        Parameters
+        ----------
+        event :
 
 
-    Parameters
-    ----------
-    event :
+        Returns
+        -------
 
+        """
 
-    Returns
-    -------
-
-    """
-
-
-event.Skip()
+        event.Skip()

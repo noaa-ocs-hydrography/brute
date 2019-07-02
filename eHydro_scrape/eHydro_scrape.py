@@ -384,8 +384,7 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
         response = requests.get(query)
         page = response.json()
         row = []
-        metadata = {}
-        metadata['version'] = __version__
+        metadata = {'version': __version__}
 
         for attribute in attributes:
             try:
@@ -659,7 +658,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                         os.remove(sfile)
                     os.chdir(progLoc)
                     contents = zipped.namelist()
-                    if contentSearch(contents) != True:
+                    if not contentSearch(contents):
                         print('n', end=' ')
                         zipped.close()
                         row.append('No')
@@ -771,7 +770,7 @@ def csvCompare(rows: list, csvFile: List[str], newSurveysNum: int, pb=None) -> T
 
     print(len(rows))
     after = str(len(rows))
-    numstring = (f'\t\tSurveys in Query: {before}\n\t\tNew Surveys: {after}')
+    numstring = f'\t\tSurveys in Query: {before}\n\t\tNew Surveys: {after}'
 
     if len(rows) != 0:
         return rows, numstring

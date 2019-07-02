@@ -11,51 +11,53 @@ from typing import List
 
 class meta_review_base:
     def __init__(self, metafilename: str, metakeys: List[str]):
-        """Initialize with the filename to use for meta data input / output."""
+        """
+        Initialize with the filename to use for meta data input / output.
 
-    self._metafilename = metafilename
-    self._metakeys = metakeys
+        Parameters
+        ----------
+        metafilename
+        metakeys
+        """
 
+        self._metafilename = metafilename
+        self._metakeys = metakeys
 
-def read_meta_record(self, record_key: str):
-    """
-    Read the meta data record from the meta file.
+    def read_meta_record(self, record_key: str):
+        """
+        Read the meta data record from the meta file.
 
-    Parameters
-    ----------
-    record_key :
-
-    record_key: str :
-
-
-    Returns
-    -------
-
-    """
-
-    pass
+        Parameters
+        ----------
+        record_key: str :
 
 
-def read_meta_file(self):
-    """Read all records from the meta file."""
+        Returns
+        -------
 
-    pass
+        """
+
+        pass
+
+    def read_meta_file(self):
+        """
+        Read all records from the meta file.
+        """
+
+        pass
+
+    def write_meta_record(self, record_dictionary: dict):
+        """
+        Write the provided record to the file.
+
+        Parameters
+        ----------
+        record_dictionary: dict :
 
 
-def write_meta_record(self, record_dictionary: dict):
-    """
-    Write the provided record to the file.
+        Returns
+        -------
 
-    Parameters
-    ----------
-    record_dictionary :
+        """
 
-    record_dictionary: dict :
-
-
-    Returns
-    -------
-
-    """
-
-    pass
+        pass

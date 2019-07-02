@@ -153,11 +153,11 @@ class XML_Meta(object):
             return 'ISO-8859-1'
         elif self.xml_tree.tag == 'metadata':
             print(version_USACE_FGDC)  #:
-            return 'USACE_FGDC'
             print('FGDC format not ISO, USACE example')
+            return 'USACE_FGDC'
         else:
-            return -1.0
             print('We do not have a template for this version yet!')
+            return -1.0
 
     def _set_format(self):
         """
@@ -201,24 +201,16 @@ class XML_Meta(object):
         else:
             version = float(self.version)
             if version == 1.0:
-                self.source = {}
-                self.source[
-                    'SORDAT'] = './/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:Date'  # updated
-                self.source[
-                    'SURATH'] = './/gmd:contact/gmd:CI_ResponsibleParty/gmd:organisationName/gco:CharacterString'  # Updated
-                self.source[
-                    'SUREND'] = './/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:temporalElement/gmd:EX_TemporalExtent/gmd:extent/gml:TimePeriod/gml:endPosition'  # updated
-                self.source[
-                    'SURSTA'] = './/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:temporalElement/gmd:EX_TemporalExtent/gmd:extent/gml:TimePeriod/gml:beginPosition'  # updated
-                self.source[
-                    'TECSOU'] = './/gmi:acquisitionInformation/gmi:MI_AcquisitionInformation/gmi:instrument/gmi:MI_Instrument/gmi:type/gco:CharacterString'  # updated
-                self.source[
-                    'DATUM'] = './/gmd:referenceSystemInfo/gmd:MD_ReferenceSystem/gmd:referenceSystemIdentifier/gmd:RS_Identifier/gmd:authority/gmd:CI_Citation/gmd:title/gco:CharacterString'
-                self.source['survey'] = './/gmd:fileIdentifier/gco:CharacterString'  # updated
-                self.source[
-                    'planam'] = './/gmi:acquisitionInformation/gmi:MI_AcquisitionInformation/gmi:platform/gmi:MI_Platform/gmi:identifier/gmd:RS_Identifier/gmd:code/gco:CharacterString'  # updated#
-                self.source[
-                    'sensor'] = './/gmi:acquisitionInformation/gmi:MI_AcquisitionInformation/gmi:instrument/gmi:MI_Instrument/gmi:description/gco:CharacterString'  # updated
+                self.source = {
+                    'SORDAT': './/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:date/gmd:CI_Date/gmd:date/gco:Date',
+                    'SURATH': './/gmd:contact/gmd:CI_ResponsibleParty/gmd:organisationName/gco:CharacterString',
+                    'SUREND': './/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:temporalElement/gmd:EX_TemporalExtent/gmd:extent/gml:TimePeriod/gml:endPosition',
+                    'SURSTA': './/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:temporalElement/gmd:EX_TemporalExtent/gmd:extent/gml:TimePeriod/gml:beginPosition',
+                    'TECSOU': './/gmi:acquisitionInformation/gmi:MI_AcquisitionInformation/gmi:instrument/gmi:MI_Instrument/gmi:type/gco:CharacterString',
+                    'DATUM': './/gmd:referenceSystemInfo/gmd:MD_ReferenceSystem/gmd:referenceSystemIdentifier/gmd:RS_Identifier/gmd:authority/gmd:CI_Citation/gmd:title/gco:CharacterString',
+                    'survey': './/gmd:fileIdentifier/gco:CharacterString',
+                    'planam': './/gmi:acquisitionInformation/gmi:MI_AcquisitionInformation/gmi:platform/gmi:MI_Platform/gmi:identifier/gmd:RS_Identifier/gmd:code/gco:CharacterString',
+                    'sensor': './/gmi:acquisitionInformation/gmi:MI_AcquisitionInformation/gmi:instrument/gmi:MI_Instrument/gmi:description/gco:CharacterString'}
             else:
                 log.warning("verison not compatible")
                 self.metadataformat_check = 'fail'
@@ -1722,10 +1714,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     """
     # ------------------------------------------------------------------------------
 
-    m = {}
-    m['horiz_units'] = ''
-    m['horiz_uncert'] = ''
-    m['vert_acc'] = ''
+    m = {'horiz_units': '', 'horiz_uncert': '', 'vert_acc': ''}
     abstract = meta_xml['abstract']
     lines = abstract.split('\n')
     for line in lines:

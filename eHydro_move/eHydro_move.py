@@ -143,23 +143,13 @@ def write_shapefile(out_shp: str, name: str, geom, spcs: Union[str, int]):
 
     Parameters
     ----------
-    out_shp :
+    out_shp str :
         String representing the complete file path for the output shapefile
     name :
         String representing the name of the survey; Used to name the layer
-    poly :
-        The WTK Multipolygon object that holds the survey's bounding data
-    proj :
-        The ESPG code for the data
-    out_shp: str :
-        
-    name: str :
-        
     geom :
         
-    spcs: Union[str :
-        
-    int] :
+    spcs: Union[str, int] :
         
 
     Returns
