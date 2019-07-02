@@ -507,7 +507,7 @@ class read_raw:
                         meta_key = txt_keys[key]
                         txt_meta[meta_key] = line
         for key in txt_meta:
-            if key == 'from_vert_acc' or key == 'from_horiz_acc':
+            if key in ('from_vert_acc', 'from_horiz_acc'):
                 line = txt_meta[key]
                 val = line.split()[-2]
                 txt_meta[key] = val

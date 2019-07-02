@@ -361,7 +361,7 @@ def contentSearch(contents: List[str]) -> List[str]:
                 or xml.search(content)
                 or pfile.search(content)
                 or gpkg.search(content)):
-            #        if ext == '.xyz' or ext == '.xml' or ext == '.pickle':
+            # if ext in ('.xyz', '.xml', '.pickle'):
             files.append(content)
     return files
 

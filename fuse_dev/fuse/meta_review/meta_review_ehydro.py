@@ -360,22 +360,26 @@ class meta_review_ehydro(mrb.meta_review_base):
         """
 
         s57row = {}
+
         # remap the keys
         for key in row:
             if key in meta_review_ehydro._field_map:
                 s57row[meta_review_ehydro._field_map[key]] = row[key]
-                if row[key] == 'TRUE' or row[key] == 'True':
+                if row[key] in ('TRUE', 'True'):
                     s57row[meta_review_ehydro._field_map[key]] = 0
-                if row[key] == 'FALSE' or row[key] == 'False':
+                elif row[key] in ('FALSE', 'False'):
                     s57row[meta_review_ehydro._field_map[key]] = 1
+
         # enforce additional required formating
         if 'VERDAT' in s57row:
             s57row['VERDAT'] = meta_review_ehydro._vert_datum[s57row['VERDAT']]
-        if 'HORDAT' in s57row:
+        elif 'HORDAT' in s57row:
             h = s57row['HORDAT']
             for name in meta_review_ehydro._horz_datum:
                 if name in h:
                     s57row['HORDAT'] = meta_review_ehydro._horz_datum[name]
-        if 'SUREND' in s57row:
+                    break
+        elif 'SUREND' in s57row:
             s57row['SORDAT'] = s57row['SUREND']
+
         return s57row

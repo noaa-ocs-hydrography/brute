@@ -106,6 +106,7 @@ class XML_Meta(object):
         versions, most scenarios are guessing the version based on information
         in the file otherwise
         """
+
         self.filename = filename
         self.xml_tree = et.fromstring(meta_xml)
         self.ns = parse_namespace(meta_xml)
@@ -132,6 +133,7 @@ class XML_Meta(object):
         -------
 
         """
+
         version_1 = {
             'gco': 'http://www.isotc211.org/2005/gco',
             'gmd': 'http://www.isotc211.org/2005/gmd',
@@ -171,6 +173,7 @@ class XML_Meta(object):
         -------
 
         """
+
         version = self.version
         self.metadataformat = ""
         self.metadataformat_check = ""
@@ -232,6 +235,7 @@ class XML_Meta(object):
         -------
 
         """
+
         my_etree_dict1 = {}
         for ch in self.xml_tree:
             grandchildren = ch.getchildren()
@@ -273,6 +277,7 @@ class XML_Meta(object):
         -------
 
         """
+
         my_etree_dict1 = {}
         len_root_name_to_remove = len(self.xml_tree.tag)
         for key in xml_path_to_baseattribute:
@@ -340,6 +345,7 @@ class XML_Meta(object):
         -------
 
         """
+
         my_etree_dict1 = {}
         len_root_name_to_remove = len(self.xml_tree.tag)
         vertdatum = {'metadata/spref/vertdef/altsys/altdatum': 'altdatum'}
@@ -396,6 +402,7 @@ class XML_Meta(object):
         -------
 
         """
+
         my_etree_dict1 = {}
         len_root_name_to_remove = len(self.xml_tree.tag)
         for key in fgdc_additional_values:
@@ -426,6 +433,7 @@ class XML_Meta(object):
         -------
 
         """
+
         Survey_Instruments = {}
         my_etree = self.xml_tree
         for S_INST in my_etree.iter('SURVEY_INSTRUMENT'):
@@ -463,6 +471,7 @@ class XML_Meta(object):
         -------
 
         """
+
         self.data = {}
         if self.version == 1.0:
             if 'filename' in self.source:
@@ -487,7 +496,10 @@ class XML_Meta(object):
                 self._read_sensor_desc()
 
     def get_s57_dict(self):
-        """Convert the object dictionary 'data' keys to the desired S57 keys and"""
+        """
+        Convert the object dictionary 'data' keys to the desired S57 keys and
+        """
+
         s57 = {}
         for key in self.data.keys():
             if key == 'filename':
@@ -545,6 +557,7 @@ class XML_Meta(object):
         -------
 
         """
+
         if override is not None:
             override = 'Y'
             meta_xml = self.convert_xml_to_dict2()
@@ -580,6 +593,7 @@ class XML_Meta(object):
         -------
 
         """
+
         if self.version == 'ISO-8859-1':
             meta_xml = self.convert_xml_to_dict_ISO_FGDC()  #
             if self.metadataformat_check == 'fail':
@@ -608,6 +622,7 @@ class XML_Meta(object):
         -------
 
         """
+
         try:
             ret = self.xml_tree.find(self.source['filename'],
                                      namespaces=self.ns)
@@ -622,7 +637,10 @@ class XML_Meta(object):
 
     # --------------------------------------------------------------------------
     def _read_SORDAT(self):
-        """Reads a date, but what it means exactly needs to be researched..."""
+        """
+        Reads a date, but what it means exactly needs to be researched...
+        """
+
         if self.version == 1.0:
             try:
                 ret = self.xml_tree.find(self.source['SORDAT'],
@@ -661,6 +679,7 @@ class XML_Meta(object):
         -------
 
         """
+
         if self.version == 1.0:
             try:
                 ret = self.xml_tree.find(self.source['SURATH'],
@@ -693,6 +712,7 @@ class XML_Meta(object):
         -------
 
         """
+
         try:
             rets = self.xml_tree.find(self.source['SURSTA'],
                                       namespaces=self.ns)
@@ -729,6 +749,7 @@ class XML_Meta(object):
         -------
 
         """
+
         try:
             rete = self.xml_tree.find(self.source['SUREND'],
                                       namespaces=self.ns)
@@ -764,6 +785,7 @@ class XML_Meta(object):
         -------
 
         """
+
         try:
             ret = self.xml_tree.findall(self.source['TECSOU'],
                                         namespaces=self.ns)
@@ -791,6 +813,7 @@ class XML_Meta(object):
         -------
 
         """
+
         try:
             ret = self.xml_tree.findall(self.source['DATUM'],
                                         namespaces=self.ns)
@@ -807,7 +830,10 @@ class XML_Meta(object):
             return
 
     def _read_survey_name(self):
-        """Read the survey name."""
+        """
+        Read the survey name.
+        """
+
         try:
             ret = self.xml_tree.find(self.source['survey'],
                                      namespaces=self.ns)
@@ -822,7 +848,10 @@ class XML_Meta(object):
             return
 
     def _read_planam(self):
-        """Read the name of the survey platform."""
+        """
+        Read the name of the survey platform.
+        """
+
         try:
             ret = self.xml_tree.find(self.source['planam'],
                                      namespaces=self.ns)
@@ -837,7 +866,9 @@ class XML_Meta(object):
             return
 
     def _read_sensor_desc(self):
-        """Read a description of the survey sensor."""
+        """
+        Read a description of the survey sensor.
+        """
 
         try:
             ret = self.xml_tree.findall(self.source['sensor'], namespaces=self.ns)
@@ -870,6 +901,7 @@ def parse_namespace(meta_str):
     -------
 
     """
+
     xmlns_loc = meta_str.find("xmlns:")
     xmlns_start = meta_str.rfind("<", 0, xmlns_loc)
     xmlns_end = meta_str.find(">", xmlns_start)
@@ -907,6 +939,7 @@ def check_firstline(meta_xml):
     -------
 
     """
+
     xml_version = ''
     if meta_xml.startswith('<?xml version="1.0" encoding="ISO-8859-1"?>\n'):
         print('ISO-8859-1 xml version')
@@ -1172,6 +1205,7 @@ def convert_tofips(SOURCEPROJECTION_dict, SPCS):
     -------
 
     """
+
     FIPS = SOURCEPROJECTION_dict[SPCS]
     return FIPS
 
@@ -1401,6 +1435,7 @@ def parse_abstract_iso_ex(abstract):
     -------
 
     """
+
     m = {}
     if abstract.find(' Elevations are referenced to ') >= 0:
         line = abstract.split(' Elevations are referenced to ')[-1]
@@ -1470,6 +1505,7 @@ def VERDAT_iso_check(xml_meta):
     -------
 
     """
+
     m = {}
     if 'depthdn' in xml_meta:
         if xml_meta['depthdn'] is not None and xml_meta['depthdn'] != '':
@@ -1594,6 +1630,7 @@ def date_iso_abstract(abstract):
     -------
 
     """
+
     m = {}
     if abstract.find('Date') >= 0:
         datestr1 = abstract.split('Date')[-1].split('.')[0]
@@ -1712,8 +1749,8 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     -------
 
     """
-    # ------------------------------------------------------------------------------
 
+    # ------------------------------------------------------------------------------
     m = {'horiz_units': '', 'horiz_uncert': '', 'vert_acc': ''}
     abstract = meta_xml['abstract']
     lines = abstract.split('\n')
@@ -1814,7 +1851,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
             if meta_xml[
                 'plandu'].upper() == 'FOOT_US':  # plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
                 m['Horizontal_Units'] = 'U.S. Survey Feet'
-            if meta_xml['plandu'].upper() == 'INTL FOOT':
+            elif meta_xml['plandu'].upper() == 'INTL FOOT':
                 m['from_horiz_units'] = 'ft'  # international feet code for vdatum
     horizpar = meta_xml['horizpar']
     if horizpar.find('DGPS, 1 Meter') >= 0:
@@ -1847,6 +1884,7 @@ def find_ISO_xml_bottom(xml_txt):
     -------
 
     """
+
     # handlingof ISO xml USACE format information not proper children of the root 'metadata':
     xml_i_bottom = xml_txt.split('</metainfo>')[1]
     xml_i_bottom = xml_i_bottom.rstrip('</metadata>\n')
@@ -1870,6 +1908,7 @@ def parse_xml_info_text_ISO(xml_txt, m):
     -------
 
     """
+
     xml_i_bottom = find_ISO_xml_bottom(xml_txt)
     lines = xml_i_bottom.split('\n')
     other_lines = []
@@ -1912,6 +1951,7 @@ def convert_list_to_str(other_lines):
     -------
 
     """
+
     other_lines_str = ''
     for x in other_lines:
         if len(other_lines_str) == 0:
@@ -1935,6 +1975,7 @@ def convert_meta_to_input(m):
     -------
 
     """
+
     if 'Vertical Datum Description' in m:
         m['from_vert_datum'] = m['Vertical Datum Description']
     elif 'from_vert_datum' not in m:

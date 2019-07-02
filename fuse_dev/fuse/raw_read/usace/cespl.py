@@ -149,7 +149,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     subset_no_overlap = {}
     subset_dict = {}
     for key in meta:
-        if meta[key] == 'unknown' or meta[key] == '':
+        if meta[key] in ('unknown', ''):
             list_keys_empty.append(key)
         else:
             subset_row[key] = meta[key]

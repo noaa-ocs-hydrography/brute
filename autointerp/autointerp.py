@@ -219,9 +219,9 @@ def getBndRast(files: List[str]):
         name = '_'.join([x for x in splits[:2]])
         names.append(name)
 
-        if ext == '.tiff' or ext == '.tif':
+        if ext in ('.tiff', '.tif'):
             rast, name = getTifElev(item, y)
-        elif ext == '.shp' or ext == '.gpkg':
+        elif ext in ('.shp', '.gpkg'):
             rast, name = getShpRast(item, y)
         bndRasts.append(rast)
         names.append(name)
@@ -1003,7 +1003,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
 
     ## 9
     ext = _os.path.splitext(targs[1])[1].lower()
-    if ext == '.tiff' or ext == '.tif':
+    if ext in ('.tiff', '.tif'):
         gd_obj = _gdal.Open(targs[1])
     #    elif ext == '.gpkg':
     #        gd_obj = _ogr.Open(targs[1])

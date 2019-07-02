@@ -206,7 +206,7 @@ def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, meta
         subset_no_overlap = {}
 
         for key in meta:
-            if meta[key] == 'unknown' or meta[key] == '':
+            if meta[key] in ('unknown', ''):
                 list_keys_empty.append(key)
             else:
                 subset_row[key] = meta[key]

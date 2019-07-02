@@ -69,7 +69,7 @@ def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
     -------
 
     """
-    if datumfolder == 'unknown' or datumfolder == '':
+    if datumfolder in ('unknown', ''):
         d_folder = '\\unknown'
     else:
         d_folder = f'\\{datumfolder}'

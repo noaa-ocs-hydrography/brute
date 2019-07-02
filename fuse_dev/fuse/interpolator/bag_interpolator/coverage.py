@@ -387,10 +387,10 @@ class unified_coverage:
         for item in files:
             fName = _os.path.split(item)[1]
             ext = _os.path.splitext(fName)[1].lower()
-            if ext == '.tiff' or ext == '.tif':
+            if ext in ('.tiff', '.tif'):
                 rast = geotiff()
                 rast.open_file(item)
-            elif ext == '.shp' or ext == '.gpkg':
+            elif ext in ('.shp', '.gpkg'):
                 rast = geopackage()
                 rast.open_file(item, bag_wkt)
             bndRasts.append(rast)
