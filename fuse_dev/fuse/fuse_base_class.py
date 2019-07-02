@@ -41,8 +41,6 @@ class fuse_base_class:
 
         Parameters
         ----------
-        confile :
-            
         confile: str :
             
 
@@ -59,32 +57,29 @@ class fuse_base_class:
                     if line[0] == '#':
                         pass  # ignore these lines
                     else:
-                        try:
-                            stub, info = line.split('=')
-                            # clean these up a bit
-                            info = info.replace('\n', '')
-                            stub = stub.rstrip()
-                            info = info.rstrip().lstrip()
-                            if stub == 'outpath':
-                                if _os.path.isdir(info):
-                                    config[stub] = info
-                                else:
-                                    raise ValueError(f'Invalid output folder: {info}')
-                            elif stub == 'to_horiz_datum':
-                                config[stub] = int(info)
-                            elif stub == 'rawpaths':
-                                rawpaths = []
-                                raw = info.split(';')
-                                for r in raw:
-                                    if _os.path.isdir(r):
-                                        rawpaths.append(r)
-                                    else:
-                                        raise ValueError(f'Invalid input path: {r}')
-                                config[stub] = rawpaths
-                            else:
+                        stub, info = line.split('=')
+                        # clean these up a bit
+                        info = info.replace('\n', '')
+                        stub = stub.rstrip()
+                        info = info.rstrip().lstrip()
+                        if stub == 'outpath':
+                            if _os.path.isdir(info):
                                 config[stub] = info
-                        except:
-                            pass
+                            else:
+                                raise ValueError(f'Invalid output folder: {info}')
+                        elif stub == 'to_horiz_datum':
+                            config[stub] = int(info)
+                        elif stub == 'rawpaths':
+                            rawpaths = []
+                            raw = info.split(';')
+                            for r in raw:
+                                if _os.path.isdir(r):
+                                    rawpaths.append(r)
+                                else:
+                                    raise ValueError(f'Invalid input path: {r}')
+                            config[stub] = rawpaths
+                        else:
+                            config[stub] = info
         if len(config) == 0:
             raise ValueError('Failed to read configuration file.')
         else:
