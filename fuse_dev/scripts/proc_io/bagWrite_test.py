@@ -66,7 +66,7 @@ bag_data = gdal.Open(fileName)
 
 # print (gdal.Info(bag_data))
 
-bagWrite = proc_io('gdal', 'csar', fileLoc + '\\rasterdata')
+bagWrite = proc_io('gdal', 'csar', os.path.join(fileLoc, 'rasterdata'))
 # print (bagWrite)
 x = 0
 while True:

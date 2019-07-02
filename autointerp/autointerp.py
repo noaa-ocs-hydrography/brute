@@ -1460,7 +1460,7 @@ def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tup
             for xSlice in range(chunkGrid.shape[1]):
                 ts = _dt.now()
                 index = ySlice, xSlice
-                print('\nTile', chunkGrid[index] + 1, 'of', z, '-', ts)
+                print(f'\nTile {chunkGrid[index] + 1} of {z} - {ts}')
                 tile = chunk(sliceInfo, index, bagShape)
                 tiffTile = tifObjras[tile.yMin:tile.yMax, tile.xMin:tile.xMax]
                 #                tiffTile[tiffTile < 0] = chunkGrid[index]

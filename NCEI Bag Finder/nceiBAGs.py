@@ -37,8 +37,10 @@ def coordQuery(nx, ny, sx, sy):
     -------
 
     """
+
     nxStr, nyStr, sxStr, syStr = str(nx), str(ny), str(sx), str(sy)
-    corner = f'https://gis.ngdc.noaa.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/project?inSR=4326&outSR=102100&geometries=%7B"geometryType"+%3A+"esriGeometryPoint"%2C+"geometries"+%3A+%5B%0D%0A+++++%7B%0D%0A+++++++"x"+%3A+{nxStr}%2C%0D%0A+++++++"y"+%3A+{syStr}%0D%0A+++++%7D%2C%7B%0D%0A+++++++"x"+%3A+{sxStr}%2C%0D%0A+++++++"y"+%3A+{nyStr}%0D%0A+++++%7D%0D%0A++%5D%0D%0A%7D&transformation=&transformForward=true&vertical=false&f=json'
+    corner = 'https://gis.ngdc.noaa.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/project' + \
+             f'?inSR=4326&outSR=102100&geometries=%7B"geometryType"+%3A+"esriGeometryPoint"%2C+"geometries"+%3A+%5B%0D%0A+++++%7B%0D%0A+++++++"x"+%3A+{nxStr}%2C%0D%0A+++++++"y"+%3A+{syStr}%0D%0A+++++%7D%2C%7B%0D%0A+++++++"x"+%3A+{sxStr}%2C%0D%0A+++++++"y"+%3A+{nyStr}%0D%0A+++++%7D%0D%0A++%5D%0D%0A%7D&transformation=&transformForward=true&vertical=false&f=json'
     cornerRequest = requests.get(corner)
     cornerRequestJSON = cornerRequest.json()
     #    print (cornerRequestJSON)

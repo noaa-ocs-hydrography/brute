@@ -295,7 +295,7 @@ class XML_Meta(object):
             # pulling in Z units from attrs
             if x.text == 'Z_depth':
                 my_etree_dict1['Z_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-                # use to debug#print(self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text + ' Z units')
+                # use to debug print(f"{self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text} Z units")
                 if my_etree_dict1['Z_units'].upper() == 'usSurveyFoot'.upper():
                     my_etree_dict1['from_vert_units'] = 'US Survey Foot'
         for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):

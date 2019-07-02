@@ -133,44 +133,29 @@ def query() -> Tuple[List[str], int, str]:
             while i < len(agencies):
                 if i == 0:
                     # %27 is ' (Apostrophe); %25 is % (Percent sign)
-                    areas += ('UPPER(SURVEYAGENCY)+like+%27%25'
-                              + agencies[0].strip()
-                              + '%25%27')
+                    areas += f'UPPER(SURVEYAGENCY)+like+%27%25{agencies[0].strip()}%25%27'
                     i += 1
                 else:
                     # %27 is ' (Apostrophe); %25 is % (Percent sign)
-                    areas += ('+OR+UPPER(SURVEYAGENCY)+like+%27%25'
-                              + agencies[i].strip()
-                              + '%25%27')
+                    areas += f'+OR+UPPER(SURVEYAGENCY)+like+%27%25{agencies[i].strip()}%25%27'
                     i += 1
             areas += ')+'
         else:
             # %27 is ' (Apostrophe); %25 is % (Percent sign)
-            areas = ('UPPER(SURVEYAGENCY)+like+%27%25'
-                     + agencies[0].strip()
-                     + '%25%27')
+            areas = f'UPPER(SURVEYAGENCY)+like+%27%25{agencies[0].strip()}%25%27'
     else:
         areas = ''
 
     # The main query parameters that will determine the contents of the response
     # Survey Date Uploaded
     if config['Timeframe']['Ignore Date'] == 'no' and areas != '':
-        print('\nStart:', start, '\nEnd:', end)
+        print(f'\nStart: {start}\nEnd: {end}')
         # %27 is ' (Apostrophe)
-        where = ('SURVEYDATEUPLOADED+>=+%27'
-                 + start
-                 + 'T00:01:00.000Z%27+AND+SURVEYDATEUPLOADED+<=+%27'
-                 + end
-                 + 'T11:59:00.000Z%27+AND+'
-                 + areas)
+        where = f'SURVEYDATEUPLOADED+>=+%27{start}T00:01:00.000Z%27+AND+SURVEYDATEUPLOADED+<=+%27{end}T11:59:00.000Z%27+AND+{areas}'
     elif config['Timeframe']['Ignore Date'] == 'no' and areas == '':
         print('\nStart:', start, '\nEnd:', end)
         # %27 is ' (Apostrophe)
-        where = ('SURVEYDATEUPLOADED+>=+%27'
-                 + start
-                 + 'T00:01:00.000Z%27+AND+SURVEYDATEUPLOADED+<=+%27'
-                 + end
-                 + 'T11:59:00.000Z%27')
+        where = f'SURVEYDATEUPLOADED+>=+%27{start}T00:01:00.000Z%27+AND+SURVEYDATEUPLOADED+<=+%27{end}T11:59:00.000Z%27'
     else:
         print('\nStart: Ignored', '\nEnd: Ignored')
         start = 'Ignored'
@@ -183,10 +168,12 @@ def query() -> Tuple[List[str], int, str]:
             where = '1%3D1'
 
     # The query for determining how many responses will be returned
-    newSurveys = f'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where={where}&outFields=*&returnGeometry=false&returnCountOnly=true&outSR=&f=json'
+    newSurveys = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query' + \
+                 f'?where={where}&outFields=*&returnGeometry=false&returnCountOnly=true&outSR=&f=json'
 
     # The query for returning the object IDs for the given timeframe
-    objIDs = f'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?&where={where}&outFields=*&returnGeometry=false&returnIdsOnly=true&outSR=&f=json'
+    objIDs = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query' + \
+             f'?&where={where}&outFields=*&returnGeometry=false&returnIdsOnly=true&outSR=&f=json'
 
     print(objIDs, newSurveys)
 
@@ -392,10 +379,8 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
 
     while x < newSurveysNum:
         print(x, end=' ')
-        query = (
-                'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query?where=OBJECTID+=+'
-                + str(surveyIDs[x])
-                + '&outFields=*&returnGeometry=true&outSR=4326&f=json')
+        query = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query' + \
+                f'?where=OBJECTID+=+{surveyIDs[x]}&outFields=*&returnGeometry=true&outSR=4326&f=json'
         response = requests.get(query)
         page = response.json()
         row = []
