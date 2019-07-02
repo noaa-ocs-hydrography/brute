@@ -80,7 +80,7 @@ class bdb51_io:
                 self.sock.sendall(pickle.dumps(response))
         self.sock.close()
 
-    def take_commands(self, command_dict: dict):
+    def take_commands(self, command_dict: dict) -> dict:
         """
         Act on commands the provided command dictionary, such as to upload
         data, read and return data, destroy the object and exit the
@@ -102,16 +102,17 @@ class bdb51_io:
 
         # self._command.append(command_dict)
         command = command_dict['command']
+
         if command == 'connect':
-            response = self.connect(command_dict)
+            return self.connect(command_dict)
         elif command == 'status':
-            response = self.status(command_dict)
+            return self.status(command_dict)
         elif command == 'upload':
-            response = self.upload(command_dict)
+            return self.upload(command_dict)
         elif command == 'die':
-            response = self.die(command_dict)
+            return self.die(command_dict)
+
         # self._response.append(response)
-        return response
 
     def connect(self, command_dict: dict) -> dict:
         """
@@ -221,7 +222,7 @@ class bdb51_io:
             command_dict['log'] = str(error)
         return command_dict
 
-    def _upload_new(self, file_path: str):
+    def _upload_new(self, file_path: str) -> str:
         """
         Upload both bathymetry and the metadata.
 
@@ -262,7 +263,7 @@ class bdb51_io:
         info = 'Uploaded {} to {}'.format(file_path, self.database)
         return info
 
-    def query(self, command_dict: dict):
+    def query(self, command_dict: dict) -> dict:
         """
         Query for and return data from the db.
 
