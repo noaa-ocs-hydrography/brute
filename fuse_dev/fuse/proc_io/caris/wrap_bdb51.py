@@ -15,7 +15,7 @@ import time
 
 import caris
 import caris.bathy.db as bdb
-from get_access import *
+import get_access
 
 
 class bdb51_io:
@@ -139,7 +139,7 @@ class bdb51_io:
         self.database = command_dict['database']
 
         try:
-            self._nm = bdb.NodeManager(command_dict['username'], command_dict['password'], self.node_manager)
+            self._nm = bdb.NodeManager(get_access.username, get_access.password, self.node_manager)
             msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
         except RuntimeError as error:
             msg += str(error)
