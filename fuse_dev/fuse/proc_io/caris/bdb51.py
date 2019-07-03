@@ -75,11 +75,7 @@ class bdb51:
             ch = logging.StreamHandler(sys.stdout)
             ch.setLevel(logging.DEBUG)
             self._logger.addHandler(ch)
-<<<<<<< HEAD
             self._logger.setLevel(logging.DEBUG)
-=======
-
->>>>>>> fa0e08efde3aa2f0b5f699e197f8f146b5a9ad0a
         self._thread = threading.Thread(target=self._form_connection)
         self._thread.start()
 
@@ -176,24 +172,6 @@ class bdb51:
             err = 'Error executing: {}'.format(args)
             print(err)
             self._logger.log(logging.DEBUG, err)
-<<<<<<< HEAD
-=======
-
-        try:
-            # if len(out) > 0:
-            #     msg = out.decode(encoding='UTF-8')
-            #     print(msg)
-            #     self._logger.log(logging.DEBUG, msg)
-            # if len(err) > 0:
-            #     msg = err.decode(encoding='UTF-8')
-            #     print(msg)
-            #     self._logger.log(logging.DEBUG, msg)
-            pass
-        except Exception as e:
-            err = 'Error in handling error output: {}'.format(e)
-            print(err)
-            self._logger.log(logging.DEBUG, err)
->>>>>>> fa0e08efde3aa2f0b5f699e197f8f146b5a9ad0a
 
     def connect(self):
         """
@@ -299,12 +277,8 @@ class bdb51:
 
                     if not response['success']:
                         print('{} failed!'.format(response['command']))
-<<<<<<< HEAD
                         if 'log' in response:
                             print(response['log'])
-=======
-
->>>>>>> fa0e08efde3aa2f0b5f699e197f8f146b5a9ad0a
                     self._response = None
                     break
         else:

@@ -15,7 +15,7 @@ import time
 
 import caris
 import caris.bathy.db as bdb
-import get_access
+from get_access import *
 
 
 class bdb51_io:
@@ -141,19 +141,11 @@ class bdb51_io:
         self.database = command_dict['database']
 
         try:
-<<<<<<< HEAD
             self._nm = bdb.NodeManager(username, password, self.node_manager)
             msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
         except RuntimeError as error:
             msg += str(error)
             command_dict['success'] = False
-=======
-            self._nm = bdb.NodeManager(get_access.username, get_access.password, self.node_manager)
-            msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
-        except RuntimeError as error:
-            msg += str(error)
-
->>>>>>> fa0e08efde3aa2f0b5f699e197f8f146b5a9ad0a
         if self._nm is not None:
             try:
                 self._db = self._nm.get_database(self.database)
@@ -215,16 +207,6 @@ class bdb51_io:
             response
 
         """
-<<<<<<< HEAD
-=======
-
-        # what to upload, new or updated data
-        action = command_dict['action']
-
-        # the name of the file to get data from
-        file_path = command_dict['path']
-
->>>>>>> fa0e08efde3aa2f0b5f699e197f8f146b5a9ad0a
         try:
             # what to upload, new or updated data
             action = command_dict['action']
@@ -251,11 +233,7 @@ class bdb51_io:
 
         return command_dict
 
-<<<<<<< HEAD
-    def _upload_new(self, file_path: str, new_metadata: dict):
-=======
-    def _upload_new(self, file_path: str) -> str:
->>>>>>> fa0e08efde3aa2f0b5f699e197f8f146b5a9ad0a
+    def _upload_new(self, file_path: str, new_metadata: dict) -> str:
         """
         Upload both bathymetry and the metadata.
 
@@ -280,24 +258,10 @@ class bdb51_io:
         surface['srcfil'] = file_path
 
         # get a metadata container to put stuff into
-<<<<<<< HEAD
         current_metadata = surface.attributes
         # need to load the metadata dictionary that was put on disk here.
         for key in new_metadata:
             current_metadata[key] = new_metadata[key]
-=======
-        #        metadata = surface.attributes
-        #        # need to load the metadata dictionary that was put on disk here.
-        #        metafilename = get the name here
-        #        with pickle.load(metafilename) as new_meta:
-        #         try:
-        #             metadata = new_meta
-        #         except:
-        #             surface.attribute['OBJNAM']  = 'MetaDataFail'
-        #             with open('metadata_error_file.txt','a') as metafail:
-        #                 metafail.write(f'{file_path}\n')
-
->>>>>>> fa0e08efde3aa2f0b5f699e197f8f146b5a9ad0a
         # commit the feature to the database
         self._db.commit()
 
