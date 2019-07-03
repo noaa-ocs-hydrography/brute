@@ -156,7 +156,7 @@ def getShpRast(file: str, y, pixel_size=1, nodata=255):
     fName = _os.path.split(file)[-1]
     splits = _os.path.splitext(fName)
     name = splits[0]
-    tif = splits[0] + '.tif'
+    # tif = f'{splits[0]}.tif'
 
     # Open the data source and read in the extent
     source_ds = _ogr.Open(file)
@@ -219,9 +219,9 @@ def getBndRast(files: List[str]):
         name = '_'.join([x for x in splits[:2]])
         names.append(name)
 
-        if ext == '.tiff' or ext == '.tif':
+        if ext in ('.tiff', '.tif'):
             rast, name = getTifElev(item, y)
-        elif ext == '.shp' or ext == '.gpkg':
+        elif ext in ('.shp', '.gpkg'):
             rast, name = getShpRast(item, y)
         bndRasts.append(rast)
         names.append(name)
@@ -289,14 +289,14 @@ def getBagLyrs(fileObj: str):
                                  namespaces=ns)[0].text.split()
             a = 1
         except (_et.Error, IndexError) as e:
-            print(f"Unable to read corners SW and NE: {e}", '\nAttempting to read via a different namespace')
+            print(f"Unable to read corners SW and NE: {e}\nAttempting to read via a different namespace")
             try:
                 ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
                                      'cornerPoints/gml:Point/gml:coordinates',
                                      namespaces=ns2)[0].text.split()
                 a = 2
             except (_et.Error, IndexError) as e:
-                print(f"Unable to read corners SW and NE: {e}")
+                print("Unable to read corners SW and NE: {}".format(e))
                 return
 
         try:
@@ -457,7 +457,7 @@ def tupleGrid(grid: _np.array, maxVal: int):
                 else:
                     pass
             else:
-                if io == False:
+                if not io:
                     val = grid[y, x]
                     point = [x, y, val]
 
@@ -762,9 +762,9 @@ def polyTifVals(tifs: list, path: str, names: List[str], extent: list):
         else:
             meanTiff = (meanTiff > maxVal).astype(_np.int)
 
-    outputname = path + '\\' + names[0] + '_COMBINEDPOLY'
-    outputtiff = outputname + '.tif'
-    outputhdf5 = outputname + '.h5'
+    outputname = f'{path}\\{names[0]}_COMBINEDPOLY'
+    outputtiff = f'{outputname}.tif'
+    outputhdf5 = f'{outputname}.h5'
 
     print(outputname)
     while True:
@@ -778,7 +778,7 @@ def polyTifVals(tifs: list, path: str, names: List[str], extent: list):
             break
     ny, nx = extent[0]
     reso = 1
-    gtran = (ny, reso, 0.0, nx, 0.0, -(reso))
+    gtran = (ny, reso, 0.0, nx, 0.0, -reso)
     #    write_raster(meanTiff, gtran, gd_obj, outputtiff, options = ['COMPRESS=LZW'])
     #    gd_obj = None
 
@@ -1003,7 +1003,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
 
     ## 9
     ext = _os.path.splitext(targs[1])[1].lower()
-    if ext == '.tiff' or ext == '.tif':
+    if ext in ('.tiff', '.tif'):
         gd_obj = _gdal.Open(targs[1])
     #    elif ext == '.gpkg':
     #        gd_obj = _ogr.Open(targs[1])
@@ -1020,7 +1020,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     #    f.close()
     print('tiff')
     temp = targs[0]
-    gt = (bulx, bagRes, temp[2], buly, temp[4], -(bagRes))
+    gt = (bulx, bagRes, temp[2], buly, temp[4], -bagRes)
     write_raster(ax, gt, gd_obj, targs[2], options=['COMPRESS=LZW'])
     ax = None
 
@@ -1144,12 +1144,14 @@ def rePrint(grids: list, ugrids: list, maxVal, ioVal: Union[int, bool], debug: U
     ## 7
     fpoly = _np.logical_and(dpoly, npoly)
     ## 8
-    if ioVal == False:
-        nbag = _np.where(fpoly, interp, bag)
-        nunc = _np.where(fpoly, iuncrt, uncr)
-    elif ioVal == True:
+
+    if ioVal is None:
         nbag = _np.where(fpoly, interp, maxVal)
         nunc = _np.where(fpoly, iuncrt, maxVal)
+    elif not ioVal:
+        nbag = _np.where(fpoly, interp, bag)
+        nunc = _np.where(fpoly, iuncrt, uncr)
+
     print('done', _dt.now())
     if debug == 0:
         polyList = [fpoly]
@@ -1275,45 +1277,51 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
     sy, sx = ext[-1]
     reso = float(res)
     print(sx, sy, nx, ny)
-    gtran = (ny, reso, 0.0, nx, 0.0, -(reso))
+    gtran = (ny, reso, 0.0, nx, 0.0, -reso)
     print(gtran)
     fName = bag[1].split('\\')[-1]
     print(fName)
     split = fName.split('_')[:2]
     if res < 1:
-        res = str(int(res * 100)) + 'cm'
+        res = f'{int(res * 100)}cm'
     else:
-        res = str(res) + 'm'
-    if ioVal == 1:
-        bagName = '_'.join([x for x in split]) + '_' + res + '_INTERP_ONLY'
-    else:
-        bagName = '_'.join([x for x in split]) + '_' + res + '_INTERP_FULL'
-    outputpath2 = path + '\\' + bagName + '.bag'
+        res = f'{res}m'
+
+    bagName = f'{"_".join([x for x in split])}_{res}_INTERP_{"ONLY" if ioVal == 1 else "FULL"}'
+    outputpath2 = _os.path.join(path, f'{bagName}.bag')
     #    print(outputpath)
+
     while True:
         #        if _os.path.exists(outputpath):
         #            _os.remove(outputpath)
         #        elif not _os.path.exists(outputpath):
         #            break
+
         if _os.path.exists(outputpath2):
             _os.remove(outputpath2)
         elif not _os.path.exists(outputpath2):
             break
+
     for num in range(len(polyList)):
-        outputpath = path + '\\' + bagName + '_' + str(num) + '.tif'
+        outputpath = f'{path}\\{bagName}_{num}.tif'
         print(outputpath)
-        write_raster(polyList[num], gtran, gd_obj, outputpath,
-                     dtype=_gdal.GDT_Float64, nodata=0, options=['COMPRESS=LZW'])
+        write_raster(polyList[num], gtran, gd_obj, outputpath, dtype=_gdal.GDT_Float64, nodata=0,
+                     options=['COMPRESS=LZW'])
+
     polyList = None
     _shutil.copy2(bag[1], outputpath2)
+
     with _tb.open_file(outputpath2, mode='a') as bagfile:
         new = _np.flipud(new)
         bagfile.root.BAG_root.elevation[:, :] = new
         newu = _np.flipud(newu)
         bagfile.root.BAG_root.uncertainty[:, :] = newu
+
         if ioVal == 1:
             bagfile.root.BAG_root.tracking_list.remove_rows(0, bagfile.root.BAG_root.tracking_list.nrows)
+
         bagfile.flush()
+
     bagfile.close()
     gd_obj = None
     print('done')
@@ -1452,7 +1460,7 @@ def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tup
             for xSlice in range(chunkGrid.shape[1]):
                 ts = _dt.now()
                 index = ySlice, xSlice
-                print('\nTile', chunkGrid[index] + 1, 'of', z, '-', ts)
+                print(f'\nTile {chunkGrid[index] + 1} of {z} - {ts}')
                 tile = chunk(sliceInfo, index, bagShape)
                 tiffTile = tifObjras[tile.yMin:tile.yMax, tile.xMin:tile.xMax]
                 #                tiffTile[tiffTile < 0] = chunkGrid[index]
@@ -1574,14 +1582,14 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
     ugrids = None
     bagSave(bag, saveBag, tifGrids, res, ext, desPath, saveUnc, polyList, ioVal)
     done = _dt.now()
-    print('acually done', done)
+    print(f'acually done {done}')
     delta = done - start
-    msg = 'Done! Took: ' + str(delta)
+    msg = f'Done! Took: {delta}'
     print(msg)
     return msg
 
 
-class chunk():
+class chunk:
     """
     chunk() serves as the data container for individual tile data. It's
     inputs inlcude sliceInfo=[buffer, height, width], chunkSlice=tile[y,x]

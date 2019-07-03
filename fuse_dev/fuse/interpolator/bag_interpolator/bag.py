@@ -191,7 +191,7 @@ class bag_file:
 
         sx, sy = meta.sw
         nx, ny = meta.ne
-        return ([sx, ny], [nx, sy])
+        return [sx, ny], [nx, sy]
 
     def _gt2bounds(self, meta, shape: Tuple[int, int]) -> Tuple[Tuple[Tuple[float, float], Tuple[float, float]], float]:
         """
@@ -276,7 +276,7 @@ class bag_file:
 
         """
 
-        name = self.name + '_INTERP_ONLY.bag' if io else '_INTERP_FULL.bag'
+        name = f'{self.name}_INTERP_{"ONLY" if io else "FULL"}.bag'
         self.outfilename = _os.path.join(outlocation, name)
 
 
