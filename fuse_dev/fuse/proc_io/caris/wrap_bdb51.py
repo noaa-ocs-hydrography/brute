@@ -15,7 +15,7 @@ import time
 
 import caris
 import caris.bathy.db as bdb
-from get_access import *
+import get_access
 
 
 class bdb51_io:
@@ -82,7 +82,7 @@ class bdb51_io:
                     print('Failed to send all data. {} sent.').format(lensent)
         self.sock.close()
 
-    def take_commands(self, command_dict: dict):
+    def take_commands(self, command_dict: dict) -> dict:
         """
         Act on commands the provided command dictionary, such as to upload
         data, read and return data, destroy the object and exit the
@@ -104,16 +104,17 @@ class bdb51_io:
 
         # self._command.append(command_dict)
         command = command_dict['command']
+
         if command == 'connect':
-            response = self.connect(command_dict)
+            return self.connect(command_dict)
         elif command == 'status':
-            response = self.status(command_dict)
+            return self.status(command_dict)
         elif command == 'upload':
-            response = self.upload(command_dict)
+            return self.upload(command_dict)
         elif command == 'die':
-            response = self.die(command_dict)
+            return self.die(command_dict)
+
         # self._response.append(response)
-        return response
 
     def connect(self, command_dict: dict) -> dict:
         """
@@ -138,12 +139,21 @@ class bdb51_io:
         msg = ''
         self.node_manager = command_dict['node_manager']
         self.database = command_dict['database']
+
         try:
+<<<<<<< HEAD
             self._nm = bdb.NodeManager(username, password, self.node_manager)
             msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
         except RuntimeError as error:
             msg += str(error)
             command_dict['success'] = False
+=======
+            self._nm = bdb.NodeManager(get_access.username, get_access.password, self.node_manager)
+            msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
+        except RuntimeError as error:
+            msg += str(error)
+
+>>>>>>> fa0e08efde3aa2f0b5f699e197f8f146b5a9ad0a
         if self._nm is not None:
             try:
                 self._db = self._nm.get_database(self.database)
@@ -153,11 +163,14 @@ class bdb51_io:
             except RuntimeError as error:
                 msg = msg + str(error)
                 command_dict['success'] = False
+
         command_dict['log'] = msg
         return command_dict
 
     def _check_connection(self):
-        """Check to see if the database connection is alive."""
+        """
+        Check to see if the database connection is alive.
+        """
 
         pass
 
@@ -202,6 +215,16 @@ class bdb51_io:
             response
 
         """
+<<<<<<< HEAD
+=======
+
+        # what to upload, new or updated data
+        action = command_dict['action']
+
+        # the name of the file to get data from
+        file_path = command_dict['path']
+
+>>>>>>> fa0e08efde3aa2f0b5f699e197f8f146b5a9ad0a
         try:
             # what to upload, new or updated data
             action = command_dict['action']
@@ -219,14 +242,20 @@ class bdb51_io:
                 # query for the object and replace the metadata
             else:
                 raise ValueError('Upload action type not understood')
+
             command_dict['success'] = True
             command_dict['log'] = msg
         except Exception as error:
             command_dict['success'] = False
             command_dict['log'] = str(error)
+
         return command_dict
 
+<<<<<<< HEAD
     def _upload_new(self, file_path: str, new_metadata: dict):
+=======
+    def _upload_new(self, file_path: str) -> str:
+>>>>>>> fa0e08efde3aa2f0b5f699e197f8f146b5a9ad0a
         """
         Upload both bathymetry and the metadata.
 
@@ -249,19 +278,34 @@ class bdb51_io:
         surface = self._db.create_feature('surfac', geom)
         surface['OBJNAM'] = file_path
         surface['srcfil'] = file_path
+
         # get a metadata container to put stuff into
+<<<<<<< HEAD
         current_metadata = surface.attributes
         # need to load the metadata dictionary that was put on disk here.
         for key in new_metadata:
             current_metadata[key] = new_metadata[key]
+=======
+        #        metadata = surface.attributes
+        #        # need to load the metadata dictionary that was put on disk here.
+        #        metafilename = get the name here
+        #        with pickle.load(metafilename) as new_meta:
+        #         try:
+        #             metadata = new_meta
+        #         except:
+        #             surface.attribute['OBJNAM']  = 'MetaDataFail'
+        #             with open('metadata_error_file.txt','a') as metafail:
+        #                 metafail.write(f'{file_path}\n')
+
+>>>>>>> fa0e08efde3aa2f0b5f699e197f8f146b5a9ad0a
         # commit the feature to the database
         self._db.commit()
+
         # upload coverage
         surface.upload_coverage(file_path)
-        info = 'Uploaded {} to {}'.format(file_path, self.database)
-        return info
+        return 'Uploaded {} to {}'.format(file_path, self.database)
 
-    def query(self, command_dict: dict):
+    def query(self, command_dict: dict) -> dict:
         """
         Query for and return data from the db.
 
