@@ -16,11 +16,11 @@ import socket
 import subprocess
 import sys
 import threading
+from tempfile import NamedTemporaryFile
 from typing import Dict
 
 from fuse.proc_io.caris import helper
 from osgeo import gdal
-
 
 class bdb51:
     """
@@ -75,7 +75,7 @@ class bdb51:
             ch = logging.StreamHandler(sys.stdout)
             ch.setLevel(logging.DEBUG)
             self._logger.addHandler(ch)
-
+            self._logger.setLevel(logging.DEBUG)
         self._thread = threading.Thread(target=self._form_connection)
         self._thread.start()
 
@@ -173,21 +173,6 @@ class bdb51:
             print(err)
             self._logger.log(logging.DEBUG, err)
 
-        try:
-            # if len(out) > 0:
-            #     msg = out.decode(encoding='UTF-8')
-            #     print(msg)
-            #     self._logger.log(logging.DEBUG, msg)
-            # if len(err) > 0:
-            #     msg = err.decode(encoding='UTF-8')
-            #     print(msg)
-            #     self._logger.log(logging.DEBUG, msg)
-            pass
-        except Exception as e:
-            err = 'Error in handling error output: {}'.format(e)
-            print(err)
-            self._logger.log(logging.DEBUG, err)
-
     def connect(self):
         """
         Form and send the connect command to the BDB51 wapper.
@@ -195,6 +180,7 @@ class bdb51:
 
         command = {'command': 'connect', 'node_manager': self.database_loc, 'database': self.database_name}
         response = self._set_command(command)
+        return response['success']
 
     def status(self):
         """
@@ -211,8 +197,11 @@ class bdb51:
 
         command = {'command': 'status'}
         response = self._set_command(command)
+        self.alive = response['alive']
+        self.connected = response['connected']
+        return response['success']
 
-    def upload(self, dataset: gdal.Dataset, instruction: str):
+    def upload(self, dataset: str, instruction: str, metadata: dict):
         """
         Send the BDB environment instructions on where data is and what to do
         with it.
@@ -221,7 +210,7 @@ class bdb51:
         ----------
         dataset :
             param instruction:
-        dataset: gdal.Dataset :
+        dataset: str :
 
         instruction: str :
 
@@ -230,8 +219,21 @@ class bdb51:
         -------
 
         """
-
-        pass
+        if metadata is None:
+            raise ValueError('Metadata is required for database upload')
+        else:
+            command = {'command': 'upload'}
+            command['action'] = instruction
+            command['bathy_path'] = dataset
+            with NamedTemporaryFile(delete = False) as t:
+                pickle.dump(metadata, t)
+            command['meta_path'] = t.name
+            response = self._set_command(command)
+            if response['success']:
+                os.remove(t.name)
+            else:
+                print(metadata)
+            return response['success']
 
     def die(self, delay: int = 0):
         """
@@ -254,6 +256,7 @@ class bdb51:
 
         if response['command'] == 'die' and response['success']:
             self.alive = False
+        return response['success']
 
     def _set_command(self, command: Dict[str, str]):
         """
@@ -274,7 +277,8 @@ class bdb51:
 
                     if not response['success']:
                         print('{} failed!'.format(response['command']))
-
+                        if 'log' in response:
+                            print(response['log'])
                     self._response = None
                     break
         else:

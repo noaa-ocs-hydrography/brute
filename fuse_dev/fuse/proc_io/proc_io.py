@@ -30,7 +30,8 @@ class proc_io:
     """
 
     def __init__(self, in_data_type: str, out_data_type: str, work_dir: str = None, z_up: bool = True,
-                 nodata: float = 1000000.0, caris_env_name: str = 'CARIS35', overwrite: bool = True):
+                 nodata: float = 1000000.0, caris_env_name: str = 'CARIS35', overwrite: bool = True,
+                 db_loc: str = None, db_name: str = None):
         """
         Initialize with the data type to be worked.
 
@@ -53,6 +54,12 @@ class proc_io:
         overwrite : bool, optional
             Default is ``True``. If a file with an existing name is input, this
             will determine whether the file is overwritten or kept
+        db_loc : str, optional
+            Default is ``None``. The location of a database to connect to for
+            'writing' data.
+        db_name : str, optional
+            Defulat is ``None``.  The name of the database to connect to for
+            'writing' data.
         """
 
         self._in_data_type = in_data_type
@@ -76,7 +83,10 @@ class proc_io:
             self._logger.addHandler(ch)
 
         if self._out_data_type == "carisbdb51":
-            self._bdb51 = caris.bdb51()
+            if db_name is not None and db_loc is not None:
+                self._bdb = caris.bdb51(db_loc, db_name)
+            else:
+                raise ValueError('No database name or location provided')
 
     def write(self, dataset: gdal.Dataset, instruction: str, metadata: dict = None):
         """
@@ -104,7 +114,7 @@ class proc_io:
         elif self._out_data_type == 'gpkg':
             self._write_points(dataset, instruction)
         elif self._out_data_type == 'carisbdb51':
-            self._send2bdb51(dataset, instruction)
+            self._bdb.upload(dataset, instruction, metadata)
         else:
             raise ValueError(f'writer type unknown: {self._out_data_type}')
 
