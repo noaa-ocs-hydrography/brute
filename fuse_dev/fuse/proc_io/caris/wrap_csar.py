@@ -13,10 +13,9 @@ import sys
 
 import caris.coverage as cc
 import numpy as np
-from osgeo import gdal
 
 
-def write_csar(dataset: gdal.Dataset, m: dict):
+def write_csar(dataset, m: dict):
     """
     Convert a gdal dataset into a csar.
     http://www.teledynecaris.com/en/support/caris-python-api/5-1/coverage/raster/intro.html#creating-a-raster
@@ -78,7 +77,7 @@ def write_csar(dataset: gdal.Dataset, m: dict):
     raster = None
 
 
-def write_cloud(dataset: gdal.Dataset, m: dict):
+def write_cloud(dataset, m: dict):
     """
     Convert a set of GDAL points to a CSAR point cloud.  The provided data is
     assumed to be a depth (positive down) and is assigned to a height

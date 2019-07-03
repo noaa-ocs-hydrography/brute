@@ -156,7 +156,7 @@ def getShpRast(file: str, y, pixel_size=1, nodata=255):
     fName = _os.path.split(file)[-1]
     splits = _os.path.splitext(fName)
     name = splits[0]
-    # tif = f'{splits[0]}.tif'
+    tif = f'{splits[0]}.tif'
 
     # Open the data source and read in the extent
     source_ds = _ogr.Open(file)
@@ -240,9 +240,8 @@ def getBagLyrs(fileObj: str):
 
     Parameters
     ----------
-    fileObj :
+    fileObj : str
         File path of the input BAG file
-    fileObj: str :
 
 
     Returns
