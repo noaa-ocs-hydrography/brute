@@ -92,7 +92,7 @@ def regionPath(root: str, folder: str) -> dict:
             temp.append(row)
     fileName.close()
     for row in temp[1:]:
-        regionName = row[1].strip() + '_' + row[0].strip()
+        regionName = f'{row[1].strip()}_{row[0].strip()}'
         dwnlds = []
         districts = [i.strip() for i in row[2].split(',')]
         for i in districts:
@@ -119,7 +119,7 @@ def open_ogr(path):
     ds = _ogr.Open(path)
     ds_layer = ds.GetLayer()
     for feature in ds_layer:
-        if feature != None:
+        if feature is not None:
             geom = feature.GetGeometryRef()
             ds_geom = _ogr.CreateGeometryFromWkt(geom.ExportToWkt())
             break
@@ -143,23 +143,13 @@ def write_shapefile(out_shp: str, name: str, geom, spcs: Union[str, int]):
 
     Parameters
     ----------
-    out_shp :
+    out_shp str :
         String representing the complete file path for the output shapefile
     name :
         String representing the name of the survey; Used to name the layer
-    poly :
-        The WTK Multipolygon object that holds the survey's bounding data
-    proj :
-        The ESPG code for the data
-    out_shp: str :
-        
-    name: str :
-        
     geom :
         
-    spcs: Union[str :
-        
-    int] :
+    spcs: Union[str, int] :
         
 
     Returns
@@ -261,27 +251,28 @@ def fileCollect(path: str, bounds: str) -> list:
                     print(x, path)
                     zipped.extract(name)
                     try:
-                        ehyd_geom, ehyd_proj = open_ogr(path)
-                        #                        coordTrans = _osr.CoordinateTransformation(meta_proj, ehyd_proj)
-                        #                        meta_geom.Transform(coordTrans)
-                        #                        fpath = spath + '_2_' + ehyd_name + '.gpkg'
-                        #                        fname = bname + '_2_' + ehyd_name
-                        #                        if not _os.path.exists(fpath):
-                        ##                            print (fpath)
-                        #                            ehyd_tproj = ehyd_proj.ExportToWkt()
-                        #                            write_shapefile(fpath, fname, meta_geom, ehyd_tproj)
-                        #                        print (fpath)
+                        # ehyd_geom, ehyd_proj = open_ogr(path)
+                        # coordTrans = _osr.CoordinateTransformation(meta_proj, ehyd_proj)
+                        # meta_geom.Transform(coordTrans)
+                        # fpath = f'{spath}_2_{ehyd_name}.gpkg'
+                        # fname = f'{bname}_2_{ehyd_name}'
+                        #
+                        # if not _os.path.exists(fpath):
+                        #     ehyd_tproj = ehyd_proj.ExportToWkt()
+                        #     write_shapefile(fpath, fname, meta_geom, ehyd_tproj)
+                        #     print(fpath)
+
                         try:
-                            #                            print (meta_proj, ehyd_proj, sep='\n')
+                            # print(meta_proj, ehyd_proj, sep='\n')
                             intersection = meta_geom.Intersection(ehyd_geom)
                             flag = intersection.ExportToWkt()
                         except AttributeError as e:
                             flag = 'GEOMETRYCOLLECTION EMPTY'
-                            print(e, bfile, path, meta_geom, ehyd_geom,
-                                  sep='\n')
+                            print(e, bfile, path, meta_geom, ehyd_geom, sep='\n')
                     except TypeError as e:
                         print(e, meta_proj, ehyd_proj, sep='\n')
                         flag = 'GEOMETRYCOLLECTION EMPTY'
+
                     if flag != 'GEOMETRYCOLLECTION EMPTY':
                         print('They did Intersect')
                         pass
@@ -296,6 +287,7 @@ def fileCollect(path: str, bounds: str) -> list:
         _os.chdir(progLoc)
         x += 1
     print(zips, slen, len(zips))
+
     if len(zips) > 0:
         return zips
     else:
@@ -369,7 +361,7 @@ def contentSearch(contents: List[str]) -> List[str]:
                 or xml.search(content)
                 or pfile.search(content)
                 or gpkg.search(content)):
-            #        if ext == '.xyz' or ext == '.xml' or ext == '.pickle':
+            # if ext in ('.xyz', '.xml', '.pickle'):
             files.append(content)
     return files
 
@@ -467,21 +459,21 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method, text_r
     fileName.close()
     district_name = dict(district_name[1:])
     for k, v in regionFiles.items():
-        if text_region != None:
+        if text_region is not None:
             text_region.SetValue(k)
-        if progressBar != None:
+        if progressBar is not None:
             progressBar.SetRange(v[1])
             progressBar.SetValue(0)
             pbv = 0
         for item in v[0]:
-            if item != None:
+            if item is not None:
                 splits = _os.path.split(item)
                 name = splits[-1]
                 surname = _os.path.splitext(name)[0]
                 district_code = splits[-2].split('\\')[-1]
                 district_abbr = district_code[-3:]
-                district_full = district_name[district_abbr] + '_' + district_code
-                eHydro_folder = 'USACE\\eHydro_' + district_full + '\\Original'
+                district_full = f'{district_name[district_abbr]}_{district_code}'
+                eHydro_folder = f'USACE\\eHydro_{district_full}\\Original'
                 newerPath = _os.path.join(destination, k, eHydro_folder,
                                           surname)
                 if _os.path.isdir(newerPath):
@@ -490,14 +482,14 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method, text_r
                     _os.makedirs(newerPath)
                 newName = _os.path.join(newerPath, name)
                 if _os.path.exists(item):
-                    if text_output != None:
-                        text_output.write(eHydro_folder + '\\' + name + '\n')
-                    if method == False:
-                        _shutil.copy2(item, newName)
-                    elif method == True:
+                    if text_output is not None:
+                        text_output.write(f'{_os.path.join(eHydro_folder, + name)}\n')
+                    if method is None:
                         _shutil.move(item, newName)
+                    elif not method:
+                        _shutil.copy2(item, newName)
                     zipManipulate(newerPath, newName)
-                if progressBar != None:
+                if progressBar is not None:
                     pbv += 1
                     progressBar.SetValue(pbv)
 
@@ -527,7 +519,7 @@ def _main(text_region: wx.TextCtrl = None, progressBar: wx.Guage = None, text_ou
 
     """
 
-    if progressBar != None:
+    if progressBar is not None:
         progressBar.Pulse()
     regions = regionPath(repo, downloads)
     regionFiles = eHydroZIPs(regions)
