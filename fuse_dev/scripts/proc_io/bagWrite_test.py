@@ -66,12 +66,12 @@ bag_data = gdal.Open(fileName)
 
 # print (gdal.Info(bag_data))
 
-bagWrite = proc_io('gdal', 'csar', os.path.join(fileLoc, 'rasterdata'))
+bagWrite = proc_io('gdal', 'csar', fileLoc + '\\rasterdata')
 # print (bagWrite)
 x = 0
 while True:
-    outname = f'write_test_{x}.csar'
-    filePath = os.path.join(fileLoc, outname)
+    outname = 'write_test_' + str(x) + '.csar'
+    filePath = fileLoc + '\\' + outname
     print(outname, filePath)
     if os.path.exists(filePath):
         x += 1

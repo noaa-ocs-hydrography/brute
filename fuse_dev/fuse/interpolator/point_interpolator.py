@@ -73,6 +73,7 @@ def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, floa
     return valmin, valmax
 
 
+
 class point_interpolator:
     """Interpolation methods for creating a raster from points."""
 
@@ -313,7 +314,7 @@ class point_interpolator:
         fName = os.path.split(file)[-1]
         splits = os.path.splitext(fName)
         name = splits[0]
-        # tif = f'{splits[0]}.tif'
+        #        tif = splits[0] + '.tif'
 
         # Open the data source and read in the extent
         source_ds = ogr.Open(file)
@@ -529,8 +530,9 @@ class point_interpolator:
             x, y, z = f.geometry().GetPoint()
             xmin, xmax = _compare_vals(x, xmin, xmax)
             ymin, ymax = _compare_vals(y, ymin, ymax)
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, [xmin, ymin, xmax, ymax])
-        algorithm = f"linear:radius=0:nodata={int(nodata)}"
+        numrows, numcolumns, bounds = self._get_nodes3(resolution,
+                                                       [xmin, ymin, xmax, ymax])
+        algorithm = "linear:radius=0:nodata=" + str(int(nodata))
         interp_data = gdal.Grid('', dataset, format='MEM',
                                 width=numcolumns,
                                 height=numrows,
@@ -655,8 +657,10 @@ class point_interpolator:
             ymin, ymax = _compare_vals(y, ymin, ymax)
         numrows, numcolumns, bounds = self._get_nodes3(resolution,
                                                        [xmin, ymin, xmax, ymax])
-        algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}" + \
-                    f":angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
+        algorithm = ("invdist:power=2.0:smoothing=0.0:radius1="
+                     + str(radius) + ":radius2=" + str(radius)
+                     + ":angle=0.0:max_points=0:min_points=1:nodata="
+                     + str(int(nodata)))
         interp_data = gdal.Grid('', dataset, format='MEM',
                                 width=numcolumns,
                                 height=numrows,
@@ -723,9 +727,14 @@ class point_interpolator:
             xmin, xmax = _compare_vals(x, xmin, xmax)
             ymin, ymax = _compare_vals(y, ymin, ymax)
         numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
-        algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}" + \
-                    f":angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
-        interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
+        algorithm = ("invdist:power=2.0:smoothing=0.0:radius1="
+                     + str(radius) + ":radius2=" + str(radius)
+                     + ":angle=0.0:max_points=0:min_points=1:nodata="
+                     + str(int(nodata)))
+        interp_data = gdal.Grid('', dataset, format='MEM',
+                                width=numcolumns,
+                                height=numrows,
+                                outputBounds=bounds,
                                 algorithm=algorithm)
         return interp_data
 
@@ -908,7 +917,7 @@ class point_interpolator:
         data[idx] = np.nan
         # divide the window size by the resolution to get the number of cells
         rem_cells = int(np.round(radius / resolution))
-        # print(f'Shrinking coverage back {rem_cells} cells.')
+        # print('Shrinking coverage back ' + str(rem_cells) + ' cells.')
         for n in np.arange(rem_cells):
             ew = np.diff(data, axis=0)
             idx_ew = np.nonzero(np.isnan(ew))

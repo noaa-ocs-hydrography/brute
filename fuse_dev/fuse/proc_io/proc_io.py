@@ -68,20 +68,16 @@ class proc_io:
         self._write_nodata = nodata
         self._caris_environment_name = caris_env_name
         self.overwrite = overwrite
-
-        if work_dir is None:
+        if work_dir == None:
             self._work_dir = tempdir()
             self._work_dir_name = self._work_dir.name
         else:
             self._work_dir_name = work_dir
-
         self._logger = logging.getLogger('fuse')
-
         if len(self._logger.handlers) == 0:
             ch = logging.StreamHandler(sys.stdout)
             ch.setLevel(logging.DEBUG)
             self._logger.addHandler(ch)
-
         if self._out_data_type == "carisbdb51":
             if db_name is not None and db_loc is not None:
                 self._bdb = caris.bdb51(db_loc, db_name)
@@ -98,15 +94,13 @@ class proc_io:
         """
 
         self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write')
-
         if os.path.exists(instruction) and self.overwrite:
-            self._logger.log(logging.DEBUG, f'Overwriting {instruction}')
+            self._logger.log(logging.DEBUG, 'Overwriting ' + instruction)
             os.remove(instruction)
             if self._out_data_type == 'bag':
-                caris_xml = f'{instruction}.aux.xml'
+                caris_xml = instruction + '.aux.xml'
                 if os.path.exists(caris_xml):
                     os.remove(caris_xml)
-
         if self._out_data_type == 'csar':
             self._write_csar(dataset, instruction)
         elif self._out_data_type == 'bag':
@@ -116,7 +110,8 @@ class proc_io:
         elif self._out_data_type == 'carisbdb51':
             self._bdb.upload(dataset, instruction, metadata)
         else:
-            raise ValueError(f'writer type unknown: {self._out_data_type}')
+            raise ValueError('writer type unknown: ' +
+                             str(self._out_data_type))
 
     def _write_csar(self, dataset: gdal.Dataset, outfilename: str):
         """
@@ -130,7 +125,6 @@ class proc_io:
         """
 
         conda_env_name = self._caris_environment_name
-
         # put the provided data into the right form for the csar conversion.
         if self._in_data_type == 'gdal':
             dataset = self._set_gdalndv(dataset)
@@ -139,10 +133,11 @@ class proc_io:
         elif self._in_data_type == 'point':
             data, metadata = self._point2array(dataset)
             splits = os.path.splitext(outfilename)
-            metadata['outfilename'] = f'{splits[0]}_Points{splits[1]}'
+            metadata['outfilename'] = splits[0] + '_Points' + splits[1]
             print(metadata['outfilename'], outfilename)
         else:
-            raise ValueError(f'input data type unknown: {self._in_data_type}')
+            raise ValueError('input data type unknown: ' +
+                             str(self._in_data_type))
         metadata['z_up'] = self._z_up
         conda_env_path = caris.helper.retrieve_env_path(conda_env_name)
         python_path = os.path.join(conda_env_path, 'python')
@@ -150,34 +145,29 @@ class proc_io:
         datafilename = os.path.join(self._work_dir_name, 'rasterdata.npy')
         np.save(datafilename, data)
         metafilename = os.path.join(self._work_dir_name, 'metadata')
-
         with open(metafilename, 'wb') as metafile:
             pickle.dump(metadata, metafile)
-
         # set the locations for running the wrap_csar script
         start = os.path.realpath(os.path.dirname(__file__))
         write_csar = os.path.join(start, 'caris', 'wrap_csar.py')
         activate_file = caris.helper.retrieve_activate_batch()
-
         if os.path.exists(write_csar):
             args = ["cmd.exe", "/K", "set pythonpath= &&",  # setup the commandline
                     activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
                     python_path, write_csar,  # call the script
-                    f'"{datafilename.replace("&", "^&")}"',  # surface path
-                    f'"{metafilename.replace("&", "^&")}"',  # metadata path
-                    f'"{self._in_data_type.replace("&", "^&")}"',  # data type
+                    '"' + datafilename.replace("&", "^&") + '"',  # surface path
+                    '"' + metafilename.replace("&", "^&") + '"',  # metadata path
+                    '"' + self._in_data_type.replace("&", "^&") + '"',  # data type
                     ]
             args = ' '.join(args)
             print(args)
             self._logger.log(logging.DEBUG, args)
-
             try:
                 proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
             except:
                 err = 'Error executing: {}'.foramt(args)
                 print(err)
                 self._logger.log(logging.DEBUG, err)
-
             try:
                 stdout, stderr = proc.communicate()
                 self._logger.log(logging.DEBUG, stdout)
@@ -186,7 +176,6 @@ class proc_io:
                 err = 'Error in handling error output'
                 print(err)
                 self._logger.log(logging.DEBUG, err)
-
             if not os.path.exists(metadata['outfilename']):
                 err = f"Unable to create {metadata['outfilename']}"
                 self._logger.log(logging.DEBUG, err)
@@ -208,8 +197,8 @@ class proc_io:
         if self._in_data_type == 'gdal':
             dataset = self._set_gdalndv(dataset)
         else:
-            raise ValueError(f'input data type unknown: {self._in_data_type}')
-
+            raise ValueError('input data type unknown: ' +
+                             str(self._in_data_type))
         if metadata is not None:
             raise NotImplementedError('bag xml metadata write has not been implemented')
 
@@ -217,7 +206,6 @@ class proc_io:
 
         # Prepare destination file
         driver = gdal.GetDriverByName("BAG")
-
         # write and close output raster dataset
         dest = driver.CreateCopy(outfilename, dataset)
         dest = None
@@ -236,7 +224,7 @@ class proc_io:
         proj = osr.SpatialReference(wkt=crs)
 
         splits = os.path.splitext(outfilename)
-        outfilename = f'{splits[0]}_Points.gpkg'
+        outfilename = splits[0] + '_Points.gpkg'
 
         if os.path.exists(outfilename):
             os.remove(outfilename)
@@ -281,7 +269,7 @@ class proc_io:
 
         splits = os.path.split(outfilename)[1]
         name = os.path.splitext(outfilename)[0]
-        outfilename = os.path.join(splits[0], f'{name}_Vector.gpkg')
+        outfilename = os.path.join(splits[0], name + '_Vector.gpkg')
 
         proj = dataset.GetProjection()
         proj = osr.SpatialReference(wkt=proj)
@@ -316,7 +304,6 @@ class proc_io:
         """
 
         meta = {}
-
         # get the logisitics for converting the gdal dataset to csar
         gt = dataset.GetGeoTransform()
         print(gt)
@@ -330,7 +317,6 @@ class proc_io:
         meta['crs'] = dataset.GetProjection()
         rb = dataset.GetRasterBand(1)  # should this be hardcoded for 1?
         meta['nodata'] = rb.GetNoDataValue()
-
         # get the gdal data raster
         data = rb.ReadAsArray()
         return data, meta
@@ -385,7 +371,6 @@ class proc_io:
         # Read out of the GDAL data structure
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
-
         for n in np.arange(count):
             info = {}
             point = ogr.Geometry(ogr.wkbPoint)
@@ -417,10 +402,8 @@ class proc_io:
         # check the no data value
         rb = dataset.GetRasterBand(1)  # should this be hardcoded for 1?
         ndv = rb.GetNoDataValue()
-
         if self._write_nodata != ndv:
             data = rb.ReadAsArray()
             data = np.where(data == ndv, self._write_nodata, data)
             dataset.GetRasterBand(1).WriteArray(data)
-
         return dataset

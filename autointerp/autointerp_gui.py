@@ -70,7 +70,6 @@ class Form(autointerp_ui.Form):
         print(self.picker_tif.GetPath())
         tif = self.picker_tif.GetPath()
         self.gettifList()
-
         if tif not in self.tifList:
             name = os.path.split(self.picker_tif.GetPath())
             self.list_tif.InsertItem(self.insInd, name[1])
@@ -93,13 +92,11 @@ class Form(autointerp_ui.Form):
         """
 
         selected = self.list_tif.SelectedItemCount
-
         for x in range(0, selected):
             sel = self.list_tif.GetFirstSelected()
             self.list_tif.DeleteItem(sel)
             if self.insInd > 0:
                 self.insInd -= 1
-
         self.gettifList()
 
     def main(self):
@@ -116,17 +113,15 @@ class Form(autointerp_ui.Form):
 
         """
 
-        st = f'Started - {_dt.now()}'
+        st = 'Started - ' + str(_dt.now())
         self.bar_status.SetStatusText(st)
         self.progressBar.Pulse()
         bagPath = self.picker_bag.GetPath()
         self.gettifList()
         tifPath = self.tifList
         desPath = self.picker_des.GetPath()
-
         if desPath == '':
             desPath = os.path.split(bagPath)[0]
-
         catzoc = self.choice_catzoc.GetString(self.choice_catzoc.GetCurrentSelection())
         ioOut = self.radio_data.GetSelection()
         returned = autointerp.main(bagPath, tifPath, desPath, catzoc, ioOut)

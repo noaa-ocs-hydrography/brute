@@ -69,7 +69,7 @@ class fuse_base_class:
                                 if _os.path.isdir(info):
                                     config[stub] = info
                                 else:
-                                    raise ValueError(f'Invalid output folder: {info}')
+                                    raise ValueError('Invalid output folder: ' + info)
                             elif stub == 'to_horiz_datum':
                                 config[stub] = int(info)
                             elif stub == 'rawpaths':
@@ -79,7 +79,7 @@ class fuse_base_class:
                                     if _os.path.isdir(r):
                                         rawpaths.append(r)
                                     else:
-                                        raise ValueError(f'Invalid input path: {r}')
+                                        raise ValueError('Invalid input path: ' + r)
                                 config[stub] = rawpaths
                             else:
                                 config[stub] = info

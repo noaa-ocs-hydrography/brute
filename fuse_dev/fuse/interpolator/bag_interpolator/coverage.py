@@ -387,10 +387,10 @@ class unified_coverage:
         for item in files:
             fName = _os.path.split(item)[1]
             ext = _os.path.splitext(fName)[1].lower()
-            if ext in ('.tiff', '.tif'):
+            if ext == '.tiff' or ext == '.tif':
                 rast = geotiff()
                 rast.open_file(item)
-            elif ext in ('.shp', '.gpkg'):
+            elif ext == '.shp' or ext == '.gpkg':
                 rast = geopackage()
                 rast.open_file(item, bag_wkt)
             bndRasts.append(rast)
@@ -504,7 +504,7 @@ class unified_coverage:
         fullname = _os.path.split(name)[1]
         justname = _os.path.splitext(fullname)[0]
         snum = justname.split('_')[0]
-        outputname = f'{snum}_COMBINEDPOLY'
+        outputname = snum + '_COMBINEDPOLY'
 
         return meanCoverage, outputname, tuple(shape)
 
@@ -764,7 +764,7 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     if duly < 0:
         up = -int(rolly)
     elif duly > 0:
-        down = abs(rolly)
+        down = rolly
         up = 0
     if dulx < 0:
         left = -int(rollx)
@@ -925,7 +925,7 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW'):
     -------
 
     """
-    name = f'{coverage.name}.gpkg'
+    name = coverage.name + '.gpkg'
     outfilename = _os.path.join(outputpath, name)
 
     proj = _osr.SpatialReference(wkt=coverage.wkt)

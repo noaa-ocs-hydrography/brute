@@ -118,9 +118,10 @@ setup(
     test_suite="tests",
 
     description="A library and an application to manage sound speed profiles.",
-    long_description=f'{read("README.rst")}\n\n\"\"\"\"\"\"\"\n\n{read("HISTORY.rst")}' + \
-                     f'\n\n\"\"\"\"\"\"\"\n\n{read("AUTHORS.rst")}\n\n\"\"\"\"\"\"\"\n\n' + \
-                     f'{read(os.path.join("docs", "developer_guide_how_to_contribute.rst"))}'
+    long_description=(read("README.rst") + "\n\n\"\"\"\"\"\"\"\n\n" +
+                      read("HISTORY.rst") + "\n\n\"\"\"\"\"\"\"\n\n" +
+                      read("AUTHORS.rst") + "\n\n\"\"\"\"\"\"\"\n\n" +
+                      read(os.path.join("docs", "developer_guide_how_to_contribute.rst")))
     ,
     url="https://github.com/hydroffice/hyo2_soundspeed",
     classifiers=[  #

@@ -37,10 +37,8 @@ def coordQuery(nx, ny, sx, sy):
     -------
 
     """
-
     nxStr, nyStr, sxStr, syStr = str(nx), str(ny), str(sx), str(sy)
-    corner = 'https://gis.ngdc.noaa.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/project' + \
-             f'?inSR=4326&outSR=102100&geometries=%7B"geometryType"+%3A+"esriGeometryPoint"%2C+"geometries"+%3A+%5B%0D%0A+++++%7B%0D%0A+++++++"x"+%3A+{nxStr}%2C%0D%0A+++++++"y"+%3A+{syStr}%0D%0A+++++%7D%2C%7B%0D%0A+++++++"x"+%3A+{sxStr}%2C%0D%0A+++++++"y"+%3A+{nyStr}%0D%0A+++++%7D%0D%0A++%5D%0D%0A%7D&transformation=&transformForward=true&vertical=false&f=json'
+    corner = 'https://gis.ngdc.noaa.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/project?inSR=4326&outSR=102100&geometries=%7B"geometryType"+%3A+"esriGeometryPoint"%2C+"geometries"+%3A+%5B%0D%0A+++++%7B%0D%0A+++++++"x"+%3A+' + nxStr + '%2C%0D%0A+++++++"y"+%3A+' + syStr + '%0D%0A+++++%7D%2C%7B%0D%0A+++++++"x"+%3A+' + sxStr + '%2C%0D%0A+++++++"y"+%3A+' + nyStr + '%0D%0A+++++%7D%0D%0A++%5D%0D%0A%7D&transformation=&transformForward=true&vertical=false&f=json'
     cornerRequest = requests.get(corner)
     cornerRequestJSON = cornerRequest.json()
     #    print (cornerRequestJSON)
@@ -69,8 +67,7 @@ def bagIDQuery(bounds):
 
     """
     bounds = str(bounds)
-    bagList = 'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/3/query' + \
-              f'?where=&text=&objectIds=&time=&geometry={bounds}&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=true&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
+    bagList = 'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/3/query?where=&text=&objectIds=&time=&geometry=' + bounds + '&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=true&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
     bagListRequest = requests.get(bagList)
     bagListRequestJSON = bagListRequest.json()
     #    print (bagListRequestJSON)
@@ -99,19 +96,18 @@ def surveyCompile(surveyIDs, num, pb=None):
     """
     x = 0
     rows = []
-    if pb is not None:
+    if pb != None:
         pb.SetRange(num)
     for num in surveyIDs:
         print(x, end=' ')
         bagID = str(num)
-        query = 'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/3/query' + \
-                f'?where=&text=&objectIds={bagID}&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=Name,SURVEY_ID,CELL_SIZE,DOWNLOAD_URL&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
+        query = 'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/3/query?where=&text=&objectIds=' + bagID + '&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=Name,SURVEY_ID,CELL_SIZE,DOWNLOAD_URL&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
         response = requests.get(query)
         page = response.json()
         row = []
         try:
             for attribute in attributes:
-                if page['features'][0]['attributes'][attribute] is None:
+                if page['features'][0]['attributes'][attribute] == None:
                     row.append('null')
                 else:
                     row.append(str(page['features'][0]['attributes'][attribute]))
@@ -119,7 +115,7 @@ def surveyCompile(surveyIDs, num, pb=None):
         except KeyError as e:
             print(e, page)
         #            break
-        if pb is not None:
+        if pb != None:
             pb.SetValue(x)
         x += 1
     print(len(rows))
@@ -146,17 +142,16 @@ def csvWriter(csvFile, csvLocation, name, pb=None):
     -------
 
     """
-
-    name = os.path.join(csvLocation, f'{name}.txt')
+    name = csvLocation + '\\' + name + '.txt'
     csvOpen = open(name, 'w', newline='')
     save = csv.writer(csvOpen, delimiter=',')
     save.writerow(attributes)
     x = 0
-    if pb is not None:
+    if pb != None:
         pb.SetRange(len(csvFile))
     for row in csvFile:
         save.writerow(row)
-        if pb is not None:
+        if pb != None:
             pb.SetValue(x)
         x += 1
     csvOpen.close()
@@ -186,7 +181,7 @@ def main(name, nx, sy, sx, ny, pb=None):
 
     """
     print(name, nx, sy, sx, ny)
-    if pb is not None:
+    if pb != None:
         pb.Pulse()
     bounds = coordQuery(nx, ny, sx, sy)
     bagIDs, bagNum = bagIDQuery(bounds)

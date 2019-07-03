@@ -29,7 +29,7 @@ class Form(ncei_ui.Form):
         sy = self.text_south.GetValue()
         sx = self.text_east.GetValue()
         ny = self.text_north.GetValue()
-        if nceiBAGs.main(name, nx, sy, sx, ny, self.progress_bar):
+        if nceiBAGs.main(name, nx, sy, sx, ny, self.progress_bar) == True:
             self.status_bar.SetStatusText('Done!')
 
     def programQuit(self, event):

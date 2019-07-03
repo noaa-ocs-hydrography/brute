@@ -27,7 +27,8 @@ class Form(wx.Frame):
 
         self.menu_bar = wx.MenuBar(0)
         self.menu_file = wx.Menu()
-        self.menu_quit = wx.MenuItem(self.menu_file, wx.ID_ANY, u"Quit\tCTRL+Q", wx.EmptyString, wx.ITEM_NORMAL)
+        self.menu_quit = wx.MenuItem(self.menu_file, wx.ID_ANY, u"Quit" + u"\t" + u"CTRL+Q", wx.EmptyString,
+                                     wx.ITEM_NORMAL)
         self.menu_file.Append(self.menu_quit)
 
         self.menu_bar.Append(self.menu_file, u"File")
@@ -138,6 +139,7 @@ class Form(wx.Frame):
 
     # Virtual event handlers, overide them in your derived class
     def programQuit(self, event):
+
         """
 
 
@@ -151,20 +153,22 @@ class Form(wx.Frame):
 
         """
 
-        event.Skip()
-
-    def programProg(self, event):
-        """
+    event.Skip()
 
 
-        Parameters
-        ----------
-        event :
+def programProg(self, event):
+    """
 
 
-        Returns
-        -------
+    Parameters
+    ----------
+    event :
 
-        """
 
-        event.Skip()
+    Returns
+    -------
+
+    """
+
+
+event.Skip()

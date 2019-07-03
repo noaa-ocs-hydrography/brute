@@ -78,8 +78,10 @@ class read_raw:
 
         # get the dat file for CEMVN#New Orleans
         stub, ext = os.path.splitext(infilename)
-        bathyfilename = f'{stub}.dat'
-        return _np.loadtxt(bathyfilename, delimiter=' ')
+        bathyfilename = stub + '.dat'
+        xyz = _np.loadtxt(bathyfilename, delimiter=' ')
+        self.xyz
+        return xyz
 
     def read_bathymetry(self, infilename: str) -> _np.array:
         """
@@ -203,7 +205,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     subset_no_overlap = {}
     subset_dict = {}
     for key in meta:
-        if meta[key] in ('unknown', ''):
+        if meta[key] == 'unknown' or meta[key] == '':
             list_keys_empty.append(key)
         else:
             subset_row[key] = meta[key]
@@ -215,11 +217,11 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
                     only make list within cell if values from different sources are different
                     """
                 else:
-                    combined_row[key] = f'{meta[key]} , {meta_xml[key]}'
+                    combined_row[key] = meta[key] + ' , ' + meta_xml[key]
             else:
                 subset_no_overlap[key] = meta[key]
     for key in ext_dict:
-        if ext_dict[key] is None or ext_dict[key] in ('unknown', ''):
+        if ext_dict[key] == 'unknown' or ext_dict[key] == '' or ext_dict[key] == None:
             list_keys_empty.append(key)
         else:
             if key in meta_xml:
@@ -229,7 +231,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
                     only make list within cell if values from different sources are different
                     """
                 else:
-                    combined_row[key] = f'{ext_dict[key]} , {meta_xml[key]}'
+                    combined_row[key] = ext_dict[key] + ' , ' + meta_xml[key]
             else:
                 subset_dict[key] = ext_dict[key]
     merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row}  # this one excluded 'unknown' keys, and
@@ -257,11 +259,9 @@ class Extract_Txt(object):
         self.filename = preloadeddata
         if filename != "" or None:
             self.filename_1 = filename
-            self.errorfile = os.path.join(os.path.dirname(filename),
-                                          'TEST_extract_ehdyro_meta_class_CEMVN_ErrorFile1.txt')
+            self.errorfile = os.path.dirname(filename) + 'TEST_extract_ehdyro_meta_class_CEMVN_ErrorFile1.txt'
         else:
-            self.errorfile = os.path.join(os.path.dirname(filename),
-                                          'Default_extract_ehdyro_meta_class_CEMVN_error.txt')
+            self.errorfile = os.path.dirname(filename) + 'Default_extract_ehdyro_meta_class_CEMVN_error.txt'
 
     def parse_ehydro_xyz(self, infilename: str, meta_source: str = 'xyz', version: str = 'CEMVN',
                          default_meta: str = '') -> dict:  # need to change version to None
@@ -311,9 +311,12 @@ class Extract_Txt(object):
                 val = _ussft2m * float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
-        sorind = f"{name_meta['projid']}_{name_meta['uniqueid']}_{name_meta['subprojid']}_{name_meta['start_date']}_" + \
-                 f"{name_meta['statuscode']}"
-        merged_meta['source_indicator'] = f'US,US,graph,{sorind}'
+        sorind = (name_meta['projid'] + '_' +
+                  name_meta['uniqueid'] + '_' +
+                  name_meta['subprojid'] + '_' +
+                  name_meta['start_date'] + '_' +
+                  name_meta['statuscode'])
+        merged_meta['source_indicator'] = 'US,US,graph,' + sorind
         merged_meta['script_version'] = __version__
         return merged_meta
 
@@ -363,12 +366,12 @@ class Extract_Txt(object):
                     option = splitname[5]
                     if len(splitname) > 6:
                         for n in range(6, len(splitname)):
-                            option += f'_{splitname[n]}'
+                            option = option + '_' + splitname[n]
                     meta['optional'] = option
             else:
                 meta['statuscode'] = ''
         else:
-            print(f'{name} appears to have a nonstandard naming convention.')
+            print(name + ' appears to have a nonstandard naming convention.')
         return meta
 
     def parse_xyz_header(self, infilename: str, version: str = None) -> dict:
@@ -459,7 +462,7 @@ class Extract_Txt(object):
             meta = {}
             errorfile = self.errorfile
             with open(errorfile, 'a') as metafail:
-                metafail.write(f'{infilename}\n')
+                metafail.write(infilename + '\n')
             return meta
 
     def load_default_metadata(self, infilename: str, default_meta: dict) -> dict:
@@ -514,7 +517,7 @@ def get_xml(filename: str) -> str:
     """
 
     basef = filename.rpartition('.')[0]
-    xml_name = f'{basef}.xml'
+    xml_name = basef + '.xml'
     return xml_name
 
 
@@ -544,7 +547,7 @@ def get_xml_xt(filename: str, extension: str) -> str:
         basef = filename[:-end_len]
     else:
         basef = filename
-    xml_name = f'{basef}.xml'
+    xml_name = basef + '.xml'
     return xml_name
 
 
@@ -630,7 +633,7 @@ def _is_header2(line: str, version: str = None) -> bool:
 
     """
 
-    if version is None:
+    if version == None:
         version = ''
     if version == 'CEMVN':
         pattern_coordinates = '[\d][\d][\d][\d][\d][\d]'  # at least six digits# should be seven then . plus two digits
@@ -1104,14 +1107,14 @@ def check_date_order(m: dict, mm: dict) -> dict:
     date_list = []  # date_list = [begdate, enddate,filename_date]
     if 'begdate' in m:
         # parser.parse(text_date, dayfirst=False)
-        if m['begdate'] != '' and m['begdate'] is not None:
+        if m['begdate'] != '' and m['begdate'] != None:
             est_begdate, ans1 = check_date_format_hasday(m['begdate'])
             if ans1 == 'yes':
                 begdate = datetime.date(datetime.strptime(m['begdate'], '%Y%m%d'))
                 date_list.append(begdate)
                 # m['start_date'] = m['begdate']
     if 'enddate' in m:
-        if m['enddate'] != '' and m['enddate'] is not None:
+        if m['enddate'] != '' and m['enddate'] != None:
             est_enddate, ans1 = check_date_format_hasday(m['begdate'], int(
                 '30'))  # may want better logic here other date modules can handle this better once situation flagged
             if ans1 == 'yes':
@@ -1276,7 +1279,7 @@ def check_date_format_hasday(date_string: str, b_or_e=None) -> Tuple[str, str]:
 
     pattern_missing_valid_day = '[\d][\d][\d][\d][\d][\d][0][0]'
 
-    if b_or_e is None:
+    if b_or_e == None:
         day = '1'
     elif type(b_or_e) == int:
         day = str(b_or_e)

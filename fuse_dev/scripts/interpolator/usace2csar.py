@@ -216,7 +216,7 @@ def read_bathymetry_dat(infilename: str):
 
     # get the dat file for CEMVN
     stub, ext = os.path.splitext(infilename)
-    bathyfilename = f'{stub}.dat'
+    bathyfilename = stub + '.dat'
     xyz = _np.loadtxt(bathyfilename, usecols=(0, 1, 2))
     return xyz
 
@@ -295,15 +295,16 @@ def tupleGrid(grid: _np.array, maxVal: int):
                     io = False
                 else:
                     pass
-            elif not io:
-                val = grid[y, x]
-                point = [x, y, val]
+            else:
+                if io == False:
+                    val = grid[y, x]
+                    point = [x, y, val]
 
-                if a == 0:
-                    print(point, val)
-                    a += 1
-                points.append(point)
-                io = True
+                    if a == 0:
+                        print(point, val)
+                        a += 1
+                    points.append(point)
+                    io = True
     return _np.array(points)
 
 
@@ -436,7 +437,7 @@ def natInterp(grid: _np.array, xy: _np.array, z: _np.array, shape: tuple, diff: 
     return mask_int
 
 
-class xyz_grid:
+class xyz_grid():
     """TODO write description"""
 
     def __init__(self, grid, vals, extents, shape, res, diff):

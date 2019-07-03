@@ -19,7 +19,6 @@ class bdb51_io:
         """
 
         """
-
         self.sock = None
         self.port = port
         self.host = 'localhost'
@@ -38,16 +37,13 @@ class bdb51_io:
 
     def _connect(self, port, host='localhost'):
         self.sock = None
-
         for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM):
             af, socktype, proto, canonname, sa = res
-
             try:
                 self.sock = socket.socket(af, socktype, proto)
             except OSError as msg:
                 self.sock = None
                 continue
-
             try:
                 self.sock.connect(sa)
                 self.connected = True
@@ -55,7 +51,6 @@ class bdb51_io:
                 self.sock.close()
                 self.sock = None
                 continue
-
             break
         if self.sock is None:
             print('could not open socket')
@@ -64,14 +59,11 @@ class bdb51_io:
         with self.sock:
             self.sock.sendall(b'Alive')
             #            try:
-
             while True:
                 data = self.sock.recv(1024)
-                print('Received {}'.format(repr(data)))
-
+                print('Received', repr(data))
                 if data:
                     self.bmsg = self._command_data(data)
-
                 print(self.bmsg)
                 self.sock.sendall(self.bmsg)
 
@@ -79,30 +71,26 @@ class bdb51_io:
     #                pass
 
     def _command_data(self, data):
+        print(bmsg)
         if data == b'domath':
             bmsg = self._domath()
         if data == b'die':
             bmsg = self._die()
         else:
             bmsg = b'Alive'
-
-        print(bmsg)
         return bmsg
 
     def _domath(self):
         x = 0
-
         while True:
             print(x)
             if x > 10:
                 break
             x += 1
-
         return b'done'
 
     def _die(self):
         x = 10
-
         while True:
             print(x)
             time.sleep(1)
@@ -110,7 +98,6 @@ class bdb51_io:
                 sys.exit(1)
                 break
             x -= 1
-
         return b'done'
 
 
@@ -118,7 +105,6 @@ def main(port):
     """
     An event loop waiting for commands.
     """
-
     db_io = bdb51_io(port)
     print(db_io.alive)
 

@@ -29,7 +29,8 @@ class Form(wx.Frame):
         self.bar_menu.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWFRAME))
 
         self.menu_file = wx.Menu()
-        self.menu_quit = wx.MenuItem(self.menu_file, wx.ID_ANY, u"Quit\tCTRL+Q", wx.EmptyString, wx.ITEM_NORMAL)
+        self.menu_quit = wx.MenuItem(self.menu_file, wx.ID_ANY, u"Quit" + u"\t" + u"CTRL+Q", wx.EmptyString,
+                                     wx.ITEM_NORMAL)
         self.menu_file.Append(self.menu_quit)
 
         self.bar_menu.Append(self.menu_file, u"File")

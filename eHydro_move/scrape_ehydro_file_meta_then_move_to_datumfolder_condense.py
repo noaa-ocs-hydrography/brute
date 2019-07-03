@@ -159,7 +159,6 @@ def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, meta
     ex_string2 = '*_FULL.xyz'
     ex_string3 = '*_FULL.XYZ'
     ex_string4 = '*_A.XYZ'
-
     for basename in g1:
         f = basename
         basename = os.path.basename(basename)
@@ -171,7 +170,6 @@ def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, meta
         basename = basename.rstrip('.XYZ')
         meta_from_ehydro = {}
         e_t = e_meta.Extract_Txt(f)
-
         # xml pull here. #since we know its ehydro:
         if '_A.xyz' in f:
             xmlfilename = e_meta.get_xml_xt(f, '_A.xyz')
@@ -183,7 +181,6 @@ def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, meta
             xmlfilename = e_meta.get_xml_xt(f, '_A.XYZ')
         else:
             xmlfilename = e_meta.get_xml(f)
-
         if os.path.isfile(xmlfilename):
             with open(xmlfilename, 'r') as xml_file:
                 xml_txt = xml_file.read()
@@ -204,9 +201,8 @@ def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, meta
         combined_row = {}
         subset_row = {}
         subset_no_overlap = {}
-
         for key in meta:
-            if meta[key] in ('unknown', ''):
+            if meta[key] == 'unknown' or meta[key] == '':
                 list_keys_empty.append(key)
             else:
                 subset_row[key] = meta[key]
@@ -214,14 +210,14 @@ def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, meta
                 if key in meta_xml:
                     if meta[key] == meta_xml[key]:
                         combined_row[key] = meta[key]
-                        # only make list within cell if values from different sources are different
+                        """
+                        only make list within cell if values from different sources are different
+                        """
                     else:
-                        combined_row[key] = f'{meta[key]} , {meta_xml[key]}'
+                        combined_row[key] = meta[key] + ' , ' + meta_xml[key]
                 else:
                     subset_no_overlap[key] = meta[key]
-
         mydict = meta_xml
-
         for i0, key1 in enumerate(mydict):  # for key1 in mydict:
             key_fromdict = key1
             # use common numberic index i0
@@ -229,15 +225,12 @@ def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, meta
                 nn.loc[f, key_fromdict] = combined_row[key_fromdict]  # [row, column]
             else:
                 nn.loc[f, key_fromdict] = mydict[key_fromdict]  # [row, column]
-
         for i0, key1 in enumerate(subset_no_overlap):
             key_fromdict = key1
             nn.loc[f, key_fromdict] = subset_row[key_fromdict]
-
         for i0, key1 in enumerate(meta_from_ehydro):
             key_fromdict = key1
             nn.loc[f, key_fromdict] = meta_from_ehydro[key_fromdict]
-
         merged_meta = {**meta, **meta_from_ehydro, **meta_xml}
         merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row}
         # THIS METHOD FOR MERGING DICTIONARIES IS FOR Python 3.5  plus based on PEP 448
@@ -246,17 +239,13 @@ def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, meta
         # merged_dictonary = {**default_values, **override_if_duplicatekeys}#
         m2c.write_meta2csv([merge2],
                            metafile)  # could also try merged_meta, but merge2 outputs a list within a cell if inputs from text and xml for the same variable are different
-
     # save pandas dataframe export here
-    nn.to_csv(path_or_buf=df_export_to_csv, encoding='UTF-8', sep='\t')
+    nn.to_csv(path_or_buf=(df_export_to_csv), encoding='UTF-8', sep='\t')
     return merged_meta, nn
 
 
 def test_cesam_ccom_defaultnames():
-    """
-    TODO write description
-    """
-
+    """ """
     district = 'CESAM'
     highresfolder = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\downloads\cesam_test"
     # CESAM"
@@ -264,10 +253,8 @@ def test_cesam_ccom_defaultnames():
     # CESAM"#r'N:\New_Directory_1\GulfCoast\Mississippi\USACE\ehydro\tst'
     mv_to_dir = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\test_move"
     # "N:\New_Directory_1\GulfCoast\USACE\ehydro\EasternGulf\CESAM"#D:\NBS_Data\PBG_GulfCoast_PR_VI\Mississippi\USACE\E-Hydro\download\files\downloads\CEMVN"
-    metafile = os.path.join(mv_to_dir, 'metadata',
-                            'ehydro_meta_dict_out.txt')  # r"N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\ehydrometa_sm_set.txt"
-    df_export_to_csv = os.path.join(mv_to_dir, 'metadata',
-                                    'ehydro_allscript_meta_v1.txt')  # r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt'
+    metafile = mv_to_dir + "\metadata\ehydro_meta_dict_out.txt"  # r"N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\ehydrometa_sm_set.txt"
+    df_export_to_csv = mv_to_dir + "\metadata\ehydro_allscript_meta_v1.txt"  # r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt'
     merged_meta1, merged_dataframe = retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, metafile,
                                                                       df_export_to_csv)
     move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir)

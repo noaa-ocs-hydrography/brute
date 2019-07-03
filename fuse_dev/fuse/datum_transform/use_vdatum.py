@@ -46,7 +46,7 @@ class vdatum:
             if _os.path.isdir(pth):
                 self._vdatum_path = pth
             else:
-                raise ValueError(f'Invalid vdatum folder: {pth}')
+                raise ValueError('Invalid vdatum folder: ' + pth)
         else:
             raise ValueError('No VDatum path provided')
         if 'java_path' in self._config:
@@ -54,7 +54,7 @@ class vdatum:
             if _os.path.isdir(pth):
                 self._java_path = pth
             else:
-                raise ValueError(f'Invalid java path: {pth}')
+                raise ValueError('Invalid java path: ' + pth)
         else:
             raise ValueError('No java path provided')
 
@@ -174,14 +174,14 @@ class vdatum:
 
         """
 
-        ihorz = rf'ihorz:NAD83:spc:us_ft:{in_fips}'
-        ivert = f' ivert:{in_verdat.lower()}:us_ft:height'
+        ihorz = r'ihorz:NAD83:spc:us_ft:' + str(in_fips)
+        ivert = ' ivert:' + in_verdat.lower() + ':us_ft:height'
         ohorz = ' ohorz:NAD83:utm:m:'
-        overt = f' overt:{out_verdat.lower()}:m:height'
-        georef = f'{ihorz}{ivert}{ohorz}{overt}'
+        overt = ' overt:' + out_verdat.lower() + ':m:height'
+        georef = ihorz + ivert + ohorz + overt
         java_str = _os.path.join(self._java_path, 'java')
-        file_str = ' -file:txt:comma,0,1,2,skip0:'
-        self._shell = f'{java_str} -jar vdatum.jar {georef}{file_str}'
+        file_str = ' -file:txt:comma,0,1,2,skip0:{};{}'
+        self._shell = java_str + ' -jar vdatum.jar ' + georef + file_str
 
     def _convert_file(self, vdinfilename: str, vdoutdir: str):
         """
@@ -203,12 +203,12 @@ class vdatum:
 
         """
 
-        command = f'{self._shell}{vdinfilename};{vdoutdir}'
+        command = self._shell.format(vdinfilename, vdoutdir)
         self._logger.log(_logging.DEBUG, command)
         try:
             proc = _subprocess.Popen(command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, cwd=self._vdatum_path)
         except:
-            print(f'Error executing: {command}\nat: {self._vdatum_path}')
+            print('Error executing: ' + command + '\nat: ' + self._vdatum_path)
             raise
         try:
             (output, outerr) = proc.communicate()
