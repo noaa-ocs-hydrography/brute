@@ -60,7 +60,7 @@ class intitialize:
         """
 
         bag = _bag.bag_file()
-        bag.open_file(filepath, 'gdal')
+        bag.open_file(filepath, 'hack')
         bag.generate_name(self._outlocation, self._io)
         coverage = _cvg.unified_coverage(coverage_list, bag.wkt, bag.name)
         coverage = _cvg.align2grid(coverage, bag.bounds, bag.shape, bag.resolution, bag.nodata)

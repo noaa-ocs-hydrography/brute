@@ -9,6 +9,8 @@ import os as _os
 from typing import Tuple, List
 
 import numpy as _np
+import tables as _tb
+from . import bag_hack as _bh
 from hyo2 import bag as _bag
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
@@ -51,6 +53,8 @@ class bag_file:
             self._file_gdal(filepath)
         elif method == 'hyo':
             self._file_hyo(filepath)
+        elif method == 'hack':
+            self._file_hack(filepath)
         else:
             raise ValueError('Open method not implemented.')
 
@@ -109,19 +113,57 @@ class bag_file:
         print(self.bounds)
         bag_obj = None
 
+    def _file_hack(self, filepath: str):
+        """
+        Used to read a BAG file using pytables and HDF5.
+
+        This function reads and populates this object's attributes
+
+        Parameters
+        ----------
+        filepath : str
+            The complete file path of the input BAG file
+
+        """
+        self._known_data(filepath)
+        with _tb.open_file(filepath, mode='r') as bagfile:
+            meta_read = [str(x, 'utf-8', 'ignore') for x in bagfile.root.BAG_root.metadata.read()]
+            #        print (meta_read)
+            meta_xml = ''.join(meta_read)
+            #        print (meta_xml)
+            encodeVal = 0
+            for x in meta_xml:
+                if meta_xml[encodeVal] == '>':
+                    meta_xml = meta_xml[encodeVal:]
+                    break
+                else:
+                    encodeVal += 1
+            startVal = 0
+            for x in meta_xml:
+                if meta_xml[startVal] == '<':
+                    meta_xml = meta_xml[startVal:]
+                    break
+                else:
+                    startVal += 1
+            xml_tree = _et.XML(meta_xml)
+            self.wkt = _bh.read_wkt_prj(xml_tree)
+            self.resolution = _bh.read_res_x_and_y(xml_tree)
+            sw, ne = _bh.read_corners_sw_and_ne(xml_tree)
+            sx, sy = sw
+            nx, ny = ne
+            self.bounds = ([sx, ny], [nx, sy])
+            self.elevation = _np.flipud(bagfile.root.BAG_root.elevation.read())
+            self.uncertainty = _np.flipud(bagfile.root.BAG_root.uncertainty.read())
+            self.shape = self.elevation.shape
+
     def _known_data(self, filepath: str):
         """
         TODO write description
 
         Parameters
         ----------
-        filepath :
-
-        filepath: str :
-
-
-        Returns
-        -------
+        filepath : str
+            The complete file path of the input BAG file
 
         """
 
@@ -136,17 +178,14 @@ class bag_file:
 
         Parameters
         ----------
-        arr :
-            param nodata:
-        arr: _np.array :
+        arr : numpy.array
 
-        nodata: float :
-
+        nodata : float
 
         Returns
         -------
         type
-            array
+            numpy.array
 
         """
 
@@ -159,15 +198,12 @@ class bag_file:
 
         Parameters
         ----------
-        arr :
-            returns: array
-        arr: _np.array :
-
+        arr : numpy.array
 
         Returns
         -------
         type
-            array
+            numpy.array
 
         """
 
