@@ -872,10 +872,10 @@ def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str
     timestamp = ntime()
     message = f'{timestamp} - Program Initiated, Log Opened'
 
-    if logType == 'False' or False:
+    if logType in ['False', False]:
         fo = open(logLocation, 'a')
         nameLog = logLocation
-    elif logType == 'True' or True:
+    elif logType in ['True', True]:
         x = 0
         datestamp = date()
 
