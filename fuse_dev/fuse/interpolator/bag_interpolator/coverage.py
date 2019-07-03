@@ -764,7 +764,7 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     if duly < 0:
         up = -int(rolly)
     elif duly > 0:
-        down = rolly
+        down = abs(rolly)
         up = 0
     if dulx < 0:
         left = -int(rollx)
