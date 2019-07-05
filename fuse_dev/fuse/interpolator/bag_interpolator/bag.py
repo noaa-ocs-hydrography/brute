@@ -145,7 +145,7 @@ class bag_file:
                     break
                 else:
                     startVal += 1
-            xml_tree = _et.XML(meta_xml)
+            xml_tree = _bh._et.XML(meta_xml)
             self.wkt = _bh.read_wkt_prj(xml_tree)
             self.resolution = _bh.read_res_x_and_y(xml_tree)
             sw, ne = _bh.read_corners_sw_and_ne(xml_tree)
