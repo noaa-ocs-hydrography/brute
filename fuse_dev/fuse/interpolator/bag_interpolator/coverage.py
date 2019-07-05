@@ -873,7 +873,7 @@ def write_raster(coverage, outputpath: str, out_verdat: str = 'MLLW',
     dest = None
 
 
-def coverage2gdal(coverage) -> gdal.Dataset:
+def coverage2gdal(coverage, flip: bool = False) -> gdal.Dataset:
     """
     TODO write description
 
@@ -895,18 +895,25 @@ def coverage2gdal(coverage) -> gdal.Dataset:
     nex, ney = ne
     res_x, res_y = coverage.resolution
     gt = (scx, res_x, 0, scy, 0, res_y)
-    coverage_gdal = _gdal.GetDriverByName('MEM').Create('', width, height, 1, _gdal.GDT_Float32)
+    coverage_gdal = _gdal.GetDriverByName('MEM').Create('', width, height, 1,
+                                                        _gdal.GDT_Float32)
     coverage_gdal.SetGeoTransform(gt)
     coverage_gdal.SetProjection(proj)
 
     band = coverage_gdal.GetRasterBand(1)
     band.SetNoDataValue(float(coverage.nodata))
-    band.WriteArray(coverage.array)
+
+    if flip:
+        array = _np.flipud(coverage.array)
+        band.WriteArray(array)
+    else:
+        band.WriteArray(coverage.array)
     #    coverage = None
     return coverage_gdal
 
 
-def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW'):
+def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW',
+                 flip: bool = False):
     """
     TODO write description
 
@@ -931,7 +938,7 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW'):
     proj = _osr.SpatialReference(wkt=coverage.wkt)
     proj.SetVertCS(out_verdat, out_verdat, 2000)
 
-    cov_ds = coverage2gdal(coverage)
+    cov_ds = coverage2gdal(coverage, flip=flip)
     band = cov_ds.GetRasterBand(1)
 
     driver = _ogr.GetDriverByName('GPKG')

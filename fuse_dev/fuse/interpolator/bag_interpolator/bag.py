@@ -158,7 +158,11 @@ class bag_file:
 
     def _known_data(self, filepath: str):
         """
-        TODO write description
+        Assigns class attributes that are extension agnostic
+
+        :attr:`name`, :attr:`nodata`, and :attr:`size` can be determined
+        without using a specific library or method to open file contents, so
+        they are assigned by using this function
 
         Parameters
         ----------
@@ -174,13 +178,14 @@ class bag_file:
 
     def _nan2ndv(self, arr: _np.array, nodata: float) -> _np.array:
         """
-        TODO write description
+        Reassigns numpy.nan values with a replacement no data value.
 
         Parameters
         ----------
         arr : numpy.array
 
         nodata : float
+            The no data value to be assigned to the numpy.array
 
         Returns
         -------
@@ -194,7 +199,7 @@ class bag_file:
 
     def _npflip(self, arr: _np.array) -> _np.array:
         """
-        TODO write description
+        Performs :func:`numpy.flipup` on the input numpy.array
 
         Parameters
         ----------
@@ -209,14 +214,14 @@ class bag_file:
 
         return _np.flipud(arr)
 
-    def _meta2bounds(self, meta) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    def meta2bounds(self, meta) -> Tuple[Tuple[float, float], Tuple[float, float]]:
         """
-        TODO write description
+        Breaks up and assigns the NW and SE corners from the NE and SW corners
+        of a :obj:`hyo2.bag.meta` object
 
         Parameters
         ----------
-        meta :
-            returns: tuple of bounds
+        meta : hyo2.bag.meta
 
         Returns
         -------
@@ -229,19 +234,24 @@ class bag_file:
         nx, ny = meta.ne
         return [sx, ny], [nx, sy]
 
-    def _gt2bounds(self, meta, shape: Tuple[int, int]) -> Tuple[Tuple[Tuple[float, float], Tuple[float, float]], float]:
+    def gt2bounds(self, meta, shape: Tuple[int, int]) -> Tuple[Tuple[Tuple[float, float], Tuple[float, float]], float]:
         """
-        TODO write description
+        Formats and returns the bounds and resolution
+
+        This function takes a GeoTransform object and array shape and
+        calculates the NW and SE corners.
 
         Parameters
         ----------
-        meta :
-            param shape:
-        shape:
+        meta : gdal.GetGeoTransform
 
+        shape : tuple of int
+            (y, x) shape of the bag object
 
         Returns
         -------
+        type
+            tuple of bounds, resolution
 
         """
         y, x = shape
@@ -256,19 +266,22 @@ class bag_file:
 
     def _gdalreadarray(self, bag_obj, band: int) -> _np.array:
         """
-        TODO write description
+        Returns a numpy.array of a GDAL object
+
+        This function uses a :obj:`gdal.Dataset` object and band number to pull
+        and read the appropriate array from the object
 
         Parameters
         ----------
-        bag_obj :
-            param band:
-        band: int :
+        bag_obj : gdal.Dataset
 
+        band : int
+            raster band number
 
         Returns
         -------
         type
-            array
+            numpy.array
 
         """
 
@@ -276,19 +289,15 @@ class bag_file:
 
     def _size_finder(self, filepath: str) -> int:
         """
-        TODO write description
+        Returns the rounded size of a file in MB as an integer
 
         Parameters
         ----------
-        filepath :
-            returns: size
-        filepath: str :
-
+        filepath : str, os.Pathlike
 
         Returns
         -------
-        type
-            size
+        int
 
         """
 
@@ -296,52 +305,52 @@ class bag_file:
 
     def generate_name(self, outlocation: str, io: bool):
         """
-        TODO write description
+        Assigns the :attr:`outfilename` of the bag object.
+
+        This function uses the input bool ``io`` to determine the naming
+        convention of the output file name. This requires an assigned
+        :attr:`name` for this object that is not ``None``
 
         Parameters
         ----------
-        outlocation :
-            param io:
-        outlocation: str :
-
-        io: bool :
-
-
-        Returns
-        -------
+        outlocation : str, os.Pathlike
+            Folder path of the output file
+        io : bool
+            Boolean determination of interpolated only or full bag data
 
         """
-
-        name = f'{self.name}_INTERP_{"ONLY" if io else "FULL"}.bag'
-        self.outfilename = _os.path.join(outlocation, name)
+        if self.name is not None:
+            name = f'{self.name}_INTERP_{"ONLY" if io else "FULL"}.bag'
+            self.outfilename = _os.path.join(outlocation, name)
 
 
 class gdal_create:
-    """TODO write description"""
+    """This class serves as the main container for converting processed bag
+    data into a :obj:`gdal.Dataset` object.
+
+    """
     _descriptions = ['Elevation', 'Uncertainty', 'Interpolated']
 
-    def __init__(self, out_verdat: str = None):
+    def __init__(self, out_verdat: str = None, flip: bool = False):
         """
 
         Parameters
         ----------
-        out_verdat
+        out_verdat : str
+            Output Vertical Coordinate System (ie. 'MLLW')
         """
 
         self.dataset = None
         self.out_verdat = out_verdat
+        self.flip = flip
 
     def bag2gdal(self, bag):
         """
-        TODO write description
+        Converts a :obj:`bag` object into a :obj:`gdal.Dataset`
 
         Parameters
         ----------
-        bag :
-
-
-        Returns
-        -------
+        bag : :obj:`bag`
 
         """
 
@@ -364,46 +373,39 @@ class gdal_create:
         x = 1
         for item in arrays:
             band = target_ds.GetRasterBand(x)
-            band.SetDescription(self._descriptions[x])
+            band.SetDescription(self._descriptions[x - 1])
             band.SetNoDataValue(bag.nodata)
+            if self.flip:
+                item = _np.flipud(item)
             band.WriteArray(item)
             band = None
             x += 1
         self.dataset = target_ds
         target_ds = None
 
-    def components2gdal(self, arrays: List[_np.array], shape: Tuple[int, int], bounds: Tuple[float, float],
-                        resolution: Tuple[float, float], prj: str, nodata: float):
+    def components2gdal(self, arrays: List[_np.array], shape: Tuple[int, int],
+                        bounds: Tuple[Tuple[float, float],
+                                      Tuple[float, float]],
+                        resolution: Tuple[float, float], prj: str,
+                        nodata: float = 1000000.0):
         """
-        TODO write description
+        Converts raw dataset components into a :obj:`gdal.Dataset` object
 
         Parameters
         ----------
-        arrays :
-            param shape:
-        bounds :
-            param resolution:
-        prj :
-            param nodata:
-        arrays: List[_np.array] :
+        arrays : list of numpy.array
+            Arrays [elevation, uncertainty]
+        shape : tuple of int
+            (y, x) shape of the arrays
+        bounds : tuple of tuple of float
+            (NW, SE) corners of the data
+        resolution : tuple of float
+            (x_res, y_res) of the data
+        prj : str
+            WKT string of the projection of the data
+        nodata : float, optional
+            no data value of the arrays, default is 1000000.0
 
-        shape: Tuple[int :
-
-        int] :
-
-        bounds: Tuple[float :
-
-        float] :
-
-        resolution: Tuple[float :
-
-        prj: str :
-
-        nodata: float :
-
-
-        Returns
-        -------
 
         """
         bands = len(arrays)
@@ -426,6 +428,8 @@ class gdal_create:
             band = target_ds.GetRasterBand(x)
             band.SetDescription(self._descriptions[x - 1])
             band.SetNoDataValue(nodata)
+            if self.flip:
+                item = _np.flipud(item)
             band.WriteArray(item)
             band = None
             x += 1
