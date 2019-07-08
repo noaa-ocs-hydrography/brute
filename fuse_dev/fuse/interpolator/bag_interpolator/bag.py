@@ -199,7 +199,7 @@ class bag_file:
 
     def _npflip(self, arr: _np.array) -> _np.array:
         """
-        Performs :func:`numpy.flipup` on the input numpy.array
+        Performs :func:`numpy.flipud` on the input numpy.array
 
         Parameters
         ----------
@@ -356,15 +356,16 @@ class gdal_create:
 
         arrays = [bag.elevation, bag.uncertainty]
         bands = len(arrays)
-        sw, ne = bag.bounds
-        scx, scy = sw
-        nex, ney = ne
+        nw, se = bag.bounds
+        nwx, nwy = nw
+        scx, scy = se
         y_cols, x_cols = bag.shape
         res_x, res_y = bag.resolution[0], bag.resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols,
                                                         bands,
                                                         _gdal.GDT_Float32)
-        target_gt = (scx, res_x, 0, scy, 0, res_y)
+        target_gt = (nwx, res_x, 0, nwy, 0, res_y)
+        target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=bag.wkt)
         srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
@@ -418,6 +419,7 @@ class gdal_create:
                                                         bands,
                                                         _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
+        target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=prj)
         srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
@@ -435,3 +437,11 @@ class gdal_create:
             x += 1
         self.dataset = target_ds
         target_ds = None
+
+    def translate_bag2gdal_extents(self, geotransform: Tuple[float, float,
+                                                             float, float,
+                                                             float, float]):
+        orig_x, res_x, skew_x, orig_y, skew_y, res_y = geotransform
+        new_x = orig_x - (res_x/2)
+        new_y = orig_y + (res_y/2)
+        return (new_x, res_x, skew_x, new_y, skew_y, res_y)
