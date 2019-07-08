@@ -127,6 +127,9 @@ class bag_file:
         """
         self._known_data(filepath)
         with _tb.open_file(filepath, mode='r') as bagfile:
+            self.elevation = _np.flipud(bagfile.root.BAG_root.elevation.read())
+            self.uncertainty = _np.flipud(bagfile.root.BAG_root.uncertainty.read())
+            self.shape = self.elevation.shape
             meta_read = [str(x, 'utf-8', 'ignore') for x in bagfile.root.BAG_root.metadata.read()]
             #        print (meta_read)
             meta_xml = ''.join(meta_read)
@@ -150,11 +153,10 @@ class bag_file:
             self.resolution = _bh.read_res_x_and_y(xml_tree)
             sw, ne = _bh.read_corners_sw_and_ne(xml_tree)
             sx, sy = sw
-            nx, ny = ne
+            nx = (sx + (self.resolution[0] * self.shape[1]))
+            ny = (sy + (self.resolution[0] * self.shape[0]))
+            print(ne, (nx, ny))
             self.bounds = ([sx, ny], [nx, sy])
-            self.elevation = _np.flipud(bagfile.root.BAG_root.elevation.read())
-            self.uncertainty = _np.flipud(bagfile.root.BAG_root.uncertainty.read())
-            self.shape = self.elevation.shape
 
     def _known_data(self, filepath: str):
         """
