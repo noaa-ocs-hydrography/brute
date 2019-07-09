@@ -89,23 +89,22 @@ def query() -> Tuple[List[str], int, str]:
     Holds the Queries for the eHydro REST API, asks for responses, and uses
     the json library to make it readable by the program. Returns the json
     responses for number of surveys and surveys in the response.
-    
+
     -REMOVED- It also saves a prettyprinted version of the response as a text
     file.
-    
+
     The funtion uses the requests library to retrieve the API's response(s) and
     uses the json library to make them readable by the program.
-    
+
     The function returns the json object containing the contents of the query
     and the integer number of surveys contained by the query
-
-    Parameters
-    ----------
 
     Returns
     -------
     type
-        List of survey ids from query, total number of surveys returned by the query, and a string containing the parameters gathered from the config file
+        List of survey ids from query, total number of surveys returned by the
+        query, and a string containing the parameters gathered from the config
+        file
 
     """
 
@@ -146,16 +145,19 @@ def query() -> Tuple[List[str], int, str]:
     else:
         areas = ''
 
+#    datefield = 'SURVEYDATEUPLOADED'
+    datefield = 'SURVEYDATEEND'
+
     # The main query parameters that will determine the contents of the response
     # Survey Date Uploaded
     if config['Timeframe']['Ignore Date'] == 'no' and areas != '':
         print(f'\nStart: {start}\nEnd: {end}')
         # %27 is ' (Apostrophe)
-        where = f'SURVEYDATEUPLOADED+>=+%27{start}T00:01:00.000Z%27+AND+SURVEYDATEUPLOADED+<=+%27{end}T11:59:00.000Z%27+AND+{areas}'
+        where = f'{datefield}+>=+%27{start}T00:01:00.000Z%27+AND+{datefield}+<=+%27{end}T11:59:00.000Z%27+AND+{areas}'
     elif config['Timeframe']['Ignore Date'] == 'no' and areas == '':
         print('\nStart:', start, '\nEnd:', end)
         # %27 is ' (Apostrophe)
-        where = f'SURVEYDATEUPLOADED+>=+%27{start}T00:01:00.000Z%27+AND+SURVEYDATEUPLOADED+<=+%27{end}T11:59:00.000Z%27'
+        where = f'{datefield}+>=+%27{start}T00:01:00.000Z%27+AND+{datefield}+<=+%27{end}T11:59:00.000Z%27'
     else:
         print('\nStart: Ignored', '\nEnd: Ignored')
         start = 'Ignored'
@@ -207,7 +209,7 @@ def query() -> Tuple[List[str], int, str]:
 def create_polygon(coords: List[Tuple[float, float]]) -> ogr.Geometry:
     """
     Creates an ogr.Geometry/wkbLinearRing object from a list of coordinates.
-    
+
     with considerations from:
     https://gis.stackexchange.com/q/217165
 
@@ -215,10 +217,6 @@ def create_polygon(coords: List[Tuple[float, float]]) -> ogr.Geometry:
     ----------
     coords :
         A list of [x, y] points to be made into an ogr.Geometry/wkbLinearRing object
-    coords: List[Tuple[float :
-        
-    float]] :
-        
 
     Returns
     -------
@@ -226,7 +224,6 @@ def create_polygon(coords: List[Tuple[float, float]]) -> ogr.Geometry:
         ogr.Geometry/wkbLinearRing object
 
     """
-
     ring = ogr.Geometry(ogr.wkbLinearRing)
     for coord in coords:
         ring.AddPoint(coord[0], coord[1], 1)
@@ -241,7 +238,7 @@ def create_multipolygon(polys: List[ogr.Geometry]) -> str:
     Creates an ogr.Geometry/wkbMultiPolygon object from a list of
     ogr.Geometry/wkbLinearRing objects.  The ogr.Geometry/wkbMultiPolygon is
     transelated and returned as a WTK Multipolygon object.
-    
+
     with considerations from:
     https://gis.stackexchange.com/q/217165
     and:
@@ -252,7 +249,7 @@ def create_multipolygon(polys: List[ogr.Geometry]) -> str:
     polys :
         A list of ogr.Geometry/wkbLinearRing objects
     polys: List[ogr.Geometry] :
-        
+
 
     Returns
     -------
@@ -260,7 +257,6 @@ def create_multipolygon(polys: List[ogr.Geometry]) -> str:
         WTK Multipolygon object
 
     """
-
     multipolygon = ogr.Geometry(ogr.wkbMultiPolygon)
     for poly in polys:
         multipolygon.AddGeometry(poly)
@@ -271,26 +267,26 @@ def geometryToShape(coordinates: list):
     """
     Uses a list of coordinate point 'rings' and creates a WTK Multipolygon
     object from them.  This object represents the survey outline.
-    
+
     eHydro data object geometries are returned as a list of lists/'rings'
     meaning that a survey may have one or many polygons included in it's
     geometry.
-    
+
     This function takes each 'ring' and determines it's extents and creates a
     ogr.Geometry object for it using :func:`create_polygon`
-    
+
     The polygons for each 'ring' are then combined into a single WTK
     Multipolygon object using :func:`create_multipolygon`
-    
+
     The total extent of the geometry and the WTK Multipolygon object are
     returned
 
     Parameters
     ----------
     coordinates :
-        A list of coordinate point 'rings' returned by an eHydro survey query in the Geometry attribute
-    coordinates: list :
-        
+        A list of coordinate point 'rings' returned by an eHydro survey query
+        in the Geometry attribute
+
 
     Returns
     -------
@@ -298,7 +294,6 @@ def geometryToShape(coordinates: list):
         A WTK Multipolygon object representing the survey outline
 
     """
-
     polys = []
     bounds = []
     for ring in coordinates:
@@ -325,10 +320,10 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
     that the survey data returns for any date/time are returned as timestamps.
     The function looks for these fields and converts them to datetime objects
     and finally strings.
-    
+
     The function returns the lists of returned survey data as a list 'rows'.
     The specific :attr:`attributes` for each survey are:
-    
+
     - OBJECTID.
     - SDSFEATURENAME.
     - SURVEYTYPE.
@@ -345,7 +340,7 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
     - SOURCEDATAFORMAT.
     - Shape__Area.
     - Shape__Length.
-    
+
     Added to the end of this list but not included in the list for csv export
     is a dictionary of the same information and the survey outline/shape as a
     WTK Multipolygon object. This data is used to writa a metadata pickle
@@ -353,15 +348,11 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
 
     Parameters
     ----------
-    surveyIDs :
+    surveyIDs : list
         List of survey ids usualy generated by :func:`query`
-    newSurveysNum :
+    newSurveysNum : in
         Total number of surveys usualy returned by :func:`query`
-    surveyIDs: list :
-        
-    newSurveysNum: int :
-        
-    pb :
+    pb : wx.Guage, optional
          (Default value = None)
 
     Returns
@@ -370,7 +361,6 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
         A list compiled of the attributes for every survey in surveyIDs
 
     """
-
     x = 0
     rows = []
     if pb is not None:
@@ -385,7 +375,6 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
         page = response.json()
         row = []
         metadata = {'version': __version__}
-
         for attribute in attributes:
             try:
                 if page['features'][0]['attributes'][attribute] is None:
@@ -397,21 +386,27 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
                         metadata[attribute] = 'null'
                     else:
                         date = (page['features'][0]['attributes'][attribute])
-                        date = datetime.datetime.utcfromtimestamp(date / 1000)
-                        row.append(str(date.strftime('%Y-%m-%d')))
-                        metadata[attribute] = str(date.strftime('%Y-%m-%d'))
+#                        print(date)
+                        try:
+                            date = datetime.datetime.utcfromtimestamp(date / 1000)
+                            row.append(str(date.strftime('%Y-%m-%d')))
+                            metadata[attribute] = str(date.strftime('%Y-%m-%d'))
+                        except OSError as e:
+                            print(e, date)
+                            row.append('error')
+                            metadata[attribute] = 'error'
                 else:
                     row.append(str(page['features'][0]['attributes'][attribute]))
                     metadata[attribute] = str(page['features'][0]['attributes'][attribute])
             except KeyError as e:
-                print(e, page)
+                print(e, attribute)
                 row.append('error')
                 metadata[attribute] = 'error'
         try:
             coords = page['features'][0]['geometry']['rings']
             metadata['poly'] = geometryToShape(coords)
         except KeyError as e:
-            print(e, page)
+            print(e, 'geometry')
             metadata['poly'] = 'error'
         row.append(metadata)
         rows.append(row)
@@ -423,11 +418,12 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
     return rows
 
 
-def write_geopackage(out_path: str, name: str, poly: str, spcs: Union[str, int]):
+def write_geopackage(out_path: str, name: str, poly: str,
+                     spcs: Union[str, int]):
     """
     Writes out a geopackage containing the bounding geometry of
     of the given query.
-    
+
     Derived from:
     https://gis.stackexchange.com/a/52708/8104
     via
@@ -443,22 +439,8 @@ def write_geopackage(out_path: str, name: str, poly: str, spcs: Union[str, int])
         The WTK Multipolygon object that holds the survey's bounding data
     spcs :
         The ESPG code for the data
-    out_path: str :
-        
-    name: str :
-        
-    poly: str :
-        
-    spcs: Union[str :
-        
-    int] :
-        
-
-    Returns
-    -------
 
     """
-
     # Reference
     if type(spcs) == str:
         proj = osr.SpatialReference(wkt=spcs)
@@ -476,7 +458,7 @@ def write_geopackage(out_path: str, name: str, poly: str, spcs: Union[str, int])
     layer.CreateField(ogr.FieldDefn('Survey', ogr.OFTString))
     defn = layer.GetLayerDefn()
 
-    ## If there are multiple geometries, put the "for" loop here
+    # If there are multiple geometries, put the "for" loop here
 
     # Create a new feature (attribute and geometry)
     feat = ogr.Feature(defn)
@@ -496,17 +478,15 @@ def write_geopackage(out_path: str, name: str, poly: str, spcs: Union[str, int])
 def contentSearch(contents: List[str]) -> int:
     """
     This funtion takes a list of zipfile contents.
-    
+
     Using the zipfile contents, it parses the files for any file containing the
     full string '_FULL.xyz'.  If a file name contains this string, it returns a
     Boolean True
 
     Parameters
     ----------
-    contents :
+    contents : list
         A list of file names
-    contents: List[str] :
-        
 
     Returns
     -------
@@ -529,26 +509,26 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
     """
     This function takes a list of complete survey data as provided by the
     query response `rows`.
-    
+
     For each survey object in rows, along with the list of arrtibute values, a
     dictionary of the same values is inlcuded as well as a WTK Multipolygon
     object
-    
+
     For each link provided, it saves the returned data localy. All downloaded
     files are expected to be zip files.  The funtion attempts to open the files
     as zipfile objects:
-    
+
     1. If it succeeds, the function requests a list of included contents
     of the zipfile objects and passes that list, the download link, and
     location of the local download to contentSearch() to determine if the
     desired data exists. The downloaded content is kept.
     2. If it fails, the link, downloaded
     contents, and survey data in 'rows' are immediately removed.
-    
+
     Through each of these steps a value is appended to the end of each 'row' or
     survey data object in list 'rows' to indicate the result of the search for
     highest resolution data.  The full range of possible values are:
-    
+
     1. Yes; the survey contains a FULL.xyz file.
     2. No; the survey does not contain a FULL.xyz file.
     3. BadURL; the survey URL from query response was bad/yeilded no results.
@@ -556,13 +536,12 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
 
     Parameters
     ----------
-    rows :
-        A list compiled of the attributes for every survey in surveyIDs usually generated by :func:`surveyCompile`
-    pb :
-        param to: (Default value = None)
-    rows: list :
-        
-    to :
+    rows : list
+        A list compiled of the attributes for every survey in surveyIDs usually
+        generated by :func:`surveyCompile`
+    pb : wx.Guage, optional
+        (Default value = None)
+    to : wx.TextCtrl, optional
          (Default value = None)
 
     Returns
@@ -726,25 +705,23 @@ def csvCompare(rows: list, csvFile: List[str], newSurveysNum: int, pb=None) -> T
 
     Parameters
     ----------
-    rows :
-        The list compiled of the attributes for every survey in surveyIDs. This uses the list generated by :func:`downloadAndCheck` but can also use the original list generated by :func:`surveyCompile`
-    csvFile :
-        The list of all compiled survey attributes stored in a dedicated .txt file generated by :func:`csvOpen`
+    rows : list
+        The list compiled of the attributes for every survey in surveyIDs. This
+        uses the list generated by :func:`downloadAndCheck` but can also use
+        the original list generated by :func:`surveyCompile`
+    csvFile : list
+        The list of all compiled survey attributes stored in a dedicated .txt
+        file generated by :func:`csvOpen`
     newSurveysNum :
         Total number of surveys usualy returned by :func:`query`
-    pb :
-        returns: A list compiled of the attributes for every survey in surveyIDs minus the surveys found in the csvFile list or returns a string 'No Changes' (Default value = None)
-    rows: list :
-        
-    csvFile: List[str] :
-        
-    newSurveysNum: int :
-        
+    pb : wx.Guage, optional
+        (Default value = None)
 
     Returns
     -------
     type
-        A list compiled of the attributes for every survey in surveyIDs minus the surveys found in the csvFile list or returns a string 'No Changes'
+        A list compiled of the attributes for every survey in surveyIDs minus
+        the surveys found in the csvFile list or returns a string 'No Changes'
 
     """
 
@@ -784,9 +761,6 @@ def csvOpen() -> List[str]:
     Populates a list 'csvFile' with it's contents. Returns list and
     closes file
 
-    Parameters
-    ----------
-
     Returns
     -------
     type
@@ -815,19 +789,12 @@ def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
     Parameters
     ----------
     csvFile :
-        A list of survey attributes each containing a row of data to be written to eHydro_csv.txt
+        A list of survey attributes each containing a row of data to be written
+        to eHydro_csv.txt
     csvLocation :
         Complete file path string for a text file to be created
-    pb :
-         (Default value = None)
-    csvFile: List[str] :
-        
-    csvLocation: str :
-        
-
-    Returns
-    -------
-
+    pb : wx.Guage, optional
+        (Default value = None)
     """
     csvOpen = open(csvLocation, 'w', newline='')
     save = csv.writer(csvOpen, delimiter=',')
@@ -854,21 +821,19 @@ def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str
     Parameters
     ----------
     logType :
-        Boolean expression that determines whether or not the object for the continuous log is passed back or a new log is created for an individual run
-    to :
-        returns: A text document object representing the output log, and the file path for the output log object (Default value = None)
-    logType: Union[str :
-        
-    bool] :
-        
+        Boolean expression that determines whether or not the object for the
+        continuous log is passed back or a new log is created for an individual
+        run
+    to : wx.TextCtrl, optional
+        (Default value = None)
 
     Returns
     -------
     type
-        A text document object representing the output log, and the file path for the output log object
+        A text document object representing the output log, and the file path
+        for the output log object
 
     """
-
     timestamp = ntime()
     message = f'{timestamp} - Program Initiated, Log Opened'
 
@@ -881,7 +846,7 @@ def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str
 
         while True:
             name = f'{datestamp}_{x}_{logName}'
-            logPath = logging + name
+            logPath = os.path.join(logging, name)
             if os.path.exists(logPath):
                 x += 1
             else:
@@ -904,18 +869,8 @@ def logWriter(fileLog: Tuple[TextIO, Any], message: str):
         A text document object representing the output log
     message :
         A string of text to be written to the fileLog input
-    fileLog: Tuple[TextIO :
-        
-    Any] :
-        
-    message: str :
-        
-
-    Returns
-    -------
 
     """
-
     print(message)
     fl, to = fileLog
     fl.write(f'{message}\n')
@@ -932,16 +887,8 @@ def logClose(fileLog: Tuple[TextIO, Any]):
     ----------
     fileLog :
         A text document object representing the output log
-    fileLog: Tuple[TextIO :
-        
-    Any] :
-        
-
-    Returns
-    -------
 
     """
-
     fo = fileLog[0]
     timestamp = ntime()
     message = f'{timestamp} - Program Finished, Log Closed\n'
@@ -956,16 +903,12 @@ def ntime() -> str:
     :obj:`datetime.datetime.now` and formated using
     :obj:`datetime.datetime.strftime` to reflect 'YYYY-MM-DD Time'
 
-    Parameters
-    ----------
-
     Returns
     -------
     type
         A string with the current date and time
 
     """
-
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d %X')
     return timestamp
 
@@ -977,16 +920,12 @@ def date() -> str:
     :obj:`datetime.datetime.now` and formated using
     :obj:`datetime.datetime.strftime` to reflect 'YYYY-MM-DD'
 
-    Parameters
-    ----------
-
     Returns
     -------
     type
         A string with the current date and time
 
     """
-
     datestamp = datetime.datetime.now().strftime('%Y-%m-%d')
     return datestamp
 
@@ -998,16 +937,12 @@ def fileTime() -> str:
     :obj:`datetime.datetime.now` and formated using
     :obj:`datetime.datetime.strftime` to reflect 'YYYYMMDD'
 
-    Parameters
-    ----------
-
     Returns
     -------
     type
         A string with the current date and time
 
     """
-
     timestamp = datetime.datetime.now().strftime('%Y%m%d')
     return timestamp
 
@@ -1018,19 +953,16 @@ def main(pb=None, to=None):
 
     Parameters
     ----------
-    pb :
-        param to: (Default value = None)
-    to :
-         (Default value = None)
-
-    Returns
-    -------
+    pb : wx.Guage, optional
+        (Default value = None)
+    to : wx.TextCtrl, optional
+        (Default value = None)
 
     """
-
     runType = config['Data Checking']['Override']
     logType = config['Output Log']['Log Type']
     fileLog, nameLog = logOpen(logType, to)
+    qf = False
     try:
         surveyIDs, newSurveysNum, paramString = query()
         logWriter(fileLog, f'\tSurvey IDs queried from eHydro\n{paramString}')
@@ -1039,22 +971,29 @@ def main(pb=None, to=None):
         logWriter(fileLog, '\tSurvey objects compiled from eHydro')
     except:
         logWriter(fileLog, '\teHydro query failed')
-    if runType == 'no':
-        try:
-            csvFile = csvOpen()
-            logWriter(fileLog, '\teHydro_csv.txt opened for reading')
-        except:
-            logWriter(fileLog, '\teHydro_csv.txt unable to be opened')
-        try:
-            logWriter(fileLog, '\tComparing query results to eHydro_csv.txt')
-            changes, numstring = csvCompare(rows, csvFile, newSurveysNum)
-            logWriter(fileLog, numstring)
-        except:
-            logWriter(fileLog,
-                      '\t\tUnable to compare query results to eHydro_csv.txt')
-    elif runType == 'yes':
-        csvFile = []
-        changes = rows
+        qf = True
+    try:
+        if runType == 'no':
+            try:
+                csvFile = csvOpen()
+                logWriter(fileLog, '\teHydro_csv.txt opened for reading')
+            except:
+                logWriter(fileLog, '\teHydro_csv.txt unable to be opened')
+            try:
+                logWriter(fileLog, '\tComparing query results to eHydro_csv.txt')
+                changes, numstring = csvCompare(rows, csvFile, newSurveysNum)
+                logWriter(fileLog, numstring)
+            except:
+                logWriter(fileLog,
+                          '\t\tUnable to compare query results to eHydro_csv.txt')
+        elif runType == 'yes':
+            csvFile = []
+            changes = rows
+    except UnboundLocalError as e:
+        if qf:
+            logWriter(fileLog, '\tSurvey data not populated due to query failure')
+        else:
+            logWriter(fileLog, '\tError in runType')
     try:
         logWriter(fileLog, '\tParsing new entries for resolution:')
         attributes.append('Hi-Res?')
@@ -1087,7 +1026,7 @@ def main(pb=None, to=None):
 
             while True:
                 name = f'{datestamp}_{x}_{csvName}'
-                csvPath = running + name
+                csvPath = os.path.join(running, name)
 
                 if os.path.exists(csvPath):
                     x += 1
