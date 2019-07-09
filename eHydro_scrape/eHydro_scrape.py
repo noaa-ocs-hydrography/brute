@@ -145,8 +145,8 @@ def query() -> Tuple[List[str], int, str]:
     else:
         areas = ''
 
-#    datefield = 'SURVEYDATEUPLOADED'
-    datefield = 'SURVEYDATEEND'
+    datefield = 'SURVEYDATEUPLOADED'
+#    datefield = 'SURVEYDATEEND'
 
     # The main query parameters that will determine the contents of the response
     # Survey Date Uploaded
