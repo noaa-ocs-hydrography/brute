@@ -146,7 +146,7 @@ def query() -> Tuple[List[str], int, str]:
         areas = ''
 
     datefield = 'SURVEYDATEUPLOADED'
-#    datefield = 'SURVEYDATEEND'
+    #    datefield = 'SURVEYDATEEND'
 
     # The main query parameters that will determine the contents of the response
     # Survey Date Uploaded
@@ -386,7 +386,7 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
                         metadata[attribute] = 'null'
                     else:
                         date = (page['features'][0]['attributes'][attribute])
-#                        print(date)
+                        #                        print(date)
                         try:
                             date = datetime.datetime.utcfromtimestamp(date / 1000)
                             row.append(str(date.strftime('%Y-%m-%d')))
@@ -837,10 +837,10 @@ def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str
     timestamp = ntime()
     message = f'{timestamp} - Program Initiated, Log Opened'
 
-    if logType in ['False', False]:
+    if logType in ('False', False):
         fo = open(logLocation, 'a')
         nameLog = logLocation
-    elif logType in ['True', True]:
+    elif logType in ('True', True):
         x = 0
         datestamp = date()
 
@@ -853,6 +853,9 @@ def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str
                 break
         fo = open(logPath, 'w')
         nameLog = logPath
+    else:
+        raise ValueError(f'"{logType}" not a boolean value')
+
     fileLog = (fo, to)
     logWriter(fileLog, message)
     return fileLog, nameLog
