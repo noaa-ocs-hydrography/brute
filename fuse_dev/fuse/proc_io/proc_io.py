@@ -92,8 +92,8 @@ class proc_io:
         """
         Write the provided data to the predefined data type.
 
-        :param dataset: 
-        :param instruction: 
+        :param dataset:
+        :param instruction:
         :param metadata:  (Default value = None)
         """
 
@@ -121,12 +121,12 @@ class proc_io:
     def _write_csar(self, dataset: gdal.Dataset, outfilename: str):
         """
         Convert the provided gdal dataset into a csar file.
-        
+
         The data and metadata are saved out to a file and then loaded into the
         wrapper around the csar writer.
 
-        :param dataset: 
-        :param outfilename: 
+        :param dataset:
+        :param outfilename:
         """
 
         conda_env_name = self._caris_environment_name
@@ -160,7 +160,7 @@ class proc_io:
         activate_file = caris.helper.retrieve_activate_batch()
 
         if os.path.exists(write_csar):
-            args = ["cmd.exe", "/K", "set pythonpath= &&",  # setup the commandline
+            args = ["cmd.exe", "/C", "set pythonpath= &&",  # setup the commandline
                     activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
                     python_path, write_csar,  # call the script
                     f'"{datafilename.replace("&", "^&")}"',  # surface path
@@ -200,8 +200,8 @@ class proc_io:
         """
         Convert the provided gdal dataset into a bag file.
 
-        :param dataset: 
-        :param outfilename: 
+        :param dataset:
+        :param outfilename:
         :param metadata:  (Default value = None)
         """
 
@@ -227,8 +227,8 @@ class proc_io:
         """
         Convert the provided gdal dataset into a geopackage file.
 
-        :param dataset: 
-        :param outfilename: 
+        :param dataset:
+        :param outfilename:
         """
 
         points, meta = self._point2wkt(dataset)
@@ -275,8 +275,8 @@ class proc_io:
         """
         TODO write description
 
-        :param dataset: 
-        :param outfilename: 
+        :param dataset:
+        :param outfilename:
         """
 
         splits = os.path.split(outfilename)[1]
@@ -308,7 +308,7 @@ class proc_io:
         """
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
-        
+
         The gdal dataset should have he no data value set appropriately.
 
         :param dataset:
@@ -339,7 +339,7 @@ class proc_io:
         """
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
-        
+
         The gdal dataset should have he no data value set appropriately.
 
         :param dataset:
@@ -369,7 +369,7 @@ class proc_io:
         """
         Convert the gdal dataset into a WKT Points object and a dictionary of
         metadata of the geotransform information and return.
-        
+
         The gdal dataset should have he no data value set appropriately.
 
         :param dataset:
@@ -411,7 +411,7 @@ class proc_io:
         Update the gdal raster object no data value and the raster no data
         values in to corrispond with the object no data value.
 
-        :param dataset: 
+        :param dataset:
         """
 
         # check the no data value
