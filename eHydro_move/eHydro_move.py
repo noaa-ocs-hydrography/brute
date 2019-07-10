@@ -81,23 +81,28 @@ def regionPath(root: str, folder: str) -> dict:
     fileName = open(config['CSVs']['NBS'], 'r')
     opened = _csv.reader(fileName, delimiter=',')
     temp = []
-    for row in opened:
-        if len(row) > 0:
-            temp.append(row)
+
+    for row in filter(lambda row: len(row) > 0, opened):
+        temp.append(row)
+
     fileName.close()
+
     for row in temp[1:]:
         regionName = f'{row[1].strip()}_{row[0].strip()}'
         dwnlds = []
         districts = [i.strip() for i in row[2].split(',')]
+
         for i in districts:
             dwnlds.append(repo + _os.path.join(downloads, i))
+
         bounds = row[-1]
         regions.append((regionName, [dwnlds, bounds]))
+
     regions = dict(regions)
     return regions
 
 
-def open_ogr(path):
+def open_ogr(path) -> tuple:
     """
     Parameters
     ----------
@@ -107,18 +112,22 @@ def open_ogr(path):
     -------
 
     """
+
     ds = _ogr.Open(path)
     ds_layer = ds.GetLayer()
-    for feature in ds_layer:
-        if feature is not None:
-            geom = feature.GetGeometryRef()
-            ds_geom = _ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-            break
+
+    for feature in filter(lambda feature: feature is not None, ds_layer):
+        geom = feature.GetGeometryRef()
+        ds_geom = _ogr.CreateGeometryFromWkt(geom.ExportToWkt())
+        break
+
     ds_proj = ds_layer.GetSpatialRef()
+
     if ds_proj.IsProjected:
         proj_name = ds_proj.GetAttrValue('projcs')
     else:
         proj_name = ds_proj.GetAttrValue('geogcs')
+
     return ds_geom, ds_proj  # , proj_name
 
 
@@ -143,6 +152,7 @@ def write_shapefile(out_shp: str, name: str, geom, spcs: Union[str, int]):
     spcs: Union[str, int] :
 
     """
+
     # Reference
     if type(spcs) == str:
         proj = _osr.SpatialReference(wkt=spcs)
@@ -171,10 +181,9 @@ def write_shapefile(out_shp: str, name: str, geom, spcs: Union[str, int]):
     feat.SetGeometry(geom)
 
     layer.CreateFeature(feat)
-    feat = geom = None  # destroy these
 
     # Save and close everything
-    ds = layer = feat = geom = None
+    del ds, layer, feat, geom
 
 
 def fileCollect(path: str, bounds: str) -> list:
@@ -203,6 +212,7 @@ def fileCollect(path: str, bounds: str) -> list:
         list if none are found
 
     """
+
     zips = []
     bfile = _os.path.join(progLoc, bounds)
     bpath = _os.path.join(progLoc, bounds.split('\\')[0])
@@ -210,21 +220,25 @@ def fileCollect(path: str, bounds: str) -> list:
     spath = _os.path.join(bpath, bname)
     print(bname)
     meta_geom, meta_proj = open_ogr(bfile)
+
     if _os.path.exists(path):
         for root, folders, files in _os.walk(path):
             for item in files:
                 if zreg.search(item):
                     zips.append(_os.path.join(root, item))
+
     slen = len(zips)
     print(zips, slen)
     x = 1
-    #    for path in zips:
-    #        print (x, path)
-    #        x += 1
+    # for path in zips:
+    #    print (x, path)
+    #    x += 1
+
     for zfile in zips:
         #        print (x, zfile)
         root = _os.path.split(zfile)[0]
         _os.chdir(root)
+
         try:
             zipped = _zf.ZipFile(zfile)
             contents = zipped.namelist()
@@ -233,6 +247,7 @@ def fileCollect(path: str, bounds: str) -> list:
                     path = _os.path.join(root, name)
                     print(x, path)
                     zipped.extract(name)
+
                     try:
                         ehyd_geom, ehyd_proj = open_ogr(path)
                         # coordTrans = _osr.CoordinateTransformation(meta_proj, ehyd_proj)
@@ -262,10 +277,12 @@ def fileCollect(path: str, bounds: str) -> list:
                     else:
                         print('They did not Intersect')
                         zips.remove(zfile)
+
                     _os.remove(path)
         except _zf.BadZipfile:
             print('BadZip')
             zips.remove(zfile)
+
         zipped.close()
         _os.chdir(progLoc)
         x += 1
@@ -302,13 +319,18 @@ def eHydroZIPs(regions: Dict[str, List[str]]) -> Dict[str, List[str]]:
         files downloaded from districts within the respective regions
 
     """
+
     hold = []
+
     for k, v in regions.items():
         zips = []
+
         for meta in v[0]:
             zips.extend(fileCollect(meta, v[1]))
+
         num = len(zips)
         hold.append((k, (zips, num)))
+
     hold = dict(hold)
     return hold
 
@@ -334,16 +356,18 @@ def contentSearch(contents: List[str]) -> List[str]:
 
     """
 
-    files = []
-    for content in contents:
-        ext = _os.path.splitext(content)[1].lower()
-        if (xyz.search(content)
-                or xml.search(content)
-                or pfile.search(content)
-                or gpkg.search(content)):
-            # if ext in ('.xyz', '.xml', '.pickle'):
-            files.append(content)
-    return files
+    # files = []
+    #
+    # for content in contents:
+    #     ext = _os.path.splitext(content)[1].lower()
+    #
+    #     if xyz.search(content) or xml.search(content) or pfile.search(content) or gpkg.search(content):
+    #         # if ext in ('.xyz', '.xml', '.pickle'):
+    #         files.append(content)
+
+    return list(filter(
+        lambda content: xyz.search(content) or xml.search(content) or pfile.search(content) or gpkg.search(content),
+        contents))
 
 
 def zipManipulate(path: str, name: str):
@@ -363,17 +387,20 @@ def zipManipulate(path: str, name: str):
     """
 
     _os.chdir(path)
+
     try:
         zipped = _zf.ZipFile(name)
         contents = zipped.namelist()
         files = contentSearch(contents)
-        for item in files:
-            if not _os.path.exists(item):
-                zipped.extract(item)
+
+        for item in filter(lambda item: _os.path.exists(item), files):
+            zipped.extract(item)
+
         zipped.close()
         _os.remove(name)
     except _zf.BadZipfile:
         _os.remove(name)
+
     _os.chdir(progLoc)
 
 
@@ -414,21 +441,26 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method,
          included GUI; displays the names of files copied
 
     """
+
     fileName = open(config['CSVs']['USACE'], 'r')
     opened = _csv.reader(fileName, delimiter=',')
     district_name = []
-    for row in opened:
-        if len(row) > 0:
-            district_name.append(row[:2])
+
+    for row in filter(lambda row: len(row) > 0, opened):
+        district_name.append(row[:2])
+
     fileName.close()
     district_name = dict(district_name[1:])
+
     for k, v in regionFiles.items():
         if text_region is not None:
             text_region.SetValue(k)
+
         if progressBar is not None:
             progressBar.SetRange(v[1])
             progressBar.SetValue(0)
             pbv = 0
+
         for item in v[0]:
             if item is not None:
                 splits = _os.path.split(item)
@@ -439,19 +471,25 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method,
                 district_full = f'{district_name[district_abbr]}_{district_code}'
                 eHydro_folder = _os.path.join('USACE', f'eHydro_{district_full}', 'Original')
                 newerPath = _os.path.join(destination, k, eHydro_folder, surname)
+
                 if _os.path.isdir(newerPath):
                     pass
                 else:
                     _os.makedirs(newerPath)
+
                 newName = _os.path.join(newerPath, name)
+
                 if _os.path.exists(item):
                     if text_output is not None:
                         text_output.write(f'{_os.path.join(eHydro_folder, + name)}\n')
+
                     if method is None:
                         _shutil.move(item, newName)
                     elif not method:
                         _shutil.copy2(item, newName)
+
                     zipManipulate(newerPath, newName)
+
                 if progressBar is not None:
                     pbv += 1
                     progressBar.SetValue(pbv)
@@ -475,12 +513,13 @@ def _main(text_region=None, progressBar=None, text_output=None):
          included GUI; displays the names of files copied
 
     """
+
     if progressBar is not None:
         progressBar.Pulse()
+
     regions = regionPath(repo, downloads)
     regionFiles = eHydroZIPs(regions)
-    fileMove(regionFiles, destination, method, text_region,
-             progressBar, text_output)
+    fileMove(regionFiles, destination, method, text_region, progressBar, text_output)
 
 
 if __name__ == '__main__':
