@@ -592,13 +592,11 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
         agency = row[2]
         meta = row[-1]
         spcs = 4326
-        #        spcs = row[5]
+        # spcs = row[5]
         poly = meta['poly']
         name = link.split('/')[-1]
 
-        if os.path.exists(os.path.join(holding, agency)):
-            pass
-        else:
+        if not os.path.exists(os.path.join(holding, agency)):
             os.mkdir(os.path.join(holding, agency))
 
         saved = os.path.join(holding, agency, name)
@@ -626,34 +624,34 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
             if os.path.exists(saved):
                 print('x', end=' ')
                 break
-            else:
-                if link != 'null' and link != 'Not in cloud':
-                    try:
-                        urllib.request.urlretrieve(link, saved)
-                    except socket.timeout:
-                        urllib.request.urlretrieve(link, saved)
-                    except urllib.error.HTTPError as e:
-                        print(f'e \n{link} {e}')
-                        row.append('No')
-                        row.append('BadURL')
-                        break
-                    except urllib.error.URLError as e:
-                        print(f'e \n{link} {e}')
-                        row.append('No')
-                        row.append('BadURL')
-                        break
-                elif datetime.datetime.now() - dwntime > datetime.timedelta(seconds=295):
-                    print(f'e \n{link} ')
-                    row.append('No')
-                    row.append('TimeOut')
-                    break
-                else:
-                    print(f'e \n {link}')
+            elif link not in ('null', 'Not in cloud'):
+                try:
+                    urllib.request.urlretrieve(link, saved)
+                except socket.timeout:
+                    urllib.request.urlretrieve(link, saved)
+                except urllib.error.HTTPError as e:
+                    print(f'e \n{link} {e}')
                     row.append('No')
                     row.append('BadURL')
                     break
+                except urllib.error.URLError as e:
+                    print(f'e \n{link} {e}')
+                    row.append('No')
+                    row.append('BadURL')
+                    break
+            elif datetime.datetime.now() - dwntime > datetime.timedelta(seconds=295):
+                print(f'e \n{link} ')
+                row.append('No')
+                row.append('TimeOut')
+                break
+            else:
+                print(f'e \n{link}')
+                row.append('No')
+                row.append('BadURL')
+                break
+
         if os.path.exists(saved):
-            if (config['Resolutions']['Override'] == 'yes' and (agency in agencies or agencies == '')):
+            if config['Resolutions']['Override'] == 'yes' and (agency in agencies or agencies == ''):
                 try:
                     zipped = zipfile.ZipFile(saved, mode='a')
                     os.chdir(os.path.join(holding, agency))
@@ -692,19 +690,15 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                     os.chdir(os.path.join(holding, agency))
                     zipped.write(pfile)
                     os.remove(pfile)
+
                     if poly != 'error':
                         zipped.write(sfile)
                         os.remove(sfile)
+
                     os.chdir(progLoc)
                     contents = zipped.namelist()
 
-                    if not contentSearch(contents):
-                        print('n', end=' ')
-                        zipped.close()
-                        os.remove(saved)
-                        print('r', end=' ')
-                        row.append('No')
-                    else:
+                    if contentSearch(contents):
                         zipped.close()
                         print('y', end=' ')
                         row.append('Yes')
@@ -712,6 +706,13 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
 
                         if to is not None:
                             to.write(f'\t\t{os.path.join(agency, name)}\n')
+                    else:
+                        print('n', end=' ')
+                        zipped.close()
+                        os.remove(saved)
+                        print('r', end=' ')
+                        row.append('No')
+
                 except zipfile.BadZipfile:
                     os.remove(saved)
                     print('z', end=' ')
@@ -772,10 +773,13 @@ def csvCompare(rows: list, csvFile: List[str], newSurveysNum: int, pb=None) -> T
 
         while x < y:
             row = rows[x]
+
             if line[0] == row[0]:
                 rows.remove(row)
                 y = len(rows)
+
             x += 1
+
             if pb is not None:
                 pb.SetValue(x)
 
@@ -834,24 +838,22 @@ def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
         (Default value = None)
     """
 
-    csvOpen = open(csvLocation, 'w', newline='')
-    save = csv.writer(csvOpen, delimiter=',')
-
-    if pb is not None:
-        pb.SetRange(len(csvFile))
-        pb.SetValue(0)
-        x = 0
-
-    for row in csvFile:
-        truncate = row[:12]
-        truncate.extend(row[-2:])
-        save.writerow(truncate)
+    with open(csvLocation, 'w', newline='') as csvOpen:
+        save = csv.writer(csvOpen, delimiter=',')
 
         if pb is not None:
-            x += 1
-            pb.SetValue(x)
+            pb.SetRange(len(csvFile))
+            pb.SetValue(0)
+            x = 0
 
-    csvOpen.close()
+        for row in csvFile:
+            truncate = row[:12]
+            truncate.extend(row[-2:])
+            save.writerow(truncate)
+
+            if pb is not None:
+                x += 1
+                pb.SetValue(x)
 
 
 def versionFind() -> Tuple[dict, list]:
@@ -868,7 +870,7 @@ def versionFind() -> Tuple[dict, list]:
 
         if fver > version:
             version = fver
-            attributes = [x for x in data['attributes']]
+            attributes = [attribute for attribute in data['attributes']]
 
     return version, attributes
 
@@ -879,6 +881,7 @@ def versionComp(page) -> Tuple[dict, list]:
 
     for attr in fields:
         attr_list.append(attr['name'])
+
     version, attributes = versionFind()
 
     if attributes == attr_list:
@@ -893,10 +896,12 @@ def versionSave(version, attributes: list):
     version = round(version, 1)
     datestamp = datetime.datetime.now().strftime('%Y-%m-%d')
     verfrmt = ('_').join(str(version).split('.'))
-    ver_info = {'version': version,
-                'date': datestamp,
-                'attributes': []
-                }
+    ver_info = {
+        'version': version,
+        'date': datestamp,
+        'attributes': []
+    }
+
     for field in attributes:
         ver_info['attributes'].append(field)
 
@@ -904,7 +909,6 @@ def versionSave(version, attributes: list):
 
     with open(f'{filename}', 'w') as outfile:
         json.dump(ver_info, outfile)
-        outfile.close()
 
 
 def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str]:
@@ -1126,6 +1130,7 @@ def main(pb=None, to=None):
                     for i in placements:
                         txt += f'{attributes_csv[i]} : {row[i]}\n\t\t'
                     logWriter(fileLog, f'\t\t{txt}')
+
             logWriter(fileLog, f'\t\tTotal High Resloution Surveys: {hiRes}/{len(changes)}\n')
         else:
             logWriter(fileLog, f'\t\t{changes}')
