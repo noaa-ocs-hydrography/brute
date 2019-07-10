@@ -761,7 +761,7 @@ def polyTifVals(tifs: list, path: str, names: List[str], extent: list):
         else:
             meanTiff = (meanTiff > maxVal).astype(_np.int)
 
-    outputname = f'{path}\\{names[0]}_COMBINEDPOLY'
+    outputname = _os.path.join(path, f'{names[0]}_COMBINEDPOLY')
     outputtiff = f'{outputname}.tif'
     outputhdf5 = f'{outputname}.h5'
 
@@ -1302,7 +1302,7 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
             break
 
     for num in range(len(polyList)):
-        outputpath = f'{path}\\{bagName}_{num}.tif'
+        outputpath = _os.path.join(path, f'{bagName}_{num}.tif')
         print(outputpath)
         write_raster(polyList[num], gtran, gd_obj, outputpath, dtype=_gdal.GDT_Float64, nodata=0,
                      options=['COMPRESS=LZW'])

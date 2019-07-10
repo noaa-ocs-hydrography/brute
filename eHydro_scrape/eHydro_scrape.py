@@ -1038,10 +1038,12 @@ def main(pb=None, to=None):
         (Default value = None)
 
     """
+
     runType = config['Data Checking']['Override']
     logType = config['Output Log']['Log Type']
     fileLog, nameLog = logOpen(logType, to)
     qf = False
+
     try:
         surveyIDs, newSurveysNum, paramString = query()
         logWriter(fileLog, f'\tSurvey IDs queried from eHydro\n{paramString}')
@@ -1051,6 +1053,7 @@ def main(pb=None, to=None):
     except:
         logWriter(fileLog, '\teHydro query failed')
         qf = True
+
     try:
         if runType == 'no':
             try:
@@ -1058,6 +1061,7 @@ def main(pb=None, to=None):
                 logWriter(fileLog, '\teHydro_csv.txt opened for reading')
             except:
                 logWriter(fileLog, '\teHydro_csv.txt unable to be opened')
+
             try:
                 logWriter(fileLog, '\tComparing query results to eHydro_csv.txt')
                 changes, numstring = csvCompare(rows, csvFile, newSurveysNum)
@@ -1073,6 +1077,7 @@ def main(pb=None, to=None):
             logWriter(fileLog, '\tSurvey data not populated due to query failure')
         else:
             logWriter(fileLog, '\tError in runType')
+
     try:
         logWriter(fileLog, '\tParsing new entries for resolution:')
         placements = [attributes_csv.index(x) for x in attributes if x in attributes_csv]
@@ -1085,6 +1090,7 @@ def main(pb=None, to=None):
             csvFile.extend(checked)
             if config['Output Log']['Query List'] == 'yes':
                 logWriter(fileLog, '\tNew Survey Details:')
+
                 for row in checked:
                     txt = ''
                     for i in placements:
@@ -1095,6 +1101,7 @@ def main(pb=None, to=None):
             logWriter(fileLog, f'\t\t{changes}')
     except:
         logWriter(fileLog, '\tParsing for resolution failed')
+
     try:
         csvFile.insert(0, attributes_csv)
         csvSave = csvFile

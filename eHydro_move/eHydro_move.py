@@ -16,7 +16,6 @@ from typing import Union, Dict, List
 from osgeo import ogr as _ogr
 from osgeo import osr as _osr
 
-
 """Known global constants"""
 progLoc = _os.getcwd()
 """progLoc is the program's own file location / current working directory (cwd)
@@ -438,9 +437,8 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method,
                 district_code = splits[-2].split('\\')[-1]
                 district_abbr = district_code[-3:]
                 district_full = f'{district_name[district_abbr]}_{district_code}'
-                eHydro_folder = f'USACE\\eHydro_{district_full}\\Original'
-                newerPath = _os.path.join(destination, k, eHydro_folder,
-                                          surname)
+                eHydro_folder = _os.path.join('USACE', f'eHydro_{district_full}', 'Original')
+                newerPath = _os.path.join(destination, k, eHydro_folder, surname)
                 if _os.path.isdir(newerPath):
                     pass
                 else:
