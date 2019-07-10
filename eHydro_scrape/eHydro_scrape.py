@@ -10,7 +10,6 @@ Last Modified: Apr 19 12:12:42 2019
 import configparser
 import csv
 import datetime
-import json
 import os
 import pickle
 import re
@@ -22,6 +21,8 @@ from typing import Tuple, List, Union, TextIO, Any
 import numpy as np
 import requests
 from osgeo import osr, ogr
+
+__version__ = '1.2'
 
 """Known global constants"""
 # print (datetime.datetime.now().strftime('%b %d %X %Y'))
@@ -75,7 +76,7 @@ attributes_csv = ["OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK"
               "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
               "SURVEYTYPE", "PROJECTEDAREA", "SOURCEDATAFORMAT",
               "Shape__Area", "Shape__Length"]
-#"""The specific attributes queried for each survey in :func:`surveyCompile`"""
+"""The specific attributes queried for each survey in :func:`surveyCompile`"""
 
 # check to see if the downloaded data folder exists, will create it if not
 if not os.path.exists(holding):
@@ -84,8 +85,7 @@ if not os.path.exists(logging):
     os.mkdir(logging)
 if not os.path.exists(running):
     os.mkdir(running)
-if not os.path.exists(versioning):
-    os.mkdir(versioning)
+
 
 def query() -> Tuple[List[str], int, str]:
     """
@@ -149,7 +149,7 @@ def query() -> Tuple[List[str], int, str]:
         areas = ''
 
     datefield = 'SURVEYDATEUPLOADED'
-    # datefield = 'SURVEYDATEEND'
+    #    datefield = 'SURVEYDATEEND'
 
     # The main query parameters that will determine the contents of the response
     # Survey Date Uploaded
@@ -369,17 +369,17 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
     if pb is not None:
         pb.SetRange(newSurveysNum)
         pb.SetValue(x)
+
     while x < newSurveysNum:
         print(x, end=' ')
         query = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query' + \
                 f'?where=OBJECTID+=+{surveyIDs[x]}&outFields=*&returnGeometry=true&outSR=4326&f=json'
-#        print(query)
         response = requests.get(query)
         page = response.json()
         if x == 0:
             version, attributes = versionComp(page)
         row = []
-        metadata = {'version': version}
+        metadata = {'version': __version__}
         for attribute in attributes:
             try:
                 if page['features'][0]['attributes'][attribute] is None:
@@ -391,7 +391,7 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
                         metadata[attribute] = 'null'
                     else:
                         date = (page['features'][0]['attributes'][attribute])
-                        # print(date)
+                        #                        print(date)
                         try:
                             date = datetime.datetime.utcfromtimestamp(date / 1000)
                             row.append(str(date.strftime('%Y-%m-%d')))
@@ -418,7 +418,6 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
         x += 1
         if pb is not None:
             pb.SetValue(x)
-        break
     print(len(rows))
     print('rows complete')
     return rows, attributes
@@ -560,10 +559,12 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
     x = len(rows)
     hr = 0
     agencies = config['Agencies']['Agencies']
+
     if pb is not None:
         pb.SetRange(x)
         i = 0
         pb.SetValue(i)
+
     for row in rows:
         link = row[6]
         surname = row[1]
@@ -599,6 +600,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
 
         print(f'{x} {agency}', end=' ')
         dwntime = datetime.datetime.now()
+
         while True:
             if os.path.exists(saved):
                 print('x', end=' ')
@@ -630,18 +632,20 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                     row.append('BadURL')
                     break
         if os.path.exists(saved):
-            if (config['Resolutions']['Override'] == 'yes'
-                    and (agency in agencies or agencies == '')):
+            if (config['Resolutions']['Override'] == 'yes' and (agency in agencies or agencies == '')):
                 try:
                     zipped = zipfile.ZipFile(saved, mode='a')
                     os.chdir(os.path.join(holding, agency))
                     zipped.write(pfile)
                     os.remove(pfile)
+
                     if poly != 'error':
                         zipped.write(sfile)
                         os.remove(sfile)
+
                     os.chdir(progLoc)
                     contents = zipped.namelist()
+
                     if not contentSearch(contents):
                         print('n', end=' ')
                         zipped.close()
@@ -672,6 +676,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                         os.remove(sfile)
                     os.chdir(progLoc)
                     contents = zipped.namelist()
+
                     if not contentSearch(contents):
                         print('n', end=' ')
                         zipped.close()
@@ -692,11 +697,14 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                     row.append('BadZip')
                 row.append('No')
         x -= 1
+
         if pb is not None:
             i += 1
             pb.SetValue(i)
+
     if to is not None:
         to.write('\n')
+
     print('\nrow downloads verified')
     return rows, hr
 
@@ -776,11 +784,14 @@ def csvOpen() -> List[str]:
     if not os.path.exists(csvLocation):
         create = open(csvLocation, 'w', newline='')
         create.close()
+
     fileOpened = open(csvLocation, 'r', newline='')
     opened = csv.reader(fileOpened, delimiter=',')
     csvFile = []
+
     for row in opened:
         csvFile.append(row[:13])
+
     fileOpened.close()
     return csvFile[1:]
 
@@ -801,19 +812,24 @@ def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
     pb : wx.Guage, optional
         (Default value = None)
     """
+
     csvOpen = open(csvLocation, 'w', newline='')
     save = csv.writer(csvOpen, delimiter=',')
+
     if pb is not None:
         pb.SetRange(len(csvFile))
         pb.SetValue(0)
         x = 0
+
     for row in csvFile:
         truncate = row[:12]
         truncate.extend(row[-2:])
         save.writerow(truncate)
+
         if pb is not None:
             x += 1
             pb.SetValue(x)
+
     csvOpen.close()
 
 
@@ -885,6 +901,7 @@ def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str
         for the output log object
 
     """
+
     timestamp = ntime()
     message = f'{timestamp} - Program Initiated, Log Opened'
 
@@ -898,10 +915,12 @@ def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str
         while True:
             name = f'{datestamp}_{x}_{logName}'
             logPath = os.path.join(logging, name)
+
             if os.path.exists(logPath):
                 x += 1
             else:
                 break
+
         fo = open(logPath, 'w')
         nameLog = logPath
     else:
@@ -925,9 +944,11 @@ def logWriter(fileLog: Tuple[TextIO, Any], message: str):
         A string of text to be written to the fileLog input
 
     """
+
     print(message)
     fl, to = fileLog
     fl.write(f'{message}\n')
+
     if to is not None:
         to.write(f'{message}\n')
 
@@ -943,6 +964,7 @@ def logClose(fileLog: Tuple[TextIO, Any]):
         A text document object representing the output log
 
     """
+
     fo = fileLog[0]
     timestamp = ntime()
     message = f'{timestamp} - Program Finished, Log Closed\n'
@@ -963,6 +985,7 @@ def ntime() -> str:
         A string with the current date and time
 
     """
+
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d %X')
     return timestamp
 
@@ -980,6 +1003,7 @@ def date() -> str:
         A string with the current date and time
 
     """
+
     datestamp = datetime.datetime.now().strftime('%Y-%m-%d')
     return datestamp
 
@@ -997,6 +1021,7 @@ def fileTime() -> str:
         A string with the current date and time
 
     """
+
     timestamp = datetime.datetime.now().strftime('%Y%m%d')
     return timestamp
 
