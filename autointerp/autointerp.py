@@ -123,8 +123,7 @@ def getTifElev(file: str, y):
     print(arr.shape)
     print(_np.amax(arr), _np.amin(arr))
     print(meta)
-    band = None
-    ds = None
+    del band, ds
     tifFile = [y, file, meta, arr]
 
     return tifFile, name
@@ -183,8 +182,7 @@ def getShpRast(file: str, y, pixel_size=1, nodata=255):
 
     write_raster(arr, gt, target_ds, tif)
 
-    band = None
-    source_ds = None
+    del band, source_ds
 
     shpRast = [y, tif, meta, arr]
 
@@ -381,7 +379,7 @@ def write_raster(raster_array, gt, data_obj, outputpath, dtype=_gdal.GDT_UInt32,
     dest.SetProjection(srs.ExportToWkt())
 
     # Close output raster dataset
-    dest = None
+    del dest
 
 
 def maxValue(arr: _np.array):
@@ -991,14 +989,13 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
         #        _plt.imshow(temp[::100,::100])
         #        _plt.show()
         ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[:, :]
-        temp = None
+        del temp
     else:
         ay[:] = newarr[:]
     print('expz', ay.shape)
     ax = _np.full(bShape, maxVal)
     ax[:] = ay[:bSy, :bSx]
-    newarr = None
-    ay = None
+    del newarr, ay
 
     ## 9
     ext = _os.path.splitext(targs[1])[1].lower()
@@ -1021,7 +1018,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     temp = targs[0]
     gt = (bulx, bagRes, temp[2], buly, temp[4], -bagRes)
     write_raster(ax, gt, gd_obj, targs[2], options=['COMPRESS=LZW'])
-    ax = None
+    del ax
 
     grids = [tif, bag]
     bShape = bag[-1].shape
@@ -1307,7 +1304,7 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
         write_raster(polyList[num], gtran, gd_obj, outputpath, dtype=_gdal.GDT_Float64, nodata=0,
                      options=['COMPRESS=LZW'])
 
-    polyList = None
+    del polyList
     _shutil.copy2(bag[1], outputpath2)
 
     with _tb.open_file(outputpath2, mode='a') as bagfile:
@@ -1322,7 +1319,7 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
         bagfile.flush()
 
     bagfile.close()
-    gd_obj = None
+    del gd_obj
     print('done')
 
 
@@ -1472,9 +1469,7 @@ def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tup
                 gridSplit[0].append(tiffTile)
                 gridSplit[-1].append(uncrTile)
                 gridSplit[-1].append(bathTile)
-                tiffTile = None
-                bathTile = None
-                uncrTile = None
+                del tiffTile, bathTile, uncrTile
                 combo, vals = comboGrid(gridSplit)
                 print('interp is next')
                 newBag, newUncr, preBag = triangulateSurfaces(gridSplit, combo, vals, uval)
@@ -1486,15 +1481,11 @@ def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tup
                                                                           tile.xIMin:tile.xIMax]
                 #                unitedBag[tile.yBMin:tile.yBMax,tile.xBMin:tile.xBMax] = bathTile[tile.yIMin:tile.yIMax,tile.xIMin:tile.xIMax]
                 #                unitedPre[tile.yBMin:tile.yBMax,tile.xBMin:tile.xBMax] = tiffTile[tile.yIMin:tile.yIMax,tile.xIMin:tile.xIMax]
-                newBag = None
-                newUncr = None
-                preBag = None
+                del newBag, newUncr, preBag
                 td = _dt.now()
                 tdelt = td - ts
                 print('Tile complete -', td, '| Tile took:', tdelt)
-        tifObjras = None
-        bagObjras = None
-        uncObjras = None
+        del tifObjras, bagObjras, uncObjras
     else:
         ts = _dt.now()
         print('\nTile 1 of 1 -', ts)
@@ -1577,8 +1568,7 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
     ## Tiling Ends
     print('\nsaving is next\n')
     saveBag, saveUnc, polyList = rePrint(grids, ugrids, maxVal, ioVal)
-    grids = None
-    ugrids = None
+    del grids, ugrids
     bagSave(bag, saveBag, tifGrids, res, ext, desPath, saveUnc, polyList, ioVal)
     done = _dt.now()
     print(f'acually done {done}')

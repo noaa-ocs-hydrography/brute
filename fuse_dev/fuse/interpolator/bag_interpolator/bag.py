@@ -10,10 +10,11 @@ from typing import Tuple, List
 
 import numpy as _np
 import tables as _tb
-from . import bag_hack as _bh
 from hyo2 import bag as _bag
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
+
+from . import bag_hack as _bh
 
 _gdal.UseExceptions()
 
@@ -82,7 +83,7 @@ class bag_file:
         self.wkt = bag_obj.meta.wkt_srs
 
         print(self.bounds)
-        bag_obj = None
+        del bag_obj
 
     def _file_gdal(self, filepath: str):
         """
@@ -111,7 +112,7 @@ class bag_file:
         self.version = bag_obj.GetMetadata()
 
         print(self.bounds)
-        bag_obj = None
+        del bag_obj
 
     def _file_hack(self, filepath: str):
         """
@@ -381,10 +382,10 @@ class gdal_create:
             if self.flip:
                 item = _np.flipud(item)
             band.WriteArray(item)
-            band = None
+            del band
             x += 1
         self.dataset = target_ds
-        target_ds = None
+        del target_ds
 
     def components2gdal(self, arrays: List[_np.array], shape: Tuple[int, int],
                         bounds: Tuple[Tuple[float, float],
@@ -435,10 +436,10 @@ class gdal_create:
             if self.flip:
                 item = _np.flipud(item)
             band.WriteArray(item)
-            band = None
+            del band
             x += 1
         self.dataset = target_ds
-        target_ds = None
+        del target_ds
 
     def translate_bag2gdal_extents(self, geotransform: Tuple[float, float,
                                                              float, float,

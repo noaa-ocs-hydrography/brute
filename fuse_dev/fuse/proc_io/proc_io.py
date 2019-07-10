@@ -220,7 +220,7 @@ class proc_io:
 
         # write and close output raster dataset
         dest = driver.CreateCopy(outfilename, dataset)
-        dest = None
+        del dest
         self._logger.log(logging.DEBUG, 'BAG file created')
 
     def _write_points(self, dataset: gdal.Dataset, outfilename: str):
@@ -266,10 +266,10 @@ class proc_io:
             feat.SetGeometry(geom)
 
             layer.CreateFeature(feat)
-            feat = geom = None  # destroy these
+            del feat, geom  # destroy these
 
         # Save and close everything
-        ds = layer = feat = geom = None
+        del ds, layer, feat, geom
 
     def _write_vector(self, dataset: gdal.Dataset, outfilename: str):
         """
@@ -302,7 +302,7 @@ class proc_io:
         gdal.Polygonize(band, None, layer, 0, [],
                         callback=None)
 
-        ds = band = None
+        del ds, band
 
     def _gdal2array(self, dataset: gdal.Dataset) -> np.array:
         """
