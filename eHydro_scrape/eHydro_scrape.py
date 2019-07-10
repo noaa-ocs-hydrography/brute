@@ -69,14 +69,6 @@ versioning = os.path.join(progLoc, 'versions')
 """Default location for version data
 """
 
-# eHydro survey entry attributes
-attributes_csv = ["OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
-                  "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION",
-                  "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
-                  "SURVEYTYPE", "PROJECTEDAREA", "SOURCEDATAFORMAT",
-                  "Shape__Area", "Shape__Length"]
-"""The specific attributes queried for each survey in :func:`surveyCompile`"""
-
 # check to see if the downloaded data folder exists, will create it if not
 if not os.path.exists(holding):
     os.mkdir(holding)
@@ -837,19 +829,23 @@ def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
 
     with open(csvLocation, 'w', newline='') as csvOpen:
         save = csv.writer(csvOpen, delimiter=',')
+        x = 0
 
         if pb is not None:
             pb.SetRange(len(csvFile))
-            pb.SetValue(0)
-            x = 0
+            pb.SetValue(x)
 
         for row in csvFile:
-            truncate = row[:12]
-            truncate.extend(row[-2:])
-            save.writerow(truncate)
+            print(x, row)
+            if x == 0:
+                save.writerow(row)
+            else:
+                truncate = row[:-3]
+                truncate.extend(row[-2:])
+                save.writerow(truncate)
+            x += 1
 
             if pb is not None:
-                x += 1
                 pb.SetValue(x)
 
 
@@ -1109,7 +1105,7 @@ def main(pb=None, to=None):
 
     try:
         logWriter(fileLog, '\tParsing new entries for resolution:')
-        placements = [attributes.index(x) for x in attributes_csv if x in attributes]
+        placements = [x for x in range(len(attributes))]
         attributes.append('Hi-Res?')
         attributes.append('Override?')
         placements.sort()
@@ -1136,7 +1132,7 @@ def main(pb=None, to=None):
         logWriter(fileLog, '\tParsing for resolution failed')
 
     try:
-        csvFile.insert(0, attributes_csv)
+        csvFile.insert(0, attributes)
         csvSave = csvFile
 
         if runType == 'no':
