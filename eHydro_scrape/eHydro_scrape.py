@@ -1111,9 +1111,10 @@ def main(pb=None, to=None):
 
     try:
         logWriter(fileLog, '\tParsing new entries for resolution:')
-        placements = [attributes_csv.index(x) for x in attributes if x in attributes_csv]
-        attributes_csv.append('Hi-Res?')
-        attributes_csv.append('Override?')
+        placements = [attributes.index(x) for x in attributes_csv if x in attributes]
+        attributes.append('Hi-Res?')
+        attributes.append('Override?')
+        placements.sort()
         placements.append(-2)
         placements.append(-1)
 
@@ -1127,7 +1128,7 @@ def main(pb=None, to=None):
                 for row in checked:
                     txt = ''
                     for i in placements:
-                        txt += f'{attributes_csv[i]} : {row[i]}\n\t\t'
+                        txt += f'{attributes[i]} : {row[i]}\n\t\t'
                     logWriter(fileLog, f'\t\t{txt}')
 
             logWriter(fileLog, f'\t\tTotal High Resloution Surveys: {hiRes}/{len(changes)}\n')
