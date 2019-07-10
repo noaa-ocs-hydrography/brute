@@ -836,7 +836,6 @@ def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
             pb.SetValue(x)
 
         for row in csvFile:
-            print(x, row)
             if x == 0:
                 save.writerow(row)
             else:
