@@ -10,11 +10,11 @@ Last Modified: Apr 19 12:12:42 2019
 import configparser
 import csv
 import datetime
+import json
 import os
 import pickle
 import re
 import socket
-import time
 import urllib
 import zipfile
 from typing import Tuple, List, Union, TextIO, Any
@@ -22,8 +22,6 @@ from typing import Tuple, List, Union, TextIO, Any
 import numpy as np
 import requests
 from osgeo import osr, ogr
-
-__version__ = '1.2'
 
 """Known global constants"""
 # print (datetime.datetime.now().strftime('%b %d %X %Y'))
@@ -67,13 +65,17 @@ running = os.path.join(progLoc, 'runs')
 """Default location for individual query csv outputs. These are named like
 ``YYYYMMDD_0_eHydro_csv.txt``
 """
+versioning =  os.path.join(progLoc, 'versions')
+"""Default location for version data
+"""
+
 # eHydro survey entry attributes
-attributes = ["OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
+attributes_csv = ["OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
               "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION",
               "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
               "SURVEYTYPE", "PROJECTEDAREA", "SOURCEDATAFORMAT",
               "Shape__Area", "Shape__Length"]
-"""The specific attributes queried for each survey in :func:`surveyCompile`"""
+#"""The specific attributes queried for each survey in :func:`surveyCompile`"""
 
 # check to see if the downloaded data folder exists, will create it if not
 if not os.path.exists(holding):
@@ -82,7 +84,8 @@ if not os.path.exists(logging):
     os.mkdir(logging)
 if not os.path.exists(running):
     os.mkdir(running)
-
+if not os.path.exists(versioning):
+    os.mkdir(versioning)
 
 def query() -> Tuple[List[str], int, str]:
     """
@@ -146,7 +149,7 @@ def query() -> Tuple[List[str], int, str]:
         areas = ''
 
     datefield = 'SURVEYDATEUPLOADED'
-    #    datefield = 'SURVEYDATEEND'
+    # datefield = 'SURVEYDATEEND'
 
     # The main query parameters that will determine the contents of the response
     # Survey Date Uploaded
@@ -366,15 +369,17 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
     if pb is not None:
         pb.SetRange(newSurveysNum)
         pb.SetValue(x)
-
     while x < newSurveysNum:
         print(x, end=' ')
         query = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query' + \
                 f'?where=OBJECTID+=+{surveyIDs[x]}&outFields=*&returnGeometry=true&outSR=4326&f=json'
+#        print(query)
         response = requests.get(query)
         page = response.json()
+        if x == 0:
+            version, attributes = versionComp(page)
         row = []
-        metadata = {'version': __version__}
+        metadata = {'version': version}
         for attribute in attributes:
             try:
                 if page['features'][0]['attributes'][attribute] is None:
@@ -386,7 +391,7 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
                         metadata[attribute] = 'null'
                     else:
                         date = (page['features'][0]['attributes'][attribute])
-                        #                        print(date)
+                        # print(date)
                         try:
                             date = datetime.datetime.utcfromtimestamp(date / 1000)
                             row.append(str(date.strftime('%Y-%m-%d')))
@@ -413,9 +418,10 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
         x += 1
         if pb is not None:
             pb.SetValue(x)
+        break
     print(len(rows))
     print('rows complete')
-    return rows
+    return rows, attributes
 
 
 def write_geopackage(out_path: str, name: str, poly: str,
@@ -593,7 +599,6 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
 
         print(f'{x} {agency}', end=' ')
         dwntime = datetime.datetime.now()
-
         while True:
             if os.path.exists(saved):
                 print('x', end=' ')
@@ -614,7 +619,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                         row.append('No')
                         row.append('BadURL')
                         break
-                elif time.time() - dwntime > 295:
+                elif datetime.datetime.now() - dwntime > datetime.timedelta(seconds=295):
                     print(f'e \n{link} ')
                     row.append('No')
                     row.append('TimeOut')
@@ -812,6 +817,52 @@ def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
     csvOpen.close()
 
 
+def versionFind() -> dict:
+    ver_files = os.listdir(versioning)
+    version = 0.0
+    attributes = []
+    for ver in ver_files:
+        ver_path = os.path.join(versioning, ver)
+        with open(ver_path) as json_file:
+            data = json.load(json_file)
+            fver = data['version']
+        if fver > version:
+            version = fver
+            attributes = [x for x in data['attributes']]
+    return version, attributes
+
+
+def versionComp(page):
+    attr_list = []
+    fields = page['fields']
+    for attr in fields:
+        attr_list.append(attr['name'])
+    version, attributes = versionFind()
+    if attributes == attr_list:
+        return version, attributes
+    elif attributes != attr_list:
+        versionSave(version, attr_list)
+        return version, attr_list
+
+
+def versionSave(version, attributes):
+    version += .1
+    version = round(version, 1)
+    datestamp = datetime.datetime.now().strftime('%Y-%m-%d')
+    verfrmt = ('_').join(str(version).split('.'))
+    ver_info = {'version': version,
+                'date': datestamp,
+                'attributes': []
+                }
+    for field in attributes:
+        ver_info['attributes'].append(field)
+    filename = (r'R:\Scripts\vlab-nbs\eHydro_scrape\versions'
+                + fr'\{verfrmt}.json')
+    with open(f'{filename}', 'w') as outfile:
+        json.dump(ver_info, outfile)
+        outfile.close()
+
+
 def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str]:
     """
     Uses global variable logLocation. Opens file at logLocation
@@ -970,7 +1021,7 @@ def main(pb=None, to=None):
         surveyIDs, newSurveysNum, paramString = query()
         logWriter(fileLog, f'\tSurvey IDs queried from eHydro\n{paramString}')
         logWriter(fileLog, '\tCompiling survey objects from Survey IDs')
-        rows = surveyCompile(surveyIDs, newSurveysNum, pb)
+        rows, attributes = surveyCompile(surveyIDs, newSurveysNum, pb)
         logWriter(fileLog, '\tSurvey objects compiled from eHydro')
     except:
         logWriter(fileLog, '\teHydro query failed')
@@ -999,8 +1050,11 @@ def main(pb=None, to=None):
             logWriter(fileLog, '\tError in runType')
     try:
         logWriter(fileLog, '\tParsing new entries for resolution:')
-        attributes.append('Hi-Res?')
-        attributes.append('Override?')
+        placements = [attributes_csv.index(x) for x in attributes if x in attributes_csv]
+        attributes_csv.append('Hi-Res?')
+        attributes_csv.append('Override?')
+        placements.append(-2)
+        placements.append(-1)
         if changes != 'No Changes':
             checked, hiRes = downloadAndCheck(changes, pb, to)
             csvFile.extend(checked)
@@ -1008,8 +1062,8 @@ def main(pb=None, to=None):
                 logWriter(fileLog, '\tNew Survey Details:')
                 for row in checked:
                     txt = ''
-                    for i in [1, 4, 5, 6, -2]:
-                        txt += f'{attributes[i]} : {row[i]}\n\t\t'
+                    for i in placements:
+                        txt += f'{attributes_csv[i]} : {row[i]}\n\t\t'
                     logWriter(fileLog, f'\t\t{txt}')
             logWriter(fileLog, f'\t\tTotal High Resloution Surveys: {hiRes}/{len(changes)}\n')
         else:
@@ -1017,7 +1071,7 @@ def main(pb=None, to=None):
     except:
         logWriter(fileLog, '\tParsing for resolution failed')
     try:
-        csvFile.insert(0, attributes)
+        csvFile.insert(0, attributes_csv)
         csvSave = csvFile
 
         if runType == 'no':
@@ -1047,5 +1101,4 @@ def main(pb=None, to=None):
 
 if __name__ == '__main__':
     """Function call to initiate program"""
-    print(__version__)
     main()
