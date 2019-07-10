@@ -493,10 +493,9 @@ def write_geopackage(out_path: str, name: str, poly: str,
     feat.SetGeometry(geom)
 
     layer.CreateFeature(feat)
-    feat = geom = None  # destroy these
 
     # Save and close everything
-    ds = layer = feat = geom = None
+    del ds, layer, feat, geom
 
 
 def contentSearch(contents: List[str]) -> int:

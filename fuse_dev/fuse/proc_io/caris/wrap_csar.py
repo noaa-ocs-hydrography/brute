@@ -74,7 +74,7 @@ def write_csar(dataset, m: dict):
     area = ((0, 0), (dimensions[0], dimensions[1]))
     raster.write("Elevation", area, dataset.astype(band_dtype))
 
-    raster = None
+    del raster
 
 
 def write_cloud(dataset, m: dict):
@@ -146,7 +146,7 @@ def write_cloud(dataset, m: dict):
     # print(outfilename)
     pc = cc.Cloud(filename=outfilename, options=opts)
 
-    pc = None
+    del pc
 
 
 def check_metadata(meta: dict, meta_type: str):
