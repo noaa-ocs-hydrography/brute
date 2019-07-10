@@ -14,7 +14,6 @@ import os
 import pickle
 import re
 import socket
-import time
 import urllib
 import zipfile
 from typing import Tuple, List, Union, TextIO, Any
@@ -554,10 +553,12 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
     x = len(rows)
     hr = 0
     agencies = config['Agencies']['Agencies']
+
     if pb is not None:
         pb.SetRange(x)
         i = 0
         pb.SetValue(i)
+
     for row in rows:
         link = row[6]
         surname = row[1]
@@ -614,7 +615,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                         row.append('No')
                         row.append('BadURL')
                         break
-                elif time.time() - dwntime > 295:
+                elif datetime.datetime.now() - dwntime > datetime.timedelta(seconds=295):
                     print(f'e \n{link} ')
                     row.append('No')
                     row.append('TimeOut')
@@ -625,18 +626,20 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                     row.append('BadURL')
                     break
         if os.path.exists(saved):
-            if (config['Resolutions']['Override'] == 'yes'
-                    and (agency in agencies or agencies == '')):
+            if (config['Resolutions']['Override'] == 'yes' and (agency in agencies or agencies == '')):
                 try:
                     zipped = zipfile.ZipFile(saved, mode='a')
                     os.chdir(os.path.join(holding, agency))
                     zipped.write(pfile)
                     os.remove(pfile)
+
                     if poly != 'error':
                         zipped.write(sfile)
                         os.remove(sfile)
+
                     os.chdir(progLoc)
                     contents = zipped.namelist()
+
                     if not contentSearch(contents):
                         print('n', end=' ')
                         zipped.close()
@@ -667,6 +670,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                         os.remove(sfile)
                     os.chdir(progLoc)
                     contents = zipped.namelist()
+
                     if not contentSearch(contents):
                         print('n', end=' ')
                         zipped.close()
@@ -687,11 +691,14 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                     row.append('BadZip')
                 row.append('No')
         x -= 1
+
         if pb is not None:
             i += 1
             pb.SetValue(i)
+
     if to is not None:
         to.write('\n')
+
     print('\nrow downloads verified')
     return rows, hr
 
@@ -771,11 +778,14 @@ def csvOpen() -> List[str]:
     if not os.path.exists(csvLocation):
         create = open(csvLocation, 'w', newline='')
         create.close()
+
     fileOpened = open(csvLocation, 'r', newline='')
     opened = csv.reader(fileOpened, delimiter=',')
     csvFile = []
+
     for row in opened:
         csvFile.append(row[:13])
+
     fileOpened.close()
     return csvFile[1:]
 
@@ -796,19 +806,24 @@ def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
     pb : wx.Guage, optional
         (Default value = None)
     """
+
     csvOpen = open(csvLocation, 'w', newline='')
     save = csv.writer(csvOpen, delimiter=',')
+
     if pb is not None:
         pb.SetRange(len(csvFile))
         pb.SetValue(0)
         x = 0
+
     for row in csvFile:
         truncate = row[:12]
         truncate.extend(row[-2:])
         save.writerow(truncate)
+
         if pb is not None:
             x += 1
             pb.SetValue(x)
+
     csvOpen.close()
 
 
@@ -834,6 +849,7 @@ def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str
         for the output log object
 
     """
+
     timestamp = ntime()
     message = f'{timestamp} - Program Initiated, Log Opened'
 
@@ -847,10 +863,12 @@ def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str
         while True:
             name = f'{datestamp}_{x}_{logName}'
             logPath = os.path.join(logging, name)
+
             if os.path.exists(logPath):
                 x += 1
             else:
                 break
+
         fo = open(logPath, 'w')
         nameLog = logPath
     else:
@@ -874,9 +892,11 @@ def logWriter(fileLog: Tuple[TextIO, Any], message: str):
         A string of text to be written to the fileLog input
 
     """
+
     print(message)
     fl, to = fileLog
     fl.write(f'{message}\n')
+
     if to is not None:
         to.write(f'{message}\n')
 
@@ -892,6 +912,7 @@ def logClose(fileLog: Tuple[TextIO, Any]):
         A text document object representing the output log
 
     """
+
     fo = fileLog[0]
     timestamp = ntime()
     message = f'{timestamp} - Program Finished, Log Closed\n'
@@ -912,6 +933,7 @@ def ntime() -> str:
         A string with the current date and time
 
     """
+
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d %X')
     return timestamp
 
@@ -929,6 +951,7 @@ def date() -> str:
         A string with the current date and time
 
     """
+
     datestamp = datetime.datetime.now().strftime('%Y-%m-%d')
     return datestamp
 
@@ -946,6 +969,7 @@ def fileTime() -> str:
         A string with the current date and time
 
     """
+
     timestamp = datetime.datetime.now().strftime('%Y%m%d')
     return timestamp
 
@@ -962,10 +986,12 @@ def main(pb=None, to=None):
         (Default value = None)
 
     """
+
     runType = config['Data Checking']['Override']
     logType = config['Output Log']['Log Type']
     fileLog, nameLog = logOpen(logType, to)
     qf = False
+
     try:
         surveyIDs, newSurveysNum, paramString = query()
         logWriter(fileLog, f'\tSurvey IDs queried from eHydro\n{paramString}')
@@ -975,6 +1001,7 @@ def main(pb=None, to=None):
     except:
         logWriter(fileLog, '\teHydro query failed')
         qf = True
+
     try:
         if runType == 'no':
             try:
@@ -982,6 +1009,7 @@ def main(pb=None, to=None):
                 logWriter(fileLog, '\teHydro_csv.txt opened for reading')
             except:
                 logWriter(fileLog, '\teHydro_csv.txt unable to be opened')
+
             try:
                 logWriter(fileLog, '\tComparing query results to eHydro_csv.txt')
                 changes, numstring = csvCompare(rows, csvFile, newSurveysNum)
@@ -997,25 +1025,32 @@ def main(pb=None, to=None):
             logWriter(fileLog, '\tSurvey data not populated due to query failure')
         else:
             logWriter(fileLog, '\tError in runType')
+
     try:
         logWriter(fileLog, '\tParsing new entries for resolution:')
         attributes.append('Hi-Res?')
         attributes.append('Override?')
+
         if changes != 'No Changes':
             checked, hiRes = downloadAndCheck(changes, pb, to)
             csvFile.extend(checked)
+
             if config['Output Log']['Query List'] == 'yes':
                 logWriter(fileLog, '\tNew Survey Details:')
+
                 for row in checked:
                     txt = ''
+
                     for i in [1, 4, 5, 6, -2]:
                         txt += f'{attributes[i]} : {row[i]}\n\t\t'
+
                     logWriter(fileLog, f'\t\t{txt}')
             logWriter(fileLog, f'\t\tTotal High Resloution Surveys: {hiRes}/{len(changes)}\n')
         else:
             logWriter(fileLog, f'\t\t{changes}')
     except:
         logWriter(fileLog, '\tParsing for resolution failed')
+
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
