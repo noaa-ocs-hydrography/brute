@@ -10,6 +10,7 @@ Last Modified: Apr 19 12:12:42 2019
 import configparser
 import csv
 import datetime
+import json
 import os
 import pickle
 import re
@@ -66,16 +67,16 @@ running = os.path.join(progLoc, 'runs')
 """Default location for individual query csv outputs. These are named like
 ``YYYYMMDD_0_eHydro_csv.txt``
 """
-versioning =  os.path.join(progLoc, 'versions')
+versioning = os.path.join(progLoc, 'versions')
 """Default location for version data
 """
 
 # eHydro survey entry attributes
 attributes_csv = ["OBJECTID", "SURVEYJOBIDPK", "SURVEYAGENCY", "CHANNELAREAIDFK",
-              "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION",
-              "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
-              "SURVEYTYPE", "PROJECTEDAREA", "SOURCEDATAFORMAT",
-              "Shape__Area", "Shape__Length"]
+                  "SDSFEATURENAME", "SOURCEPROJECTION", "SOURCEDATALOCATION",
+                  "SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART",
+                  "SURVEYTYPE", "PROJECTEDAREA", "SOURCEDATAFORMAT",
+                  "Shape__Area", "Shape__Length"]
 """The specific attributes queried for each survey in :func:`surveyCompile`"""
 
 # check to see if the downloaded data folder exists, will create it if not
@@ -117,14 +118,17 @@ def query() -> Tuple[List[str], int, str]:
     # Today - 1 (ex. '2018-08-06'), unformatted
     yesterday = today - datetime.timedelta(1)
     strYesterday = str(yesterday.strftime('%Y-%m-%d'))
+
     if config['Timeframe']['Start Date'] != '':
         start = config['Timeframe']['Start Date']
     else:
         start = strYesterday
+
     if config['Timeframe']['End Date'] != '':
         end = config['Timeframe']['End Date']
     else:
         end = strToday
+
     if (config['Agencies']['Only Listed'] == 'yes'
             and config['Agencies']['Agencies'] != ''):
         areas = ''
@@ -227,9 +231,12 @@ def create_polygon(coords: List[Tuple[float, float]]) -> ogr.Geometry:
         ogr.Geometry/wkbLinearRing object
 
     """
+
     ring = ogr.Geometry(ogr.wkbLinearRing)
+
     for coord in coords:
         ring.AddPoint(coord[0], coord[1], 1)
+
     # Create polygon
     poly = ogr.Geometry(ogr.wkbPolygon)
     poly.AddGeometry(ring)
@@ -260,9 +267,12 @@ def create_multipolygon(polys: List[ogr.Geometry]) -> str:
         WTK Multipolygon object
 
     """
+
     multipolygon = ogr.Geometry(ogr.wkbMultiPolygon)
+
     for poly in polys:
         multipolygon.AddGeometry(poly)
+
     return multipolygon.ExportToWkt()
 
 
@@ -297,8 +307,10 @@ def geometryToShape(coordinates: list):
         A WTK Multipolygon object representing the survey outline
 
     """
+
     polys = []
     bounds = []
+
     for ring in coordinates:
         ring = np.array(ring)
         x = ring[:, 0]
@@ -307,6 +319,7 @@ def geometryToShape(coordinates: list):
         bounds.extend(bound)
         poly = create_polygon(ring)
         polys.append(poly)
+
     multipoly = create_multipolygon(polys)
     bounds = np.array(bounds)
     xb = bounds[:, 0]
@@ -315,7 +328,7 @@ def geometryToShape(coordinates: list):
     return multipoly
 
 
-def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
+def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> Tuple[list, list]:
     """
     Uses the json object return of the each queried survey id and the total
     number of surveys included to compile a list of complete returned survey
@@ -364,6 +377,7 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
         A list compiled of the attributes for every survey in surveyIDs
 
     """
+
     x = 0
     rows = []
     if pb is not None:
@@ -376,10 +390,13 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
                 f'?where=OBJECTID+=+{surveyIDs[x]}&outFields=*&returnGeometry=true&outSR=4326&f=json'
         response = requests.get(query)
         page = response.json()
+
         if x == 0:
             version, attributes = versionComp(page)
+
         row = []
         metadata = {'version': __version__}
+
         for attribute in attributes:
             try:
                 if page['features'][0]['attributes'][attribute] is None:
@@ -391,7 +408,8 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
                         metadata[attribute] = 'null'
                     else:
                         date = (page['features'][0]['attributes'][attribute])
-                        #                        print(date)
+                        # print(date)
+
                         try:
                             date = datetime.datetime.utcfromtimestamp(date / 1000)
                             row.append(str(date.strftime('%Y-%m-%d')))
@@ -413,11 +431,14 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> list:
         except KeyError as e:
             print(e, 'geometry')
             metadata['poly'] = 'error'
+
         row.append(metadata)
         rows.append(row)
         x += 1
+
         if pb is not None:
             pb.SetValue(x)
+
     print(len(rows))
     print('rows complete')
     return rows, attributes
@@ -833,27 +854,33 @@ def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
     csvOpen.close()
 
 
-def versionFind() -> dict:
+def versionFind() -> Tuple[dict, list]:
     ver_files = os.listdir(versioning)
     version = 0.0
     attributes = []
+
     for ver in ver_files:
         ver_path = os.path.join(versioning, ver)
+
         with open(ver_path) as json_file:
             data = json.load(json_file)
             fver = data['version']
+
         if fver > version:
             version = fver
             attributes = [x for x in data['attributes']]
+
     return version, attributes
 
 
-def versionComp(page):
+def versionComp(page) -> Tuple[dict, list]:
     attr_list = []
     fields = page['fields']
+
     for attr in fields:
         attr_list.append(attr['name'])
     version, attributes = versionFind()
+
     if attributes == attr_list:
         return version, attributes
     elif attributes != attr_list:
@@ -861,7 +888,7 @@ def versionComp(page):
         return version, attr_list
 
 
-def versionSave(version, attributes):
+def versionSave(version, attributes: list):
     version += .1
     version = round(version, 1)
     datestamp = datetime.datetime.now().strftime('%Y-%m-%d')
@@ -872,8 +899,9 @@ def versionSave(version, attributes):
                 }
     for field in attributes:
         ver_info['attributes'].append(field)
-    filename = (r'R:\Scripts\vlab-nbs\eHydro_scrape\versions'
-                + fr'\{verfrmt}.json')
+
+    filename = os.path.join(r'R:\Scripts\vlab-nbs', 'eHydro_scrape', 'versions', f'{verfrmt}.json')
+
     with open(f'{filename}', 'w') as outfile:
         json.dump(ver_info, outfile)
         outfile.close()
@@ -1085,9 +1113,11 @@ def main(pb=None, to=None):
         attributes_csv.append('Override?')
         placements.append(-2)
         placements.append(-1)
+
         if changes != 'No Changes':
             checked, hiRes = downloadAndCheck(changes, pb, to)
             csvFile.extend(checked)
+
             if config['Output Log']['Query List'] == 'yes':
                 logWriter(fileLog, '\tNew Survey Details:')
 
