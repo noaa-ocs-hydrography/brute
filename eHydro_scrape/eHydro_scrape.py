@@ -23,8 +23,6 @@ import numpy as np
 import requests
 from osgeo import osr, ogr
 
-__version__ = '1.2'
-
 """Known global constants"""
 # print (datetime.datetime.now().strftime('%b %d %X %Y'))
 # progLoc = '\\eHydro_scrape'
@@ -395,7 +393,7 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> Tuple[list, l
             version, attributes = versionComp(page)
 
         row = []
-        metadata = {'version': __version__}
+        metadata = {'version': version}
 
         for attribute in attributes:
             try:
@@ -587,10 +585,10 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
         pb.SetValue(i)
 
     for row in rows:
-        link = row[6]
-        surname = row[1]
-        agency = row[2]
         meta = row[-1]
+        link = meta['SOURCEDATALOCATION']
+        surname = meta['SURVEYJOBIDPK']
+        agency = meta['SURVEYAGENCY']
         spcs = 4326
         # spcs = row[5]
         poly = meta['poly']
@@ -630,22 +628,22 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                 except socket.timeout:
                     urllib.request.urlretrieve(link, saved)
                 except urllib.error.HTTPError as e:
-                    print(f'e \n{link} {e}')
+                    print(f'e \n{surname} {link} {e}')
                     row.append('No')
                     row.append('BadURL')
                     break
                 except urllib.error.URLError as e:
-                    print(f'e \n{link} {e}')
+                    print(f'e \n{surname} {link} {e}')
                     row.append('No')
                     row.append('BadURL')
                     break
             elif datetime.datetime.now() - dwntime > datetime.timedelta(seconds=295):
-                print(f'e \n{link} ')
+                print(f'e \n{surname} {link} ')
                 row.append('No')
                 row.append('TimeOut')
                 break
             else:
-                print(f'e \n{link}')
+                print(f'e \n{surname} {link}')
                 row.append('No')
                 row.append('BadURL')
                 break
