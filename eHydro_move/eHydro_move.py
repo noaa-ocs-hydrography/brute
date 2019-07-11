@@ -20,9 +20,9 @@ from osgeo import osr as _osr
 progLoc = _os.getcwd()
 """progLoc is the program's own file location / current working directory (cwd)
 obtained by :func:`os.getcwd()`"""
-xyz = _re.compile(r'.xyz', _re.IGNORECASE)
-"""regex object for searching zipfile contents for data ending in
-``.xyz``
+xyz = _re.compile(r'xyz', _re.IGNORECASE)
+"""regex object for searching zipfile contents for data with
+``xyz``
 """
 xml = _re.compile(r'.xml', _re.IGNORECASE)
 """regex object for searching zipfile contents for data ending in
