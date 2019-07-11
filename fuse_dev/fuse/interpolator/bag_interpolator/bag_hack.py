@@ -46,7 +46,7 @@ def read_res_x_and_y(xml_tree):
 
     try:
         res_x = float(ret[0].text)
-        res_y = float(ret[1].text)
+        res_y = -float(ret[1].text)
         return res_x, res_y
     except (ValueError, IndexError) as e:
         print("unable to read res x and y: %s" % e)

@@ -104,7 +104,7 @@ class geotiff:
         self.array, self.shape, self.nodata = self._getArrayData(_ds)
         _fName = _os.path.split(filename)[-1]
         self.name = _os.path.splitext(_fName)[0]
-        _ds = None
+        del _ds
 
     def _getBounds(self, gdal_obj):
         """
@@ -150,7 +150,7 @@ class geotiff:
 
         band = gdal_obj.GetRasterBand(1)
         array = band.ReadAsArray()
-        band = None
+        del band
         maxVal = _maxValue(array)
         if maxVal != 0:
             array = (array < maxVal).astype(_np.int)
@@ -299,7 +299,7 @@ class geopackage:
                 feat.SetGeometry(ds_geom)
 
                 layer.CreateFeature(feat)
-                feat = geom = None  # destroy these
+                del feat, geom  # destroy these
                 break
 
         x_min, x_max, y_min, y_max = ds_geom.GetEnvelope()
@@ -322,9 +322,7 @@ class geopackage:
         array = band.ReadAsArray()
         shape = array.shape
 
-        band = None
-        source_ds = None
-        target_ds = None
+        del band, source_ds, target_ds
 
         return array, shape, bounds
 
@@ -361,7 +359,7 @@ class unified_coverage:
         self.nodata = 0
         _rasters = self._open_data(coverage_files, self.wkt)
         self._align_and_combine(_rasters, bag_name)
-        _rasters = None
+        del _rasters
 
     def _open_data(self, files: List[str], bag_wkt: str):
         """
@@ -416,7 +414,7 @@ class unified_coverage:
 
         sized, self.bounds = self._align(rasters)
         self.array, self.name, self.shape = self._combine(sized, name)
-        sized = None
+        del sized
 
     def _combine(self, rasters: list, name: str):
         """
@@ -778,21 +776,20 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
         print(temp.shape)
         ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[down:ay.shape[0] + down,
                                                                      right:ay.shape[1] + right]
-        temp = None
+        del temp
     else:
         ay[:] = newarr[:]
     print('expz', ay.shape)
     ax = _np.full(bShape, nodata)
     ax[:] = ay[:bSy, :bSx]
-    newarr = None
-    ay = None
+    del newarr, ay
 
     coverage.array = ax
     coverage.bounds = bounds
     coverage.shape = shape
     coverage.resolution = resolution
 
-    ax = None
+    del ax
 
     return coverage
 
@@ -870,10 +867,10 @@ def write_raster(coverage, outputpath: str, out_verdat: str = 'MLLW',
     dest.SetVertCS(out_verdat, out_verdat, 2000)
 
     # Close output raster dataset
-    dest = None
+    del dest
 
 
-def coverage2gdal(coverage) -> gdal.Dataset:
+def coverage2gdal(coverage, flip: bool = False) -> gdal.Dataset:
     """
     TODO write description
 
@@ -895,18 +892,25 @@ def coverage2gdal(coverage) -> gdal.Dataset:
     nex, ney = ne
     res_x, res_y = coverage.resolution
     gt = (scx, res_x, 0, scy, 0, res_y)
-    coverage_gdal = _gdal.GetDriverByName('MEM').Create('', width, height, 1, _gdal.GDT_Float32)
+    coverage_gdal = _gdal.GetDriverByName('MEM').Create('', width, height, 1,
+                                                        _gdal.GDT_Float32)
     coverage_gdal.SetGeoTransform(gt)
     coverage_gdal.SetProjection(proj)
 
     band = coverage_gdal.GetRasterBand(1)
     band.SetNoDataValue(float(coverage.nodata))
-    band.WriteArray(coverage.array)
+
+    if flip:
+        array = _np.flipud(coverage.array)
+        band.WriteArray(array)
+    else:
+        band.WriteArray(coverage.array)
     #    coverage = None
     return coverage_gdal
 
 
-def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW'):
+def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW',
+                 flip: bool = False):
     """
     TODO write description
 
@@ -931,7 +935,7 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW'):
     proj = _osr.SpatialReference(wkt=coverage.wkt)
     proj.SetVertCS(out_verdat, out_verdat, 2000)
 
-    cov_ds = coverage2gdal(coverage)
+    cov_ds = coverage2gdal(coverage, flip=flip)
     band = cov_ds.GetRasterBand(1)
 
     driver = _ogr.GetDriverByName('GPKG')
@@ -949,4 +953,4 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW'):
     _gdal.Polygonize(band, band, layer, 0, [],
                      callback=None)
 
-    cov_ds = band = None
+    del cov_ds, band

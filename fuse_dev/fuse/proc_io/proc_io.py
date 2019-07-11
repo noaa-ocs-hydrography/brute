@@ -94,8 +94,8 @@ class proc_io:
         """
         Write the provided data to the predefined data type.
 
-        :param dataset: 
-        :param instruction: 
+        :param dataset:
+        :param instruction:
         :param metadata:  (Default value = None)
         """
 
@@ -123,12 +123,12 @@ class proc_io:
     def _write_csar(self, dataset: gdal.Dataset, outfilename: str):
         """
         Convert the provided gdal dataset into a csar file.
-        
+
         The data and metadata are saved out to a file and then loaded into the
         wrapper around the csar writer.
 
-        :param dataset: 
-        :param outfilename: 
+        :param dataset:
+        :param outfilename:
         """
 
         conda_env_name = self._caris_environment_name
@@ -202,8 +202,8 @@ class proc_io:
         """
         Convert the provided gdal dataset into a bag file.
 
-        :param dataset: 
-        :param outfilename: 
+        :param dataset:
+        :param outfilename:
         :param metadata:  (Default value = None)
         """
 
@@ -222,15 +222,15 @@ class proc_io:
 
         # write and close output raster dataset
         dest = driver.CreateCopy(outfilename, dataset)
-        dest = None
+        del dest
         self._logger.log(logging.DEBUG, 'BAG file created')
 
     def _write_points(self, dataset: gdal.Dataset, outfilename: str):
         """
         Convert the provided gdal dataset into a geopackage file.
 
-        :param dataset: 
-        :param outfilename: 
+        :param dataset:
+        :param outfilename:
         """
 
         points, meta = self._point2wkt(dataset)
@@ -268,17 +268,17 @@ class proc_io:
             feat.SetGeometry(geom)
 
             layer.CreateFeature(feat)
-            feat = geom = None  # destroy these
+            del feat, geom  # destroy these
 
         # Save and close everything
-        ds = layer = feat = geom = None
+        del ds, layer, feat, geom
 
     def _write_vector(self, dataset: gdal.Dataset, outfilename: str):
         """
         TODO write description
 
-        :param dataset: 
-        :param outfilename: 
+        :param dataset:
+        :param outfilename:
         """
 
         splits = os.path.split(outfilename)[1]
@@ -304,13 +304,13 @@ class proc_io:
         gdal.Polygonize(band, None, layer, 0, [],
                         callback=None)
 
-        ds = band = None
+        del ds, band
 
     def _gdal2array(self, dataset: gdal.Dataset) -> np.array:
         """
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
-        
+
         The gdal dataset should have he no data value set appropriately.
 
         :param dataset:
@@ -341,7 +341,7 @@ class proc_io:
         """
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
-        
+
         The gdal dataset should have he no data value set appropriately.
 
         :param dataset:
@@ -371,7 +371,7 @@ class proc_io:
         """
         Convert the gdal dataset into a WKT Points object and a dictionary of
         metadata of the geotransform information and return.
-        
+
         The gdal dataset should have he no data value set appropriately.
 
         :param dataset:
@@ -413,7 +413,7 @@ class proc_io:
         Update the gdal raster object no data value and the raster no data
         values in to corrispond with the object no data value.
 
-        :param dataset: 
+        :param dataset:
         """
 
         # check the no data value

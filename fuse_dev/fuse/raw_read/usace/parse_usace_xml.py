@@ -285,8 +285,7 @@ class XML_Meta(object):
                 if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is None:
                     my_etree_dict1[xml_path_to_baseattribute[key]] = ''
                 elif len(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}')) > 0:
-                    my_etree_dict1[xml_path_to_baseattribute[key]] = \
-                        self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}')[0].text
+                    my_etree_dict1[xml_path_to_baseattribute[key]] = self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}')[0].text
             # editing path to add ./ and then remove root name ('metadata'), the first 8 characters in this case.
         for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
             # pulling in Z units from attrs
@@ -353,18 +352,16 @@ class XML_Meta(object):
             if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
                 if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is None:
                     my_etree_dict1[iso_xml_path_to_baseattribute[key]] = ''
-                elif self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:  # check if list
-                    if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:
-                        my_etree_dict1[iso_xml_path_to_baseattribute[key]] = \
-                            self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')[0].text
+                elif isinstance(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'), list) == True:#self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:  # check if list
+                    if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:           
+                        my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:])[0].text
                     else:
-                        my_etree_dict1[iso_xml_path_to_baseattribute[key]] = self.xml_tree.find(
-                            f'./{key[len_root_name_to_remove:]}').text
+                        my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text
             else:
                 my_etree_dict1[iso_xml_path_to_baseattribute[key]] = ''
         for key in vertdatum:  #
             if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
-                if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:  # check if list
+                if isinstance(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'), list) == True:#if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:  # check if list
                     if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:
                         if self.xml_tree.find(
                                 f'./{key[len_root_name_to_remove:]}') is None:  # Checks for NoneType object ('None')
@@ -409,13 +406,11 @@ class XML_Meta(object):
             if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
                 if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is None:
                     my_etree_dict1[fgdc_additional_values[key]] = ''
-                elif self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:  # check if list
+                elif isinstance(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'), list) == True:  # check if list
                     if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:
-                        my_etree_dict1[fgdc_additional_values[key]] = \
-                            self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')[0].text
+                        my_etree_dict1[fgdc_additional_values[key]] = self.xml_tree.find('./'+ key[len_root_name_to_remove:])[0].text
                     else:
-                        my_etree_dict1[fgdc_additional_values[key]] = self.xml_tree.find(
-                            f'./{key[len_root_name_to_remove:]}').text
+                        my_etree_dict1[fgdc_additional_values[key]] = self.xml_tree.find('./'+ key[len_root_name_to_remove:]).text
             else:
                 my_etree_dict1[fgdc_additional_values[key]] = ''
         self.my_etree_dict2 = my_etree_dict1

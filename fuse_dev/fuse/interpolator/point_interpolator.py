@@ -344,7 +344,7 @@ class point_interpolator:
                 feat.SetGeometry(ds_geom)
 
                 layer.CreateFeature(feat)
-                feat = geom = None  # destroy these
+                del feat, geom  # destroy these
                 break
 
         x_min, x_max, y_min, y_max = ds_geom.GetEnvelope()
@@ -426,18 +426,14 @@ class point_interpolator:
             plt.imshow(temp)
             plt.show()
             ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[:, :]
-            temp = None
+            del temp
         else:
             ay[:] = newarr[:]
         print('expz', ay.shape)
         ax = np.full(oShape, nodata)
         ax[:] = ay[:oSy, :oSx]
 
-        newarr = None
-        ay = None
-        band = None
-        source_ds = None
-        target_ds = None
+        del newarr, ay, band, source_ds, target_ds
 
         ax_y, ax_x = ax.shape
 
@@ -484,7 +480,7 @@ class point_interpolator:
         plt.figure()
         plt.imshow(raster)
         plt.show()
-        band = None
+        del band
         grid_ref = grid.GetProjectionRef()
         grid_gt = grid.GetGeoTransform()
         proj = osr.SpatialReference(wkt=grid_ref)
@@ -611,7 +607,7 @@ class point_interpolator:
         band.SetNoDataValue(float(nodata))
         band.WriteArray(interp_grid)
 
-        band = None
+        del band
 
         return interp_data
 
@@ -665,7 +661,7 @@ class point_interpolator:
         arr = interp_data.ReadAsArray()
         ycoord, xcoord = np.where(arr != nodata)
         zvals = arr[ycoord[:], xcoord[:]]
-        arr = None
+        del arr
 
         print('start')
         xa, ya = np.arange(numcolumns), np.arange(numrows)
@@ -681,7 +677,7 @@ class point_interpolator:
         band = interp_data.GetRasterBand(1)
         band.SetNoDataValue(float(nodata))
         band.WriteArray(interp_grid)
-        band = None
+        del band
 
         return interp_data
 
