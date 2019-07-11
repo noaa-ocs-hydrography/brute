@@ -121,6 +121,7 @@ class point_interpolator:
         natural = False
         invlin = False
         invdist = False
+
         if interpolation_type == 'linear':
             linear = True
         elif interpolation_type == 'natural':
@@ -135,9 +136,11 @@ class point_interpolator:
             invdist = True
         else:
             raise ValueError('interpolation type not implemented.')
+
         data_array = self._gdal2vector(dataset)
         minrad, meanrad, maxrad = self._get_point_spacing(data_array)
         window = maxrad * self.window_scale
+
         if linear:
             # do the triangulation interpolation
             ds2 = self._gdal_linear_interp_points(dataset, resolution)
@@ -159,6 +162,7 @@ class point_interpolator:
                 ds4 = self._shrink_coverage(ds3, resolution, window)
         else:
             print('No interpolation method recognized')
+
         if linear:
             # trim the triangulated interpolation back using the inv dist as a
             # mask
@@ -170,6 +174,7 @@ class point_interpolator:
                 ds5 = self._mask_with_raster(ds4, ds3)
             else:
                 ds5 = self._mask_with_raster(ds2, ds3)
+
         # write the files out using the above function
         if linear or natural or invlin:
             return ds5
@@ -203,9 +208,11 @@ class point_interpolator:
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
         data = np.zeros((count, 3))
+
         for n in np.arange(count):
             f = lyr.GetFeature(n)
             data[n, :] = f.geometry().GetPoint()
+
         return data
 
     def _get_point_spacing(self, dataset: np.array) -> Tuple[float, float, float]:
@@ -231,8 +238,8 @@ class point_interpolator:
 
         count = len(dataset)
         min_dist = np.zeros(count) + np.inf
-        # roll the array through, comparing all points and saving the minimum
-        # dist.
+
+        # roll the array through, comparing all points and saving the minimum dist.
         for n in np.arange(1, count):
             tmp = np.roll(dataset, n, axis=0)
             dist = (np.sqrt(np.square(dataset[:, 0] - tmp[:, 0])
@@ -240,6 +247,7 @@ class point_interpolator:
             idx = np.nonzero(dist < min_dist)[0]
             if len(idx) > 0:
                 min_dist[idx] = dist[idx]
+
         return min_dist.min(), min_dist.mean(), min_dist.max()
 
     def _get_mask(self, dataset: gdal.Dataset, resolution: float, window: float) -> gdal.Dataset:
@@ -355,8 +363,7 @@ class point_interpolator:
         x_dim = int((x_max - x_min) / to_res)
         y_dim = int((y_max - y_min) / to_res)
         print(x_dim, y_dim)
-        target_ds = gdal.GetDriverByName('MEM').Create('', x_dim, y_dim,
-                                                       gdal.GDT_Byte)
+        target_ds = gdal.GetDriverByName('MEM').Create('', x_dim, y_dim, gdal.GDT_Byte)
         x_orig, y_orig = to_gt[0], to_gt[3]
         target_gt = (x_orig, to_res, 0, y_orig, 0, to_res)
         target_ds.SetGeoTransform(target_gt)
@@ -429,6 +436,7 @@ class point_interpolator:
             del temp
         else:
             ay[:] = newarr[:]
+
         print('expz', ay.shape)
         ax = np.full(oShape, nodata)
         ax[:] = ay[:oSy, :oSx]
@@ -437,8 +445,7 @@ class point_interpolator:
 
         ax_y, ax_x = ax.shape
 
-        target_ds = gdal.GetDriverByName('MEM').Create('', ax_x, ax_y,
-                                                       1, gdal.GDT_Float32)
+        target_ds = gdal.GetDriverByName('MEM').Create('', ax_x, ax_y, 1, gdal.GDT_Float32)
         x_orig, y_orig = to_gt[0], to_gt[3]
         target_gt = (x_orig, to_res, 0, y_orig, 0, to_res)
         target_ds.SetGeoTransform(target_gt)
@@ -520,17 +527,16 @@ class point_interpolator:
         xmin, xmax, ymin, ymax = np.nan, np.nan, np.nan, np.nan
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
+
         for n in np.arange(count):
             f = lyr.GetFeature(n)
             x, y, z = f.geometry().GetPoint()
             xmin, xmax = _compare_vals(x, xmin, xmax)
             ymin, ymax = _compare_vals(y, ymin, ymax)
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, [xmin, ymin, xmax, ymax])
+
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
         algorithm = f"linear:radius=0:nodata={int(nodata)}"
-        interp_data = gdal.Grid('', dataset, format='MEM',
-                                width=numcolumns,
-                                height=numrows,
-                                outputBounds=bounds,
+        interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
                                 algorithm=algorithm)
         return interp_data
 
@@ -567,6 +573,7 @@ class point_interpolator:
         proj = lyr.GetSpatialRef().ExportToWkt()
         count = lyr.GetFeatureCount()
         xvals, yvals, zvals = [], [], []
+
         for n in np.arange(count):
             f = lyr.GetFeature(n)
             x, y, z = f.geometry().GetPoint()
@@ -575,8 +582,8 @@ class point_interpolator:
             zvals.append(z)
             xmin, xmax = _compare_vals(x, xmin, xmax)
             ymin, ymax = _compare_vals(y, ymin, ymax)
-        numrows, numcolumns, bounds = self._get_nodes3(resolution,
-                                                       [xmin, ymin, xmax, ymax])
+
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
         print(bounds)
         xbound, ybound = bounds[0], bounds[1]
         xvals, yvals, zvals = np.array(xvals), np.array(yvals), np.array(zvals)
@@ -595,11 +602,8 @@ class point_interpolator:
         plt.show()
         print('stop')
 
-        interp_data = gdal.GetDriverByName('MEM').Create('', numcolumns,
-                                                         numrows, 1,
-                                                         gdal.GDT_Float32)
-        interp_gt = (xbound, resolution, 0,
-                     ybound, 0, resolution)
+        interp_data = gdal.GetDriverByName('MEM').Create('', numcolumns, numrows, 1, gdal.GDT_Float32)
+        interp_gt = (xbound, resolution, 0, ybound, 0, resolution)
         interp_data.SetGeoTransform(interp_gt)
         interp_data.SetProjection(proj)
 
@@ -644,19 +648,17 @@ class point_interpolator:
         xmin, xmax, ymin, ymax = np.nan, np.nan, np.nan, np.nan
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
+
         for n in np.arange(count):
             f = lyr.GetFeature(n)
             x, y, z = f.geometry().GetPoint()
             xmin, xmax = _compare_vals(x, xmin, xmax)
             ymin, ymax = _compare_vals(y, ymin, ymax)
-        numrows, numcolumns, bounds = self._get_nodes3(resolution,
-                                                       [xmin, ymin, xmax, ymax])
+
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
         algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}" + \
                     f":angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
-        interp_data = gdal.Grid('', dataset, format='MEM',
-                                width=numcolumns,
-                                height=numrows,
-                                outputBounds=bounds,
+        interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
                                 algorithm=algorithm)
         arr = interp_data.ReadAsArray()
         ycoord, xcoord = np.where(arr != nodata)
@@ -713,11 +715,13 @@ class point_interpolator:
         xmin, xmax, ymin, ymax = np.nan, np.nan, np.nan, np.nan
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
+
         for n in np.arange(count):
             f = lyr.GetFeature(n)
             x, y, z = f.geometry().GetPoint()
             xmin, xmax = _compare_vals(x, xmin, xmax)
             ymin, ymax = _compare_vals(y, ymin, ymax)
+
         numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
         algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}" + \
                     f":angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
@@ -735,15 +739,9 @@ class point_interpolator:
 
         Parameters
         ----------
-        resolution :
-            param bounds:
         resolution: float :
 
-        bounds: Tuple[float :
-
-        float :
-
-        float] :
+        bounds: Tuple[float, float, float, float] :
 
 
         Returns
@@ -774,15 +772,9 @@ class point_interpolator:
 
         Parameters
         ----------
-        resolution :
-            param bounds:
         resolution: float :
 
-        bounds: Tuple[float :
-
-        float :
-
-        float] :
+        bounds: Tuple[float, float, float, float] :
 
 
         Returns
@@ -811,15 +803,9 @@ class point_interpolator:
 
         Parameters
         ----------
-        resolution :
-            param bounds:
         resolution: float :
 
-        bounds: Tuple[float :
-
-        float :
-
-        float] :
+        bounds: Tuple[float, float, float, float] :
 
 
         Returns
@@ -848,8 +834,6 @@ class point_interpolator:
 
         Parameters
         ----------
-        dataset :
-            param maskraster:
         dataset: gdal.Dataset :
 
         maskraster: gdal.Dataset :
@@ -879,10 +863,6 @@ class point_interpolator:
 
         Parameters
         ----------
-        dataset :
-            param resolution:
-        radius :
-            returns: shrunken dataset
         dataset: gdal.Dataset :
 
         resolution: float :
@@ -893,7 +873,9 @@ class point_interpolator:
         Returns
         -------
         type
-            shrunken dataset
+            gdal.Dataset
+
+        shrunken dataset
 
         """
 
@@ -905,6 +887,7 @@ class point_interpolator:
         # divide the window size by the resolution to get the number of cells
         rem_cells = int(np.round(radius / resolution))
         # print(f'Shrinking coverage back {rem_cells} cells.')
+
         for n in np.arange(rem_cells):
             ew = np.diff(data, axis=0)
             idx_ew = np.nonzero(np.isnan(ew))
@@ -914,6 +897,7 @@ class point_interpolator:
             data[idx_ew[0] + 1, idx_ew[1]] = np.nan
             data[idx_ns] = np.nan
             data[idx_ns[0], idx_ns[1] + 1] = np.nan
+
         idx = np.nonzero(np.isnan(data))
         data[idx] = nodata
         data_rb.WriteArray(data)
