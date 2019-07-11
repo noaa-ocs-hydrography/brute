@@ -331,9 +331,10 @@ def contentSearch(contents: List[str]) -> List[str]:
         a list of files that met the correct conditions
 
     """
+
     return list(filter(
-            lambda content: (v.search(content) for k, v in extensions.items()),
-            contents))
+        lambda content: (v.search(content) for k, v in extensions.items()),
+        contents))
 
 
 def zipManipulate(path: str, name: str):
