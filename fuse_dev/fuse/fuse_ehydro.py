@@ -183,7 +183,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
     def process(self, infilename: str, interpolate = True):
         """
         Do the datum transformtion and interpolation.
-        
+
         Given the generic need to interpolate USACE data the 'interpolate'
         kwarg is set to True as a hack.  This information should be drawn from
         the data reader since there will be cases where we get full res data
@@ -214,11 +214,12 @@ class fuse_ehydro(_fbc.fuse_base_class):
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
             dataset = self._transform.translate(infilename, self._meta)
+            resolution = self._config['to_resolution']
             self._points.write(dataset, outfilename)
             self._meta['to_filename'] = outfilename
             self._meta_obj.write_meta_record(self._meta)
             # take a gdal dataset for interpolation and return a gdal dataset
-            interpfilename = f'{outfilebase}_interp.{new_ext}'
+            interpfilename = f'{outfilebase}_{resolution}m_interp.{new_ext}'
             interpkeyfilename = f'{infilebase}.interpolated'
             self._meta_interp = self._meta.copy()
             self._meta_interp['interpolated'] = True
@@ -235,7 +236,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
             self._meta_obj.write_meta_record(self._meta_interp)
         else:
             self.logger.log(_logging.DEBUG, 'No fips code found')
-            
+
     def post(self, infilename):
         """
         Make the data available for amalgamation.
@@ -248,8 +249,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
             procfile = self._meta['to_filename']
             print(self._s57_meta)
             self._db.write(procfile, 'new', self._s57_meta)
-        
-            
+
+
     def _connect_to_db(self):
         """
         Connect to the database defined in the configuration dictionary.
@@ -264,7 +265,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
             raise ValueError('No database name defined in the configuration file.')
         intype = self._config['bathymetry_intermediate_file']
         self._db = proc_io(intype, 'carisbdb51', db_loc = db_loc, db_name = db_name)
-        
+
 
     def _set_log(self, infilename: str):
         """
@@ -321,7 +322,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         elif self._meta['from_filename'] is not infilename:
             self._meta = self._meta_obj.read_meta_record(f)
         # need to catch if this file is not in the metadata record yet here.
-        
+
     def _get_s57_stored_meta(self, infilename: str):
         """
         Get the metadata in a local dictionary so that it can be used within
