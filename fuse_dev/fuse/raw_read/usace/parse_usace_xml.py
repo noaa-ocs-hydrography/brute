@@ -499,7 +499,7 @@ class XML_Meta(object):
         for key in self.data.keys():
             if key == 'filename':
                 label = self.data[key]
-                p = re.compile('[A-Z][0-9][0-9][0-9][0-9][0-9]')
+                p = re.compile('[A-Z][0-9]{5}')
                 s = p.findall(label)
                 if len(s) == 1:
                     s57['OBJNAM'] = s[0]

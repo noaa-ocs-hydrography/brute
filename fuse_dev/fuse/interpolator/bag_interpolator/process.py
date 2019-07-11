@@ -65,8 +65,7 @@ class intitialize:
         coverage = _cvg.unified_coverage(coverage_list, bag.wkt, bag.name)
         coverage = _cvg.align2grid(coverage, bag.bounds, bag.shape, bag.resolution, bag.nodata)
 
-        z, tiles, tile_info = _itp.sliceFinder(bag.size, bag.shape,
-                                               bag.resolution[0])
+        z, tiles, tile_info = _itp.sliceFinder(bag.size, bag.shape, bag.resolution[0])
         if z > 1:
             unitedBag = _np.empty_like(bag.elevation)
             unitedUnc = _np.empty_like(bag.elevation)

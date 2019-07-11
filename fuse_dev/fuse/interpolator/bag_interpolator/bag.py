@@ -104,10 +104,7 @@ class bag_file:
         self.uncertainty = self._gdalreadarray(bag_obj, 2)
         self.shape = self.elevation.shape
         print(bag_obj.GetGeoTransform())
-        self.bounds, self.resolution = self._gt2bounds(
-            bag_obj.GetGeoTransform(),
-            self.shape
-        )
+        self.bounds, self.resolution = self._gt2bounds(bag_obj.GetGeoTransform(), self.shape)
         self.wkt = bag_obj.GetProjectionRef()
         self.version = bag_obj.GetMetadata()
 
@@ -126,15 +123,16 @@ class bag_file:
             The complete file path of the input BAG file
 
         """
+
         self._known_data(filepath)
         with _tb.open_file(filepath, mode='r') as bagfile:
             self.elevation = _np.flipud(bagfile.root.BAG_root.elevation.read())
             self.uncertainty = _np.flipud(bagfile.root.BAG_root.uncertainty.read())
             self.shape = self.elevation.shape
             meta_read = [str(x, 'utf-8', 'ignore') for x in bagfile.root.BAG_root.metadata.read()]
-            #        print (meta_read)
+            # print (meta_read)
             meta_xml = ''.join(meta_read)
-            #        print (meta_xml)
+            # print (meta_xml)
             encodeVal = 0
             for x in meta_xml:
                 if meta_xml[encodeVal] == '>':
@@ -257,14 +255,15 @@ class bag_file:
             tuple of bounds, resolution
 
         """
+
         y, x = shape
         res = (meta[1], meta[5])
-        #        ulx, uly = _np.round(meta[0]), _np.round(meta[3])
+        # ulx, uly = _np.round(meta[0]), _np.round(meta[3])
         ulx, uly = meta[0], meta[3]
         lrx = ulx + (x * res[0])
         lry = uly + (y * res[1])
         print([ulx, uly], [lrx, lry])
-        #        res = (_np.round(meta[1], 2), _np.round(meta[5], 2))
+        # res = (_np.round(meta[1], 2), _np.round(meta[5], 2))
         return ([ulx, uly], [lrx, lry]), res
 
     def _gdalreadarray(self, bag_obj, band: int) -> _np.array:
@@ -322,6 +321,7 @@ class bag_file:
             Boolean determination of interpolated only or full bag data
 
         """
+
         if self.name is not None:
             name = f'{self.name}_INTERP_{"ONLY" if io else "FULL"}.bag'
             self.outfilename = _os.path.join(outlocation, name)
@@ -364,9 +364,7 @@ class gdal_create:
         scx, scy = se
         y_cols, x_cols = bag.shape
         res_x, res_y = bag.resolution[0], bag.resolution[1]
-        target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols,
-                                                        bands,
-                                                        _gdal.GDT_Float32)
+        target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
         target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
@@ -388,10 +386,8 @@ class gdal_create:
         del target_ds
 
     def components2gdal(self, arrays: List[_np.array], shape: Tuple[int, int],
-                        bounds: Tuple[Tuple[float, float],
-                                      Tuple[float, float]],
-                        resolution: Tuple[float, float], prj: str,
-                        nodata: float = 1000000.0):
+                        bounds: Tuple[Tuple[float, float], Tuple[float, float]], resolution: Tuple[float, float],
+                        prj: str, nodata: float = 1000000.0):
         """
         Converts raw dataset components into a :obj:`gdal.Dataset` object
 
@@ -412,15 +408,14 @@ class gdal_create:
 
 
         """
+
         bands = len(arrays)
         nw, se = bounds
         nwx, nwy = nw
         scx, scy = se
         y_cols, x_cols = shape
         res_x, res_y = resolution[0], resolution[1]
-        target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols,
-                                                        bands,
-                                                        _gdal.GDT_Float32)
+        target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
         target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
@@ -441,10 +436,8 @@ class gdal_create:
         self.dataset = target_ds
         del target_ds
 
-    def translate_bag2gdal_extents(self, geotransform: Tuple[float, float,
-                                                             float, float,
-                                                             float, float]):
+    def translate_bag2gdal_extents(self, geotransform: Tuple[float, float, float, float, float, float]):
         orig_x, res_x, skew_x, orig_y, skew_y, res_y = geotransform
-        new_x = orig_x - (res_x/2)
-        new_y = orig_y + (res_y/2)
-        return (new_x, res_x, skew_x, new_y, skew_y, res_y)
+        new_x = orig_x - (res_x / 2)
+        new_y = orig_y + (res_y / 2)
+        return new_x, res_x, skew_x, new_y, skew_y, res_y
