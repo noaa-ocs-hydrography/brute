@@ -174,19 +174,20 @@ class fuse_ehydro(_fbc.fuse_base_class):
         meta['to_horiz_datum'] = self._config['to_horiz_datum']
         meta['to_vert_datum'] = self._config['to_vert_datum']
         meta['to_vert_units'] = 'metres'
-        meta['interpolated'] = 'True'
+        meta['interpolated'] = 'False'
         # meta['script_version'] = f'{meta['script_version']}' #,{__version__}{i2c.__version__}'
         self._meta.update(meta)
         # write the metadata
         self._meta_obj.write_meta_record(meta)
-        if 'from_fips' in self._meta:
-            pass
-            # self.process(infilename)
-        # reading the bathymetry is not required > goes directly to datum trans
 
-    def process(self, infilename: str):
+    def process(self, infilename: str, interpolate = True):
         """
         Do the datum transformtion and interpolation.
+        
+        Given the generic need to interpolate USACE data the 'interpolate'
+        kwarg is set to True as a hack.  This information should be drawn from
+        the data reader since there will be cases where we get full res data
+        from the reader and interlation is not necessary.
 
         Parameters
         ----------
@@ -203,19 +204,26 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._get_stored_meta(infilename)
         self._set_log(infilename)
         if 'from_fips' in self._meta:
-            # convert the bathy
+            # convert the bathy for the original data
             outpath = self._config['outpath']
             infilepath, infilebase = _os.path.split(infilename)
             infileroot, ext = _os.path.splitext(infilebase)
-            outfilename = _os.path.join(outpath, infileroot)
+            basefilename = _os.path.join(outpath, infileroot)
             new_ext = self._config['bathymetry_intermediate_file']
-            outfilename = f'{outfilename}.{new_ext}'
+            outfilename = f'{basefilename}.{new_ext}'
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
             dataset = self._transform.translate(infilename, self._meta)
             self._points.write(dataset, outfilename)
-            print(dataset.GetProjection())
+            self._meta['to_filename'] = outfilename
+            self._meta_obj.write_meta_record(self._meta)
             # take a gdal dataset for interpolation and return a gdal dataset
+            interpfilename = f'{basefilename}_interp.{new_ext}'
+            interpkeyfilename = f'{infilename}.interpolated'
+            self._meta_interp = self._meta.copy()
+            self._meta_interp['interpolated'] = True
+            self._meta_interp['from_filename'] = interpkeyfilename
+            self._meta_interp['to_filename'] = interpfilename
             if 'poly_name' in self._pickle_meta:
                 shapename = self._pickle_meta['poly_name']
                 shapepath = _os.path.join(infilepath, shapename)
@@ -223,10 +231,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
                 dataset = self._interpolator.interpolate(dataset, shapepath)
             else:
                 dataset = self._interpolator.interpolate(dataset)
-            self._writer.write(dataset, outfilename)
-            self._meta['to_filename'] = outfilename
-            # need to add the rest of the metadata for the outfile
-            self._meta_obj.write_meta_record(self._meta)
+            self._writer.write(dataset, interpfilename)
+            self._meta_obj.write_meta_record(self._meta_interp)
         else:
             self.logger.log(_logging.DEBUG, 'No fips code found')
             
