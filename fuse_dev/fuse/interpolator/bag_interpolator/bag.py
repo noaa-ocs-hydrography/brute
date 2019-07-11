@@ -188,7 +188,7 @@ class bag_file:
         Parameters
         ----------
         arr : numpy.array
-
+            TODO write description
         nodata : float
             The no data value to be assigned to the numpy.array
 
@@ -209,6 +209,7 @@ class bag_file:
         Parameters
         ----------
         arr : numpy.array
+            TODO write description
 
         Returns
         -------
@@ -227,6 +228,7 @@ class bag_file:
         Parameters
         ----------
         meta : hyo2.bag.meta
+            TODO write description
 
         Returns
         -------
@@ -249,7 +251,7 @@ class bag_file:
         Parameters
         ----------
         meta : gdal.GetGeoTransform
-
+            TODO write description
         shape : tuple of int
             (y, x) shape of the bag object
 
@@ -280,7 +282,7 @@ class bag_file:
         Parameters
         ----------
         bag_obj : gdal.Dataset
-
+            TODO write description
         band : int
             raster band number
 
@@ -300,6 +302,7 @@ class bag_file:
         Parameters
         ----------
         filepath : str, os.Pathlike
+            TODO write description
 
         Returns
         -------
@@ -358,7 +361,7 @@ class gdal_create:
         Parameters
         ----------
         bag : :obj:`bag`
-
+            TODO write description
         """
 
         arrays = [bag.elevation, bag.uncertainty]
