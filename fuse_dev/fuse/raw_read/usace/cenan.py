@@ -11,6 +11,8 @@ any available bathymetry or metadata can be accessed.
 """
 
 import os as _os
+import sys as _sys
+import logging as _logging
 import pickle as _pickle
 import re as _re
 from datetime import datetime as _datetime
@@ -30,7 +32,12 @@ class read_raw:
         No init needed?
         """
 
-        pass
+        self._logger = _logging.getLogger('fuse')
+
+        if len(self._logger.handlers) == 0:
+            ch = _logging.StreamHandler(_sys.stdout)
+            ch.setLevel(_logging.DEBUG)
+            self._logger.addHandler(ch)
 
     def read_metadata(self, infilename: str):
         """
@@ -554,6 +561,13 @@ class read_raw:
                 elif self._is_header(line):
                     pass
                 else:
-                    bathy.append([float(x) for x in line.split(' ')])
+                    if ',' in line:
+                        output = f'Comma delimited file found: {infilename}'
+                        print(output)
+                        self._logger.log(_logging.DEBUG, output)
+                        bathy = []
+                        break
+                    else:
+                        bathy.append([float(x) for x in line.split(' ')])
         bathy = _np.asarray(bathy)
         return bathy
