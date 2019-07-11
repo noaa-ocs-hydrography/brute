@@ -137,12 +137,11 @@ class proc_io:
         if self._in_data_type == 'gdal':
             dataset = self._set_gdalndv(dataset)
             data, metadata = self._gdal2array(dataset)
-            metadata['outfilename'] = outfilename
         elif self._in_data_type == 'point':
             data, metadata = self._point2array(dataset)
-            print(metadata['outfilename'], outfilename)
         else:
             raise ValueError(f'input data type unknown: {self._in_data_type}')
+        metadata['outfilename'] = outfilename
         metadata['z_up'] = self._z_up
         conda_env_path = caris.helper.retrieve_env_path(conda_env_name)
         python_path = os.path.join(conda_env_path, 'python')
