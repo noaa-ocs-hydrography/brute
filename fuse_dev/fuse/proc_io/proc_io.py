@@ -140,8 +140,6 @@ class proc_io:
             metadata['outfilename'] = outfilename
         elif self._in_data_type == 'point':
             data, metadata = self._point2array(dataset)
-            splits = os.path.splitext(outfilename)
-            metadata['outfilename'] = f'{splits[0]}_Points{splits[1]}'
             print(metadata['outfilename'], outfilename)
         else:
             raise ValueError(f'input data type unknown: {self._in_data_type}')
