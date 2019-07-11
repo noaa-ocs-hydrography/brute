@@ -208,9 +208,9 @@ class fuse_ehydro(_fbc.fuse_base_class):
             outpath = self._config['outpath']
             infilepath, infilebase = _os.path.split(infilename)
             infileroot, ext = _os.path.splitext(infilebase)
-            basefilename = _os.path.join(outpath, infileroot)
+            outfilebase = _os.path.join(outpath, infileroot)
             new_ext = self._config['bathymetry_intermediate_file']
-            outfilename = f'{basefilename}.{new_ext}'
+            outfilename = f'{outfilebase}.{new_ext}'
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
             dataset = self._transform.translate(infilename, self._meta)
@@ -218,8 +218,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
             self._meta['to_filename'] = outfilename
             self._meta_obj.write_meta_record(self._meta)
             # take a gdal dataset for interpolation and return a gdal dataset
-            interpfilename = f'{basefilename}_interp.{new_ext}'
-            interpkeyfilename = f'{infilename}.interpolated'
+            interpfilename = f'{outfilebase}_interp.{new_ext}'
+            interpkeyfilename = f'{infilebase}.interpolated'
             self._meta_interp = self._meta.copy()
             self._meta_interp['interpolated'] = True
             self._meta_interp['from_filename'] = interpkeyfilename

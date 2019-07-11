@@ -37,10 +37,14 @@ def write_csar(dataset, m: dict):
     print('write_csar')
     dataset = np.array(dataset)
     print(m, dataset, dataset.shape)
+    dataset[dataset==m['nodata']] = np.nan
+    d_min = np.nanmax(dataset)
+    dataset[dataset==np.nan] = m['nodata']
+    d_max = np.nanmin(dataset)
     z_dir = cc.Direction.HEIGHT
     layerName = "Elevation"
     band_info = cc.BandInfo(name=layerName, type=cc.DataType.FLOAT32, tuple_length=1, direction=z_dir, units='m',
-                            category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.BICUBIC)
+                            category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.BICUBIC, minimum=d_min, maximum=d_max)
     resolution = [m['resy'], m['resx']]
     origin = [m['originx'], m['originy']]
     #    origin = [0,0]
@@ -48,8 +52,6 @@ def write_csar(dataset, m: dict):
     crs = m['crs']
     name = m['outfilename']
     bands = [band_info]
-
-    print(name + '0')
 
     while os.path.exists(name) and os.path.exists(name + '0'):
         try:
@@ -100,7 +102,6 @@ def write_cloud(dataset, m: dict):
     print('write_cloud')
     print(m)
     outfilename = m['outfilename']
-    print(outfilename + '0')
 
     while os.path.exists(outfilename) and os.path.exists(outfilename + '0'):
         try:
@@ -116,13 +117,16 @@ def write_cloud(dataset, m: dict):
 
     print(m['z_up'], type(m['z_up']))
 
+    d_min = np.amax(dataset[:, 2])
+    d_max = np.amin(dataset[:, 2])
+    print(d_min, d_max)
     # build CSAR bands
     bandInfo = {}  # Define our bands below
     z_dir = cc.Direction.HEIGHT
     layerName = "Elevation"
     print(m['z_up'], layerName, z_dir)
     bandInfo[layerName] = cc.BandInfo(type=cc.DataType.FLOAT64, tuple_length=1, name=layerName, direction=z_dir,
-                                      units='m', category=cc.Category.SCALAR, ndv=-1.0)
+                                      units='m', category=cc.Category.SCALAR, ndv=-1.0, minimum=d_max, maximum=d_min)
     bandInfo['Position'] = cc.BandInfo(type=cc.DataType.FLOAT64, tuple_length=3, name='Position',
                                        direction=cc.Direction.NAP, units='', category=cc.Category.SCALAR,
                                        ndv=(-1.0, -1.0, 0.0))

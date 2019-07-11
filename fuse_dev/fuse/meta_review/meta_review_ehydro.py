@@ -93,11 +93,11 @@ class meta_review_ehydro(mrb.meta_review_base):
         """TODO write description"""
         csv_cols = []
         for c in self._metakeys:
-            if c is 'from_filename':
+            if c == 'from_filename':
                 csv_cols.append(c)
-            elif c is 'from_path':
+            elif c == 'from_path':
                 csv_cols.append(c)
-            elif c is 'script_version':
+            elif c == 'script_version':
                 csv_cols.append(c)
             else:
                 csv_cols.append(meta_review_ehydro._col_root['script'] + c)
@@ -242,9 +242,9 @@ class meta_review_ehydro(mrb.meta_review_base):
             new_row = {}
             keys = row.keys()
             for key in keys:
-                if key is 'from_filename' or key is 'from_path':
+                if key in ('from_filename','from_path'):
                     new_row[key] = row[key]
-                elif key is 'script_version':
+                elif key == 'script_version':
                     pass
                     # new_row[key] = f'{row[key]},{__version__}'
                 else:

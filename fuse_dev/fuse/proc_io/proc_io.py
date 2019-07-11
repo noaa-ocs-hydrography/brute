@@ -357,7 +357,6 @@ class proc_io:
         for n in np.arange(count):
             f = lyr.GetFeature(n)
             data[n, :] = f.geometry().GetPoint()
-        data[:, 2] *= -1  # make these heights rather than depths
 
         meta['crs'] = crs
         print(meta)
@@ -423,4 +422,3 @@ class proc_io:
             dataset.GetRasterBand(1).WriteArray(data)
 
         return dataset
-    
