@@ -20,22 +20,12 @@ from osgeo import osr as _osr
 progLoc = _os.getcwd()
 """progLoc is the program's own file location / current working directory (cwd)
 obtained by :func:`os.getcwd()`"""
-xyz = _re.compile(r'xyz', _re.IGNORECASE)
-"""regex object for searching zipfile contents for data with
-``xyz``
-"""
-xml = _re.compile(r'.xml', _re.IGNORECASE)
-"""regex object for searching zipfile contents for data ending in
-``.xml``
-"""
-pfile = _re.compile(r'.pickle', _re.IGNORECASE)
-"""regex object for searching zipfile contents for data ending in
-``.pickle``
-"""
-gpkg = _re.compile(r'.gpkg', _re.IGNORECASE)
-"""regex object for searching zipfile contents for data ending in
-``.gpkg``
-"""
+extensions = {'xyz': _re.compile(r'xyz', _re.IGNORECASE),
+              'xml': _re.compile(r'.xml', _re.IGNORECASE),
+              'pickle': _re.compile(r'.pickle', _re.IGNORECASE),
+              'gpkg': _re.compile(r'.gpkg', _re.IGNORECASE)
+              }
+
 zreg = _re.compile(r'.zip', _re.IGNORECASE)
 config = _cp.ConfigParser(interpolation=_cp.ExtendedInterpolation())
 config.read('config.ini')
@@ -230,12 +220,8 @@ def fileCollect(path: str, bounds: str) -> list:
     slen = len(zips)
     print(zips, slen)
     x = 1
-    # for path in zips:
-    #    print (x, path)
-    #    x += 1
 
     for zfile in zips:
-        #        print (x, zfile)
         root = _os.path.split(zfile)[0]
         _os.chdir(root)
 
@@ -243,24 +229,14 @@ def fileCollect(path: str, bounds: str) -> list:
             zipped = _zf.ZipFile(zfile)
             contents = zipped.namelist()
             for name in contents:
-                if gpkg.search(name):
+                if extensions['gpkg'].search(name):
                     path = _os.path.join(root, name)
                     print(x, path)
                     zipped.extract(name)
 
                     try:
                         ehyd_geom, ehyd_proj = open_ogr(path)
-                        # coordTrans = _osr.CoordinateTransformation(meta_proj, ehyd_proj)
-                        # meta_geom.Transform(coordTrans)
-                        # fpath = f'{spath}_2_{ehyd_name}.gpkg'
-                        # fname = f'{bname}_2_{ehyd_name}'
-                        #
-                        # if not _os.path.exists(fpath):
-                        #     ehyd_tproj = ehyd_proj.ExportToWkt()
-                        #     write_shapefile(fpath, fname, meta_geom, ehyd_tproj)
-                        #     print(fpath)
                         try:
-                            # print(meta_proj, ehyd_proj, sep='\n')
                             intersection = meta_geom.Intersection(ehyd_geom)
                             flag = intersection.ExportToWkt()
                         except AttributeError as e:
@@ -355,19 +331,9 @@ def contentSearch(contents: List[str]) -> List[str]:
         a list of files that met the correct conditions
 
     """
-
-    # files = []
-    #
-    # for content in contents:
-    #     ext = _os.path.splitext(content)[1].lower()
-    #
-    #     if xyz.search(content) or xml.search(content) or pfile.search(content) or gpkg.search(content):
-    #         # if ext in ('.xyz', '.xml', '.pickle'):
-    #         files.append(content)
-
     return list(filter(
-        lambda content: xyz.search(content) or xml.search(content) or pfile.search(content) or gpkg.search(content),
-        contents))
+            lambda content: (v.search(content) for k, v in extensions.items()),
+            contents))
 
 
 def zipManipulate(path: str, name: str):
