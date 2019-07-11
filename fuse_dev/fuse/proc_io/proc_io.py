@@ -159,13 +159,14 @@ class proc_io:
         activate_file = caris.helper.retrieve_activate_batch()
 
         if os.path.exists(write_csar):
-            args = ["cmd.exe", "/C", "set pythonpath= &&",  # setup the commandline
-                    activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
-                    python_path, write_csar,  # call the script
-                    f'"{datafilename.replace("&", "^&")}"',  # surface path
-                    f'"{metafilename.replace("&", "^&")}"',  # metadata path
-                    f'"{self._in_data_type.replace("&", "^&")}"',  # data type
-                    ]
+            args = [
+                "cmd.exe", "/C", "set pythonpath= &&",  # setup the commandline
+                activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
+                python_path, write_csar,  # call the script
+                f'"{datafilename.replace("&", "^&")}"',  # surface path
+                f'"{metafilename.replace("&", "^&")}"',  # metadata path
+                f'"{self._in_data_type.replace("&", "^&")}"',  # data type
+            ]
             args = ' '.join(args)
             print(args)
             self._logger.log(logging.DEBUG, args)
@@ -173,7 +174,7 @@ class proc_io:
             try:
                 proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
             except:
-                err = 'Error executing: {}'.foramt(args)
+                err = f'Error executing: {args}'
                 print(err)
                 self._logger.log(logging.DEBUG, err)
 
@@ -298,8 +299,7 @@ class proc_io:
         feat = ogr.Feature(defn)
         feat.SetField('Survey', name)
 
-        gdal.Polygonize(band, None, layer, 0, [],
-                        callback=None)
+        gdal.Polygonize(band, None, layer, 0, [], callback=None)
 
         del ds, band
 
