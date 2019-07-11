@@ -65,6 +65,7 @@ class bdb51:
         self.connected = False  # is the sub environment talking to the db
         self._response = None
         self._command = None
+        self._bufsize = 4096
         self.msg_id = 0
         self.database_loc = database_loc
         self.database_name = database_name
@@ -78,6 +79,8 @@ class bdb51:
             self._logger.setLevel(logging.DEBUG)
         self._thread = threading.Thread(target=self._form_connection)
         self._thread.start()
+        while not self.status():
+            pass
 
     def _form_connection(self):
         """
@@ -101,7 +104,7 @@ class bdb51:
         while True:
             self._conn, addr = self.sock.accept()
             self._logger.log(logging.DEBUG, 'accepted connection from {} at {}'.format(addr, self._conn))
-            data = self._conn.recv(1024)
+            data = self._conn.recv(self._bufsize)
 
             if len(data) > 0:
                 response = pickle.loads(data)
@@ -120,7 +123,7 @@ class bdb51:
                     try:
                         self._conn.send(pickle.dumps(self._command))
                         self._command = None
-                        data = self._conn.recv(1024)
+                        data = self._conn.recv(self._bufsize)
                         if len(data) > 0:
                             response = pickle.loads(data)
                             self._response = response
@@ -161,7 +164,7 @@ class bdb51:
 
         args = ["cmd.exe", "/K", "set pythonpath= &&",  # setup the commandline
                 activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
-                python_path, db_obj, str(port),  # call the script for the object
+                python_path, db_obj, str(port), str(self._bufsize), # call the script for the object
                 ]
         args = ' '.join(args)
         self._logger.log(logging.DEBUG, args)
@@ -197,8 +200,9 @@ class bdb51:
 
         command = {'command': 'status'}
         response = self._set_command(command)
-        self.alive = response['alive']
-        self.connected = response['connected']
+        if response['success']:
+            self.alive = response['alive']
+            self.connected = response['connected']
         return response['success']
 
     def upload(self, dataset: str, instruction: str, metadata: dict):
@@ -269,19 +273,34 @@ class bdb51:
 
         if self._command is None and self._response is None:
             self._command = command
-
-            while True:
-                if self._response is not None:  # we need a way to check if the connection is alive
-                    response = self._response
-                    self._logger.log(logging.DEBUG, str(response))
-
-                    if not response['success']:
-                        print('{} failed!'.format(response['command']))
-                        if 'log' in response:
-                            print(response['log'])
-                    self._response = None
-                    break
+            if self.alive:
+                while True:
+                    if self._response is not None:  # we need a way to check if the connection is alive
+                        response = self._response
+                        self._logger.log(logging.DEBUG, str(response))
+    
+                        if not response['success']:
+                            print('{} failed!'.format(response['command']))
+                            if 'log' in response:
+                                print(response['log'])
+                        self._response = None
+                        break
+            else:
+                self._command = None
+                response = command
+                response['success'] = False
         else:
             raise ValueError('command / response state is unexpected')
 
         return response
+    
+    def __del__(self):
+        """
+        Use the finalizer to ensure the subprocess connection is closed.
+        """
+        if self._bdb.status():
+            dead = self._bdb.die()
+            if not dead:
+                print('CARIS Bathy DataBASE connection may not have terminated correctly')
+                self.alive = False
+            self._thread.join()

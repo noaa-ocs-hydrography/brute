@@ -84,11 +84,13 @@ class proc_io:
 
         if self._out_data_type == "carisbdb51":
             if db_name is not None and db_loc is not None:
-                self._bdb = caris.bdb51(db_loc, db_name)
+                self._bdb = caris.bdb5(db_loc, db_name)
+                self._bdb.status()
+                self._bdb.connect()
             else:
                 raise ValueError('No database name or location provided')
 
-    def write(self, dataset: gdal.Dataset, instruction: str, metadata: dict = None):
+    def write(self, dataset, instruction: str, metadata: dict = None):
         """
         Write the provided data to the predefined data type.
 
@@ -160,7 +162,7 @@ class proc_io:
         activate_file = caris.helper.retrieve_activate_batch()
 
         if os.path.exists(write_csar):
-            args = ["cmd.exe", "/K", "set pythonpath= &&",  # setup the commandline
+            args = ["cmd.exe", "/C", "set pythonpath= &&",  # setup the commandline
                     activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
                     python_path, write_csar,  # call the script
                     f'"{datafilename.replace("&", "^&")}"',  # surface path
@@ -424,3 +426,4 @@ class proc_io:
             dataset.GetRasterBand(1).WriteArray(data)
 
         return dataset
+    

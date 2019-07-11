@@ -23,7 +23,7 @@ class bdb51_io:
     An object for handling CARIS BDB I/O through the Python interface.
     """
 
-    def __init__(self, port):
+    def __init__(self, port, buffer_size):
         """
         Initialize the object.
 
@@ -35,6 +35,7 @@ class bdb51_io:
         self.sock = None
         self.port = port
         self.host = 'localhost'
+        self.buffer_size = buffer_size
         self.alive = True
         self.connected = False
         self.node_manager = None
@@ -60,7 +61,7 @@ class bdb51_io:
             self.sock = None
         # send a message saying we are alive
         if self.sock is None:
-            print('could not open socket')
+            print('could not call home from subprocess')
             sys.exit(1)
         else:
             hello_im_here = self.status({'command': None})
@@ -71,15 +72,21 @@ class bdb51_io:
         Listen on the provided socket and wait for something to do.
         """
         while self.alive:
-            data = self.sock.recv(1024)
-            if data:
-                command = pickle.loads(data)
-                response = self.take_commands(command)
-                print('Response', response, end = '\n\n')
-                data = pickle.dumps(response)
-                lensent = self.sock.send(data)
-                if lensent != len(data):
-                    print('Failed to send all data. {} sent.').format(lensent)
+            try:
+                data = self.sock.recv(self.buffer_size)
+                if data:
+                    command = pickle.loads(data)
+                    response = self.take_commands(command)
+                    print('Response', response, end = '\n\n')
+                    data = pickle.dumps(response)
+                    # print('pickled data size is {}, buffer size is {}'.format(len(data), self.buffer_size))
+                    lensent = self.sock.send(data)
+                    # print('sent {} bytes'.format(str(lensent)))
+                    if lensent != len(data):
+                        print('Failed to send all data. {} sent.').format(lensent)
+            except ConnectionResetError:
+                print('Remote connection closed.  Assuming die command.')
+                self.die({})
         self.sock.close()
 
     def take_commands(self, command_dict: dict) -> dict:
@@ -214,6 +221,7 @@ class bdb51_io:
             bathy_path = command_dict['bathy_path']
             with open(command_dict['meta_path'], 'rb') as f:
                 metadata = pickle.load(f)
+                print(metadata)
             if action == 'new':
                 msg = self._upload_new(bathy_path, metadata)
             elif action == 'bathy':
@@ -306,9 +314,8 @@ class bdb51_io:
             response
 
         """
-
-        action = command_dict['action']
-        time.sleep(int(action))
+        if 'action' in command_dict:
+            time.sleep(int(command_dict['action']))
         self._nm = None
         self._db = None
         command_dict['success'] = True
@@ -317,7 +324,7 @@ class bdb51_io:
         return command_dict
 
 
-def main(port: int):
+def main(port: int, buffer_size: int):
     """
     An event loop waiting for commands.
 
@@ -326,6 +333,8 @@ def main(port: int):
     port :
 
     port: int :
+        
+    buffer_size: int : receive buffersize
 
 
     Returns
@@ -333,9 +342,9 @@ def main(port: int):
 
     """
 
-    db_io = bdb51_io(port)
+    db_io = bdb51_io(port, buffer_size)
 
 
 if __name__ == '__main__':
     args = sys.argv
-    main(int(args[-1]))
+    main(int(args[-2]), int(args[-1]))

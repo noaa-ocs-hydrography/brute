@@ -59,6 +59,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._set_data_transform()
         self._set_data_interpolator()
         self._set_data_writer()
+        self._db = None
         self._meta = {}  # initialize the metadata holder
         self._pickle_meta = {}  # initialize the survey pickle object
         self.logger = _logging.getLogger('fuse')
@@ -224,6 +225,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
                 dataset = self._interpolator.interpolate(dataset)
             self._writer.write(dataset, outfilename)
             self._meta['to_filename'] = outfilename
+            # need to add the rest of the metadata for the outfile
+            self._meta_obj.write_meta_record(self._meta)
         else:
             self.logger.log(_logging.DEBUG, 'No fips code found')
             
@@ -231,8 +234,30 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         Make the data available for amalgamation.
         """
-        self._get_stored_meta(infilename)
         self._set_log(infilename)
+        self._get_s57_stored_meta(infilename)
+        if len(self._meta) > 0:
+            if self._db == None:
+                self._connect_to_db()
+            procfile = self._meta['to_filename']
+            print(self._s57_meta)
+            self._db.write(procfile, 'new', self._s57_meta)
+        
+            
+    def _connect_to_db(self):
+        """
+        Connect to the database defined in the configuration dictionary.
+        """
+        if 'database_location' in self._config:
+            db_loc = self._config['database_location']
+        else:
+            raise ValueError('No database location defined in the configuration file.')
+        if 'database_location' in self._config:
+            db_name = self._config['database_name']
+        else:
+            raise ValueError('No database name defined in the configuration file.')
+        intype = self._config['bathymetry_intermediate_file']
+        self._db = proc_io(intype, 'carisbdb51', db_loc = db_loc, db_name = db_name)
         
 
     def _set_log(self, infilename: str):
@@ -289,4 +314,32 @@ class fuse_ehydro(_fbc.fuse_base_class):
             self._meta = self._meta_obj.read_meta_record(f)
         elif self._meta['from_filename'] is not infilename:
             self._meta = self._meta_obj.read_meta_record(f)
+        # need to catch if this file is not in the metadata record yet here.
+        
+    def _get_s57_stored_meta(self, infilename: str):
+        """
+        Get the metadata in a local dictionary so that it can be used within
+        the instantiated object.  In this case the metadata is converted to
+        an s57 version of the metadata.
+
+        Parameters
+        ----------
+        infilename :
+
+        infilename: str :
+
+
+        Returns
+        -------
+
+        """
+
+        # file name is the key rather than the path
+        path, f = _os.path.split(infilename)
+        if 'from_filename' not in self._meta:
+            self._meta = self._meta_obj.read_meta_record(f)
+        elif self._meta['from_filename'] is not infilename:
+            self._meta = self._meta_obj.read_meta_record(f)
+        if len(self._meta) > 0:
+            self._s57_meta = self._meta_obj.row2s57(self._meta)
         # need to catch if this file is not in the metadata record yet here.
