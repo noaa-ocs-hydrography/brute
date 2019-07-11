@@ -90,13 +90,14 @@ class proc_io:
             else:
                 raise ValueError('No database name or location provided')
 
-    def write(self, dataset, instruction: str, metadata: dict = None):
+    def write(self, dataset, instruction: str, metadata: dict = None, sub: bool = False):
         """
         Write the provided data to the predefined data type.
 
         :param dataset:
         :param instruction:
         :param metadata:  (Default value = None)
+        :param sub:  (Default value = False)
         """
 
         self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write')
@@ -110,17 +111,17 @@ class proc_io:
                     os.remove(caris_xml)
 
         if self._out_data_type == 'csar':
-            self._write_csar(dataset, instruction)
+            self._write_csar(dataset, instruction, show=sub)
         elif self._out_data_type == 'bag':
             self._write_bag(dataset, instruction, metadata)
         elif self._out_data_type == 'gpkg':
-            self._write_points(dataset, instruction)
+            self._write_points(dataset, instruction, show=sub)
         elif self._out_data_type == 'carisbdb51':
             self._bdb.upload(dataset, instruction, metadata)
         else:
             raise ValueError(f'writer type unknown: {self._out_data_type}')
 
-    def _write_csar(self, dataset: gdal.Dataset, outfilename: str):
+    def _write_csar(self, dataset: gdal.Dataset, outfilename: str, show: bool = False):
         """
         Convert the provided gdal dataset into a csar file.
 
@@ -129,6 +130,7 @@ class proc_io:
 
         :param dataset:
         :param outfilename:
+        :param show:  (Default value = False)
         """
 
         conda_env_name = self._caris_environment_name
@@ -170,7 +172,10 @@ class proc_io:
             self._logger.log(logging.DEBUG, args)
 
             try:
-                proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                if show:
+                    proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                else:
+                    proc = subprocess.Popen(args)
             except:
                 err = 'Error executing: {}'.foramt(args)
                 # print(err)
