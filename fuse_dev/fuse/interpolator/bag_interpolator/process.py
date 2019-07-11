@@ -38,6 +38,7 @@ class intitialize:
         self._outlocation = outlocation
         self._uval = _catZones.get(catzoc)
         self._io = io
+
         if mode == 'linear':
             pass
         else:
@@ -66,11 +67,13 @@ class intitialize:
         coverage = _cvg.align2grid(coverage, bag.bounds, bag.shape, bag.resolution, bag.nodata)
 
         z, tiles, tile_info = _itp.sliceFinder(bag.size, bag.shape, bag.resolution[0])
+
         if z > 1:
             unitedBag = _np.empty_like(bag.elevation)
             unitedUnc = _np.empty_like(bag.elevation)
             unitedPre = _np.empty_like(bag.elevation)
             bagShape = bag.shape
+
             for ySlice in range(tiles.shape[0]):
                 for xSlice in range(tiles.shape[1]):
                     ts = _dt.now()
@@ -93,6 +96,7 @@ class intitialize:
                     td = _dt.now()
                     tdelt = td - ts
                     print('Tile complete -', td, '| Tile took:', tdelt)
+
             ugrids = [unitedBag, unitedUnc, unitedPre]
             del unitedBag, unitedUnc, unitedPre
         else:
@@ -106,6 +110,7 @@ class intitialize:
             td = _dt.now()
             tdelt = td - ts
             print('Tile complete -', td, '| Tile took:', tdelt)
+
         bag.elevation, bag.uncertainty, coverage.array = _itp.rePrint(bag.elevation, bag.uncertainty,
                                                                       coverage.array, ugrids, bag.nodata, self._io)
         print(coverage.array)

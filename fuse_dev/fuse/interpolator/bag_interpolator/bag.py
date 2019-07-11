@@ -125,6 +125,7 @@ class bag_file:
         """
 
         self._known_data(filepath)
+
         with _tb.open_file(filepath, mode='r') as bagfile:
             self.elevation = _np.flipud(bagfile.root.BAG_root.elevation.read())
             self.uncertainty = _np.flipud(bagfile.root.BAG_root.uncertainty.read())
@@ -134,6 +135,7 @@ class bag_file:
             meta_xml = ''.join(meta_read)
             # print (meta_xml)
             encodeVal = 0
+
             for x in meta_xml:
                 if meta_xml[encodeVal] == '>':
                     meta_xml = meta_xml[encodeVal:]
@@ -141,12 +143,14 @@ class bag_file:
                 else:
                     encodeVal += 1
             startVal = 0
+
             for x in meta_xml:
                 if meta_xml[startVal] == '<':
                     meta_xml = meta_xml[startVal:]
                     break
                 else:
                     startVal += 1
+
             xml_tree = _bh._et.XML(meta_xml)
             self.wkt = _bh.read_wkt_prj(xml_tree)
             self.resolution = _bh.read_res_x_and_y(xml_tree)
@@ -233,7 +237,7 @@ class bag_file:
 
         sx, sy = meta.sw
         nx, ny = meta.ne
-        return [sx, ny], [nx, sy]
+        return (sx, ny), (nx, sy)
 
     def gt2bounds(self, meta, shape: Tuple[int, int]) -> Tuple[Tuple[Tuple[float, float], Tuple[float, float]], float]:
         """
@@ -373,15 +377,19 @@ class gdal_create:
         wkt = srs.ExportToWkt()
         target_ds.SetProjection(wkt)
         x = 1
+
         for item in arrays:
             band = target_ds.GetRasterBand(x)
             band.SetDescription(self._descriptions[x - 1])
             band.SetNoDataValue(bag.nodata)
+
             if self.flip:
                 item = _np.flipud(item)
+
             band.WriteArray(item)
             del band
             x += 1
+
         self.dataset = target_ds
         del target_ds
 
@@ -424,15 +432,19 @@ class gdal_create:
         wkt = srs.ExportToWkt()
         target_ds.SetProjection(wkt)
         x = 1
+
         for item in arrays:
             band = target_ds.GetRasterBand(x)
             band.SetDescription(self._descriptions[x - 1])
             band.SetNoDataValue(nodata)
+
             if self.flip:
                 item = _np.flipud(item)
+
             band.WriteArray(item)
             del band
             x += 1
+
         self.dataset = target_ds
         del target_ds
 

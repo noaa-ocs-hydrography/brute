@@ -122,14 +122,17 @@ class geotiff:
         ulx, xres, xskew, uly, yskew, yres = gdal_obj.GetGeoTransform()
         lrx = ulx + (gdal_obj.RasterXSize * xres)
         lry = uly + (gdal_obj.RasterYSize * yres)
+
         if lrx < ulx:
             s = ulx
             ulx = lrx
             lrx = s
+
         if uly < lry:
             s = lry
             lry = uly
             uly = s
+
         meta = ([ulx, uly], [lrx, lry])
         return meta, (xres, yres)
 
@@ -151,10 +154,12 @@ class geotiff:
         array = band.ReadAsArray()
         del band
         maxVal = _maxValue(array)
+
         if maxVal != 0:
             array = (array < maxVal).astype(_np.int)
         else:
             array = (array > maxVal).astype(_np.int)
+
         shape = array.shape
         return array, shape, 0
 
@@ -277,9 +282,9 @@ class geopackage:
         for feature in source_layer:
             if feature is not None:
                 geom = feature.GetGeometryRef()
-                #                print(geom.ExportToWkt())
+                # print(geom.ExportToWkt())
                 ds_geom = _ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-                #                print(source_srs, to_proj, sep='\n')
+                # print(source_srs, to_proj, sep='\n')
                 coordTrans = _osr.CoordinateTransformation(source_srs, to_srs)
                 ds_geom.Transform(coordTrans)
                 driver = _ogr.GetDriverByName('Memory')
@@ -381,15 +386,18 @@ class unified_coverage:
         print('_open')
         bndRasts = []
         y = 0
+
         for item in files:
             fName = _os.path.split(item)[1]
             ext = _os.path.splitext(fName)[1].lower()
+
             if ext in ('.tiff', '.tif'):
                 rast = geotiff()
                 rast.open_file(item)
             elif ext in ('.shp', '.gpkg'):
                 rast = geopackage()
                 rast.open_file(item, bag_wkt)
+
             bndRasts.append(rast)
             y += 1
 
@@ -455,17 +463,22 @@ class unified_coverage:
         maxVal = 0
         coverageList = []
         x = 0
+
         for raster in rasters:
             # print(raster.shape)
             maxVal = raster.nodata
             # print(maxVal)
             cols, rows = raster.shape
+
             if x == 0:
                 # print('original', shape)
+
                 if cols >= shape[0]:
                     shape[0] = cols
+
                 if rows >= shape[1]:
                     shape[1] = rows
+
                 # print('original', shape)
                 coverageList.append([x, raster.array])
             elif x != 0:
@@ -474,8 +487,10 @@ class unified_coverage:
                     pass
                 else:
                     coverageList.append([x, raster.array])
+
             # print('yup')1
             x += 1
+
         # plt.figure()
         covDict = dict(coverageList)
 
@@ -483,6 +498,7 @@ class unified_coverage:
             # plt.imshow(grid)
             # plt.show()
             array = _np.expand_dims(grid, 2)
+
             if i == 0:
                 allarrays = array
             else:
@@ -491,10 +507,12 @@ class unified_coverage:
         meanCoverage = _np.nanmean(allarrays, axis=2)
         # plt.imshow(meanCoverage)
         # plt.show()
+
         if maxVal != 0:
             meanCoverage = (meanCoverage < maxVal).astype(_np.int)
         else:
             meanCoverage = (meanCoverage > maxVal).astype(_np.int)
+
         # plt.imshow(meanCoverage)
         # plt.show()
 
@@ -534,10 +552,12 @@ class unified_coverage:
         cols, rows = 0, 0
         sxd, nyd = 0, 0
         nxd, syd = 0, 0
+
         for grid in rasters:
             bounds = grid.bounds
             ul = bounds[0]
             lr = bounds[-1]
+
             if x == 0:
                 nw = ul
                 se = lr
@@ -548,35 +568,42 @@ class unified_coverage:
                 lrx, lry = lr
                 nwx, nwy = nw
                 scx, scy = se
+
                 if ulx <= nwx:
                     nxd = nwx - ulx
                     nwx = ulx
                 elif ulx >= nwx:
                     nxd = ulx - nwx
+
                 if uly >= nwy:
                     nyd = uly - nwy
                     nwy = uly
                 elif uly <= nwy:
                     nyd = nwy - uly
+
                 if lrx >= scx:
                     sxd = lrx - scx
                     scx = lrx
                 elif lrx <= scx:
                     sxd = scx - lrx
+
                 if lry <= scy:
                     syd = lry - scy
                     scy = lry
                 elif lry >= scy:
                     syd = scy - lry
+
                 # print(nxd, nyd, sxd, syd)
                 # print(sxd, nyd)
                 nw = [nwx, nwy]
                 se = [scx, scy]
                 cols, rows = (int(_np.round(nwy - scy)), int(_np.round(scx - nwx)))
+
         # print('cols: ' , nwy - scy, '\nrows: ', scx - nwx)
         # print(nw, se)
         sizedCoverage = []
         # print('resize?')
+
         if nxd != 0 or nyd != 0 or sxd != 0 or syd != 0:
             # plt.figure()
             # print('yes')#, _dt.now())
@@ -592,31 +619,38 @@ class unified_coverage:
                 y, x = arr.shape
                 # print(y, rows)
                 # print(x, cols)
+
                 if x != cols:
                     exp = int(abs(rows - x))
                     # print(exp)
                     add = _np.full((y, exp), maxVal)
                     arr = _np.column_stack([arr, add])
                     y, x = arr.shape
+
                 if y != rows:
                     exp = int(abs(cols - y))
                     # print(exp)
                     add = _np.full((exp, x), maxVal)
                     arr = _np.vstack([arr, add])
+
                 # print(bef, arr.shape)
+
                 if nwx != bndx:
                     rollx = bndx - nwx
                     # print(rollx)
                     arr = _np.roll(arr, int(rollx), axis=1)
+
                 if nwy != bndy:
                     rolly = nwy - bndy
                     # print(rolly)
                     arr = _np.roll(arr, int(rolly), axis=0)
+
                 grid.array = arr
                 # plt.imshow(grid.array)
                 #  plt.show()
                 grid.bounds = (nw, se)
                 sizedCoverage.append(grid)
+
             bounds = (nw, se)
             # print(bounds)
             # print('done')#, _dt.now())
