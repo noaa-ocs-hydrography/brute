@@ -167,14 +167,13 @@ class proc_io:
                     f'"{self._in_data_type.replace("&", "^&")}"',  # data type
                     ]
             args = ' '.join(args)
-            print(args)
             self._logger.log(logging.DEBUG, args)
 
             try:
                 proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
             except:
                 err = 'Error executing: {}'.foramt(args)
-                print(err)
+                # print(err)
                 self._logger.log(logging.DEBUG, err)
 
             try:
@@ -183,7 +182,7 @@ class proc_io:
                 self._logger.log(logging.DEBUG, stderr)
             except:
                 err = 'Error in handling error output'
-                print(err)
+                # print(err)
                 self._logger.log(logging.DEBUG, err)
 
             if not os.path.exists(metadata['outfilename']):
@@ -212,7 +211,7 @@ class proc_io:
         if metadata is not None:
             raise NotImplementedError('bag xml metadata write has not been implemented')
 
-        print(dataset.GetGeoTransform())
+        # print(dataset.GetGeoTransform())
 
         # Prepare destination file
         driver = gdal.GetDriverByName("BAG")
@@ -318,14 +317,14 @@ class proc_io:
 
         # get the logisitics for converting the gdal dataset to csar
         gt = dataset.GetGeoTransform()
-        print(gt)
+        # print(gt)
         meta['resx'] = gt[1]
         meta['resy'] = gt[5]
         meta['originx'] = gt[0]
         meta['originy'] = gt[3]
         meta['dimx'] = dataset.RasterXSize
         meta['dimy'] = dataset.RasterYSize
-        print(meta)
+        # print(meta)
         meta['crs'] = dataset.GetProjection()
         rb = dataset.GetRasterBand(1)  # should this be hardcoded for 1?
         meta['nodata'] = rb.GetNoDataValue()
@@ -359,7 +358,7 @@ class proc_io:
             data[n, :] = f.geometry().GetPoint()
 
         meta['crs'] = crs
-        print(meta)
+        # print(meta)
 
         return data, meta
 
@@ -400,7 +399,7 @@ class proc_io:
         #        points.append(info)
 
         meta['crs'] = crs
-        print(meta)
+        # print(meta)
 
         return points, meta
 

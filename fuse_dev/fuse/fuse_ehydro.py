@@ -228,7 +228,6 @@ class fuse_ehydro(_fbc.fuse_base_class):
             if 'poly_name' in self._pickle_meta:
                 shapename = self._pickle_meta['poly_name']
                 shapepath = _os.path.join(infilepath, shapename)
-                print(shapepath)
                 dataset = self._interpolator.interpolate(dataset, shapepath)
             else:
                 dataset = self._interpolator.interpolate(dataset)

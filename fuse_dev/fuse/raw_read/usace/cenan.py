@@ -563,10 +563,8 @@ class read_raw:
                 else:
                     if ',' in line:
                         output = f'Comma delimited file found: {infilename}'
-                        print(output)
                         self._logger.log(_logging.DEBUG, output)
-                        bathy = []
-                        break
+                        raise ValueError(output)
                     else:
                         bathy.append([float(x) for x in line.split(' ')])
         bathy = _np.asarray(bathy)
