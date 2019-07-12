@@ -329,7 +329,7 @@ def contentSearch(filenames: List[str], extensions: List[str]) -> List[str]:
     """
 
     return list(filter(lambda filename: any(
-        _re.compile(rf'\.{extension}$', _re.IGNORECASE).search(filename) is not None for extension in extensions),
+        _re.compile(rf'{extension}$', _re.IGNORECASE).search(filename) is not None for extension in extensions),
                        filenames))
 
 
