@@ -355,8 +355,7 @@ def zipManipulate(path: str, name: str):
         zipped = _zf.ZipFile(name)
         contents = zipped.namelist()
 
-        for item in filter(lambda item: _os.path.exists(item),
-                           contentSearch(contents, ['xyz', 'xml', 'pickle', 'gpkg'])):
+        for item in contentSearch(contents, ['xyz', 'xml', 'pickle', 'gpkg']):
             zipped.extract(item)
 
         zipped.close()
