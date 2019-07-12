@@ -20,11 +20,12 @@ from osgeo import osr as _osr
 progLoc = _os.getcwd()
 """progLoc is the program's own file location / current working directory (cwd)
 obtained by :func:`os.getcwd()`"""
-extensions = {'xyz': _re.compile(r'xyz', _re.IGNORECASE),
-              'xml': _re.compile(r'.xml', _re.IGNORECASE),
-              'pickle': _re.compile(r'.pickle', _re.IGNORECASE),
-              'gpkg': _re.compile(r'.gpkg', _re.IGNORECASE)
-              }
+extensions = {
+    'xyz': _re.compile(r'xyz', _re.IGNORECASE),
+    'xml': _re.compile(r'.xml', _re.IGNORECASE),
+    'pickle': _re.compile(r'.pickle', _re.IGNORECASE),
+    'gpkg': _re.compile(r'.gpkg', _re.IGNORECASE)
+}
 
 zreg = _re.compile(r'.zip', _re.IGNORECASE)
 config = _cp.ConfigParser(interpolation=_cp.ExtendedInterpolation())
@@ -332,9 +333,7 @@ def contentSearch(contents: List[str]) -> List[str]:
 
     """
 
-    return list(filter(
-        lambda content: (v.search(content) for k, v in extensions.items()),
-        contents))
+    return list(filter(lambda content: (regex.search(content) for regex in extensions.values()), contents))
 
 
 def zipManipulate(path: str, name: str):
