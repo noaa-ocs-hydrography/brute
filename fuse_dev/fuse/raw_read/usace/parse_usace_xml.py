@@ -1476,7 +1476,7 @@ def parse_abstract_iso_ex(abstract):
             m['Vertical Datum Description'] = name
         if name.upper().find('MEAN LOWER LOW WATER') >= 0:
             m['VERTDAT'] = 'MLLW'
-        elif name.find('MLLW') >= 0  ## CESAM
+        elif name.find('MLLW') >= 0:  ## CESAM
             m['VERTDAT'] = 'MLLW'
         elif name.find('MLW') >= 0:  # CESAM
             m['VERTDAT'] = 'Mean Low Water'
