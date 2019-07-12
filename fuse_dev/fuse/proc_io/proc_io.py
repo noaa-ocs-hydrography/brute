@@ -90,13 +90,14 @@ class proc_io:
             else:
                 raise ValueError('No database name or location provided')
 
-    def write(self, dataset, instruction: str, metadata: dict = None):
+    def write(self, dataset, instruction: str, metadata: dict = None, sub: bool = False):
         """
         Write the provided data to the predefined data type.
 
         :param dataset:
         :param instruction:
         :param metadata:  (Default value = None)
+        :param sub:  (Default value = False)
         """
 
         self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write')
@@ -110,17 +111,17 @@ class proc_io:
                     os.remove(caris_xml)
 
         if self._out_data_type == 'csar':
-            self._write_csar(dataset, instruction)
+            self._write_csar(dataset, instruction, show=sub)
         elif self._out_data_type == 'bag':
             self._write_bag(dataset, instruction, metadata)
         elif self._out_data_type == 'gpkg':
-            self._write_points(dataset, instruction)
+            self._write_points(dataset, instruction, show=sub)
         elif self._out_data_type == 'carisbdb51':
             self._bdb.upload(dataset, instruction, metadata)
         else:
             raise ValueError(f'writer type unknown: {self._out_data_type}')
 
-    def _write_csar(self, dataset: gdal.Dataset, outfilename: str):
+    def _write_csar(self, dataset: gdal.Dataset, outfilename: str, show: bool = False):
         """
         Convert the provided gdal dataset into a csar file.
 
@@ -129,6 +130,7 @@ class proc_io:
 
         :param dataset:
         :param outfilename:
+        :param show:  (Default value = False)
         """
 
         conda_env_name = self._caris_environment_name
@@ -168,14 +170,16 @@ class proc_io:
                 f'"{self._in_data_type.replace("&", "^&")}"',  # data type
             ]
             args = ' '.join(args)
-            print(args)
             self._logger.log(logging.DEBUG, args)
 
             try:
-                proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                if show:
+                    proc = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                else:
+                    proc = subprocess.Popen(args)
             except:
                 err = f'Error executing: {args}'
-                print(err)
+                # print(err)
                 self._logger.log(logging.DEBUG, err)
 
             try:
@@ -184,7 +188,7 @@ class proc_io:
                 self._logger.log(logging.DEBUG, stderr)
             except:
                 err = 'Error in handling error output'
-                print(err)
+                # print(err)
                 self._logger.log(logging.DEBUG, err)
 
             if not os.path.exists(metadata['outfilename']):
@@ -213,7 +217,7 @@ class proc_io:
         if metadata is not None:
             raise NotImplementedError('bag xml metadata write has not been implemented')
 
-        print(dataset.GetGeoTransform())
+        # print(dataset.GetGeoTransform())
 
         # Prepare destination file
         driver = gdal.GetDriverByName("BAG")
@@ -318,14 +322,14 @@ class proc_io:
 
         # get the logisitics for converting the gdal dataset to csar
         gt = dataset.GetGeoTransform()
-        print(gt)
+        # print(gt)
         meta['resx'] = gt[1]
         meta['resy'] = gt[5]
         meta['originx'] = gt[0]
         meta['originy'] = gt[3]
         meta['dimx'] = dataset.RasterXSize
         meta['dimy'] = dataset.RasterYSize
-        print(meta)
+        # print(meta)
         meta['crs'] = dataset.GetProjection()
         rb = dataset.GetRasterBand(1)  # should this be hardcoded for 1?
         meta['nodata'] = rb.GetNoDataValue()
@@ -359,7 +363,7 @@ class proc_io:
             data[n, :] = f.geometry().GetPoint()
 
         meta['crs'] = crs
-        print(meta)
+        # print(meta)
 
         return data, meta
 
@@ -400,7 +404,7 @@ class proc_io:
         #        points.append(info)
 
         meta['crs'] = crs
-        print(meta)
+        # print(meta)
 
         return points, meta
 
