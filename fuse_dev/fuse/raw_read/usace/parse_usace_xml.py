@@ -295,35 +295,35 @@ class XML_Meta(object):
                     my_etree_dict1[xml_path_to_baseattribute[key]] = findall_results[0].text
 
         attrlabl_findall_results = self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl')
-        attrunit_find_results = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit')
-        attrdef_find_results = self.xml_tree.find('./eainfo/detailed/attr/attrdef')
+        attrunit_find_result = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit')
+        attrdef_find_result = self.xml_tree.find('./eainfo/detailed/attr/attrdef')
 
         for x in attrlabl_findall_results:
             # pulling in Z units from attrs
             if x.text == 'Z_depth':
-                my_etree_dict1['Z_units'] = attrunit_find_results.text
-                # use to debug #print(f"{find_results.text} Z units")
+                my_etree_dict1['Z_units'] = attrunit_find_result.text
+                # use to debug #print(f"{attrunit_find_result.text} Z units")
                 if my_etree_dict1['Z_units'].upper() == 'usSurveyFoot'.upper():
                     my_etree_dict1['from_vert_units'] = 'US Survey Foot'
 
         for x in attrlabl_findall_results:
             if x.text == 'Z_use':
-                my_etree_dict1['Z_use_def'] = attrdef_find_results.text
-                my_etree_dict1['Z_use_units'] = attrunit_find_results.text
+                my_etree_dict1['Z_use_def'] = attrdef_find_result.text
+                my_etree_dict1['Z_use_units'] = attrunit_find_result.text
 
         if 'Horizontal_Units' in my_etree_dict1:  # check if Horizontal units already defined if not populate
             if len(my_etree_dict1['Horizontal_Units']) < 1:
                 for x in attrlabl_findall_results:
                     if x.text == 'xLocation':
-                        my_etree_dict1['xLocation'] = attrunit_find_results.text
-                        my_etree_dict1['H_units'] = attrunit_find_results.text
+                        my_etree_dict1['xLocation'] = attrunit_find_result.text
+                        my_etree_dict1['H_units'] = attrunit_find_result.text
                         if my_etree_dict1['H_units'].upper() == 'usSurveyFoot'.upper():
                             my_etree_dict1['Horizontal_Units'] = 'US Survey Foot'
         else:
             for x in attrlabl_findall_results:
                 if x.text == 'xLocation':  # horizontal unit, yLocation should be the same
-                    my_etree_dict1['xLocation'] = attrunit_find_results.text
-                    my_etree_dict1['H_units'] = attrunit_find_results.text
+                    my_etree_dict1['xLocation'] = attrunit_find_result.text
+                    my_etree_dict1['H_units'] = attrunit_find_result.text
 
                     if my_etree_dict1['H_units'].upper() == 'usSurveyFoot'.upper():
                         my_etree_dict1['Horizontal_Units'] = 'US Survey Foot'
