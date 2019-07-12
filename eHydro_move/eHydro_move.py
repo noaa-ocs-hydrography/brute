@@ -20,12 +20,6 @@ from osgeo import osr as _osr
 progLoc = _os.getcwd()
 """progLoc is the program's own file location / current working directory (cwd)
 obtained by :func:`os.getcwd()`"""
-extensions = {
-    'xyz': _re.compile(r'xyz', _re.IGNORECASE),
-    'xml': _re.compile(r'.xml', _re.IGNORECASE),
-    'pickle': _re.compile(r'.pickle', _re.IGNORECASE),
-    'gpkg': _re.compile(r'.gpkg', _re.IGNORECASE)
-}
 
 zreg = _re.compile(r'.zip', _re.IGNORECASE)
 config = _cp.ConfigParser(interpolation=_cp.ExtendedInterpolation())
@@ -230,7 +224,7 @@ def fileCollect(path: str, bounds: str) -> list:
             zipped = _zf.ZipFile(zfile)
             contents = zipped.namelist()
             for name in contents:
-                if extensions['gpkg'].search(name):
+                if _re.compile(r'\.gpkg$', _re.IGNORECASE).search(name):
                     path = _os.path.join(root, name)
                     print(x, path)
                     zipped.extract(name)
@@ -312,7 +306,7 @@ def eHydroZIPs(regions: Dict[str, List[str]]) -> Dict[str, List[str]]:
     return hold
 
 
-def contentSearch(contents: List[str]) -> List[str]:
+def contentSearch(filenames: List[str], extensions: List[str]) -> List[str]:
     """
     This funtion takes a list of zipfile contents.
 
@@ -322,9 +316,10 @@ def contentSearch(contents: List[str]) -> List[str]:
 
     Parameters
     ----------
-    contents :
+    filenames: List[str] :
         A list of file names
-    contents: List[str] :
+    extensions: List[str] :
+        list of extensions to filter by
 
     Returns
     -------
@@ -333,7 +328,9 @@ def contentSearch(contents: List[str]) -> List[str]:
 
     """
 
-    return list(filter(lambda content: (regex.search(content) for regex in extensions.values()), contents))
+    return list(filter(lambda filename: any(
+        _re.compile(rf'\.{extension}$', _re.IGNORECASE).search(filename) is not None for extension in extensions),
+                       filenames))
 
 
 def zipManipulate(path: str, name: str):
@@ -357,9 +354,9 @@ def zipManipulate(path: str, name: str):
     try:
         zipped = _zf.ZipFile(name)
         contents = zipped.namelist()
-        files = contentSearch(contents)
 
-        for item in filter(lambda item: _os.path.exists(item), files):
+        for item in filter(lambda item: _os.path.exists(item),
+                           contentSearch(contents, ['xyz', 'xml', 'pickle', 'gpkg'])):
             zipped.extract(item)
 
         zipped.close()
