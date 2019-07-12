@@ -20,41 +20,41 @@ from fuse.proc_io.proc_io import proc_io
 
 class fuse_ehydro(_fbc.fuse_base_class):
     """TODO write description"""
-    _cols = ['from_filename',
-             'from_path',
-             'to_filename',
-             'start_date',
-             'end_date',
-             'from_fips',
-             'from_horiz_datum',
-             'from_horiz_units',
-             'from_horiz_unc',
-             'to_horiz_datum',
-             'from_vert_datum',
-             'from_vert_key',
-             'from_vert_units',
-             'from_vert_unc',
-             'to_vert_datum',
-             'to_vert_units',
-             'agency',
-             'source_indicator',
-             'source_type',
-             'complete_coverage',
-             'complete_bathymetry',
-             'vert_uncert_fixed',
-             'vert_uncert_vari',
-             'horiz_uncert',
-             'feat_size',
-             'feat_detect',
-             'feat_least_depth',
-             'interpolated',
-             'script_version',
-             ]
+    _cols = [
+        'from_filename',
+        'from_path',
+        'to_filename',
+        'start_date',
+        'end_date',
+        'from_fips',
+        'from_horiz_datum',
+        'from_horiz_units',
+        'from_horiz_unc',
+        'to_horiz_datum',
+        'from_vert_datum',
+        'from_vert_key',
+        'from_vert_units',
+        'from_vert_unc',
+        'to_vert_datum',
+        'to_vert_units',
+        'agency',
+        'source_indicator',
+        'source_type',
+        'complete_coverage',
+        'complete_bathymetry',
+        'vert_uncert_fixed',
+        'vert_uncert_vari',
+        'horiz_uncert',
+        'feat_size',
+        'feat_detect',
+        'feat_least_depth',
+        'interpolated',
+        'script_version'
+    ]
 
     def __init__(self, config_filename):
         super().__init__(config_filename)
-        self._meta_obj = _mre.meta_review_ehydro(self._config['metapath'],
-                                                 fuse_ehydro._cols)
+        self._meta_obj = _mre.meta_review_ehydro(self._config['metapath'], fuse_ehydro._cols)
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()
@@ -79,6 +79,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
 
         try:
             reader_type = self._config['raw_reader_type'].casefold()
+
             if reader_type == 'cenan':
                 self._reader = _usace.cenan.read_raw()
             elif reader_type == 'cemvn':
@@ -178,6 +179,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._meta.update(meta)
         # write the metadata
         self._meta_obj.write_meta_record(meta)
+
         if 'from_fips' in self._meta:
             pass
             # self.process(infilename)
@@ -201,6 +203,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
 
         self._get_stored_meta(infilename)
         self._set_log(infilename)
+
         if 'from_fips' in self._meta:
             # convert the bathy
             outpath = self._config['outpath']
@@ -209,11 +212,14 @@ class fuse_ehydro(_fbc.fuse_base_class):
             outfilename = _os.path.join(outpath, infileroot)
             new_ext = self._config['bathymetry_intermediate_file']
             outfilename = f'{outfilename}.{new_ext}'
+
             # oddly _transform becomes the bathymetry reader here...
+
             # return a gdal dataset in the right datums for combine
             dataset = self._transform.translate(infilename, self._meta)
             self._points.write(dataset, outfilename)
             print(dataset.GetProjection())
+
             # take a gdal dataset for interpolation and return a gdal dataset
             if 'poly_name' in self._pickle_meta:
                 shapename = self._pickle_meta['poly_name']
@@ -222,6 +228,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
                 dataset = self._interpolator.interpolate(dataset, shapepath)
             else:
                 dataset = self._interpolator.interpolate(dataset)
+
             self._writer.write(dataset, outfilename)
             self._meta['to_filename'] = outfilename
         else:
@@ -248,9 +255,11 @@ class fuse_ehydro(_fbc.fuse_base_class):
         fname, ext = _os.path.splitext(filename)
         logname = _os.path.join(metapath, f'{fname}.log')
         self._meta['logfilename'] = logname
+
         # remove handlers that might have existed from previous files
         for h in self.logger.handlers:
             self.logger.removeHandler(h)
+
         # create file handler for this filename
         fh = _logging.FileHandler(logname)
         fh.setLevel(_logging.DEBUG)
@@ -277,8 +286,10 @@ class fuse_ehydro(_fbc.fuse_base_class):
 
         # file name is the key rather than the path
         path, f = _os.path.split(infilename)
+
         if 'from_filename' not in self._meta:
             self._meta = self._meta_obj.read_meta_record(f)
         elif self._meta['from_filename'] is not infilename:
             self._meta = self._meta_obj.read_meta_record(f)
-        # need to catch if this file is not in the metadata record yet here.
+
+        # TODO need to catch if this file is not in the metadata record yet here.

@@ -21,8 +21,9 @@ class fuse_base_class:
         Parameters
         ----------
         configfilename
-            test
+            filename of config file
         """
+
         self._configfilename = configfilename
         self._config = self._read_configfile(configfilename)
         self.rawdata_path = self._config['rawpaths']
@@ -54,14 +55,14 @@ class fuse_base_class:
         with open(confile, 'r') as configfile:
             for line in configfile:
                 if len(line) > 0:  # ignore lines with nothing
-                    if line[0] == '#':
-                        pass  # ignore these lines
-                    else:
+                    if line[0] != '#':  # ignore commented lines
                         stub, info = line.split('=')
+
                         # clean these up a bit
                         info = info.replace('\n', '')
                         stub = stub.rstrip()
                         info = info.rstrip().lstrip()
+
                         if stub == 'outpath':
                             if _os.path.isdir(info):
                                 config[stub] = info
@@ -72,18 +73,22 @@ class fuse_base_class:
                         elif stub == 'rawpaths':
                             rawpaths = []
                             raw = info.split(';')
+
                             for r in raw:
                                 if _os.path.isdir(r):
                                     rawpaths.append(r)
                                 else:
                                     raise ValueError(f'Invalid input path: {r}')
+
                             config[stub] = rawpaths
                         else:
                             config[stub] = info
-        if len(config) == 0:
-            raise ValueError('Failed to read configuration file.')
-        else:
+
+        if len(config) > 0:
             self._check_config(config)
+        else:
+            raise ValueError('Failed to read configuration file.')
+
         return config
 
     def _check_config(self, config_dict: dict):
@@ -93,8 +98,6 @@ class fuse_base_class:
 
         Parameters
         ----------
-        config_dict :
-            
         config_dict: dict :
             
 
@@ -105,12 +108,16 @@ class fuse_base_class:
 
         if 'rawpaths' not in config_dict:
             raise ValueError('No path to raw data found in configuration file.')
+
         if 'outpath' not in config_dict:
             raise ValueError('No path to output data found in configuration file.')
+
         if 'to_horiz_datum' not in config_dict:
             raise ValueError('No output horizontal datum found in configuration file.')
+
         if 'to_vert_datum' not in config_dict:
             raise ValueError('No output vertical datum found in configuration file.')
+
         if 'metapath' not in config_dict:
             raise ValueError('No metadata output location found in configuration file.')
 
@@ -121,8 +128,6 @@ class fuse_base_class:
 
         Parameters
         ----------
-        infilename :
-            
         infilename: str :
             
 
@@ -162,8 +167,6 @@ class fuse_base_class:
 
         Parameters
         ----------
-        infilename :
-            
         infilename: str :
             
 

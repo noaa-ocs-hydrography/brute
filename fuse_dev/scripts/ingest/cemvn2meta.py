@@ -21,6 +21,7 @@ import fuse.fuse_ehydro as ffe
 
 if __name__ == '__main__':
     cemvn = ffe.fuse_ehydro('cemvn.config')  # this config is local for testing
+
     for path in cemvn.rawdata_path:
         flist = glob(os.path.join(path, '*.xyz'))
         for f in flist:
