@@ -333,9 +333,7 @@ def contentSearch(contents: List[str]) -> List[str]:
 
     """
 
-    return [filename for filename_tuple in
-            filter(lambda content: (regex.search(content) for regex in extensions.values()), contents) for filename in
-            filename_tuple]
+    return list(filter(lambda content: (regex.search(content) for regex in extensions.values()), contents))
 
 
 def zipManipulate(path: str, name: str):
