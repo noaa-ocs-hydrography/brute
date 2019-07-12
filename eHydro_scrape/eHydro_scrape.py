@@ -26,7 +26,7 @@ from osgeo import osr, ogr
 """Known global constants"""
 # print (datetime.datetime.now().strftime('%b %d %X %Y'))
 # progLoc = '\\eHydro_scrape'
-progLoc = r'C:\NBS_Data'
+progLoc = os.getcwd()
 """progLoc is the program's own file location / current working directory (cwd)
 obtained by :func:`os.getcwd()`"""
 full = re.compile(r'FULL.xyz', re.IGNORECASE)
