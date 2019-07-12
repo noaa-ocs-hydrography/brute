@@ -30,10 +30,8 @@ def _maxValue(arr: _np.array):
 
     Parameters
     ----------
-    arr :
-        An input array
     arr: _np.array :
-
+        An input array
 
     Returns
     -------
@@ -89,10 +87,8 @@ class geotiff:
 
         Parameters
         ----------
-        filename :
-            The complete file path of the input coverage file
         filename: str :
-
+            The complete file path of the input coverage file
 
         Returns
         -------
@@ -113,7 +109,7 @@ class geotiff:
         Parameters
         ----------
         gdal_obj :
-
+            TODO write description
 
         Returns
         -------
@@ -123,14 +119,17 @@ class geotiff:
         ulx, xres, xskew, uly, yskew, yres = gdal_obj.GetGeoTransform()
         lrx = ulx + (gdal_obj.RasterXSize * xres)
         lry = uly + (gdal_obj.RasterYSize * yres)
+
         if lrx < ulx:
             s = ulx
             ulx = lrx
             lrx = s
+
         if uly < lry:
             s = lry
             lry = uly
             uly = s
+
         meta = ([ulx, uly], [lrx, lry])
         return meta, (xres, yres)
 
@@ -141,7 +140,7 @@ class geotiff:
         Parameters
         ----------
         gdal_obj :
-
+            TODO write description
 
         Returns
         -------
@@ -152,10 +151,12 @@ class geotiff:
         array = band.ReadAsArray()
         del band
         maxVal = _maxValue(array)
+
         if maxVal != 0:
             array = (array < maxVal).astype(_np.int)
         else:
             array = (array > maxVal).astype(_np.int)
+
         shape = array.shape
         return array, shape, 0
 
@@ -208,21 +209,15 @@ class geopackage:
 
         Parameters
         ----------
-        filename :
-            The complete file path of the input coverage file
-        to_crs :
-            WKT object with destination spatial reference system
-        pixel_size :
-            Default value = 1)
-        nodata :
-            Default value = 255)
         filename: str :
-
+            The complete file path of the input coverage file
         to_crs: str :
-
+            WKT object with destination spatial reference system
         pixel_size: int :
+            TODO write description
              (Default value = 1)
         nodata: int :
+            TODO write description
              (Default value = 255)
 
         Returns
@@ -243,19 +238,15 @@ class geopackage:
 
         Parameters
         ----------
-        filename :
-            The complete file path of the input coverage file
-        to_crs :
-            WKT object with destination spatial reference system
-        pixel_size :
-            param nodata:
         filename: str :
-
+            The complete file path of the input coverage file
         to_crs: str :
-
+            WKT object with destination spatial reference system
         pixel_size: int :
+            TODO write description
              (Default value = 1)
         nodata: int :
+            TODO write description
              (Default value = 255)
 
         Returns
@@ -278,9 +269,9 @@ class geopackage:
         for feature in source_layer:
             if feature is not None:
                 geom = feature.GetGeometryRef()
-                #                print(geom.ExportToWkt())
+                # print(geom.ExportToWkt())
                 ds_geom = _ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-                #                print(source_srs, to_proj, sep='\n')
+                # print(source_srs, to_proj, sep='\n')
                 coordTrans = _osr.CoordinateTransformation(source_srs, to_srs)
                 ds_geom.Transform(coordTrans)
                 driver = _ogr.GetDriverByName('Memory')
@@ -332,10 +323,8 @@ class geopackage:
 
         Parameters
         ----------
-        filepath :
-
         filepath: str :
-
+            TODO write description
 
         Returns
         -------
@@ -367,12 +356,10 @@ class unified_coverage:
 
         Parameters
         ----------
-        files :
-            param bag_wkt:
         files: List[str] :
-
+            TODO write description
         bag_wkt: str :
-
+            TODO write description
 
         Returns
         -------
@@ -382,30 +369,33 @@ class unified_coverage:
         print('_open')
         bndRasts = []
         y = 0
+
         for item in files:
             fName = _os.path.split(item)[1]
             ext = _os.path.splitext(fName)[1].lower()
+
             if ext in ('.tiff', '.tif'):
                 rast = geotiff()
                 rast.open_file(item)
             elif ext in ('.shp', '.gpkg'):
                 rast = geopackage()
                 rast.open_file(item, bag_wkt)
+
             bndRasts.append(rast)
             y += 1
 
         return bndRasts
 
-    def _align_and_combine(self, rasters, name):
+    def _align_and_combine(self, rasters: list, name: str):
         """
         TODO write description
 
         Parameters
         ----------
-        rasters :
-            param name:
-        name :
-
+        rasters: list:
+            TODO write description
+        name: str :
+            TODO write description
 
         Returns
         -------
@@ -442,13 +432,10 @@ class unified_coverage:
 
         Parameters
         ----------
-        rasters :
-            List of coverage objects
-        name :
-            File path of the relevant bag file
         rasters: list :
-
+            List of coverage objects
         name: str :
+            File path of the relevant bag file
         """
 
         print('_combine')
@@ -456,48 +443,58 @@ class unified_coverage:
         maxVal = 0
         coverageList = []
         x = 0
+
         for raster in rasters:
-            #            print(raster.shape)
+            # print(raster.shape)
             maxVal = raster.nodata
-            #            print(maxVal)
+            # print(maxVal)
             cols, rows = raster.shape
+
             if x == 0:
-                #                print('original', shape)
+                # print('original', shape)
+
                 if cols >= shape[0]:
                     shape[0] = cols
+
                 if rows >= shape[1]:
                     shape[1] = rows
-                #                print('original', shape)
+
+                # print('original', shape)
                 coverageList.append([x, raster.array])
             elif x != 0:
                 if [cols, rows] != shape:
-                    #                    print('nope')
+                    # print('nope')
                     pass
                 else:
                     coverageList.append([x, raster.array])
-            #                    print('yup')1
+
+            # print('yup')1
             x += 1
-        #        plt.figure()
+
+        # plt.figure()
         covDict = dict(coverageList)
 
         for i, grid in covDict.items():
-            #            plt.imshow(grid)
-            #            plt.show()
+            # plt.imshow(grid)
+            # plt.show()
             array = _np.expand_dims(grid, 2)
+
             if i == 0:
                 allarrays = array
             else:
                 allarrays = _np.concatenate((allarrays, array), axis=2)
 
         meanCoverage = _np.nanmean(allarrays, axis=2)
-        #        plt.imshow(meanCoverage)
-        #        plt.show()
+        # plt.imshow(meanCoverage)
+        # plt.show()
+
         if maxVal != 0:
             meanCoverage = (meanCoverage < maxVal).astype(_np.int)
         else:
             meanCoverage = (meanCoverage > maxVal).astype(_np.int)
-        #        plt.imshow(meanCoverage)
-        #        plt.show()
+
+        # plt.imshow(meanCoverage)
+        # plt.show()
 
         fullname = _os.path.split(name)[1]
         justname = _os.path.splitext(fullname)[0]
@@ -535,96 +532,111 @@ class unified_coverage:
         cols, rows = 0, 0
         sxd, nyd = 0, 0
         nxd, syd = 0, 0
+
         for grid in rasters:
             bounds = grid.bounds
             ul = bounds[0]
             lr = bounds[-1]
+
             if x == 0:
                 nw = ul
                 se = lr
-                #                print(nw, se)
+                # print(nw, se)
                 x += 1
             else:
                 ulx, uly = ul
                 lrx, lry = lr
                 nwx, nwy = nw
                 scx, scy = se
+
                 if ulx <= nwx:
                     nxd = nwx - ulx
                     nwx = ulx
                 elif ulx >= nwx:
                     nxd = ulx - nwx
+
                 if uly >= nwy:
                     nyd = uly - nwy
                     nwy = uly
                 elif uly <= nwy:
                     nyd = nwy - uly
+
                 if lrx >= scx:
                     sxd = lrx - scx
                     scx = lrx
                 elif lrx <= scx:
                     sxd = scx - lrx
+
                 if lry <= scy:
                     syd = lry - scy
                     scy = lry
                 elif lry >= scy:
                     syd = scy - lry
-                #                print(nxd, nyd, sxd, syd)
-                #                print(sxd, nyd)
+
+                # print(nxd, nyd, sxd, syd)
+                # print(sxd, nyd)
                 nw = [nwx, nwy]
                 se = [scx, scy]
-                cols, rows = (int(_np.round(nwy - scy)),
-                              int(_np.round(scx - nwx)))
-        #                print('cols: ' , nwy - scy, '\nrows: ', scx - nwx)
-        #        print(nw, se)
+                cols, rows = (int(_np.round(nwy - scy)), int(_np.round(scx - nwx)))
+
+        # print('cols: ' , nwy - scy, '\nrows: ', scx - nwx)
+        # print(nw, se)
         sizedCoverage = []
-        #        print('resize?')
+        # print('resize?')
+
         if nxd != 0 or nyd != 0 or sxd != 0 or syd != 0:
-            #            plt.figure()
-            #            print('yes')#, _dt.now())
-            #            ref = _np.full((cols, rows), 0)
-            #            print(ref.shape)
+            # plt.figure()
+            # print('yes')#, _dt.now())
+            # ref = _np.full((cols, rows), 0)
+            # print(ref.shape)
             for grid in rasters:
                 maxVal = grid.nodata
                 bndx, bndy = grid.bounds[0]
                 nwx, nwy = nw
-                #                print('old:', bndx, bndy)
-                #                print('new', nwx, nwy)
+                # print('old:', bndx, bndy)
+                # print('new', nwx, nwy)
                 arr = grid.array
                 y, x = arr.shape
-                #                print(y, rows)
-                #                print(x, cols)
+                # print(y, rows)
+                # print(x, cols)
+
                 if x != cols:
                     exp = int(abs(rows - x))
-                    #                    print(exp)
+                    # print(exp)
                     add = _np.full((y, exp), maxVal)
                     arr = _np.column_stack([arr, add])
                     y, x = arr.shape
+
                 if y != rows:
                     exp = int(abs(cols - y))
-                    #                    print(exp)
+                    # print(exp)
                     add = _np.full((exp, x), maxVal)
                     arr = _np.vstack([arr, add])
-                #                print(bef, arr.shape)
+
+                # print(bef, arr.shape)
+
                 if nwx != bndx:
                     rollx = bndx - nwx
-                    #                    print(rollx)
+                    # print(rollx)
                     arr = _np.roll(arr, int(rollx), axis=1)
+
                 if nwy != bndy:
                     rolly = nwy - bndy
-                    #                    print(rolly)
+                    # print(rolly)
                     arr = _np.roll(arr, int(rolly), axis=0)
+
                 grid.array = arr
-                #                plt.imshow(grid.array)
-                #                plt.show()
+                # plt.imshow(grid.array)
+                #  plt.show()
                 grid.bounds = (nw, se)
                 sizedCoverage.append(grid)
+
             bounds = (nw, se)
-            #            print(bounds)
-            #            print('done')#, _dt.now())
+            # print(bounds)
+            # print('done')#, _dt.now())
             return sizedCoverage, bounds
         else:
-            #            print('same')
+            # print('same')
             bounds = (nw, se)
             return rasters, bounds
 
@@ -652,30 +664,14 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     ----------
     coverage :
         Input coverage data object
-    bounds :
+    bounds: Tuple[Tuple[float, float], Tuple[float, float]] :
         The ([nx, ny], [sx, sy]) extents to be applied to the input data
-    shape :
+    shape: Tuple[int, int] :
         The (y, x) shape to to be applied to the input data
-    resolution :
+    resolution: Tuple[float, float] :
         The (x, y) resolution to be applied to the input data
-    nodata :
-        The nodata value to be applied to the input array object
-    bounds: Tuple[Tuple[float :
-
-    float] :
-
-    Tuple[float :
-
-    float]] :
-
-    shape: Tuple[int :
-
-    int] :
-
-    resolution: Tuple[float :
-
     nodata: float :
-
+        The nodata value to be applied to the input array object
 
     Returns
     -------
@@ -794,9 +790,8 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     return coverage
 
 
-def write_raster(coverage, outputpath: str, out_verdat: str = 'MLLW',
-                 dtype=_gdal.GDT_UInt32, options: int = 0, color_table: int = 0, nbands: int = 1,
-                 nodata: bool = False):
+def write_raster(coverage, outputpath: str, out_verdat: str = 'MLLW', dtype=_gdal.GDT_UInt32, options: int = 0,
+                 color_table: int = 0, nbands: int = 1, nodata: bool = False):
     """
     Directly From:
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
@@ -807,31 +802,21 @@ def write_raster(coverage, outputpath: str, out_verdat: str = 'MLLW',
     Parameters
     ----------
     coverage :
-        param outputpath:
-    out_verdat :
+        TODO write description
+    outputpath: str :
+        TODO write description
+    out_verdat: str :
         Default value = 'MLLW')
     dtype :
         Default value = _gdal.GDT_UInt32)
-    options :
-        Default value = 0)
-    color_table :
-        Default value = 0)
-    nbands :
-        Default value = 1)
-    nodata :
-        Default value = False)
-    outputpath: str :
-
-    out_verdat: str :
-         (Default value = 'MLLW')
     options: int :
-         (Default value = 0)
+        Default value = 0)
     color_table: int :
-         (Default value = 0)
+        Default value = 0)
     nbands: int :
-         (Default value = 1)
-    nodata: bool :
-         (Default value = False)
+        Default value = 1)
+    nodata: float:
+        Default value = False)
 
     Returns
     -------
@@ -877,7 +862,9 @@ def coverage2gdal(coverage, flip: bool = False) -> gdal.Dataset:
     Parameters
     ----------
     coverage :
-        returns: gdal dataset
+        TODO write description
+    flip: bool :
+        TODO write description
 
     Returns
     -------
@@ -885,6 +872,7 @@ def coverage2gdal(coverage, flip: bool = False) -> gdal.Dataset:
         gdal dataset
 
     """
+
     proj = coverage.wkt
     height, width = coverage.shape
     sw, ne = coverage.bounds
@@ -892,8 +880,7 @@ def coverage2gdal(coverage, flip: bool = False) -> gdal.Dataset:
     nex, ney = ne
     res_x, res_y = coverage.resolution
     gt = (scx, res_x, 0, scy, 0, res_y)
-    coverage_gdal = _gdal.GetDriverByName('MEM').Create('', width, height, 1,
-                                                        _gdal.GDT_Float32)
+    coverage_gdal = _gdal.GetDriverByName('MEM').Create('', width, height, 1, _gdal.GDT_Float32)
     coverage_gdal.SetGeoTransform(gt)
     coverage_gdal.SetProjection(proj)
 
@@ -905,30 +892,30 @@ def coverage2gdal(coverage, flip: bool = False) -> gdal.Dataset:
         band.WriteArray(array)
     else:
         band.WriteArray(coverage.array)
-    #    coverage = None
+
     return coverage_gdal
 
 
-def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW',
-                 flip: bool = False):
+def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW', flip: bool = False):
     """
     TODO write description
 
     Parameters
     ----------
     coverage :
-        param outputpath:
-    out_verdat :
-        Default value = 'MLLW')
+        TODO write description
     outputpath: str :
-
+        TODO write description
     out_verdat: str :
-         (Default value = 'MLLW')
+        TODO write description (Default value = 'MLLW')
+    flip: bool :
+        TODO write description
 
     Returns
     -------
 
     """
+
     name = f'{coverage.name}.gpkg'
     outfilename = _os.path.join(outputpath, name)
 
@@ -950,7 +937,6 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW',
     feat = _ogr.Feature(defn)
     feat.SetField('Survey', name)
 
-    _gdal.Polygonize(band, band, layer, 0, [],
-                     callback=None)
+    _gdal.Polygonize(band, band, layer, 0, [], callback=None)
 
     del cov_ds, band
