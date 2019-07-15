@@ -260,6 +260,7 @@ class bdb51:
 
         if response['command'] == 'die' and response['success']:
             self.alive = False
+            self._thread.join()
         return response['success']
 
     def _set_command(self, command: Dict[str, str]):
@@ -293,15 +294,4 @@ class bdb51:
             raise ValueError('command / response state is unexpected')
 
         return response
-
-    def __del__(self):
-        """
-        Use the finalizer to ensure the subprocess connection is closed.
-        """
-        if self.status():
-            dead = self.die()
-            if not dead:
-                print('CARIS Bathy DataBASE connection may not have terminated correctly')
-                self.alive = False
-            self._thread.join()
 

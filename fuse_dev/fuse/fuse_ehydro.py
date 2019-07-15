@@ -249,7 +249,6 @@ class fuse_ehydro(_fbc.fuse_base_class):
             print(self._s57_meta)
             self._db.write(procfile, 'new', self._s57_meta)
 
-
     def _connect_to_db(self):
         """
         Connect to the database defined in the configuration dictionary.
@@ -265,6 +264,19 @@ class fuse_ehydro(_fbc.fuse_base_class):
         intype = self._config['bathymetry_intermediate_file']
         self._db = proc_io(intype, 'carisbdb51', db_loc = db_loc, db_name = db_name)
 
+    def disconnect(self):
+        """
+        Asks proc_io to close the database connection
+
+        """
+        if self._db:
+            self._db.close_connection()
+        else:
+            if 'database_location' in self._config:
+                db_loc = self._config['database_location']
+                raise RuntimeError(f'No connection to {db_loc} to close')
+            else:
+                raise ValueError('No database location defined in the configuration file.')
 
     def _set_log(self, infilename: str):
         """
