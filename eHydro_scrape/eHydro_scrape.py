@@ -852,14 +852,16 @@ def versionFind() -> Tuple[dict, list]:
 
     for ver in ver_files:
         ver_path = os.path.join(versioning, ver)
+        try:
+            with open(ver_path) as json_file:
+                data = json.load(json_file)
+                fver = data['version']
 
-        with open(ver_path) as json_file:
-            data = json.load(json_file)
-            fver = data['version']
-
-        if fver > version:
-            version = fver
-            attributes = [attribute for attribute in data['attributes']]
+            if fver > version:
+                version = fver
+                attributes = [attribute for attribute in data['attributes']]
+        except json.JSONDecodeError:
+            continue
 
     return version, attributes
 
