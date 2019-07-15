@@ -9,7 +9,9 @@ a general sense, and also for specific S57 needs.
 
 J Kinney 
 update April 3, 2019
-update June 21, 2019
+update June 21, 2019 Zach
+update July 12, 2019 J Kinney
+
 """
 
 import logging as log
@@ -51,7 +53,7 @@ horz_datum = {
     'Local': '131'
 }
 
-_ussft2m = 0.30480060960121924  # US survey feet to meters
+_ussft2m = 0.30480060960121924# US survey feet to meters
 
 
 def extract_s57_dict(xmlfilename):
@@ -154,7 +156,7 @@ class XML_Meta(object):
             # xml_version = 'ISO-8859-1'
             return 'ISO-8859-1'
         elif self.xml_tree.tag == 'metadata':
-            print(version_USACE_FGDC)  #:
+            print(version_USACE_FGDC)
             print('FGDC format not ISO, USACE example')
             return 'USACE_FGDC'
         else:
@@ -180,7 +182,7 @@ class XML_Meta(object):
         if version == 'USACE_FGDC':
             self.source = {}
             try:
-                my_etree_dict = self.convert_xml_to_dict2()  # _extract_meta_USACE_FGDC()# option pull metadata now, or only pull key pieces?
+                my_etree_dict = self.convert_xml_to_dict2()# _extract_meta_USACE_FGDC()# option pull metadata now, or only pull key pieces?
                 if 'metstdv' in my_etree_dict:
                     Metadataformat = my_etree_dict['metstdv']
                     print(Metadataformat)
@@ -291,14 +293,14 @@ class XML_Meta(object):
             # pulling in Z units from attrs
             if x.text == 'Z_depth':
                 my_etree_dict1['Z_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-                # use to debug print(f"{self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text} Z units")
+                # use to debug #print(f"{self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text} Z units")
                 if my_etree_dict1['Z_units'].upper() == 'usSurveyFoot'.upper():
                     my_etree_dict1['from_vert_units'] = 'US Survey Foot'
         for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
             if x.text == 'Z_use':
                 my_etree_dict1['Z_use_def'] = self.xml_tree.find('./eainfo/detailed/attr/attrdef').text
                 my_etree_dict1['Z_use_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-        if 'Horizontal_Units' in my_etree_dict1:  # check if Horizontal units already defined if not populate
+        if 'Horizontal_Units' in my_etree_dict1:# check if Horizontal units already defined if not populate
             if len(my_etree_dict1['Horizontal_Units']) < 1:
                 for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
                     if x.text == 'xLocation':
@@ -310,7 +312,7 @@ class XML_Meta(object):
                             my_etree_dict1['Horizontal_Units'] = 'US Survey Foot'
         else:
             for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
-                if x.text == 'xLocation':  # horizontal unit, yLocation should be the same
+                if x.text == 'xLocation':# horizontal unit, yLocation should be the same
                     my_etree_dict1['xLocation'] = self.xml_tree.find(
                         './eainfo/detailed/attr/attrdomv/rdom/attrunit').text
                     my_etree_dict1['H_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
@@ -352,7 +354,8 @@ class XML_Meta(object):
             if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
                 if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is None:
                     my_etree_dict1[iso_xml_path_to_baseattribute[key]] = ''
-                elif isinstance(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'), list) == True:#self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:  # check if list
+                elif isinstance(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'), list) == True:# check if list
+                    #self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:#commenting out this change AS IT HAD OPPOSITE EFFECT OF ORIGINAL SYNTAX 
                     if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:           
                         my_etree_dict1[iso_xml_path_to_baseattribute[key]]  = self.xml_tree.find('./'+ key[len_root_name_to_remove:])[0].text
                     else:
@@ -361,7 +364,8 @@ class XML_Meta(object):
                 my_etree_dict1[iso_xml_path_to_baseattribute[key]] = ''
         for key in vertdatum:  #
             if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
-                if isinstance(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'), list) == True:#if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:  # check if list
+                if isinstance(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'), list) == True:# check if list
+                    #if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:#commenting out this change AS IT HAD OPPOSITE EFFECT OF ORIGINAL SYNTAX 
                     if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:
                         if self.xml_tree.find(
                                 f'./{key[len_root_name_to_remove:]}') is None:  # Checks for NoneType object ('None')
@@ -406,7 +410,7 @@ class XML_Meta(object):
             if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
                 if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is None:
                     my_etree_dict1[fgdc_additional_values[key]] = ''
-                elif isinstance(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'), list) == True:  # check if list
+                elif isinstance(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'), list) == True:# check if list
                     if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:
                         my_etree_dict1[fgdc_additional_values[key]] = self.xml_tree.find('./'+ key[len_root_name_to_remove:])[0].text
                     else:
@@ -1444,13 +1448,13 @@ def parse_abstract_iso_ex(abstract):
             m['Vertical Datum Description'] = name
         if name.upper().find('MEAN LOWER LOW WATER') >= 0:
             m['VERTDAT'] = 'MLLW'
-        elif name.find('MLLW') >= 0:  # CESAM
+        elif name.find('MLLW') >= 0:  ## CESAM
             m['VERTDAT'] = 'MLLW'
-        elif name.find('MLW') >= 0:  # CESAM
+        elif name.find('MLW') >= 0:# CESAM
             m['VERTDAT'] = 'Mean Low Water'
         elif name.find('MLW') >= 0:
             m['VERTDAT'] = 'MLW'
-        elif name.find('National Geodetic Vertical Datum (NGVD) of 1929') >= 0:  # CESAM
+        elif name.find('National Geodetic Vertical Datum (NGVD) of 1929') >= 0:# CESAM
             m['VERTDAT'] = 'NGVD29'
         elif name.find('LWRP') >= 0:
             m['VERTDAT'] = 'LWRP'
@@ -1468,13 +1472,13 @@ def parse_abstract_iso_ex(abstract):
         m['Vertical Datum Description'] = name
         if name.upper().find('MEAN LOWER LOW WATER') >= 0:
             m['VERTDAT'] = 'MLLW'
-        elif name.find('MLLW') >= 0:  # CESAM
+        elif name.find('MLLW') >= 0:# CESAM
             m['VERTDAT'] = 'MLLW'
         elif name.find('MLW') >= 0:
             m['VERTDAT'] = 'Mean Low Water'
         elif name.find('MLW') >= 0:
             m['VERTDAT'] = 'MLW'
-        elif name.find('National Geodetic Vertical Datum (NGVD) of 1929') >= 0:  # CESAM
+        elif name.find('National Geodetic Vertical Datum (NGVD) of 1929') >= 0:# CESAM
             m['VERTDAT'] = 'NGVD29'
         elif name.find('LWRP') >= 0:
             m['VERTDAT'] = 'LWRP'
@@ -1599,7 +1603,7 @@ def extract_from_iso_meta(xml_meta):
             xml_meta['TECSOU'] = '3'
         elif xml_meta['System'].find('sweep') >= 0 or xml_meta['System'].find('SmartSweep') >= 0:
             xml_meta[
-                'TECSOU'] = '8'  # could also consider it just multiple single beams in this water depth range#Ross SmartSweep example modle
+                'TECSOU'] = '8'# could also consider it just multiple single beams in this water depth range#Ross SmartSweep example modle
             # see _print_TECSOU_defs() for more TECSOU definitions
         xml_meta['from_horiz_datum'] = f"{xml_meta['Projected_Coordinate_System']},{xml_meta['Horizontal_Zone']}," + \
                                        f"{xml_meta['Units']}"
@@ -1607,7 +1611,7 @@ def extract_from_iso_meta(xml_meta):
             code = xml_meta['Horizontal_Zone'].split(' ')[1]
             print(code)
             for key in SOURCEPROJECTION_dict:
-                if key.upper() in xml_meta['Horizontal_Zone']:  # print(key)
+                if key.upper() in xml_meta['Horizontal_Zone']:# print(key)
                     xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
     return xml_meta
 
@@ -1755,13 +1759,13 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 name = line.split('Survey Type:')[-1]
                 m['survey_description'] = name
                 if line.find('Survey Type: Single Beam Soundings') >= 0:
-                    m['TECSOU'] = '1'  # 'single beam'
+                    m['TECSOU'] = '1'# 'single beam'
                 elif line.find('Single Beam Soundings') >= 0:
-                    m['TECSOU'] = '1'  # 'single beam'
+                    m['TECSOU'] = '1'# 'single beam'
                 elif line.find('Multi Beam Soundings') >= 0:
-                    m['TECSOU'] = '3'  # 'multi beam'
+                    m['TECSOU'] = '3'# 'multi beam'
                 else:
-                    m['TECSOU'] = ''  # 'multi beam'/'single beam' etc.
+                    m['TECSOU'] = ''# 'multi beam'/'single beam' etc.
             if line.find('Horizontal Coordinate System:') >= 0:
                 name = line.split('Horizontal Coordinate System:')[-1]
                 m['horizontal_datum_i'] = name
@@ -1769,15 +1773,15 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 name = line.split('Coordinate System (SPCS), ')[-1]
                 name = name.split('. Distance units in ')
                 m['Horizontal_Units'] = name[1].split('Vertical Datum:')[0].rstrip().rstrip('.')
-                m['SPCS'] = name[0]  # written description of state plane coordinate system
+                m['SPCS'] = name[0]# written description of state plane coordinate system
             if line.find('Vertical Datum:') >= 0:
                 name = line.split('Vertical Datum:')[-1]
                 m['Vertical Datum Description'] = name
                 if name.find('Soundings are shown in feet and indicate depths below Mean Lower Low Water') >= 0:
                     m['VERTDAT'] = 'MLLW'
-                elif name.find('Soundings are shown in feet and are referenced to Mean Lower Low Water') >= 0:  # CESAM
+                elif name.find('Soundings are shown in feet and are referenced to Mean Lower Low Water') >= 0:# CESAM
                     m['VERTDAT'] = 'MLLW'
-                elif name.find('Values are based on the National Geodetic Vertical Datum (NGVD) of 1929') >= 0:  # CESAM
+                elif name.find('Values are based on the National Geodetic Vertical Datum (NGVD) of 1929') >= 0:# CESAM
                     m['VERTDAT'] = 'NGVD29'
                 elif name.find('LWRP') >= 0:
                     m['VERTDAT'] = 'LWRP'
@@ -1794,15 +1798,15 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
             # Other way to split abstract, in case format changed over time
             print('issue parsing')
             if abstract.find('Survey Type: Single Beam Soundings') >= 0:
-                m['TECSOU'] = '1'  # 'single beam'
+                m['TECSOU'] = '1'# 'single beam'
 
             else:
-                m['TECSOU'] = ''  # 'multi beam' 3
+                m['TECSOU'] = ''# 'multi beam' 3
             if abstract.find('Vertical Datum:') >= 0:
                 if abstract.find('Soundings are shown in feet and indicate depths below Mean Lower Low Water') >= 0:
                     m['VERTDAT'] = 'MLLW'
                 elif abstract.find(
-                        'Soundings are shown in feet and are referenced to Mean Lower Low Water') >= 0:  # CESAM
+                        'Soundings are shown in feet and are referenced to Mean Lower Low Water') >= 0:# CESAM
                     m['VERTDAT'] = 'MLLW'
                 elif abstract.find('LWRP') >= 0:
                     m['VERTDAT'] = 'LWRP'
@@ -1811,21 +1815,21 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 elif abstract.find('MLG') >= 0:
                     m['VERTDAT'] = 'MLG'
                 elif abstract.find(
-                        'Values are based on the National Geodetic Vertical Datum (NGVD) of 1929') >= 0:  # CESAM
+                        'Values are based on the National Geodetic Vertical Datum (NGVD) of 1929') >= 0:# CESAM
                     m['VERTDAT'] = 'NGVD29'
                 elif abstract.find('depths below National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
                     m['VERTDAT'] = 'NGVD29'
             else:
                 m['VERTDAT'] = ''
     procdesc = meta_xml['procdesc']
-    if 'TECSOU' not in m:  # checking for technique of sounding alternative metadata location
+    if 'TECSOU' not in m:# checking for technique of sounding alternative metadata location
         if procdesc.find('Ross SmartSweep') > 0:
             m[
-                'TECSOU'] = '8'  # 'swept vertical beam system'#essentially multiple single beam transducers on a boom type apparatus
+                'TECSOU'] = '8'# 'swept vertical beam system'#essentially multiple single beam transducers on a boom type apparatus
         elif procdesc.find('Odom MKIII echosounder') > 0:
-            m['TECSOU'] = '1'  # 'single beam'
+            m['TECSOU'] = '1'# 'single beam'
         elif procdesc.find('multibeam') >= 0 or procdesc.find('multi beam') >= 0:
-            m['TECSOU'] = '3'  # 'multibeam'
+            m['TECSOU'] = '3'# 'multibeam'
     if 'SPCS' in m:
         if len(m['SPCS']) > 0:
             m['FIPS'] = convert_tofips(SOURCEPROJECTION_dict,
@@ -1844,24 +1848,24 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     if 'Horizontal_Units' in m:
         if m['Horizontal_Units'] == '':
             if meta_xml[
-                'plandu'].upper() == 'FOOT_US':  # plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
+                'plandu'].upper() == 'FOOT_US':# plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
                 m['Horizontal_Units'] = 'U.S. Survey Feet'
             elif meta_xml['plandu'].upper() == 'INTL FOOT':
-                m['from_horiz_units'] = 'ft'  # international feet code for vdatum
+                m['from_horiz_units'] = 'ft'# international feet code for vdatum
     horizpar = meta_xml['horizpar']
     if horizpar.find('DGPS, 1 Meter') >= 0:
-        m['horiz_uncert'] = '1'  # (POSACC) DGPS, 1 Meter
+        m['horiz_uncert'] = '1'# (POSACC) DGPS, 1 Meter
     elif horizpar.find('DGPS, +/-1.0 Meter (3.28 feet)') >= 0:
-        m['horiz_uncert'] = '1'  # (POSACC) DGPS, 1 Meter
+        m['horiz_uncert'] = '1'# (POSACC) DGPS, 1 Meter
     elif horizpar.find('International Feet') >= 0:
-        m['from_horiz_units'] = 'ft'  # international feet code for vdatum
+        m['from_horiz_units'] = 'ft'# international feet code for vdatum
     vertaccr = meta_xml['vertaccr']
     if vertaccr.find('Expected values 0.5 -1.0 Foot') >= 0:
-        m['vert_acc'] = '0.3'  # 1 ft =   0.30480060960121924 m
+        m['vert_acc'] = '0.3'# 1 ft =   0.30480060960121924 m
     elif vertaccr.find('Bar Test, 0.5 Foot') >= 0:
-        m['vert_acc'] = '0.15'  #
+        m['vert_acc'] = '0.15'#
     elif vertaccr.find('+/- 0.03 meter (0.1 foot)') >= 0:
-        m['vert_acc'] = '0.03'  #
+        m['vert_acc'] = '0.03'#
     return m
 
 
@@ -1919,7 +1923,7 @@ def parse_xml_info_text_ISO(xml_txt, m):
                 if len(names) == 2:
                     m[names[0]] = names[1]
                 elif len(names) > 2:
-                    m[names[0]] = names[1: len(names)]  # makes a list type
+                    m[names[0]] = names[1: len(names)]# makes a list type
                 else:
                     m[names[0]] = ''
             else:
@@ -1982,7 +1986,7 @@ def convert_meta_to_input(m):
     elif 'horizontal_datum_i' in m:
         m['from_horiz_datum'] = m['horizontal_datum_i'].split('Vertical Datum:')[0]
     if 'Horizontal_Units' in m:
-        m['from_horiz_units'] = m['Horizontal_Units']  # may need to enforce some kind of uniform spelling etc. here
+        m['from_horiz_units'] = m['Horizontal_Units']# may need to enforce some kind of uniform spelling etc. here
     if 'FIPS' in m:
         m['from_fips'] = m['FIPS']
     if 'VERTDAT' in m:

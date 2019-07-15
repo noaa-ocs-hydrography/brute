@@ -30,9 +30,8 @@ def _maxValue(arr: _np.array):
 
     Parameters
     ----------
-    arr :
-        An input array
     arr: _np.array :
+        An input array
 
     Returns
     -------
@@ -88,10 +87,8 @@ class geotiff:
 
         Parameters
         ----------
-        filename :
-            The complete file path of the input coverage file
         filename: str :
-
+            The complete file path of the input coverage file
 
         Returns
         -------
@@ -112,7 +109,7 @@ class geotiff:
         Parameters
         ----------
         gdal_obj :
-
+            TODO write description
 
         Returns
         -------
@@ -143,7 +140,7 @@ class geotiff:
         Parameters
         ----------
         gdal_obj :
-
+            TODO write description
 
         Returns
         -------
@@ -212,21 +209,15 @@ class geopackage:
 
         Parameters
         ----------
-        filename :
-            The complete file path of the input coverage file
-        to_crs :
-            WKT object with destination spatial reference system
-        pixel_size :
-            Default value = 1)
-        nodata :
-            Default value = 255)
         filename: str :
-
+            The complete file path of the input coverage file
         to_crs: str :
-
+            WKT object with destination spatial reference system
         pixel_size: int :
+            TODO write description
              (Default value = 1)
         nodata: int :
+            TODO write description
              (Default value = 255)
 
         Returns
@@ -247,19 +238,15 @@ class geopackage:
 
         Parameters
         ----------
-        filename :
-            The complete file path of the input coverage file
-        to_crs :
-            WKT object with destination spatial reference system
-        pixel_size :
-            param nodata:
         filename: str :
-
+            The complete file path of the input coverage file
         to_crs: str :
-
+            WKT object with destination spatial reference system
         pixel_size: int :
+            TODO write description
              (Default value = 1)
         nodata: int :
+            TODO write description
              (Default value = 255)
 
         Returns
@@ -336,10 +323,8 @@ class geopackage:
 
         Parameters
         ----------
-        filepath :
-
         filepath: str :
-
+            TODO write description
 
         Returns
         -------
@@ -371,12 +356,10 @@ class unified_coverage:
 
         Parameters
         ----------
-        files :
-            param bag_wkt:
         files: List[str] :
-
+            TODO write description
         bag_wkt: str :
-
+            TODO write description
 
         Returns
         -------
@@ -403,16 +386,16 @@ class unified_coverage:
 
         return bndRasts
 
-    def _align_and_combine(self, rasters, name):
+    def _align_and_combine(self, rasters: list, name: str):
         """
         TODO write description
 
         Parameters
         ----------
-        rasters :
-            param name:
-        name :
-
+        rasters: list:
+            TODO write description
+        name: str :
+            TODO write description
 
         Returns
         -------
@@ -449,13 +432,10 @@ class unified_coverage:
 
         Parameters
         ----------
-        rasters :
-            List of coverage objects
-        name :
-            File path of the relevant bag file
         rasters: list :
-
+            List of coverage objects
         name: str :
+            File path of the relevant bag file
         """
 
         print('_combine')
@@ -684,30 +664,14 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     ----------
     coverage :
         Input coverage data object
-    bounds :
+    bounds: Tuple[Tuple[float, float], Tuple[float, float]] :
         The ([nx, ny], [sx, sy]) extents to be applied to the input data
-    shape :
+    shape: Tuple[int, int] :
         The (y, x) shape to to be applied to the input data
-    resolution :
+    resolution: Tuple[float, float] :
         The (x, y) resolution to be applied to the input data
-    nodata :
-        The nodata value to be applied to the input array object
-    bounds: Tuple[Tuple[float :
-
-    float] :
-
-    Tuple[float :
-
-    float]] :
-
-    shape: Tuple[int :
-
-    int] :
-
-    resolution: Tuple[float :
-
     nodata: float :
-
+        The nodata value to be applied to the input array object
 
     Returns
     -------
@@ -838,31 +802,21 @@ def write_raster(coverage, outputpath: str, out_verdat: str = 'MLLW', dtype=_gda
     Parameters
     ----------
     coverage :
-        param outputpath:
-    out_verdat :
+        TODO write description
+    outputpath: str :
+        TODO write description
+    out_verdat: str :
         Default value = 'MLLW')
     dtype :
         Default value = _gdal.GDT_UInt32)
-    options :
-        Default value = 0)
-    color_table :
-        Default value = 0)
-    nbands :
-        Default value = 1)
-    nodata :
-        Default value = False)
-    outputpath: str :
-
-    out_verdat: str :
-         (Default value = 'MLLW')
     options: int :
-         (Default value = 0)
+        Default value = 0)
     color_table: int :
-         (Default value = 0)
+        Default value = 0)
     nbands: int :
-         (Default value = 1)
-    nodata: bool :
-         (Default value = False)
+        Default value = 1)
+    nodata: float:
+        Default value = False)
 
     Returns
     -------
@@ -908,7 +862,9 @@ def coverage2gdal(coverage, flip: bool = False) -> gdal.Dataset:
     Parameters
     ----------
     coverage :
-        returns: gdal dataset
+        TODO write description
+    flip: bool :
+        TODO write description
 
     Returns
     -------
@@ -947,13 +903,13 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW', flip: bool
     Parameters
     ----------
     coverage :
-        param outputpath:
-    out_verdat :
-        Default value = 'MLLW')
+        TODO write description
     outputpath: str :
-
+        TODO write description
     out_verdat: str :
-         (Default value = 'MLLW')
+        TODO write description (Default value = 'MLLW')
+    flip: bool :
+        TODO write description
 
     Returns
     -------

@@ -44,16 +44,12 @@ def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, floa
 
     Parameters
     ----------
-    val :
-        param valmin:
-    valmax :
-
     val: float :
-
+        TODO write description
     valmin: float :
-
+        TODO write description
     valmax: float :
-
+        TODO write description
 
     Returns
     -------
@@ -93,22 +89,16 @@ class point_interpolator:
 
         Parameters
         ----------
-        dataset :
-            param interpolation_type:
-        resolution :
-            param shapefile:  (Default value = None)
-        shrink :
-            Default value = True)
         dataset: gdal.Dataset :
-
+            TODO write description
         interpolation_type: str :
-
+            TODO write description
         resolution: float :
-
+            TODO write description
         shapefile: str :
-             (Default value = None)
+            TODO write description (Default value = None)
         shrink: bool :
-             (Default value = True)
+            TODO write description (Default value = True)
 
         Returns
         -------
@@ -192,10 +182,8 @@ class point_interpolator:
 
         Parameters
         ----------
-        dataset :
-            returns: vector dataset
         dataset: gdal.Dataset :
-
+            TODO write description
 
         Returns
         -------
@@ -224,10 +212,8 @@ class point_interpolator:
 
         Parameters
         ----------
-        dataset :
-            returns: minimum, mean, and maximum
         dataset: np.array :
-
+            TODO write description
 
         Returns
         -------
@@ -256,16 +242,12 @@ class point_interpolator:
 
         Parameters
         ----------
-        dataset :
-            param resolution:
-        window :
-            returns: mask
         dataset: gdal.Dataset :
-
+            TODO write description
         resolution: float :
-
+            TODO write description
         window: float :
-
+            TODO write description
 
         Returns
         -------
@@ -285,30 +267,20 @@ class point_interpolator:
 
         Parameters
         ----------
-        file :
+        file: str :
             Shapefile file location
-        to_proj :
+        to_proj: str:
             WKT object with destination spatial reference system
-        to_gt :
+        to_gt: tuple:
             gdal.GeoTransform object of the interpolated dataset
-        to_res :
+        to_res: int :
             Resolution of the input dataset
         to_y :
-            param to_x:
-        nodata :
-            Nodata value for the ouput gdal.Dataset object (Default value = 0)
-        file: str :
-
-        to_proj: str :
-
-        to_gt: tuple :
-
-        to_res: int :
-
-        to_x :
-
+            TODO write description
+        to_x:
+            TODO write description
         nodata: float :
-             (Default value = 0)
+            Nodata value for the ouput gdal.Dataset object (Default value = 0)
 
         Returns
         -------
@@ -463,16 +435,12 @@ class point_interpolator:
 
         Parameters
         ----------
-        grid :
-            param shapefile:
-        resolution :
-            returns: shape mask
         grid: gdal.Grid :
-
+            TODO write description
         shapefile: str :
-
+            TODO write description
         resolution: float :
-
+            TODO write description
 
         Returns
         -------
@@ -505,16 +473,12 @@ class point_interpolator:
 
         Parameters
         ----------
-        dataset :
-            param resolution:
-        nodata :
-            Default value = 1000000)
         dataset: gdal.Dataset :
-
+            TODO write description
         resolution: float :
-
+            TODO write description
         nodata: float :
-             (Default value = 1000000)
+            TODO write description (Default value = 1000000)
 
         Returns
         -------
@@ -548,16 +512,12 @@ class point_interpolator:
 
         Parameters
         ----------
-        dataset :
-            param resolution:
-        nodata :
-            Default value = 1000000)
         dataset: gdal.Dataset :
-
+            TODO write description
         resolution: float :
-
+            TODO write description
         nodata: float :
-             (Default value = 1000000)
+            TODO write description (Default value = 1000000)
 
         Returns
         -------
@@ -623,18 +583,14 @@ class point_interpolator:
 
         Parameters
         ----------
-        dataset :
-            param resolution:
-        radius :
-            param nodata:  (Default value = 1000000)
         dataset: gdal.Dataset :
-
+            TODO write description
         resolution: float :
-
+            TODO write description
         radius: float :
-
+            TODO write description
         nodata: float :
-             (Default value = 1000000)
+            TODO write description (Default value = 1000000)
 
         Returns
         -------
@@ -691,18 +647,14 @@ class point_interpolator:
 
         Parameters
         ----------
-        dataset :
-            param resolution:
-        radius :
-            param nodata:  (Default value = 1000000)
         dataset: gdal.Dataset :
-
+            TODO write description
         resolution: float :
-
+            TODO write description
         radius: float :
-
+            TODO write description
         nodata: float :
-             (Default value = 1000000)
+            TODO write description(Default value = 1000000)
 
         Returns
         -------
@@ -740,9 +692,9 @@ class point_interpolator:
         Parameters
         ----------
         resolution: float :
-
+            TODO write description
         bounds: Tuple[float, float, float, float] :
-
+            TODO write description
 
         Returns
         -------
@@ -773,9 +725,9 @@ class point_interpolator:
         Parameters
         ----------
         resolution: float :
-
+            TODO write description
         bounds: Tuple[float, float, float, float] :
-
+            TODO write description
 
         Returns
         -------

@@ -30,7 +30,16 @@ except:
     try:
         from . import parse_usace_xml as p_usace_xml
     except:
-        print('importing fuse.raw_read.usace.parse_usace_xml as p_usace_xml did not work')
+        print('importing fuse.raw_read.usace.parse_usace_xml as p_usace_xml  did not work')
+        
+try:
+    import fuse.raw_read.usace.parse_usace_pickle as parse_usace_pickle
+except:
+    try:
+        from . import parse_usace_pickle as parse_usace_pickle
+    except:
+        print('importing fuse.raw_read.usace.parse_usace_pickle as parse_usace_pickle  did not work')
+
     ##-----------------------------------------------------------------------------
 
 
@@ -82,9 +91,19 @@ class read_raw:
         """
         # get the dat file for CESAJ# Jacksonville
         stub, ext = os.path.splitext(infilename)
-        bathyfilename = f'{stub}.dat'
+        bathyfilename = f'{stub}.dat'#this is where fstrings are being used 
+        """
+        F-strings provide a way to embed expressions inside string literals, using a minimal syntax.
+        It should be noted that an f-string is really an expression evaluated at run time, not a constant
+         value. In Python source code, an f-string is a literal string, prefixed with f, which contains 
+        expressions inside braces. The expressions are replaced with their values.
+        https://realpython.com/python-f-strings/
+        one can also include expressions within the quoted strings, The expressions in an f-string are evaluated in left-to-right order. This is detectable only if the expressions have side effects:
+        https://www.python.org/dev/peps/pep-0498/
+        """
+
         xyz = _np.loadtxt(bathyfilename, delimiter=' ')
-        return xyz
+        self.xy#remove later using still during debugging        return xyz
 
     def read_bathymetry(self, infilename):
         """
@@ -115,8 +134,7 @@ class read_raw:
         return xyz
 
     # ------------------------------------------------------------------------------
-
-
+    
 def return_surveyid(filenamepath, ex_string):
     """
     strip end of filename off
@@ -172,8 +190,9 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     basename = return_surveyid(basename, ex_string4)
     basename = basename.rstrip('.XYZ')
     basename = basename.rstrip('.xyz')
-    # empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
+    # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
+    meta_from_ehydro =  _read_pickle(f)    
     e_t = Extract_Txt(f)
     # xml pull here.
     xmlfilename = get_xml_match(f)
@@ -197,6 +216,9 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
         ext_dict = {}
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESAJ', default_meta='')  #
+    
+    no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro = _Check_for_SPCSconflicts(meta_xml, meta_from_ehydro)
+    
     list_keys_empty = []
     combined_row = {}
     subset_row = {}
@@ -230,6 +252,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
                     combined_row[key] = f'{ext_dict[key]} , {meta_xml[key]}'
             else:
                 subset_dict[key] = ext_dict[key]
+                
     merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row}  # this one excluded 'unknown' keys, and
     # in merging sources from the text file and xml it will show any values that do not match as a list.
     merged_meta = {**meta, **meta_from_ehydro, **meta_xml}  # this method overwrites
@@ -242,7 +265,101 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
 
     return merged_meta
 
+###----------------------------------------------------------------------------
+#class ehydro_pickle_use()
+def _read_pickle(infilename: str):
+    """
+    Read in picklefile that ehydro_move creates from the E-Hydro REST API
+    table attributes.
 
+
+    Parameters
+    ----------
+    infilename :
+
+
+    Returns
+    -------
+
+    """
+
+    pickle = parse_usace_pickle.pickle_file(infilename)
+    return pickle.pickle_meta
+
+###----------------------------------------------------------------------------
+def _Check_for_SPCSconflicts(meta_xml, meta_from_ehydro):
+    """
+    Cheacking to see if the SPCS codes conflict between sources
+    
+    Parameters
+    ----------
+    infilename :
+
+
+    Returns
+    -------
+    """
+    no_SPCS_conflict = ''
+    no_SPCS_conflict_withpickle = ''
+    if 'SOURCEPROJECTION' in meta_from_ehydro:
+        if p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']) == meta_xml['from_fips']:
+            no_SPCS_conflict_withpickle = 'True'
+        else:
+            no_SPCS_conflict_withpickle = 'False'
+    meta_from_ehydro['no_SPCS_conflict_withpickle'] = no_SPCS_conflict_withpickle    
+    return no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro
+
+def _when_use_pickle(meta_xml, meta_from_ehydro):
+    """
+    If there is no SPCS code in the xml, use the pickle/ REST API SPCS code
+    
+    Additional check to see if their is a conflict. District specific rules on conflict resolution may need to apply.
+    1st assumption is that the REST API has the correct SPCS code according to E-Hydro team. (John McKenzie) and reinterated by
+    District contacts thus far (as of June 2019) base on E-hydro upload procedures.
+    
+    Parameters
+    ----------
+    infilename :
+
+
+    Returns
+    -------
+    """
+    if 'SOURCEPROJECTION' in meta_from_ehydro:
+        if 'from_FIPS' in meta_xml:
+            #run check for conflict
+            no_SPCS_conflict, no_SPCS_conflict_withpickle = _Check_for_SPCSconflicts(meta_xml, meta_from_ehydro)
+            if no_SPCS_conflict_withpickle == 'False':
+                #test
+                meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION'])
+        else:
+            meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION'])
+            print('using pickle value')
+    return meta_from_ehydro
+
+def _when_use_pickle_startdate(meta_xml, meta_from_ehydro):
+    """
+    if xml_meta is blank and if meta does not have information use pickle data for date
+    next: Check survey start & end date against filename and other locations
+    
+    Parameters
+    ----------
+    infilename :
+
+
+    Returns
+    """
+    if meta_from_ehydro:#check if dictionary empty
+        if meta_xml:#check if dictionary empty
+            print(len ('SURVEYDATEEND'))
+            #Check survey start & end date against filename and other locations
+        else:#if xml_meta is blank and if meta does not have information use pickle data:
+            meta_from_ehydro['start_date'] = meta_from_ehydro['SURVEYDATESTART']
+            #"SURVEYDATESTART"
+            #"SURVEYDATEEND"
+    return meta_from_ehydro
+
+    
 ###----------------------------------------------------------------------------
 class Extract_Txt(object):
     """Extract both information from the filename as well as from the text file's header"""
