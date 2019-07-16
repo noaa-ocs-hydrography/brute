@@ -19,4 +19,4 @@ if __name__ == '__main__':
         if 'to_filename' in f:
             infilename = f['from_filename']
             poster.post(infilename)
-
+    poster.disconnect()

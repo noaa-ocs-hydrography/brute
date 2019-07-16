@@ -121,6 +121,14 @@ class proc_io:
         else:
             raise ValueError(f'writer type unknown: {self._out_data_type}')
 
+    def close_connection(self):
+        """
+        Sends the 'die' command to the bdb connection object
+
+        """
+        if self._out_data_type == 'carisbdb51':
+            self._bdb.die()
+
     def _write_csar(self, dataset: gdal.Dataset, outfilename: str, show: bool = False):
         """
         Convert the provided gdal dataset into a csar file.

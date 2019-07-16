@@ -148,9 +148,15 @@ class bdb51_io:
         self.database = command_dict['database']
 
         try:
-            self._nm = bdb.NodeManager(username, password, self.node_manager)
-            msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
+            if None in (username, password):
+                raise ValueError("System environment variable 'nbsscriptuser' and/or 'nbsscriptpass' is not defined")
+            else:
+                self._nm = bdb.NodeManager(username, password, self.node_manager)
+                msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
         except RuntimeError as error:
+            msg += str(error)
+            command_dict['success'] = False
+        except ValueError as error:
             msg += str(error)
             command_dict['success'] = False
         if self._nm is not None:
@@ -333,7 +339,7 @@ def main(port: int, buffer_size: int):
     port :
 
     port: int :
-        
+
     buffer_size: int : receive buffersize
 
 
