@@ -21,6 +21,7 @@ a row reaches +180 degrees on the right hand boundry.
 import os
 import string
 import numpy as np
+from shapely.geometry import Polygon
 import osgeo.ogr as ogr
 import osgeo.osr as osr
 
@@ -103,7 +104,7 @@ def get_tile_bounds(xy: str):
     yb = np.linspace(-90., 90., yn + 1)
     return names, xb, yb
     
-def build_resolution_scheme(xy_res: str, path: str = '.'):
+def build_gpkg(xy_res: str, path: str = '.'):
     """
     Create a geopackage with the tile set.
     """
@@ -136,3 +137,35 @@ def build_resolution_scheme(xy_res: str, path: str = '.'):
     outfilename = os.path.join(path, f'{xy_res}_tesselation.gpkg')
     ogr.GetDriverByName("GPKG").CopyDataSource(ds, outfilename)
     ds = None
+
+def get_shapely(xy_res: str, bbox: list):
+    """
+    Return a list of shapely polygons that intersect or are contained by the
+    provided bounding box.
+    
+    Things that go over the date line will probably be goofy...
+    """
+    name,xb,yb = get_tile_bounds(xy_res)
+    x_min, y_min, x_max, y_max = bbox
+    subx = _get_bounds_idx(xb, x_min, x_max)
+    suby = _get_bounds_idx(yb, y_min, y_max)
+    collect = []
+    for m in range(len(suby)-1):
+        for n in range(len(subx)-1):
+            p = Polygon([(subx[n], suby[m]), 
+                         (subx[n], suby[m + 1]),
+                         (subx[n + 1], suby[m + 1]),
+                         (subx[n + 1], suby[m])])
+            collect.append(p)
+    return collect
+    
+def _get_bounds_idx(bounds, a_min, a_max):
+    """
+    Return the subset that intersect or are contained by the bounds.
+    """
+    idx = np.nonzero((bounds > a_min) & (bounds < a_max))[0]
+    idx_min = idx.min() - 1
+    idx_max = idx.max() + 1
+    idx = np.append(idx, [idx_min, idx_max])
+    subset = bounds[idx]
+    return subset
