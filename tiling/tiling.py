@@ -41,14 +41,6 @@ def get_tile_name(tile_number: int, name_len: int = 7) -> str:
     name = ''.join(name)
     name = name.zfill(name_len)
     return name
-
-def generate_tile_labels(number_of_tiles: int):
-    """
-    Create a generator for the tile names within a certain tle number range.
-    """
-    for n in range(number_of_tiles):
-        name = get_tile_name(n)
-        yield name
             
 def get_dimension(r: int) -> float:
     """
@@ -86,7 +78,7 @@ def num2dig(n: int) -> str:
 
 def get_tile_bounds(xy: str):
     """
-    Return the tile set with names for a given two character resolution name.
+    Return the tile bounds for a given two character resolution name.
     """
     try:
         assert len(xy) == 2
@@ -98,18 +90,27 @@ def get_tile_bounds(xy: str):
     yr = dig2num(y)
     xn = get_num_cols(xr)
     yn = get_num_rows(yr)
-    n = xn * yn
-    names = generate_tile_labels(n)
     xb = np.linspace(-180., 180., xn + 1)
     yb = np.linspace(-90., 90., yn + 1)
-    return names, xb, yb
+    return xb, yb
     
-def build_gpkg(xy_res: str, path: str = '.'):
+def build_gpkg(xy_res: str, bbox: list, path: str = '.'):
     """
     Create a geopackage with the tile set.
     """
+    # get the bounds subset
+    xb,yb = get_tile_bounds(xy_res)
+    x_min, y_min, x_max, y_max = bbox
+    subx, idx = _get_subbounds(xb, x_min, x_max)
+    suby, idy = _get_subbounds(yb, y_min, y_max)
+    # get the linear indicies for the tiles to get the names
+    idn = np.arange(len(xb) * len(yb))
+    idn.shape = (len(xb), len(yb))
+    mx, my = np.meshgrid(idx,idy)
+    subn = idn[mx,my].flatten()
+    c = 0
+    # setup the gdal object
     field_name = 'TileID'
-    name,xb,yb = get_tile_bounds(xy_res)
     driver = ogr.GetDriverByName("MEMORY")
     ds = driver.CreateDataSource("tmp")
     srs = osr.SpatialReference()
@@ -118,19 +119,20 @@ def build_gpkg(xy_res: str, path: str = '.'):
     field = ogr.FieldDefn(field_name, ogr.OFTString)
     lyr.CreateField(field)
     fd = lyr.GetLayerDefn()
-    for m in range(len(yb) - 1):
-        for n in range(len(xb) - 1):
+    for m in range(len(suby) - 1):
+        for n in range(len(subx) - 1):
             ring = ogr.Geometry(ogr.wkbLinearRing)
-            ring.AddPoint(xb[n], yb[m])
-            ring.AddPoint(xb[n], yb[m+1])
-            ring.AddPoint(xb[n+1], yb[m+1])
-            ring.AddPoint(xb[n+1], yb[m])
-            ring.AddPoint(xb[n], yb[m])
+            ring.AddPoint(subx[n], suby[m])
+            ring.AddPoint(subx[n], suby[m+1])
+            ring.AddPoint(subx[n+1], suby[m+1])
+            ring.AddPoint(subx[n+1], suby[m])
+            ring.AddPoint(subx[n], suby[m])
             tile = ogr.Geometry(ogr.wkbPolygon)
             tile.AddGeometry(ring)
             f = ogr.Feature(fd)
             f.SetGeometry(tile)
-            f.SetField(field_name, next(name))
+            f.SetField(field_name, get_tile_name(subn[c]))
+            c += 1
             lyr.CreateFeature(f)
             f = None
             tile = None
@@ -145,11 +147,19 @@ def get_shapely(xy_res: str, bbox: list):
     
     Things that go over the date line will probably be goofy...
     """
-    name,xb,yb = get_tile_bounds(xy_res)
+    # get the bounds subset
+    xb,yb = get_tile_bounds(xy_res)
     x_min, y_min, x_max, y_max = bbox
-    subx = _get_bounds_idx(xb, x_min, x_max)
-    suby = _get_bounds_idx(yb, y_min, y_max)
+    subx, idx = _get_subbounds(xb, x_min, x_max)
+    suby, idy = _get_subbounds(yb, y_min, y_max)
+    # get the linear indicies for the tiles to get the names
+    idn = np.arange(len(xb) * len(yb))
+    idn.shape = (len(xb), len(yb))
+    mx, my = np.meshgrid(idx,idy)
+    subn = idn[mx,my].flatten()
     collect = []
+    names = []
+    c = 0
     for m in range(len(suby)-1):
         for n in range(len(subx)-1):
             p = Polygon([(subx[n], suby[m]), 
@@ -157,15 +167,18 @@ def get_shapely(xy_res: str, bbox: list):
                          (subx[n + 1], suby[m + 1]),
                          (subx[n + 1], suby[m])])
             collect.append(p)
-    return collect
+            names.append(get_tile_name(subn[c]))
+            c += 1
+    return collect, names
     
-def _get_bounds_idx(bounds, a_min, a_max):
+def _get_subbounds(bounds, a_min, a_max):
     """
     Return the subset that intersect or are contained by the bounds.
     """
     idx = np.nonzero((bounds > a_min) & (bounds < a_max))[0]
     idx_min = idx.min() - 1
     idx_max = idx.max() + 1
-    idx = np.append(idx, [idx_min, idx_max])
+    idx = np.insert(idx, 0, [idx_min])
+    idx = np.append(idx, [idx_max])
     subset = bounds[idx]
-    return subset
+    return subset, idx
