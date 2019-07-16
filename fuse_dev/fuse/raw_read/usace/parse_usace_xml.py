@@ -1610,6 +1610,16 @@ def extract_from_iso_meta(xml_meta):
         if len(xml_meta['Horizontal_Zone']) > 0:
             code = xml_meta['Horizontal_Zone'].split(' ')[1]
             print(code)
+            if '-' in code:
+                code = code.split('-')[1]
+                try:
+                    for key in SOURCEPROJECTION_dict:
+                        if SOURCEPROJECTION_dict[key] in code:# print(key)
+                            xml_meta['from_fips'] = SOURCEPROJECTION_dict[key]     
+                except:
+                    for key in SOURCEPROJECTION_dict:
+                        if key.upper() in xml_meta['Horizontal_Zone']:# print(key)
+                            xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
             for key in SOURCEPROJECTION_dict:
                 if key.upper() in xml_meta['Horizontal_Zone']:# print(key)
                     xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
