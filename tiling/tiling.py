@@ -103,15 +103,14 @@ def get_tile_bounds(xy: str):
     yb = np.linspace(-90., 90., yn + 1)
     return names, xb, yb
     
-def build_resolution_scheme(xy_res: str, path = '.'):
+def build_resolution_scheme(xy_res: str, path: str = '.'):
     """
     Create a geopackage with the tile set.
     """
     field_name = 'TileID'
     name,xb,yb = get_tile_bounds(xy_res)
-    driver = ogr.GetDriverByName("GPKG")
-    outfilename = os.path.join(path, f'{xy_res}_tesselation.gpkg')
-    ds = driver.CreateDataSource(outfilename)
+    driver = ogr.GetDriverByName("MEMORY")
+    ds = driver.CreateDataSource("tmp")
     srs = osr.SpatialReference()
     srs.SetWellKnownGeogCS('WGS84')
     lyr = ds.CreateLayer('Tessellation', srs, ogr.wkbPolygon)
@@ -120,24 +119,20 @@ def build_resolution_scheme(xy_res: str, path = '.'):
     fd = lyr.GetLayerDefn()
     for m in range(len(yb) - 1):
         for n in range(len(xb) - 1):
-            tile = _create_tile(xb[n], yb[m], xb[n+1], yb[m+1])
+            ring = ogr.Geometry(ogr.wkbLinearRing)
+            ring.AddPoint(xb[n], yb[m])
+            ring.AddPoint(xb[n], yb[m+1])
+            ring.AddPoint(xb[n+1], yb[m+1])
+            ring.AddPoint(xb[n+1], yb[m])
+            ring.AddPoint(xb[n], yb[m])
+            tile = ogr.Geometry(ogr.wkbPolygon)
+            tile.AddGeometry(ring)
             f = ogr.Feature(fd)
             f.SetGeometry(tile)
             f.SetField(field_name, next(name))
             lyr.CreateFeature(f)
             f = None
+            tile = None
+    outfilename = os.path.join(path, f'{xy_res}_tesselation.gpkg')
+    ogr.GetDriverByName("GPKG").CopyDataSource(ds, outfilename)
     ds = None
-    
-def _create_tile(x_min: float, y_min: float, x_max: float, y_max: float):
-    """
-    Return an ogr polygon representing a single tile.
-    """
-    ring = ogr.Geometry(ogr.wkbLinearRing)
-    ring.AddPoint(x_min, y_min)
-    ring.AddPoint(x_min, y_max)
-    ring.AddPoint(x_max, y_max)
-    ring.AddPoint(x_max, y_min)
-    ring.AddPoint(x_min, y_min)
-    poly = ogr.Geometry(ogr.wkbPolygon)
-    poly.AddGeometry(ring)
-    return poly
