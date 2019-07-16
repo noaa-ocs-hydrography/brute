@@ -1191,7 +1191,7 @@ def main(pb=None, to=None):
             csvWriter(csvSave, csvPath, pb)
         logWriter(fileLog, f'\tAdding results to {csvPath}')
     except:
-        logWriter(fileLog, f'\tUnable to add results to {csvPath}')
+        logWriter(fileLog, f'\tUnable to add results to output csv')
 
     logWriter(fileLog, f'\tOutput Log saved as {nameLog}')
     logClose(fileLog)

@@ -178,6 +178,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     # next if pull the subset of the table in the dataframe related to the list of files passed to it.
     merged_meta = {}
     merge2 = {}
+    special_handling = ""
     f = filename
     basename = os.path.basename(f)
     if basename.find('.ppxyz')>0:
@@ -224,13 +225,13 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
         ext_dict = {}
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESAJ', default_meta='')  #
-
+    meta['special_handling'] = special_handling#special handling is saved with text meta as it has to do with the text file
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
     e_pick = ehydro_pickle_use(f'{basename}.xyz')
     meta_from_ehydro = e_pick._read_pickle(f'{basename}.xyz')#to handle files
     
-    no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro = e_pick._Check_for_SPCSconflicts(meta_xml)#no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro = e_pick._Check_for_SPCSconflicts(meta_xml, meta_from_ehydro)
+    #no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro = e_pick._Check_for_SPCSconflicts(meta_xml)#no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro = e_pick._Check_for_SPCSconflicts(meta_xml, meta_from_ehydro)
     meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
     
     list_keys_empty = []
@@ -268,9 +269,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
                 subset_dict[key] = ext_dict[key]              
     merge2 = {**subset_row, **meta_from_ehydro, **meta_xml, **combined_row}  # this one excluded 'unknown' keys, and
     # in merging sources from the text file and xml it will show any values that do not match as a list.
-    merge2['special_handling'] = special_handling
     merged_meta = {**meta, **meta_from_ehydro, **meta_xml}  # this method overwrites
-    merged_meta['special_handling'] = special_handling#
     try:
         merged_meta = check_date_order(merged_meta, merged_meta)
     except:
@@ -324,10 +323,12 @@ class ehydro_pickle_use(object):
         no_SPCS_conflict = ''
         no_SPCS_conflict_withpickle = ''
         if 'SOURCEPROJECTION' in meta_from_ehydro:
-            if p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']) == meta_xml['from_fips']:
-                no_SPCS_conflict_withpickle = 'True'
-            else:
-                no_SPCS_conflict_withpickle = 'False'
+            if 'from_fips' in meta_xml:
+                if p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']) == meta_xml['from_fips']:
+                    no_SPCS_conflict_withpickle = 'True'
+                else:
+                    no_SPCS_conflict_withpickle = 'False'
+                
         meta_from_ehydro['no_SPCS_conflict_withpickle'] = no_SPCS_conflict_withpickle
         self.meta_from_ehydro
         return no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro
