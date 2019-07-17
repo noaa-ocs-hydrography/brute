@@ -109,14 +109,17 @@ def build_gpkg(xy_res: str, bbox: list, path: str = '.'):
     idn = _get_subn(ncols, idx, idy)
     c = 0
     # setup the gdal object
-    field_name = 'TileID'
+    id_field = 'TileID'
+    name_field = 'TileName'
     driver = ogr.GetDriverByName("MEMORY")
     ds = driver.CreateDataSource("tmp")
     srs = osr.SpatialReference()
     srs.SetWellKnownGeogCS('WGS84')
     lyr = ds.CreateLayer('Tessellation', srs, ogr.wkbPolygon)
-    field = ogr.FieldDefn(field_name, ogr.OFTString)
-    lyr.CreateField(field)
+    fid = ogr.FieldDefn(id_field, ogr.OFTString)
+    fname = ogr.FieldDefn(name_field, ogr.OFTString)
+    lyr.CreateField(fid)
+    lyr.CreateField(fname)
     fd = lyr.GetLayerDefn()
     for m in range(len(suby) - 1):
         for n in range(len(subx) - 1):
@@ -130,7 +133,8 @@ def build_gpkg(xy_res: str, bbox: list, path: str = '.'):
             tile.AddGeometry(ring)
             f = ogr.Feature(fd)
             f.SetGeometry(tile)
-            f.SetField(field_name, get_tile_name(idn[m,n]))
+            f.SetField(id_field, str(idn[m,n]))
+            f.SetField(name_field, get_tile_name(idn[m,n]))
             c += 1
             lyr.CreateFeature(f)
             f = None
