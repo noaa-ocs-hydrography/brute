@@ -178,33 +178,27 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     # next if pull the subset of the table in the dataframe related to the list of files passed to it.
     merged_meta = {}
     merge2 = {}
-    special_handling = ""
     f = filename
     basename = os.path.basename(f)
-    if basename.find('.ppxyz')>0:
-        basename = basename.rstrip('.ppxyz')
-        special_handling = 'ppxyz'
-    full_res = ['_A.xyz', '_A.XYZ', '_FULL.xyz', '_FULL.XYZ']
-    for ext_full in full_res:
-        if basename.find(ext_full)>0:
-            special_handling = 'FullRES'
+
             #adding special_handling var to output meta
             #idea is to be able to pass further instructions
-    ex_string1 = '*_A.xyz'
-    ex_string2 = '*_FULL.xyz'
-    ex_string3 = '*_FULL.XYZ'
-    ex_string4 = '*_A.XYZ'
-    basename = os.path.basename(basename)
-    basename = return_surveyid(basename, ex_string1)
-    basename = return_surveyid(basename, ex_string2)
-    basename = return_surveyid(basename, ex_string3)
-    basename = return_surveyid(basename, ex_string4)
-    basename = basename.rstrip('.XYZ')
-    basename = basename.rstrip('.xyz')
+#    ex_string1 = '*_A.xyz'
+#    ex_string2 = '*_FULL.xyz'
+#    ex_string3 = '*_FULL.XYZ'
+#    ex_string4 = '*_A.XYZ'
+#    basename = os.path.basename(basename)
+#    basename = return_surveyid(basename, ex_string1)
+#    basename = return_surveyid(basename, ex_string2)
+#    basename = return_surveyid(basename, ex_string3)
+#    basename = return_surveyid(basename, ex_string4)
+#    basename = basename.rstrip('.XYZ')
+#    basename = basename.rstrip('.xyz')
 
     e_t = Extract_Txt(f)
     # xml pull here.
     xmlfilename = get_xml_match(f)
+    
     if os.path.isfile(xmlfilename):
         with open(xmlfilename, 'r') as xml_file:
             xml_txt = xml_file.read()
@@ -225,11 +219,11 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
         ext_dict = {}
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESAJ', default_meta='')  #
-    meta['special_handling'] = special_handling#special handling is saved with text meta as it has to do with the text file
+    meta['special_handling'] = _check_special_handling(basename)#special handling is saved with text meta as it has to do with the text file
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
-    e_pick = ehydro_pickle_use(f'{basename}.xyz')
-    meta_from_ehydro = e_pick._read_pickle(f'{basename}.xyz')#to handle files
+    e_pick = ehydro_pickle_use(xmlfilename)
+    meta_from_ehydro = e_pick._read_pickle(xmlfilename)#to handle files
     
     #no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro = e_pick._Check_for_SPCSconflicts(meta_xml)#no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro = e_pick._Check_for_SPCSconflicts(meta_xml, meta_from_ehydro)
     meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
@@ -658,11 +652,35 @@ def get_xml_match(f):
         xmlfilename = get_xml_xt(f, '_FULL.XYZ')
     elif '_A.XYZ' in f:
         xmlfilename = get_xml_xt(f, '_A.XYZ')
+    elif '.ppxyz' in f:
+        xmlfilename = get_xml_xt(f, '.ppxyz')
     else:
         xmlfilename = get_xml(f)
     return xmlfilename
 
+##-----------------------------------------------------------------------------
+def _check_special_handling(basename):
+    """
+    Doing a check if the xyz file type is full resolution or may have
+    other special handling flags that should be passed
+    
+    Parameters
+    ----------
+    basename :
+        
 
+    Returns
+    -------
+    """
+    special_handling = ''
+    if basename.find('.ppxyz')>0:
+        special_handling = 'ppxyz'
+    full_res = ['_A.xyz', '_A.XYZ', '_FULL.xyz', '_FULL.XYZ']
+    for ext_full in full_res:
+        if basename.find(ext_full)>0:
+            special_handling = 'FullRES'
+    return special_handling
+    
 ##-----------------------------------------------------------------------------
 
 def _start_xyz(infilename):
