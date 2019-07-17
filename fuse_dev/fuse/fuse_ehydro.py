@@ -92,6 +92,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
                 self._reader = _usace.ceswg.read_raw()
             elif reader_type == 'cespl':
                 self._reader = _usace.cespl.read_raw()
+            elif reader_type == 'cenae':
+                self._reader = _usace.cenae.read_raw()
             else:
                 raise ValueError('reader type not implemented')
         except:
