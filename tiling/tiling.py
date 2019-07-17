@@ -104,10 +104,9 @@ def build_gpkg(xy_res: str, bbox: list, path: str = '.'):
     subx, idx = _get_subbounds(xb, x_min, x_max)
     suby, idy = _get_subbounds(yb, y_min, y_max)
     # get the linear indicies for the tiles to get the names
-    idn = np.arange(len(xb) * len(yb))
-    idn.shape = (len(xb), len(yb))
-    mx, my = np.meshgrid(idx,idy)
-    subn = idn[mx,my].flatten()
+    rx = dig2num(xy_res[0])
+    ncols = get_num_cols(rx)
+    idn = _get_subn(ncols, idx, idy)
     c = 0
     # setup the gdal object
     field_name = 'TileID'
@@ -131,7 +130,7 @@ def build_gpkg(xy_res: str, bbox: list, path: str = '.'):
             tile.AddGeometry(ring)
             f = ogr.Feature(fd)
             f.SetGeometry(tile)
-            f.SetField(field_name, get_tile_name(subn[c]))
+            f.SetField(field_name, get_tile_name(idn[m,n]))
             c += 1
             lyr.CreateFeature(f)
             f = None
@@ -153,13 +152,12 @@ def get_shapely(xy_res: str, bbox: list):
     subx, idx = _get_subbounds(xb, x_min, x_max)
     suby, idy = _get_subbounds(yb, y_min, y_max)
     # get the linear indicies for the tiles to get the names
-    idn = np.arange(len(xb) * len(yb))
-    idn.shape = (len(xb), len(yb))
-    mx, my = np.meshgrid(idx,idy)
-    subn = idn[mx,my].flatten()
+    rx = dig2num(xy_res[0])
+    ncols = get_num_cols(rx)
+    idn = _get_subn(ncols, idx, idy)
+    c = 0
     collect = []
     names = []
-    c = 0
     for m in range(len(suby)-1):
         for n in range(len(subx)-1):
             p = Polygon([(subx[n], suby[m]), 
@@ -167,7 +165,7 @@ def get_shapely(xy_res: str, bbox: list):
                          (subx[n + 1], suby[m + 1]),
                          (subx[n + 1], suby[m])])
             collect.append(p)
-            names.append(get_tile_name(subn[c]))
+            names.append(get_tile_name(idn[m,n]))
             c += 1
     return collect, names
     
@@ -182,3 +180,15 @@ def _get_subbounds(bounds, a_min, a_max):
     idx = np.append(idx, [idx_max])
     subset = bounds[idx]
     return subset, idx
+
+def _get_subn(dimx: int, idx, idy):
+    """
+    Get the global indicies for the subtiles.
+    """
+    n_subx = len(idx)
+    n_suby = len(idy)
+    idn = np.zeros(n_subx * n_suby, dtype = np.int)
+    for n,m in enumerate(idy):
+        idn[n * n_subx:(n+1) * n_subx] = m * dimx + idx
+    idn.shape = (n_suby, n_subx)
+    return idn
