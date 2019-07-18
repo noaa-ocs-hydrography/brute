@@ -11,7 +11,7 @@ J Kinney
 update April 3, 2019
 update June 21, 2019 Zach
 update July 12, 2019 J Kinney
-
+update July 18, 2019 J Kinney xml_SPCSconflict_flag and xml_SPCSconflict_otherspcs added
 """
 
 import logging as log
