@@ -63,6 +63,7 @@ class Base:
         xml_name = self.name_gen(filename, ext='xml', sfx=False)
         pickle_name = self.name_gen(filename, ext='pickle', sfx=False)
         pickle_dict = parse_usace_pickle.read_pickle(pickle_name, pickle_ext=True)
+        pickle_keys = parse_usace_pickle.dict_keys(pickle_dict)
         return pickle_dict
 
     def name_gen(self, filename: str, ext: str = None, sfx: bool = True) -> str:

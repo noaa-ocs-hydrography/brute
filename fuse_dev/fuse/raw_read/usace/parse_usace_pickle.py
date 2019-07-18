@@ -20,6 +20,7 @@ class pickle_file:
         """
 
         self.pickle_meta = self.read_pickle(infilename)
+        self.dict_keys = self.collect_keys(self.pickle_meta)
 
     def read_pickle(self, infilename: str, pickle_ext: bool = False):
         """
@@ -57,6 +58,8 @@ class pickle_file:
             print(f'{fpickle} not found')
             return {}
 
+    def dict_keys(self, dictionary: dict) -> tuple:
+        return (key for key in dictionary.keys())
 
 def read_pickle(infilename: str, pickle_ext: bool = False) -> dict:
     """
@@ -93,3 +96,7 @@ def read_pickle(infilename: str, pickle_ext: bool = False) -> dict:
     else:
         print(f'{fpickle} not found')
         return {}
+
+
+def dict_keys(dictionary: dict) -> tuple:
+    return tuple(key for key in dictionary.keys())
