@@ -26,6 +26,7 @@ class fuse_base_class:
         self._configfilename = configfilename
         self._config = self._read_configfile(configfilename)
         self.rawdata_path = self._config['rawpaths']
+        self.procdata_path = self._config['outpath']
         self._meta = {}
 
     def _read_configfile(self, confile: str):

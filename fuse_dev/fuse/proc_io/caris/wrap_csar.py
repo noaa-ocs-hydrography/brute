@@ -13,10 +13,9 @@ import sys
 
 import caris.coverage as cc
 import numpy as np
-from osgeo import gdal
 
 
-def write_csar(dataset: gdal.Dataset, m: dict):
+def write_csar(dataset, m: dict):
     """
     Convert a gdal dataset into a csar.
     http://www.teledynecaris.com/en/support/caris-python-api/5-1/coverage/raster/intro.html#creating-a-raster
@@ -38,10 +37,14 @@ def write_csar(dataset: gdal.Dataset, m: dict):
     print('write_csar')
     dataset = np.array(dataset)
     print(m, dataset, dataset.shape)
+    dataset[dataset==m['nodata']] = np.nan
+    d_min = np.nanmax(dataset)
+    dataset[dataset==np.nan] = m['nodata']
+    d_max = np.nanmin(dataset)
     z_dir = cc.Direction.HEIGHT
     layerName = "Elevation"
     band_info = cc.BandInfo(name=layerName, type=cc.DataType.FLOAT32, tuple_length=1, direction=z_dir, units='m',
-                            category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.BICUBIC)
+                            category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.BICUBIC, minimum=d_min, maximum=d_max)
     resolution = [m['resy'], m['resx']]
     origin = [m['originx'], m['originy']]
     #    origin = [0,0]
@@ -49,8 +52,6 @@ def write_csar(dataset: gdal.Dataset, m: dict):
     crs = m['crs']
     name = m['outfilename']
     bands = [band_info]
-
-    print(name + '0')
 
     while os.path.exists(name) and os.path.exists(name + '0'):
         try:
@@ -75,10 +76,10 @@ def write_csar(dataset: gdal.Dataset, m: dict):
     area = ((0, 0), (dimensions[0], dimensions[1]))
     raster.write("Elevation", area, dataset.astype(band_dtype))
 
-    raster = None
+    del raster
 
 
-def write_cloud(dataset: gdal.Dataset, m: dict):
+def write_cloud(dataset, m: dict):
     """
     Convert a set of GDAL points to a CSAR point cloud.  The provided data is
     assumed to be a depth (positive down) and is assigned to a height
@@ -101,7 +102,6 @@ def write_cloud(dataset: gdal.Dataset, m: dict):
     print('write_cloud')
     print(m)
     outfilename = m['outfilename']
-    print(outfilename + '0')
 
     while os.path.exists(outfilename) and os.path.exists(outfilename + '0'):
         try:
@@ -117,13 +117,16 @@ def write_cloud(dataset: gdal.Dataset, m: dict):
 
     print(m['z_up'], type(m['z_up']))
 
+    d_min = np.amax(dataset[:, 2])
+    d_max = np.amin(dataset[:, 2])
+    print(d_min, d_max)
     # build CSAR bands
     bandInfo = {}  # Define our bands below
     z_dir = cc.Direction.HEIGHT
     layerName = "Elevation"
     print(m['z_up'], layerName, z_dir)
     bandInfo[layerName] = cc.BandInfo(type=cc.DataType.FLOAT64, tuple_length=1, name=layerName, direction=z_dir,
-                                      units='m', category=cc.Category.SCALAR, ndv=-1.0)
+                                      units='m', category=cc.Category.SCALAR, ndv=-1.0, minimum=d_max, maximum=d_min)
     bandInfo['Position'] = cc.BandInfo(type=cc.DataType.FLOAT64, tuple_length=3, name='Position',
                                        direction=cc.Direction.NAP, units='', category=cc.Category.SCALAR,
                                        ndv=(-1.0, -1.0, 0.0))
@@ -147,7 +150,7 @@ def write_cloud(dataset: gdal.Dataset, m: dict):
     # print(outfilename)
     pc = cc.Cloud(filename=outfilename, options=opts)
 
-    pc = None
+    del pc
 
 
 def check_metadata(meta: dict, meta_type: str):

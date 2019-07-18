@@ -38,6 +38,7 @@ class intitialize:
         self._outlocation = outlocation
         self._uval = _catZones.get(catzoc)
         self._io = io
+
         if mode == 'linear':
             pass
         else:
@@ -50,9 +51,9 @@ class intitialize:
         Parameters
         ----------
         filepath: str :
-
+            TODO write description
         coverage_list: list :
-
+            TODO write description
 
         Returns
         -------
@@ -60,18 +61,19 @@ class intitialize:
         """
 
         bag = _bag.bag_file()
-        bag.open_file(filepath, 'gdal')
+        bag.open_file(filepath, 'hack')
         bag.generate_name(self._outlocation, self._io)
         coverage = _cvg.unified_coverage(coverage_list, bag.wkt, bag.name)
         coverage = _cvg.align2grid(coverage, bag.bounds, bag.shape, bag.resolution, bag.nodata)
 
-        z, tiles, tile_info = _itp.sliceFinder(bag.size, bag.shape,
-                                               bag.resolution[0])
+        z, tiles, tile_info = _itp.sliceFinder(bag.size, bag.shape, bag.resolution[0])
+
         if z > 1:
             unitedBag = _np.empty_like(bag.elevation)
             unitedUnc = _np.empty_like(bag.elevation)
             unitedPre = _np.empty_like(bag.elevation)
             bagShape = bag.shape
+
             for ySlice in range(tiles.shape[0]):
                 for xSlice in range(tiles.shape[1]):
                     ts = _dt.now()
@@ -83,19 +85,20 @@ class intitialize:
                     uncrTile = _itp.chunk(bag.uncertainty, tile, mode='a')
                     print('interp is next')
                     interp = _itp.linear(bathTile, uncrTile, covgTile, self._uval)
-                    covgTile = bathTile = uncrTile = None
+                    del covgTile, bathTile, uncrTile
                     unitedBag = _itp.chunk(interp.bathy, tile, mode='c',
                                            copy=unitedBag)
                     unitedUnc = _itp.chunk(interp.uncrt, tile, mode='c',
                                            copy=unitedUnc)
                     unitedPre = _itp.chunk(interp.unint, tile, mode='c',
                                            copy=unitedPre)
-                    interp = None
+                    del interp
                     td = _dt.now()
                     tdelt = td - ts
                     print('Tile complete -', td, '| Tile took:', tdelt)
+
             ugrids = [unitedBag, unitedUnc, unitedPre]
-            unitedBag = unitedUnc = unitedPre = None
+            del unitedBag, unitedUnc, unitedPre
         else:
             ts = _dt.now()
             print('\nTile 1 of 1 -', ts)
@@ -103,10 +106,11 @@ class intitialize:
             interp = _itp.linear(bag.elevation, bag.uncertainty,
                                  coverage.array, self._uval)
             ugrids = [interp.bathy, interp.uncrt, interp.unint]
-            interp = None
+            del interp
             td = _dt.now()
             tdelt = td - ts
             print('Tile complete -', td, '| Tile took:', tdelt)
+
         bag.elevation, bag.uncertainty, coverage.array = _itp.rePrint(bag.elevation, bag.uncertainty,
                                                                       coverage.array, ugrids, bag.nodata, self._io)
         print(coverage.array)
@@ -122,4 +126,4 @@ class intitialize:
 
         _cvg.write_vector(coverage, self._outlocation)
 
-        coverage = bag = save = ugrids = None
+        del coverage, bag, save, ugrids

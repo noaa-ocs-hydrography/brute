@@ -31,6 +31,7 @@ def test_from_existing_file():
     -------
 
     """
+
     mv_to_dir = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\CEMVN"
     df_export_to_csv = os.path.join(mv_to_dir, 'metadata',
                                     'ehydro_allscript_meta_v1.txt')  # r'N:\New_Directory_1\GulfCoast\USACE\xyz\MLLW\Metadata\Active\Attempted_combined_df_metafields.txt'
@@ -42,7 +43,10 @@ def test_from_existing_file():
 
 
 def test_from_existing_file_meta2csvstyle():
-    """take an existing metadata .csv file that comes as output from meta2csv"""
+    """
+    take an existing metadata .csv file that comes as output from meta2csv
+    """
+
     mv_to_dir = r"N:\New_Directory_1\GulfCoast\USACE\ehydro\CEMVN"
     metafile = mv_to_dir + "\metadata\ehydro_meta_dict_out.txt"
     merged_dataframe = pd.read_csv(metafile, sep=",", index_col=1)
@@ -50,7 +54,7 @@ def test_from_existing_file_meta2csvstyle():
 
 
 # ------------------------------------------------------------------------------
-def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
+def look_for_Ehydro_datum_folders(f: str, datumfolder: str = 'unknown', newpathroot: str = None):
     """
     look_for_Ehydro_datum_folders(f, datumfolder = 'unknown')
     example:look_for_Ehydro_datum_folders(f, 'MLLW')
@@ -59,7 +63,7 @@ def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
     Parameters
     ----------
     f :
-        
+
     datumfolder :
          (Default value = 'unknown')
     newpathroot :
@@ -69,10 +73,9 @@ def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
     -------
 
     """
-    if datumfolder in ('unknown', ''):
-        d_folder = '\\unknown'
-    else:
-        d_folder = f'\\{datumfolder}'
+
+    if datumfolder == '':
+        datumfolder = 'unknown'
 
     if os.path.exists(f):
         filepath = os.path.dirname(f)
@@ -92,7 +95,7 @@ def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
 
         if newpathroot is not None:
             if os.path.exists(newpathroot):
-                filedatumpath = os.path.join(newpathroot, d_folder, 'Original')
+                filedatumpath = os.path.join(newpathroot, datumfolder, 'Original')
                 # redirect to a new folder path
 
                 if os.path.isdir(filedatumpath) and os.path.exists(filedatumpath):
@@ -100,6 +103,7 @@ def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
                     for ff in survey_files:
                         shutil.move(ff, filedatumpath)  #
                         print(f'moved to {filedatumpath}')
+
                     print('did it work?')
                 else:
                     # make directory #os.mkdir(r'N:\New_Directory_1\GulfCoast\Mississippi\USACE\ehydro\the_vertical_datum_folder')
@@ -113,15 +117,18 @@ def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
         elif os.path.dirname(f).find('USACE\ehydro') >= 0 or os.path.dirname(f).find(
                 'USACE\E-Hydro') >= 0 or os.path.dirname(f).find('USACE\eHydro' >= 0):
             filepath = os.path.dirname(f)
-            filedatumpath = os.path.join(filepath, d_folder, 'Original')  # '\MLLW'
+            filedatumpath = os.path.join(filepath, datumfolder, 'Original')  # '\MLLW'
+
             if os.path.isdir(filedatumpath) and os.path.exists(filedatumpath):
                 # move the file here
                 for ff in survey_files:
                     shutil.move(ff, filedatumpath)  #
+
                 print(f'moved to {filedatumpath}')
             else:
                 # make directory #example os.mkdir(r'N:\New_Directory_1\GulfCoast\Mississippi\USACE\ehydro\the_vertical_datum_folder')
                 os.makedirs(filedatumpath)  # os.mkdir(filedatumpath)# add one leaf of folder structure
+
                 if os.path.isdir(filedatumpath) and os.path.exists(filedatumpath):
                     for ff in survey_files:
                         shutil.move(ff, filedatumpath)  # shutil.move(f,filedatumpath)
@@ -130,7 +137,7 @@ def look_for_Ehydro_datum_folders(f, datumfolder='unknown', newpathroot=None):
 
 # ------------------------------------------------------------------------------
 
-def return_surveyid(filenamepath, ex_string):
+def return_surveyid(filenamepath: str, ex_string: str):
     """
     
 
@@ -152,7 +159,7 @@ def return_surveyid(filenamepath, ex_string):
 
 
 # ------------------------------------------------------------------------------
-def move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir):
+def move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir: str):
     """
     move all files with matching extension to new folder based on the datum
 
@@ -167,9 +174,11 @@ def move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir):
     -------
 
     """
+
     Ax = merged_dataframe.axes
     Ax_row_index = Ax[0].tolist()
     Ax_row_index.sort()
+
     for filenamepath in Ax_row_index:
         # 'from_filenamebase'# is in dataframe
         if merged_dataframe.at[filenamepath, 'script: from_vert_key'] == 'MLLW':
@@ -188,13 +197,13 @@ def move_to_vert_datum_folder_iter(merged_dataframe, mv_to_dir):
         elif merged_dataframe.at[filenamepath, 'script: from_vert_key'] == 'MLW':
             # MLW
             look_for_Ehydro_datum_folders(filenamepath, 'MLW', mv_to_dir)
+        elif merged_dataframe.at[filenamepath, 'script: from_vert_key'] != "":
+            # Vertical datum unknown
+            look_for_Ehydro_datum_folders(filenamepath, merged_dataframe.at[filenamepath, 'script: from_vert_key'],
+                                          mv_to_dir)
         else:
-            if merged_dataframe.at[filenamepath, 'script: from_vert_key'] != "":
-                # Vertical datum unknown
-                look_for_Ehydro_datum_folders(filenamepath, merged_dataframe.at[filenamepath, 'script: from_vert_key'],
-                                              mv_to_dir)
-            else:
-                look_for_Ehydro_datum_folders(filenamepath)
+            look_for_Ehydro_datum_folders(filenamepath)
+
     print('moving of files complete!')
 
 
