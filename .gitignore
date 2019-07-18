@@ -2,6 +2,7 @@
 *.fbp
 *.pyc
 *.rst
+*.spyproject
 autointerp/Documentation/*
 eHydro_scrape/_misc/*
 eHydro_scrape/downloads/*

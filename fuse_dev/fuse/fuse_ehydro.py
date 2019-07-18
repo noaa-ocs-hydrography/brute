@@ -59,6 +59,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._set_data_transform()
         self._set_data_interpolator()
         self._set_data_writer()
+        self._db = None
         self._meta = {}  # initialize the metadata holder
         self._pickle_meta = {}  # initialize the survey pickle object
         self.logger = _logging.getLogger('fuse')
@@ -174,20 +175,20 @@ class fuse_ehydro(_fbc.fuse_base_class):
         meta['to_horiz_datum'] = self._config['to_horiz_datum']
         meta['to_vert_datum'] = self._config['to_vert_datum']
         meta['to_vert_units'] = 'metres'
-        meta['interpolated'] = 'True'
+        meta['interpolated'] = 'False'
         # meta['script_version'] = f'{meta['script_version']}' #,{__version__}{i2c.__version__}'
         self._meta.update(meta)
         # write the metadata
         self._meta_obj.write_meta_record(meta)
 
-        if 'from_fips' in self._meta:
-            pass
-            # self.process(infilename)
-        # reading the bathymetry is not required > goes directly to datum trans
-
-    def process(self, infilename: str):
+    def process(self, infilename: str, interpolate = True):
         """
         Do the datum transformtion and interpolation.
+
+        Given the generic need to interpolate USACE data the 'interpolate'
+        kwarg is set to True as a hack.  This information should be drawn from
+        the data reader since there will be cases where we get full res data
+        from the reader and interlation is not necessary.
 
         Parameters
         ----------
@@ -205,34 +206,81 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._set_log(infilename)
 
         if 'from_fips' in self._meta:
-            # convert the bathy
+            # convert the bathy for the original data
             outpath = self._config['outpath']
             infilepath, infilebase = _os.path.split(infilename)
             infileroot, ext = _os.path.splitext(infilebase)
-            outfilename = _os.path.join(outpath, infileroot)
+            outfilebase = _os.path.join(outpath, infileroot)
             new_ext = self._config['bathymetry_intermediate_file']
-            outfilename = f'{outfilename}.{new_ext}'
-
+            outfilename = f'{outfilebase}.{new_ext}'
             # oddly _transform becomes the bathymetry reader here...
 
             # return a gdal dataset in the right datums for combine
             dataset = self._transform.translate(infilename, self._meta)
+            resolution = self._config['to_resolution']
             self._points.write(dataset, outfilename)
-            print(dataset.GetProjection())
+            self._meta['to_filename'] = outfilename
+            self._meta_obj.write_meta_record(self._meta)
 
             # take a gdal dataset for interpolation and return a gdal dataset
+            interpfilename = f'{outfilebase}_{resolution}m_interp.{new_ext}'
+            interpkeyfilename = f'{infilebase}.interpolated'
+            self._meta_interp = self._meta.copy()
+            self._meta_interp['interpolated'] = True
+            self._meta_interp['from_filename'] = interpkeyfilename
+            self._meta_interp['to_filename'] = interpfilename
             if 'poly_name' in self._pickle_meta:
                 shapename = self._pickle_meta['poly_name']
                 shapepath = _os.path.join(infilepath, shapename)
-                print(shapepath)
                 dataset = self._interpolator.interpolate(dataset, shapepath)
             else:
                 dataset = self._interpolator.interpolate(dataset)
-
-            self._writer.write(dataset, outfilename)
-            self._meta['to_filename'] = outfilename
+            self._writer.write(dataset, interpfilename)
+            self._meta_obj.write_meta_record(self._meta_interp)
         else:
             self.logger.log(_logging.DEBUG, 'No fips code found')
+
+    def post(self, infilename):
+        """
+        Make the data available for amalgamation.
+        """
+        self._set_log(infilename)
+        self._get_s57_stored_meta(infilename)
+        if len(self._meta) > 0:
+            if self._db == None:
+                self._connect_to_db()
+            procfile = self._meta['to_filename']
+            print(self._s57_meta)
+            self._db.write(procfile, 'new', self._s57_meta)
+
+    def _connect_to_db(self):
+        """
+        Connect to the database defined in the configuration dictionary.
+        """
+        if 'database_location' in self._config:
+            db_loc = self._config['database_location']
+        else:
+            raise ValueError('No database location defined in the configuration file.')
+        if 'database_location' in self._config:
+            db_name = self._config['database_name']
+        else:
+            raise ValueError('No database name defined in the configuration file.')
+        intype = self._config['bathymetry_intermediate_file']
+        self._db = proc_io(intype, 'carisbdb51', db_loc = db_loc, db_name = db_name)
+
+    def disconnect(self):
+        """
+        Asks proc_io to close the database connection
+
+        """
+        if self._db:
+            self._db.close_connection()
+        else:
+            if 'database_location' in self._config:
+                db_loc = self._config['database_location']
+                raise RuntimeError(f'No connection to {db_loc} to close')
+            else:
+                raise ValueError('No database location defined in the configuration file.')
 
     def _set_log(self, infilename: str):
         """
@@ -293,3 +341,31 @@ class fuse_ehydro(_fbc.fuse_base_class):
             self._meta = self._meta_obj.read_meta_record(f)
 
         # TODO need to catch if this file is not in the metadata record yet here.
+
+    def _get_s57_stored_meta(self, infilename: str):
+        """
+        Get the metadata in a local dictionary so that it can be used within
+        the instantiated object.  In this case the metadata is converted to
+        an s57 version of the metadata.
+
+        Parameters
+        ----------
+        infilename :
+
+        infilename: str :
+
+
+        Returns
+        -------
+
+        """
+
+        # file name is the key rather than the path
+        path, f = _os.path.split(infilename)
+        if 'from_filename' not in self._meta:
+            self._meta = self._meta_obj.read_meta_record(f)
+        elif self._meta['from_filename'] is not infilename:
+            self._meta = self._meta_obj.read_meta_record(f)
+        if len(self._meta) > 0:
+            self._s57_meta = self._meta_obj.row2s57(self._meta)
+        # need to catch if this file is not in the metadata record yet here.

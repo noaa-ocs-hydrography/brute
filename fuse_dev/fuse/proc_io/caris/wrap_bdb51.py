@@ -23,7 +23,7 @@ class bdb51_io:
     An object for handling CARIS BDB I/O through the Python interface.
     """
 
-    def __init__(self, port):
+    def __init__(self, port, buffer_size):
         """
         Initialize the object.
 
@@ -35,6 +35,7 @@ class bdb51_io:
         self.sock = None
         self.port = port
         self.host = 'localhost'
+        self.buffer_size = buffer_size
         self.alive = True
         self.connected = False
         self.node_manager = None
@@ -55,13 +56,12 @@ class bdb51_io:
         # set up the socket
         try:
             self.sock = socket.create_connection((host, port))
-            self.connected = True
         except OSError:
             self.sock.close()
             self.sock = None
         # send a message saying we are alive
         if self.sock is None:
-            print('could not open socket')
+            print('could not call home from subprocess')
             sys.exit(1)
         else:
             hello_im_here = self.status({'command': None})
@@ -72,12 +72,21 @@ class bdb51_io:
         Listen on the provided socket and wait for something to do.
         """
         while self.alive:
-            data = self.sock.recv(1024)
-            if data:
-                command = pickle.loads(data)
-                response = self.take_commands(command)
-                print('Response', response)
-                self.sock.sendall(pickle.dumps(response))
+            try:
+                data = self.sock.recv(self.buffer_size)
+                if data:
+                    command = pickle.loads(data)
+                    response = self.take_commands(command)
+                    print('Response', response, end = '\n\n')
+                    data = pickle.dumps(response)
+                    # print('pickled data size is {}, buffer size is {}'.format(len(data), self.buffer_size))
+                    lensent = self.sock.send(data)
+                    # print('sent {} bytes'.format(str(lensent)))
+                    if lensent != len(data):
+                        print('Failed to send all data. {} sent.').format(lensent)
+            except ConnectionResetError:
+                print('Remote connection closed.  Assuming die command.')
+                self.die({})
         self.sock.close()
 
     def take_commands(self, command_dict: dict) -> dict:
@@ -139,11 +148,17 @@ class bdb51_io:
         self.database = command_dict['database']
 
         try:
-            self._nm = bdb.NodeManager(command_dict['username'], command_dict['password'], self.node_manager)
-            msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
+            if None in (username, password):
+                raise ValueError("System environment variable 'nbsscriptuser' and/or 'nbsscriptpass' is not defined")
+            else:
+                self._nm = bdb.NodeManager(username, password, self.node_manager)
+                msg += 'Connected to Node Manager {}\n'.format(self.node_manager)
         except RuntimeError as error:
             msg += str(error)
-
+            command_dict['success'] = False
+        except ValueError as error:
+            msg += str(error)
+            command_dict['success'] = False
         if self._nm is not None:
             try:
                 self._db = self._nm.get_database(self.database)
@@ -184,6 +199,7 @@ class bdb51_io:
 
         command_dict['success'] = True
         command_dict['alive'] = self.alive
+        command_dict['connected'] = self.connected
         return command_dict
 
     def upload(self, command_dict: dict) -> dict:
@@ -204,21 +220,21 @@ class bdb51_io:
             response
 
         """
-
-        # what to upload, new or updated data
-        action = command_dict['action']
-
-        # the name of the file to get data from
-        file_path = command_dict['path']
-
         try:
+            # what to upload, new or updated data
+            action = command_dict['action']
+            # the name of the file to get data from
+            bathy_path = command_dict['bathy_path']
+            with open(command_dict['meta_path'], 'rb') as f:
+                metadata = pickle.load(f)
+                print(metadata)
             if action == 'new':
-                msg = self._upload_new(file_path)
+                msg = self._upload_new(bathy_path, metadata)
             elif action == 'bathy':
-                pass
+                msg = 'Updating only bathy is not implemented yet'
                 # query for the object and replace the bathy
             elif action == 'metadata':
-                pass
+                msg = 'Updating only metadata is not implemented yet'
                 # query for the object and replace the metadata
             else:
                 raise ValueError('Upload action type not understood')
@@ -231,7 +247,7 @@ class bdb51_io:
 
         return command_dict
 
-    def _upload_new(self, file_path: str) -> str:
+    def _upload_new(self, file_path: str, new_metadata: dict) -> str:
         """
         Upload both bathymetry and the metadata.
 
@@ -256,17 +272,10 @@ class bdb51_io:
         surface['srcfil'] = file_path
 
         # get a metadata container to put stuff into
-        #        metadata = surface.attributes
-        #        # need to load the metadata dictionary that was put on disk here.
-        #        metafilename = get the name here
-        #        with pickle.load(metafilename) as new_meta:
-        #         try:
-        #             metadata = new_meta
-        #         except:
-        #             surface.attribute['OBJNAM']  = 'MetaDataFail'
-        #             with open('metadata_error_file.txt','a') as metafail:
-        #                 metafail.write(f'{file_path}\n')
-
+        current_metadata = surface.attributes
+        # need to load the metadata dictionary that was put on disk here.
+        for key in new_metadata:
+            current_metadata[key] = new_metadata[key]
         # commit the feature to the database
         self._db.commit()
 
@@ -311,9 +320,8 @@ class bdb51_io:
             response
 
         """
-
-        action = command_dict['action']
-        time.sleep(int(action))
+        if 'action' in command_dict:
+            time.sleep(int(command_dict['action']))
         self._nm = None
         self._db = None
         command_dict['success'] = True
@@ -322,7 +330,7 @@ class bdb51_io:
         return command_dict
 
 
-def main(port: int):
+def main(port: int, buffer_size: int):
     """
     An event loop waiting for commands.
 
@@ -332,15 +340,17 @@ def main(port: int):
 
     port: int :
 
+    buffer_size: int : receive buffersize
+
 
     Returns
     -------
 
     """
 
-    db_io = bdb51_io(port)
+    db_io = bdb51_io(port, buffer_size)
 
 
 if __name__ == '__main__':
     args = sys.argv
-    main(int(args[-1]))
+    main(int(args[-2]), int(args[-1]))

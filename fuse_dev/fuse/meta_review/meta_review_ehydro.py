@@ -18,31 +18,34 @@ class meta_review_ehydro(mrb.meta_review_base):
     """The ehydro metadata object."""
 
     # ordered dict to ensure looping through the keys always gets 'manual' last.
-    _col_root = {'manual': 'manual: ',
-                 'script': 'script: '}
+    _col_root = {
+        'manual': 'manual: ',
+        'script': 'script: '
+    }
 
     # this map translates the names used here to the ID used in the database
-    _field_map = {'from_filename': 'OBJNAM',
-                  'start_date': 'SURSTA',
-                  'end_date': 'SUREND',
-                  'horiz_uncert': 'POSACC',
-                  'to_horiz_datum': 'HORDAT',
-                  'agency': 'AGENCY',
-                  'source_type': 's_ftyp',
-                  'complete_coverage': 'flcvrg',
-                  'complete_bathymetry': 'flbath',
-                  'to_vert_datum': 'VERDAT',
-                  'to_vert_units': 'DUNITS',
-                  'vert_uncert_fixed': 'vun_fx',
-                  'vert_uncert_vari': 'vun_vb',
-                  'feat_size': 'f_size',
-                  'feat_detect': 'f_dtct',
-                  'feat_least_depth': 'f_lstd',
-                  'interpolated': 'interp',
-                  'reviewed': 'r_name',
-                  'script_version': 's_scpv',
-                  'source_indicator': 'SORIND',
-                  }
+    _field_map = {
+        'from_filename': 'OBJNAM',
+        'start_date': 'SURSTA',
+        'end_date': 'SUREND',
+        'horiz_uncert': 'POSACC',
+        'to_horiz_datum': 'HORDAT',
+        'agency': 'AGENCY',
+        'source_type': 's_ftyp',
+        'complete_coverage': 'flcvrg',
+        'complete_bathymetry': 'flbath',
+        'to_vert_datum': 'VERDAT',
+        'to_vert_units': 'DUNITS',
+        'vert_uncert_fixed': 'vun_fx',
+        'vert_uncert_vari': 'vun_vb',
+        'feat_size': 'f_size',
+        'feat_detect': 'f_dtct',
+        'feat_least_depth': 'f_lstd',
+        'interpolated': 'interp',
+        'reviewed': 'r_name',
+        'script_version': 's_scpv',
+        'source_indicator': 'SORIND',
+    }
 
     _vert_datum = {
         'MLWS': '1',
@@ -95,11 +98,11 @@ class meta_review_ehydro(mrb.meta_review_base):
         csv_cols = []
 
         for c in self._metakeys:
-            if c is 'from_filename':
+            if c == 'from_filename':
                 csv_cols.append(c)
-            elif c is 'from_path':
+            elif c == 'from_path':
                 csv_cols.append(c)
-            elif c is 'script_version':
+            elif c == 'script_version':
                 csv_cols.append(c)
             else:
                 csv_cols.append(f'{meta_review_ehydro._col_root["script"]}{c}')
@@ -118,12 +121,8 @@ class meta_review_ehydro(mrb.meta_review_base):
 
         Parameters
         ----------
-        meta :
-            
-        meta: Union[List[dict] :
-            
-        dict] :
-            
+        meta: Union[List[dict], dict] :
+            TODO write description
 
         Returns
         -------
@@ -149,10 +148,8 @@ class meta_review_ehydro(mrb.meta_review_base):
 
         Parameters
         ----------
-        meta :
-            
         meta: List[dict] :
-            
+            TODO write description
 
         Returns
         -------
@@ -209,10 +206,8 @@ class meta_review_ehydro(mrb.meta_review_base):
 
         Parameters
         ----------
-        meta :
-            
         meta: List[dict] :
-            
+            TODO write description
 
         Returns
         -------
@@ -240,10 +235,8 @@ class meta_review_ehydro(mrb.meta_review_base):
 
         Parameters
         ----------
-        meta :
-            
         meta: List[dict] :
-            
+            TODO write description
 
         Returns
         -------
@@ -257,9 +250,9 @@ class meta_review_ehydro(mrb.meta_review_base):
             keys = row.keys()
 
             for key in keys:
-                if key is 'from_filename' or key is 'from_path':
+                if key in ('from_filename', 'from_path'):
                     new_row[key] = row[key]
-                elif key is 'script_version':
+                elif key == 'script_version':
                     pass
                     # new_row[key] = f'{row[key]},{__version__}'
                 else:
@@ -301,7 +294,7 @@ class meta_review_ehydro(mrb.meta_review_base):
         Parameters
         ----------
         meta_value :
-            param meta_key:  (Default value = 'from_filename')
+            TODO write description
         meta_key: str :
              (Default value = 'from_filename')
 
@@ -330,10 +323,8 @@ class meta_review_ehydro(mrb.meta_review_base):
 
         Parameters
         ----------
-        row :
-            
         row: dict :
-            
+            TODO write description
 
         Returns
         -------
@@ -379,10 +370,8 @@ class meta_review_ehydro(mrb.meta_review_base):
 
         Parameters
         ----------
-        row :
-            
         row: dict :
-            
+            TODO write description
 
         Returns
         -------
