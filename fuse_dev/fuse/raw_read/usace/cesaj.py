@@ -201,7 +201,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
             meta_xml = xml_data.convert_xml_to_dict2()
         ext_dict = xml_data.extended_xml_fgdc()
         ext_dict = p_usace_xml.ext_xml_map_enddate(ext_dict)
-        meta_xml = xml_data.xml_SPCSconflict_flag(meta_xml)
+        meta_xml = p_usace_xml.xml_SPCSconflict_flag(meta_xml)
     else:
         ext_dict = {}
         meta_xml = {}
@@ -213,7 +213,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     meta_from_ehydro = e_pick._read_pickle(xmlfilename)#to handle files
     
     #no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro = e_pick._Check_for_SPCSconflicts(meta_xml)#no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro = e_pick._Check_for_SPCSconflicts(meta_xml, meta_from_ehydro)
-    meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml, xml_data)
+    meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
     
     list_keys_empty = []
     combined_row = {}
@@ -287,7 +287,7 @@ class ehydro_pickle_use(object):
         self.meta_from_ehydro = self.pickle_meta#separating while debugging to track original
         return pickle.pickle_meta
     
-    def _Check_for_SPCSconflicts(self, meta_xml, xml_data):#, meta_from_ehydro = None
+    def _Check_for_SPCSconflicts(self, meta_xml):#, meta_from_ehydro = None
         """
         Cheacking to see if the SPCS codes conflict between sources
         
@@ -313,7 +313,7 @@ class ehydro_pickle_use(object):
                 
         if 'SOURCEPROJECTION' in meta_from_ehydro:
             if 'from_fips' in meta_xml:
-                meta_xml = xml_data.xml_SPCSconflict_otherspcs(meta_xml, f"{p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']}")
+                meta_xml = p_usace_xml.xml_SPCSconflict_otherspcs(meta_xml, f"{p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']}")
                 if p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']) == meta_xml['from_fips']:
                     no_SPCS_conflict_withpickle = 'True'
                 else:
