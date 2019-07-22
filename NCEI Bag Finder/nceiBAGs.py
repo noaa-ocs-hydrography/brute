@@ -20,18 +20,18 @@ attributes = ['Name', 'SURVEY_ID', 'CELL_SIZE', 'DOWNLOAD_URL', ]
 
 def coordQuery(nx, ny, sx, sy):
     """
-    
+
 
     Parameters
     ----------
     nx :
-        
+
     ny :
-        
+
     sx :
-        
+
     sy :
-        
+
 
     Returns
     -------
@@ -57,12 +57,12 @@ def coordQuery(nx, ny, sx, sy):
 
 def bagIDQuery(bounds):
     """
-    
+
 
     Parameters
     ----------
     bounds :
-        
+
 
     Returns
     -------
@@ -82,14 +82,14 @@ def bagIDQuery(bounds):
 
 def surveyCompile(surveyIDs, num, pb=None):
     """
-    
+
 
     Parameters
     ----------
     surveyIDs :
-        
+
     num :
-        
+
     pb :
          (Default value = None)
 
@@ -129,16 +129,16 @@ def surveyCompile(surveyIDs, num, pb=None):
 
 def csvWriter(csvFile, csvLocation, name, pb=None):
     """
-    
+
 
     Parameters
     ----------
     csvFile :
-        
+
     csvLocation :
-        
+
     name :
-        
+
     pb :
          (Default value = None)
 
@@ -164,20 +164,20 @@ def csvWriter(csvFile, csvLocation, name, pb=None):
 
 def main(name, nx, sy, sx, ny, pb=None):
     """
-    
+
 
     Parameters
     ----------
     name :
-        
+
     nx :
-        
+
     sy :
-        
+
     sx :
-        
+
     ny :
-        
+
     pb :
          (Default value = None)
 

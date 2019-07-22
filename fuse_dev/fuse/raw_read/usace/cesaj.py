@@ -181,24 +181,9 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     f = filename
     basename = os.path.basename(f)
 
-            #adding special_handling var to output meta
-            #idea is to be able to pass further instructions
-#    ex_string1 = '*_A.xyz'
-#    ex_string2 = '*_FULL.xyz'
-#    ex_string3 = '*_FULL.XYZ'
-#    ex_string4 = '*_A.XYZ'
-#    basename = os.path.basename(basename)
-#    basename = return_surveyid(basename, ex_string1)
-#    basename = return_surveyid(basename, ex_string2)
-#    basename = return_surveyid(basename, ex_string3)
-#    basename = return_surveyid(basename, ex_string4)
-#    basename = basename.rstrip('.XYZ')
-#    basename = basename.rstrip('.xyz')
-
     e_t = Extract_Txt(f)
     # xml pull here.
     xmlfilename = get_xml_match(f)
-    
     if os.path.isfile(xmlfilename):
         with open(xmlfilename, 'r') as xml_file:
             xml_txt = xml_file.read()
@@ -215,6 +200,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
             meta_xml = xml_data.convert_xml_to_dict2()
         ext_dict = xml_data.extended_xml_fgdc()
         ext_dict = p_usace_xml.ext_xml_map_enddate(ext_dict)
+        meta_xml = p_usace_xml.xml_SPCSconflict_flag(meta_xml)
     else:
         ext_dict = {}
         meta_xml = {}
@@ -222,8 +208,9 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     meta['special_handling'] = _check_special_handling(basename)#special handling is saved with text meta as it has to do with the text file
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
+    
     e_pick = ehydro_pickle_use(xmlfilename)
-    meta_from_ehydro = e_pick._read_pickle(xmlfilename)#to handle files
+    meta_from_ehydro = e_pick._read_pickle()#to handle files
     
     #no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro = e_pick._Check_for_SPCSconflicts(meta_xml)#no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro = e_pick._Check_for_SPCSconflicts(meta_xml, meta_from_ehydro)
     meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
@@ -278,9 +265,26 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
 class ehydro_pickle_use(object):
     
     def __init__(self, infilename):
+        
+        """
+        Pass filename that matches the pickle file you want to match 
+        but with any extension
+        (Here we tend to pass the xmlfilename as it already has been matched
+        in the cases of _A.xyz etc., but one could use a .xyz file)
+    
+    
+        Parameters
+        ----------
+        infilename :
+    
+    
+        Returns
+        -------
+        self.filename = infilename
+        """
         self.filename = infilename
         
-    def _read_pickle(self, infilename: str):
+    def _read_pickle(self):
         """
         Read in picklefile that ehydro_move creates from the E-Hydro REST API
         table attributes.
@@ -294,11 +298,14 @@ class ehydro_pickle_use(object):
         Returns
         -------
     
-        """
-        pickle = parse_usace_pickle.pickle_file(infilename)
-        self.pickle_meta = pickle.pickle_meta
-        self.meta_from_ehydro = self.pickle_meta#separating while debugging to track original
-        return pickle.pickle_meta
+        """ 
+        print(f'reading in pickle based on: {self.filename}')#making sure pickle passing is working
+        pickle_meta = parse_usace_pickle.read_pickle(self.filename)
+        self.meta_from_ehydro = pickle_meta
+        #pickle = parse_usace_pickle.pickle_file(infilename)
+        #self.pickle_meta = pickle.pickle_meta
+        #self.meta_from_ehydro = self.pickle_meta#separating while debugging to track original
+        return pickle_meta
     
     def _Check_for_SPCSconflicts(self, meta_xml):#, meta_from_ehydro = None
         """
@@ -307,6 +314,7 @@ class ehydro_pickle_use(object):
         Parameters
         ----------
         meta_xml :
+        xml_data : (class object)
         self :# meta_from_ehydro :
     
         Returns
@@ -314,20 +322,32 @@ class ehydro_pickle_use(object):
         """
         #if meta_from_ehydro == None:
         meta_from_ehydro = self.meta_from_ehydro
+               
         no_SPCS_conflict = ''
         no_SPCS_conflict_withpickle = ''
+        if 'SPCS_conflict_XML' in meta_from_ehydro:
+            if meta_from_ehydro['SPCS_conflict_XML'] != '':
+                no_SPCS_conflict = 'False'
+            else:
+                no_SPCS_conflict = 'True'
+                
         if 'SOURCEPROJECTION' in meta_from_ehydro:
             if 'from_fips' in meta_xml:
+                meta_xml = p_usace_xml.xml_SPCSconflict_otherspcs(meta_xml, f"{p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']}")
                 if p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']) == meta_xml['from_fips']:
                     no_SPCS_conflict_withpickle = 'True'
                 else:
                     no_SPCS_conflict_withpickle = 'False'
+            if meta_xml['SPCS_conflict_XML_other'] != '':
+                no_SPCS_conflict = 'False'
+                #We know for CEMVN thath this will conflict with some of the SPCS values but have a method that works.
+                #this way we pass on that there are conflicts but do not raise a flag unless the final from_fips disagrees
                 
         meta_from_ehydro['no_SPCS_conflict_withpickle'] = no_SPCS_conflict_withpickle
         self.meta_from_ehydro
         return no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro
     
-    def _when_use_pickle(self, meta_xml):#, meta_from_ehydro
+    def _when_use_pickle(self, meta_xml, xml_data):#, meta_from_ehydro
         """
         If there is no SPCS code in the xml, use the pickle/ REST API SPCS code
         
@@ -338,6 +358,7 @@ class ehydro_pickle_use(object):
         Parameters
         ----------
         meta_xml :
+        xml_data(xml reader class)
         self :
     
     
@@ -348,13 +369,12 @@ class ehydro_pickle_use(object):
         if 'SOURCEPROJECTION' in meta_from_ehydro:
             if 'from_FIPS' in meta_xml:
                 #run check for conflict
-                no_SPCS_conflict, no_SPCS_conflict_withpickle = self._Check_for_SPCSconflicts(meta_xml, meta_from_ehydro)
+                no_SPCS_conflict, no_SPCS_conflict_withpickle = self._Check_for_SPCSconflicts(meta_xml, meta_from_ehydro, xml_data)
                 if no_SPCS_conflict_withpickle == 'False':
                     #test
                     meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION'])
             else:
                 meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION'])
-                print('using pickle value')
         self.meta_from_ehydro = meta_from_ehydro
         return meta_from_ehydro
     
@@ -374,7 +394,7 @@ class ehydro_pickle_use(object):
         meta_from_ehydro = self.meta_from_ehydro
         if meta_from_ehydro:#check if dictionary empty
             if meta_xml:#check if dictionary empty
-                print(len ('SURVEYDATEEND'))
+                print(meta_from_ehydro['SURVEYDATEEND'])
                 #Check survey start & end date against filename and other locations
             else:#if xml_meta is blank and if meta does not have information use pickle data:
                 meta_from_ehydro['start_date'] = meta_from_ehydro['SURVEYDATESTART']

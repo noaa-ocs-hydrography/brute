@@ -76,7 +76,7 @@ def num2dig(n: int) -> str:
     """
     return _basedigits[n]
 
-def get_tile_bounds(xy: str):
+def get_tile_set_bounds(xy: str):
     """
     Return the tile bounds for a given two character resolution name.
     """
@@ -93,13 +93,26 @@ def get_tile_bounds(xy: str):
     xb = np.linspace(-180., 180., xn + 1)
     yb = np.linspace(-90., 90., yn + 1)
     return xb, yb
-    
+
+def get_tile_from_point(xy: str, point: list):
+    """
+    Get the bounds of a tile that includes a point.
+    """
+    xb,yb = get_tile_set_bounds(xy)
+    x,y = point
+    pxb, idx = _get_closest_bounds(xb, x)
+    pyb, idy = _get_closest_bounds(yb, y)
+    bounds = [pxb.min(), pyb.min(), pxb.max(), pyb.max()]
+    lin_id = _get_subn(len(xb), [x], [y])[0,0]
+    name = get_tile_name(lin_id)
+    return bounds, name
+
 def build_gpkg(xy_res: str, bbox: list, path: str = '.'):
     """
     Create a geopackage with the tile set.
     """
     # get the bounds subset
-    xb,yb = get_tile_bounds(xy_res)
+    xb,yb = get_tile_set_bounds(xy_res)
     x_min, y_min, x_max, y_max = bbox
     subx, idx = _get_subbounds(xb, x_min, x_max)
     suby, idy = _get_subbounds(yb, y_min, y_max)
@@ -151,7 +164,7 @@ def get_shapely(xy_res: str, bbox: list):
     Things that go over the date line will probably be goofy...
     """
     # get the bounds subset
-    xb,yb = get_tile_bounds(xy_res)
+    xb,yb = get_tile_set_bounds(xy_res)
     x_min, y_min, x_max, y_max = bbox
     subx, idx = _get_subbounds(xb, x_min, x_max)
     suby, idy = _get_subbounds(yb, y_min, y_max)
@@ -173,7 +186,7 @@ def get_shapely(xy_res: str, bbox: list):
             c += 1
     return collect, names
     
-def _get_subbounds(bounds, a_min, a_max):
+def _get_subbounds(bounds, a_min: float, a_max: float):
     """
     Return the subset that intersect or are contained by the bounds.
     """
@@ -189,6 +202,8 @@ def _get_subn(dimx: int, idx, idy):
     """
     Get the global indicies for the subtiles.
     """
+    idx = np.array(idx)
+    idy = np.array(idy)
     n_subx = len(idx)
     n_suby = len(idy)
     idn = np.zeros(n_subx * n_suby, dtype = np.int)
@@ -196,3 +211,21 @@ def _get_subn(dimx: int, idx, idy):
         idn[n * n_subx:(n+1) * n_subx] = m * dimx + idx
     idn.shape = (n_suby, n_subx)
     return idn
+
+def _get_closest_bounds(bounds, a: float):
+    """
+    Get the bounds around a location from the entire bounds set.
+    """
+    b = np.zeros(2)
+    # get the first point
+    rel = np.abs(bounds - a)
+    id1 = rel.argmin()
+    b[0] = bounds[id1]
+    # get the second point
+    rel[id1] = np.nan
+    id2 = np.nanargmin(rel)
+    b[1] = bounds[id2]
+    ida = min(id1, id2)
+    return b, ida
+    
+    

@@ -11,7 +11,7 @@ J Kinney
 update April 3, 2019
 update June 21, 2019 Zach
 update July 12, 2019 J Kinney
-
+update July 18, 2019 J Kinney xml_SPCSconflict_flag and xml_SPCSconflict_otherspcs added
 """
 
 import logging as log
@@ -578,6 +578,7 @@ class XML_Meta(object):
                 print('still debugging')
                 m = {}
             meta_all_fields = {**meta_xml, **meta, **m}
+        
         return meta_all_fields
 
     def _extract_meta_USACE_ISO(self):
@@ -1615,14 +1616,17 @@ def extract_from_iso_meta(xml_meta):
                 try:
                     for key in SOURCEPROJECTION_dict:
                         if SOURCEPROJECTION_dict[key] in code:# print(key)
-                            xml_meta['from_fips'] = SOURCEPROJECTION_dict[key]     
+                            xml_meta['from_fips'] = SOURCEPROJECTION_dict[key]
+                            xml_meta['CHECK_FIPS'] = 'FROM_ABSTRACT'
                 except:
                     for key in SOURCEPROJECTION_dict:
                         if key.upper() in xml_meta['Horizontal_Zone']:# print(key)
                             xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
+                            xml_meta['CHECK_FIPS'] = 'FROM_ABSTRACT'
             for key in SOURCEPROJECTION_dict:
                 if key.upper() in xml_meta['Horizontal_Zone']:# print(key)
                     xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
+                    xml_meta['CHECK_FIPS'] = 'FROM_ABSTRACT'
     return xml_meta
 
 
@@ -1701,16 +1705,13 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     -> VERTDAT |
      Horizontal
      abstract.find('State Plane Coordinate System (SPCS),
-    
-    
+        
     Horizontal Units are also found within plandu:
 
     if m['Horizontal_Units'] == '':
         if  meta_xml['plandu'] == 'Foot_US':
             #plandu = #horizontal units
             m['Horizontal_Units']='U.S. Survey Feet'
-    
-
     
     #QC_checks
     #if expected results found ok, if not trigger more QC:
@@ -1834,8 +1835,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     procdesc = meta_xml['procdesc']
     if 'TECSOU' not in m:# checking for technique of sounding alternative metadata location
         if procdesc.find('Ross SmartSweep') > 0:
-            m[
-                'TECSOU'] = '8'# 'swept vertical beam system'#essentially multiple single beam transducers on a boom type apparatus
+            m['TECSOU'] = '8'# 'swept vertical beam system'#essentially multiple single beam transducers on a boom type apparatus
         elif procdesc.find('Odom MKIII echosounder') > 0:
             m['TECSOU'] = '1'# 'single beam'
         elif procdesc.find('multibeam') >= 0 or procdesc.find('multi beam') >= 0:
@@ -1852,7 +1852,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         if 'mapprojn' in meta_xml:
             if len(meta_xml['mapprojn']) > 0:
                 m['FIPS'] = meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip()
-                m['CHECK_FIPS'] = 'CHECK_IF_EXPECTED'
+                m['CHECK_FIPS'] = 'CHECK_IF_EXPECTED'#'CHECK_FIPS' value flag , 'CHECK_IF_EXPECTED' flag since CEMVN did not have this correct.
                 # it does not always specify US Survey Feet, only Feet here thus we pull horizontal units from another entry
                 # print may need qc check to see if this coming in correctly
     if 'Horizontal_Units' in m:
@@ -2081,4 +2081,91 @@ def _print_TECSOU_defs(myvalue=None):
         print('returning dictionary')
         return TECSOU_def, TECSOU_S57codes
     """
+
 # ------------------------------------------------------------------------------
+def xml_SPCSconflict_flag(meta_xml):
+    """
+    Looking to throw a value other than "" 
+    if there are conflicts in the SPCS code sources
+    within the xml file.  There are several locations in the xml where the SPCS
+    code or text description may exist.
+    
+    FYI:
+    SPCS refers to the US NSRS 'State Plane Coordinate System' as defined by
+    NOAA's NGS program. 
+    What is confusing is that 
+    ERSI calls this the FIPS code even though it was never implemented as FIPS,
+    but the number ID code is the same.
+    
+    xml_SPCSconflict_flag(meta_xml)
+    
+    Parameters
+    ----------
+    meta_xml:
+        
+    Returns
+    -------
+    meta_xml:
+        
+    """
+    meta_xml['SPCS_conflict_XML'] = ''
+    list_spcs_source = []
+    list_spcs_source = 'FIPS','spcszone','SPCS','mapprojn'
+    for source in list_spcs_source:
+        if source in meta_xml:
+            for source2  in list_spcs_source:
+                if source2 in meta_xml:
+                    if meta_xml[source] != meta_xml[source2]:
+                        meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , {source}_disagrees_{source2}"
+                        
+    if meta_xml['CHECK_FIPS'] == 'FROM_ABSTRACT':
+        for source in list_spcs_source:
+            if source in meta_xml:
+                if meta_xml['from_fips'] != meta_xml[source]:
+                    meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , abstract_disagrees_{source}"
+            if 'FIPS' in meta_xml:    
+                if meta_xml['from_fips'] != meta_xml['FIPS']:
+                    meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , abstract_disagrees"
+    if meta_xml['CHECK_FIPS'] == 'CHECK_IF_EXPECTED':
+        if meta_xml['SPCS'] != meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip():
+            meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , mapprojn_diagrees_SPCS"
+        elif meta_xml['spcszone'] != meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip():
+            meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , mapprojn_diagrees_spcszone"        
+
+    return meta_xml
+# ------------------------------------------------------------------------------
+def xml_SPCSconflict_otherspcs(meta_xml, other_spcs):
+    """
+    Looking to throw a value other than "" 
+    if there are conflicts in the SPCS code sources
+    within the xml file.  There are several locations in the xml where the SPCS
+    code or text description may exist.
+    
+    FYI:
+    SPCS refers to the US NSRS 'State Plane Coordinate System' as defined by
+    NOAA's NGS program. 
+    What is confusing is that 
+    ERSI calls this the FIPS code even though it was never implemented as FIPS,
+    but the number ID code is the same.
+    
+    xml_SPCSconflict_flag(meta_xml)
+    
+    Parameters
+    ----------
+    meta_xml:
+    other_spcs:
+        
+    Returns
+    -------
+    meta_xml:
+        
+    """
+    meta_xml['SPCS_conflict_XML_other'] = ''
+    list_spcs_source = []
+    list_spcs_source = 'FIPS','spcszone','SPCS','mapprojn'
+    for source in list_spcs_source:
+        if source in meta_xml:
+            if meta_xml[source] != meta_xml[other_spcs]:
+                meta_xml['SPCS_conflict_XML_other'] = f"{meta_xml['SPCS_conflict_XML']} , {source}_disagrees_other_spcs"
+    return meta_xml
+

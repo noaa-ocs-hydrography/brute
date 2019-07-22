@@ -1105,6 +1105,22 @@ def main(pb=None, to=None):
     runType = config['Data Checking']['Override']
     logType = config['Output Log']['Log Type']
     fileLog, nameLog = logOpen(logType, to)
+
+    if runType == 'no':
+        csvPath = csvLocation
+    elif runType == 'yes':
+        x = 0
+        datestamp = date()
+
+        while True:
+            name = f'{datestamp}_{x}_{csvName}'
+            csvPath = os.path.join(running, name)
+
+            if os.path.exists(csvPath):
+                x += 1
+            else:
+                break
+
     qf = False
 
     try:
@@ -1172,26 +1188,12 @@ def main(pb=None, to=None):
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
-
-        if runType == 'no':
-            csvPath = csvLocation
-            csvWriter(csvSave, csvPath, pb)
-        elif runType == 'yes':
-            x = 0
-            datestamp = date()
-
-            while True:
-                name = f'{datestamp}_{x}_{csvName}'
-                csvPath = os.path.join(running, name)
-
-                if os.path.exists(csvPath):
-                    x += 1
-                else:
-                    break
-            csvWriter(csvSave, csvPath, pb)
+        csvWriter(csvSave, csvPath, pb)
         logWriter(fileLog, f'\tAdding results to {csvPath}')
+    except UnboundLocalError as e:
+        logWriter(fileLog, f'\t{e}, unable to save results to {csvPath}')
     except:
-        logWriter(fileLog, f'\tUnable to add results to output csv')
+        logWriter(fileLog, f'\tUnable to add results to {csvPath}')
 
     logWriter(fileLog, f'\tOutput Log saved as {nameLog}')
     logClose(fileLog)
