@@ -881,7 +881,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
         tifRes = 1
         print('same tif res', tifRes)
     else:
-        tifRes = _np.round(_np.mean([tex / tx, tey / ty]))
+        tifRes = _np.round(_np.mean([tex / tx, tey / ty]), decimals=2)
         print('diff tif res', tifRes)
 
     ##2
@@ -1116,7 +1116,7 @@ def rePrint(grids: list, ugrids: list, maxVal, ioVal: Union[int, bool], debug: U
     """
 
     print('rePrint', _dt.now())
-    print(maxVal)
+    print(maxVal, ioVal)
     poly = grids[0][-1]
     bag = grids[-1][-1]
     uncr = grids[-1][-2]
@@ -1141,7 +1141,7 @@ def rePrint(grids: list, ugrids: list, maxVal, ioVal: Union[int, bool], debug: U
     fpoly = _np.logical_and(dpoly, npoly)
     ## 8
 
-    if ioVal is None:
+    if ioVal:
         nbag = _np.where(fpoly, interp, maxVal)
         nunc = _np.where(fpoly, iuncrt, maxVal)
     elif not ioVal:
@@ -1576,7 +1576,6 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
     msg = f'Done! Took: {delta}'
     print(msg)
     return msg
-
 
 class chunk:
     """
