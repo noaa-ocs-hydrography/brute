@@ -33,7 +33,7 @@ from typing import Tuple, Any
 import matplotlib.pyplot as plt
 import numpy
 import scipy
-import sklearn
+import sklearn.gaussian_process
 from matplotlib.mlab import griddata as mlab_griddata
 from osgeo import gdal, ogr, osr
 

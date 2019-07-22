@@ -174,14 +174,8 @@ class vdatum:
 
         """
 
-        ihorz = rf'ihorz:NAD83:spc:us_ft:{in_fips}'
-        ivert = f' ivert:{in_verdat.lower()}:us_ft:height'
-        ohorz = ' ohorz:NAD83:utm:m:'
-        overt = f' overt:{out_verdat.lower()}:m:height'
-        georef = f'{ihorz}{ivert}{ohorz}{overt}'
-        java_str = _os.path.join(self._java_path, 'java')
-        file_str = ' -file:txt:comma,0,1,2,skip0:'
-        self._shell = f'{java_str} -jar vdatum.jar {georef}{file_str}'
+        self._shell = f'{_os.path.join(self._java_path, "java")} ' + \
+                      f'-jar vdatum.jar ihorz:NAD83:spc:us_ft:{in_fips} ivert:{in_verdat.lower()}:us_ft:height ohorz:NAD83:utm:m: overt:{out_verdat.lower()}:m:height'
 
     def _convert_file(self, vdinfilename: str, vdoutdir: str):
         """
@@ -203,7 +197,7 @@ class vdatum:
 
         """
 
-        command = f'{self._shell}{vdinfilename};{vdoutdir}'
+        command = f'{self._shell} -file:txt:comma,0,1,2,skip0:{vdinfilename};{vdoutdir}'
         self._logger.log(_logging.DEBUG, command)
         try:
             proc = _subprocess.Popen(command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, cwd=self._vdatum_path)

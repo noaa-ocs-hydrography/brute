@@ -309,9 +309,8 @@ class meta_review_ehydro(mrb.meta_review_base):
             reader = _csv.DictReader(csvfile)
 
             # get the row
-            for row in reader:
-                if row[meta_key] == meta_value:
-                    metadata = self._simplify_row(row)
+            for row in filter(lambda row: row[meta_key] == meta_value, reader):
+                metadata = self._simplify_row(row)
 
         return metadata
 
@@ -339,20 +338,18 @@ class meta_review_ehydro(mrb.meta_review_base):
 
         metarow['base'] = {}
 
-        # sort each key into the right dictionary
-        for key in row:
-            # only do stuff with keys that have information
-            if len(row[key]) > 0:
-                named = False
+        # sort each key (that has information) into the right dictionary
+        for key in filter(lambda key: len(row[key]) > 0, row):
+            named = False
 
-                for name in meta_review_ehydro._col_root:
-                    if name in key:
-                        named = True
-                        val = key.replace(meta_review_ehydro._col_root[name], '')
-                        metarow[name][val] = row[key]
+            for name in meta_review_ehydro._col_root:
+                if name in key:
+                    named = True
+                    val = key.replace(meta_review_ehydro._col_root[name], '')
+                    metarow[name][val] = row[key]
 
-                if not named:
-                    metarow['base'][key] = row[key]
+            if not named:
+                metarow['base'][key] = row[key]
 
         # combine the dictionaries
         simplerow = {}
