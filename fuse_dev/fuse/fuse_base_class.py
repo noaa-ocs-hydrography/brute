@@ -8,6 +8,7 @@ Created on Thu Jan 31 10:03:30 2019
 """
 
 import os as _os
+import configparser as _cp
 
 
 class fuse_base_class:
@@ -31,9 +32,9 @@ class fuse_base_class:
 
     def _read_configfile(self, confile: str):
         """
-        Read, parse, and return the configuration information in the provided file.
-        The actual format of this file is ....
-        
+        Read, parse, and return the configuration information in the provided
+        file.  The actual format of this file is ....
+
         rawpaths
         outpath
         to_horiz_datum
@@ -43,9 +44,9 @@ class fuse_base_class:
         Parameters
         ----------
         confile :
-            
+
         confile: str :
-            
+
 
         Returns
         -------
@@ -53,39 +54,28 @@ class fuse_base_class:
         """
 
         config = {}
-
-        with open(confile, 'r') as configfile:
-            for line in configfile:
-                if len(line) > 0:  # ignore lines with nothing
-                    if line[0] == '#':
-                        pass  # ignore these lines
+        config_file = _cp.ConfigParser()
+        config_file.read(confile)
+        sections = config_file.sections()
+        for section in sections:
+            for key in config_file[section]:
+                if key == 'rawpaths':
+                    rawpaths = []
+                    raw = config_file[section][key].split(';')
+                    for r in raw:
+                        if _os.path.isdir(r):
+                            rawpaths.append(r)
+                        else:
+                            raise ValueError(f'Invalid input path: {r}')
+                    config[key] = rawpaths
+                elif key == 'outpath':
+                    if _os.path.isdir(config_file[section][key]):
+                        config[key] = config_file[section][key]
                     else:
-                        try:
-                            stub, info = line.split('=')
-                            # clean these up a bit
-                            info = info.replace('\n', '')
-                            stub = stub.rstrip()
-                            info = info.rstrip().lstrip()
-                            if stub == 'outpath':
-                                if _os.path.isdir(info):
-                                    config[stub] = info
-                                else:
-                                    raise ValueError(f'Invalid output folder: {info}')
-                            elif stub == 'to_horiz_datum':
-                                config[stub] = int(info)
-                            elif stub == 'rawpaths':
-                                rawpaths = []
-                                raw = info.split(';')
-                                for r in raw:
-                                    if _os.path.isdir(r):
-                                        rawpaths.append(r)
-                                    else:
-                                        raise ValueError(f'Invalid input path: {r}')
-                                config[stub] = rawpaths
-                            else:
-                                config[stub] = info
-                        except:
-                            pass
+                        raise ValueError(f'Invalid input path: {config_file[section][key]}')
+                else:
+                    config[key] = config_file[section][key]
+
         if len(config) == 0:
             raise ValueError('Failed to read configuration file.')
         else:
@@ -100,25 +90,23 @@ class fuse_base_class:
         Parameters
         ----------
         config_dict :
-            
+
         config_dict: dict :
-            
+
 
         Returns
         -------
 
         """
-
-        if 'rawpaths' not in config_dict:
-            raise ValueError('No path to raw data found in configuration file.')
-        if 'outpath' not in config_dict:
-            raise ValueError('No path to output data found in configuration file.')
-        if 'to_horiz_datum' not in config_dict:
-            raise ValueError('No output horizontal datum found in configuration file.')
-        if 'to_vert_datum' not in config_dict:
-            raise ValueError('No output vertical datum found in configuration file.')
-        if 'metapath' not in config_dict:
-            raise ValueError('No metadata output location found in configuration file.')
+        options = {'rawpaths': 'path to raw data',
+                   'outpath': 'path to output data',
+                   'to_horiz_datum': 'output horizontal datum',
+                   'to_vert_datum': 'output vertical datum',
+                   'metapath': 'metadata output',
+                   }
+        for key in options.keys():
+            if key not in config_dict:
+                raise ValueError(f'No {options[key]} found in configuration file.')
 
     def read(self, infilename: str):
         """
@@ -128,9 +116,9 @@ class fuse_base_class:
         Parameters
         ----------
         infilename :
-            
+
         infilename: str :
-            
+
 
         Returns
         -------
@@ -147,9 +135,9 @@ class fuse_base_class:
         Parameters
         ----------
         infilename :
-            
+
         infilename: str :
-            
+
 
         Returns
         -------
@@ -162,16 +150,16 @@ class fuse_base_class:
         """
         If the metadata is checked and the data is interpolated and transformed
         as needed, upload for amalgamation.
-        
+
         If no filename is provided try to upload all files from the metadata
         file.
 
         Parameters
         ----------
         infilename :
-            
+
         infilename: str :
-            
+
 
         Returns
         -------

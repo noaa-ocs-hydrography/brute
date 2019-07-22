@@ -58,7 +58,7 @@ class pickle_file:
             print(f'{fpickle} not found')
             return {}
 
-    def dict_keys(self, dictionary: dict) -> tuple:
+    def collect_keys(self, dictionary: dict) -> tuple:
         return (key for key in dictionary.keys())
 
 

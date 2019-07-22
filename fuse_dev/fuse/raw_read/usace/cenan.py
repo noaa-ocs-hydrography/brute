@@ -46,9 +46,9 @@ class read_raw:
         Parameters
         ----------
         infilename :
-            
+
         infilename: str :
-            
+
 
         Returns
         -------
@@ -64,9 +64,9 @@ class read_raw:
         Parameters
         ----------
         infilename :
-            
+
         infilename: str :
-            
+
 
         Returns
         -------
@@ -83,9 +83,9 @@ class read_raw:
         Parameters
         ----------
         infilename :
-            
+
         infilename: str :
-            
+
 
         Returns
         -------
@@ -99,7 +99,7 @@ class read_raw:
     def _parse_ehydro_xyz_header(self, infilename: str, meta_source: str = 'xyz', default_meta: str = '') -> dict:
         """
         Parse an USACE eHydro file for the available meta data.
-        
+
         Default metadata (values predetermined for the file but not in the file)
         can be stored at the location defined by 'default_meta' as a pickled
         dicitonary.  If no path is provided the dictionary in the same folder as
@@ -115,7 +115,7 @@ class read_raw:
         default_meta :
             Default value = '')
         infilename: str :
-            
+
         meta_source: str :
              (Default value = 'xyz')
         default_meta: str :
@@ -167,7 +167,7 @@ class read_raw:
         Parameters
         ----------
         infilename :
-            
+
 
         Returns
         -------
@@ -209,7 +209,7 @@ class read_raw:
         Parameters
         ----------
         infilename :
-            
+
 
         Returns
         -------
@@ -249,7 +249,7 @@ class read_raw:
         Parameters
         ----------
         line :
-            
+
 
         Returns
         -------
@@ -268,7 +268,7 @@ class read_raw:
         Parameters
         ----------
         line :
-            
+
 
         Returns
         -------
@@ -327,7 +327,7 @@ class read_raw:
         Parameters
         ----------
         line :
-            
+
 
         Returns
         -------
@@ -345,7 +345,7 @@ class read_raw:
         Parameters
         ----------
         line :
-            
+
 
         Returns
         -------
@@ -363,7 +363,7 @@ class read_raw:
         Parameters
         ----------
         line :
-            
+
 
         Returns
         -------
@@ -394,7 +394,7 @@ class read_raw:
         Parameters
         ----------
         textdate :
-            
+
 
         Returns
         -------
@@ -419,7 +419,7 @@ class read_raw:
         infilename :
             param default_meta:
         default_meta :
-            
+
 
         Returns
         -------
@@ -443,7 +443,7 @@ class read_raw:
         Parameters
         ----------
         infilename :
-            
+
 
         Returns
         -------
@@ -461,7 +461,7 @@ class read_raw:
         Parameters
         ----------
         infilename :
-            
+
 
         Returns
         -------
@@ -495,7 +495,7 @@ class read_raw:
         Parameters
         ----------
         infilename :
-            
+
 
         Returns
         -------
@@ -524,7 +524,7 @@ class read_raw:
                 val = val.lstrip(' ')
                 val = val.rstrip('\n')
                 txt_meta[key] = val
-                fips = _re.search('\d\d\d\d', val)
+                fips = _re.search('\d{4}', val)
             elif key == 'from_horiz_units':
                 line = txt_meta[key]
                 val = line.split(':')[-1]
@@ -538,13 +538,13 @@ class read_raw:
     def _parse_ehydro_xyz_bathy(self, infilename):
         """
         Read the best available point bathymetry for the district.
-        
+
         This method assumes the provided file name is the XYZ file.
 
         Parameters
         ----------
         infilename :
-            
+
 
         Returns
         -------
