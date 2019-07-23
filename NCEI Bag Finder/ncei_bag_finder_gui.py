@@ -31,12 +31,28 @@ class Form(ncei_ui.Form):
         sx = self.text_east.GetValue()
         ny = self.text_north.GetValue()
         sel = self.radio_query.GetSelection()
+        bcm = self.bound_check(nx, sy, sx, ny)
         if not sel:
             qId = 3
         if sel:
             qId = 0
-        if nceiBAGs.main(name, nx, sy, sx, ny, qId, self.progress_bar):
-            self.status_bar.SetStatusText('Done!')
+        if bcm is not None:
+            self.status_bar.SetStatusText(bcm)
+        else:
+            msg = nceiBAGs.main(name, nx, sy, sx, ny, qId, self.progress_bar)
+            if msg is None:
+                self.status_bar.SetStatusText('Done!')
+            else:
+                self.progress_bar.SetValue(0)
+                self.status_bar.SetStatusText(msg)
+
+    def bound_check(self, nx, sy, sx, ny):
+        if nx > sx:
+            return 'Please check your West and East values'
+        elif ny > sy:
+            return 'Please check your North and South values'
+        elif nx > sx and ny > sy:
+            return 'Please check the order of all bounding values'
 
     def programAbout(self, event):
         webbrowser.open(r'https://vlab.ncep.noaa.gov/web/national-bathymetric-source/blogs/-/blogs/getting-survey-info-via-ncei-s-rest-api', new=2, autoraise=True)
