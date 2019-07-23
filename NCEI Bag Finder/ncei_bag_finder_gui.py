@@ -6,6 +6,7 @@ Created on Mon Mar 11 15:48:05 2019
 """
 
 import os
+import webbrowser
 
 import nceiBAGs
 import ncei_ui
@@ -29,8 +30,16 @@ class Form(ncei_ui.Form):
         sy = self.text_south.GetValue()
         sx = self.text_east.GetValue()
         ny = self.text_north.GetValue()
-        if nceiBAGs.main(name, nx, sy, sx, ny, self.progress_bar):
+        sel = self.radio_query.GetSelection()
+        if not sel:
+            qId = 3
+        if sel:
+            qId = 0
+        if nceiBAGs.main(name, nx, sy, sx, ny, qId, self.progress_bar):
             self.status_bar.SetStatusText('Done!')
+
+    def programAbout(self, event):
+        webbrowser.open(r'https://vlab.ncep.noaa.gov/web/national-bathymetric-source/blogs/-/blogs/getting-survey-info-via-ncei-s-rest-api', new=2, autoraise=True)
 
     def programQuit(self, event):
         """
@@ -40,7 +49,7 @@ class Form(ncei_ui.Form):
         Parameters
         ----------
         event :
-            
+
 
         Returns
         -------
@@ -56,7 +65,7 @@ class Form(ncei_ui.Form):
         Parameters
         ----------
         event :
-            
+
 
         Returns
         -------
