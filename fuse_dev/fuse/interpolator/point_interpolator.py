@@ -287,31 +287,32 @@ class point_interpolator:
         source_layer = source_ds.GetLayer()
         source_srs = source_layer.GetSpatialRef()
 
-        for feature in filter(lambda feature: feature is not None, source_layer):
-            geom = feature.GetGeometryRef()
-            #                print(geom.ExportToWkt())
-            ds_geom = ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-            #                print(source_srs, to_proj, sep='\n')
-            coordTrans = osr.CoordinateTransformation(source_srs, to_proj)
-            ds_geom.Transform(coordTrans)
-            driver = ogr.GetDriverByName('Memory')
-            ds = driver.CreateDataSource('temp')
-            layer = ds.CreateLayer(name, to_proj, ogr.wkbMultiPolygon)
+        for feature in source_layer:
+            if feature is not None:
+                geom = feature.GetGeometryRef()
+                #                print(geom.ExportToWkt())
+                ds_geom = ogr.CreateGeometryFromWkt(geom.ExportToWkt())
+                #                print(source_srs, to_proj, sep='\n')
+                coordTrans = osr.CoordinateTransformation(source_srs, to_proj)
+                ds_geom.Transform(coordTrans)
+                driver = ogr.GetDriverByName('Memory')
+                ds = driver.CreateDataSource('temp')
+                layer = ds.CreateLayer(name, to_proj, ogr.wkbMultiPolygon)
 
-            # Add one attribute
-            layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
-            defn = layer.GetLayerDefn()
+                # Add one attribute
+                layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
+                defn = layer.GetLayerDefn()
 
-            # Create a new feature (attribute and geometry)
-            feat = ogr.Feature(defn)
-            feat.SetField('id', 123)
+                # Create a new feature (attribute and geometry)
+                feat = ogr.Feature(defn)
+                feat.SetField('id', 123)
 
-            # Make a geometry, from Shapely object
-            feat.SetGeometry(ds_geom)
+                # Make a geometry, from Shapely object
+                feat.SetGeometry(ds_geom)
 
-            layer.CreateFeature(feat)
-            del feat, geom  # destroy these
-            break
+                layer.CreateFeature(feat)
+                del feat, geom  # destroy these
+                break
 
         x_min, x_max, y_min, y_max = ds_geom.GetEnvelope()
         meta = ([x_min, y_max], [x_max, y_min])
