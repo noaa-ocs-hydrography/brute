@@ -2117,20 +2117,22 @@ def xml_SPCSconflict_flag(meta_xml):
                 if source2 in meta_xml:
                     if meta_xml[source] != meta_xml[source2]:
                         meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , {source}_disagrees_{source2}"
-                        
-    if meta_xml['CHECK_FIPS'] == 'FROM_ABSTRACT':
-        for source in list_spcs_source:
-            if source in meta_xml:
-                if meta_xml['from_fips'] != meta_xml[source]:
-                    meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , abstract_disagrees_{source}"
-            if 'FIPS' in meta_xml:    
-                if meta_xml['from_fips'] != meta_xml['FIPS']:
-                    meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , abstract_disagrees"
-    if meta_xml['CHECK_FIPS'] == 'CHECK_IF_EXPECTED':
-        if meta_xml['SPCS'] != meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip():
-            meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , mapprojn_diagrees_SPCS"
-        elif meta_xml['spcszone'] != meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip():
-            meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , mapprojn_diagrees_spcszone"        
+    if 'CHECK_FIPS' in meta_xml:                    
+        if meta_xml['CHECK_FIPS'] == 'FROM_ABSTRACT':
+            for source in list_spcs_source:
+                if source in meta_xml:
+                    if meta_xml['from_fips'] != meta_xml[source]:
+                        meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , abstract_disagrees_{source}"
+                if 'FIPS' in meta_xml:    
+                    if meta_xml['from_fips'] != meta_xml['FIPS']:
+                        meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , abstract_disagrees"
+        if meta_xml['CHECK_FIPS'] == 'CHECK_IF_EXPECTED':
+            if 'SPCS' in meta_xml:
+                if meta_xml['SPCS'] != meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip():
+                    meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , mapprojn_diagrees_SPCS"
+            if 'spcszone' in meta_xml:
+                if meta_xml['spcszone'] != meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip():
+                    meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , mapprojn_diagrees_spcszone"        
 
     return meta_xml
 # ------------------------------------------------------------------------------
