@@ -974,7 +974,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     if duly < 0:
         up = -int(rolly)
     elif duly > 0:
-        down = rolly
+        down = abs(rolly)
         up = 0
     if dulx < 0:
         left = -int(rollx)
@@ -988,7 +988,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
         print(temp.shape)
         #        _plt.imshow(temp[::100,::100])
         #        _plt.show()
-        ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[:, :]
+        ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[down:ay.shape[0] + down, right:ay.shape[1] + right]
         del temp
     else:
         ay[:] = newarr[:]
