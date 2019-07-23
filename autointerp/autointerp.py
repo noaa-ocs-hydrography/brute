@@ -881,7 +881,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
         tifRes = 1
         print('same tif res', tifRes)
     else:
-        tifRes = _np.round(_np.mean([tex / tx, tey / ty]))
+        tifRes = _np.round(_np.mean([tex / tx, tey / ty]), decimals=2)
         print('diff tif res', tifRes)
 
     ##2
@@ -974,7 +974,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     if duly < 0:
         up = -int(rolly)
     elif duly > 0:
-        down = rolly
+        down = abs(rolly)
         up = 0
     if dulx < 0:
         left = -int(rollx)
@@ -986,9 +986,8 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
         print('rollz', up, left, down, right)
         temp = newarr[up:, left:]
         print(temp.shape)
-        #        _plt.imshow(temp[::100,::100])
-        #        _plt.show()
-        ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[:, :]
+        ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[down:ay.shape[0] + down,
+                                                                     right:ay.shape[1] + right]
         del temp
     else:
         ay[:] = newarr[:]
@@ -1116,7 +1115,7 @@ def rePrint(grids: list, ugrids: list, maxVal, ioVal: Union[int, bool], debug: U
     """
 
     print('rePrint', _dt.now())
-    print(maxVal)
+    print(maxVal, ioVal)
     poly = grids[0][-1]
     bag = grids[-1][-1]
     uncr = grids[-1][-2]
@@ -1141,7 +1140,7 @@ def rePrint(grids: list, ugrids: list, maxVal, ioVal: Union[int, bool], debug: U
     fpoly = _np.logical_and(dpoly, npoly)
     ## 8
 
-    if ioVal is None:
+    if ioVal:
         nbag = _np.where(fpoly, interp, maxVal)
         nunc = _np.where(fpoly, iuncrt, maxVal)
     elif not ioVal:
@@ -1576,7 +1575,6 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
     msg = f'Done! Took: {delta}'
     print(msg)
     return msg
-
 
 class chunk:
     """

@@ -63,14 +63,8 @@ def regionPath(root: str, folder: str) -> dict:
     """
 
     regions = []
-    fileName = open(config['CSVs']['NBS'], 'r')
-    opened = _csv.reader(fileName, delimiter=',')
-    temp = []
-
-    for row in filter(lambda row: len(row) > 0, opened):
-        temp.append(row)
-
-    fileName.close()
+    with open(config['CSVs']['NBS'], 'r') as fileName:
+        temp = [row for row in _csv.reader(fileName, delimiter=',') if len(row) > 0]
 
     for row in temp[1:]:
         regionName = f'{row[1].strip()}_{row[0].strip()}'
@@ -101,10 +95,11 @@ def open_ogr(path) -> tuple:
     ds = _ogr.Open(path)
     ds_layer = ds.GetLayer()
 
-    for feature in filter(lambda feature: feature is not None, ds_layer):
-        geom = feature.GetGeometryRef()
-        ds_geom = _ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-        break
+    for feature in ds_layer:
+        if feature is not None:
+            geom = feature.GetGeometryRef()
+            ds_geom = _ogr.CreateGeometryFromWkt(geom.ExportToWkt())
+            break
 
     ds_proj = ds_layer.GetSpatialRef()
 
@@ -328,9 +323,8 @@ def contentSearch(filenames: List[str], extensions: List[str]) -> List[str]:
 
     """
 
-    return list(filter(lambda filename: any(
-        _re.compile(rf'{extension}$', _re.IGNORECASE).search(filename) is not None for extension in extensions),
-                       filenames))
+    return [filename for filename in filenames if
+            any(_re.compile(rf'{extension}$', _re.IGNORECASE).search(filename) is not None for extension in extensions)]
 
 
 def zipManipulate(path: str, name: str):
@@ -404,15 +398,8 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method,
 
     """
 
-    fileName = open(config['CSVs']['USACE'], 'r')
-    opened = _csv.reader(fileName, delimiter=',')
-    district_name = []
-
-    for row in filter(lambda row: len(row) > 0, opened):
-        district_name.append(row[:2])
-
-    fileName.close()
-    district_name = dict(district_name[1:])
+    with open(config['CSVs']['USACE'], 'r') as fileName:
+        district_name = dict([row[:2] for row in _csv.reader(fileName, delimiter=',') if len(row) > 0][1:])
 
     for k, v in regionFiles.items():
         if text_region is not None:

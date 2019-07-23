@@ -6,6 +6,7 @@ Created on Mon Mar 11 15:48:05 2019
 """
 
 import os
+import webbrowser
 
 import nceiBAGs
 import ncei_ui
@@ -29,8 +30,32 @@ class Form(ncei_ui.Form):
         sy = self.text_south.GetValue()
         sx = self.text_east.GetValue()
         ny = self.text_north.GetValue()
-        if nceiBAGs.main(name, nx, sy, sx, ny, self.progress_bar):
-            self.status_bar.SetStatusText('Done!')
+        sel = self.radio_query.GetSelection()
+        bcm = self.bound_check(nx, sy, sx, ny)
+        if not sel:
+            qId = 3
+        if sel:
+            qId = 0
+        if bcm is not None:
+            self.status_bar.SetStatusText(bcm)
+        else:
+            msg = nceiBAGs.main(name, nx, sy, sx, ny, qId, self.progress_bar)
+            if msg is None:
+                self.status_bar.SetStatusText('Done!')
+            else:
+                self.progress_bar.SetValue(0)
+                self.status_bar.SetStatusText(msg)
+
+    def bound_check(self, nx, sy, sx, ny):
+        if nx > sx:
+            return 'Please check your West and East values'
+        elif ny > sy:
+            return 'Please check your North and South values'
+        elif nx > sx and ny > sy:
+            return 'Please check the order of all bounding values'
+
+    def programAbout(self, event):
+        webbrowser.open(r'https://vlab.ncep.noaa.gov/web/national-bathymetric-source/blogs/-/blogs/getting-survey-info-via-ncei-s-rest-api', new=2, autoraise=True)
 
     def programQuit(self, event):
         """
@@ -40,7 +65,7 @@ class Form(ncei_ui.Form):
         Parameters
         ----------
         event :
-            
+
 
         Returns
         -------
@@ -56,7 +81,7 @@ class Form(ncei_ui.Form):
         Parameters
         ----------
         event :
-            
+
 
         Returns
         -------
