@@ -314,18 +314,21 @@ class meta_review_ehydro(mrb.meta_review_base):
         for name in meta_review_ehydro._col_root:
             metarow[name] = {}
         metarow['base'] = {}
-        # sort each key into the right dictionary
+
+        # sort each key (that has information) into the right dictionary
         for key in row:
-            # only do stuff with keys that have information
             if len(row[key]) > 0:
                 named = False
+
                 for name in meta_review_ehydro._col_root:
                     if name in key:
                         named = True
                         val = key.replace(meta_review_ehydro._col_root[name], '')
                         metarow[name][val] = row[key]
+
                 if not named:
                     metarow['base'][key] = row[key]
+
         # combine the dictionaries
         simplerow = {}
         names = [*metarow]
