@@ -38,18 +38,18 @@ from matplotlib.mlab import griddata as mlab_griddata
 from osgeo import gdal, ogr, osr
 
 
-def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, float]:
+def _compare_vals(value: float, min_value: float, max_value: float) -> Tuple[float, float]:
     """
     This is a small utility for inspecting values and seeing they
     contribute to a min or max estimate.
 
     Parameters
     ----------
-    val: float :
+    value: float :
         TODO write description
-    valmin: float :
+    min_value: float :
         TODO write description
-    valmax: float :
+    max_value: float :
         TODO write description
 
     Returns
@@ -57,13 +57,13 @@ def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, floa
 
     """
 
-    if numpy.isnan(valmin) or val < valmin:
-        valmin = val
+    if numpy.isnan(min_value) or value < min_value:
+        min_value = value
 
-    if numpy.isnan(valmax) or val > valmax:
-        valmax = val
+    if numpy.isnan(max_value) or value > max_value:
+        max_value = value
 
-    return valmin, valmax
+    return min_value, max_value
 
 
 class point_interpolator:
@@ -157,10 +157,7 @@ class point_interpolator:
         if interpolation_type in ['linear', 'natural', 'invlin']:
             return ds5
         elif interpolation_type == 'invdist':
-            if shrink:
-                return ds4
-            else:
-                return ds3
+            return ds4 if shrink else ds3
         else:
             raise ValueError('Interpolation type not understood')
 
@@ -668,7 +665,7 @@ class point_interpolator:
                                 algorithm=algorithm)
         return interp_data
 
-    def _kriging_interp_points(self, dataset: gdal.Dataset, resolution: float, radius: float,
+    def _kriging_interp_points(self, input_dataset: gdal.Dataset, resolution: float, radius: float,
                                nodata: float = 1000000) -> gdal.Dataset:
         """
         Interpolate the provided gdal vector points and return the interpolated
@@ -676,26 +673,42 @@ class point_interpolator:
         """
 
         # Find the bounds of the provided data
-        xmin, xmax, ymin, ymax = numpy.nan, numpy.nan, numpy.nan, numpy.nan
-        lyr = dataset.GetLayerByIndex(0)
-        count = lyr.GetFeatureCount()
+        min_x, max_x, min_y, max_y = numpy.nan, numpy.nan, numpy.nan, numpy.nan
+        lyr = input_dataset.GetLayerByIndex(0)
 
-        for n in numpy.arange(count):
-            f = lyr.GetFeature(n)
-            x, y, z = f.geometry().GetPoint()
-            xmin, xmax = _compare_vals(x, xmin, xmax)
-            ymin, ymax = _compare_vals(y, ymin, ymax)
+        x_list = []
+        y_list = []
 
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
+        for feature_index in numpy.arange(lyr.GetFeatureCount()):
+            feature = lyr.GetFeature(feature_index)
+            x, y, z = feature.geometry().GetPoint()
+
+            min_x, max_x = _compare_vals(x, min_x, max_x)
+            min_y, max_y = _compare_vals(y, min_y, max_y)
+
+            x_list.append(x)
+            y_list.append(y)
+
+        x, y = numpy.meshgrid(x_list, y_list)
+
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, (min_x, min_y, max_x, max_y))
 
         # do kriging on points
-        gp = sklearn.gaussian_process.GaussianProcessRegressor(kernel=sklearn.gaussian_process.kernels.ConstantKernel)
+        gaussian_regresser = sklearn.gaussian_process.GaussianProcessRegressor()
 
         # TODO actually make this work
-        interpolated_data = gp.fit(x, y)
+        interpolated_data = gaussian_regresser.fit(x, y)
+
+        driver = ogr.GetDriverByName('Memory')
+        output_dataset = driver.Create('temp', numcolumns, numrows, 1, gdal.GDT_Float32)
+        output_dataset.SetGeoTransform(input_dataset.GetGeoTransform())
+
+        output_dataset.SetProjection(input_dataset.GetProjection())
+        output_dataset.GetRasterBand(1).WriteArray(interpolated_data.predict(x))
+        output_dataset.FlushCache()
 
         # TODO convert back to GDAL dataset
-        return interpolated_data
+        return output_dataset
 
     def _get_nodes(self, resolution: float, bounds: Tuple[float, float, float, float]) -> Tuple[
         int, int, Tuple[float, float, float, float]]:
