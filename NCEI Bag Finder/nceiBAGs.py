@@ -175,7 +175,15 @@ def csvWriter(attr_list, csvFile, csvLocation, name, pb=None):
     -------
 
     """
-
+    if name == '':
+        num = 0
+        name = str(datetime.datetime.now().strftime('%Y%m%d')) + '_NCEI_Output'
+        while True:
+            if os.path.exists(f'{name}_{num}.txt'):
+                num += 1
+            else:
+                name = f'{name}_{num}'
+                break
     name = os.path.join(csvLocation, f'{name}.txt')
     csvOpen = open(name, 'w', newline='')
     save = csv.writer(csvOpen, delimiter=',')
