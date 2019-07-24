@@ -9,7 +9,7 @@ import csv as _csv
 import shutil as _shutil
 from pathlib import Path as _Path
 from tempfile import NamedTemporaryFile as _NamedTemporaryFile
-from typing import List, Union
+from typing import List
 
 import fuse.meta_review.meta_review_base as mrb
 
@@ -96,11 +96,7 @@ class meta_review_ehydro(mrb.meta_review_base):
         """TODO write description"""
         csv_cols = []
         for c in self._metakeys:
-            if c == 'from_filename':
-                csv_cols.append(c)
-            elif c == 'from_path':
-                csv_cols.append(c)
-            elif c == 'script_version':
+            if c in ('from_filename', 'from_path', 'script_version'):
                 csv_cols.append(c)
             else:
                 csv_cols.append(meta_review_ehydro._col_root['script'] + c)
@@ -110,7 +106,7 @@ class meta_review_ehydro(mrb.meta_review_base):
         csv_cols.append('Notes')
         return csv_cols
 
-    def write_meta_record(self, meta: Union[List[dict], dict]):
+    def write_meta_record(self, meta: List[dict]):
         """
         Open the provided file and add the list of metadata in the provided
         dictionaries.
