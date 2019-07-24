@@ -47,11 +47,11 @@ class Form(ncei_ui.Form):
                 self.status_bar.SetStatusText(msg)
 
     def bound_check(self, nx, sy, sx, ny):
-        if nx > sx:
+        if nx < sx:
             return 'Please check your West and East values'
         elif ny > sy:
             return 'Please check your North and South values'
-        elif nx > sx and ny > sy:
+        elif nx < sx and ny > sy:
             return 'Please check the order of all bounding values'
 
     def programAbout(self, event):
