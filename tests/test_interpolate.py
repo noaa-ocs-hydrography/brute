@@ -1,7 +1,10 @@
+import os
 import unittest
 
 from fuse.interpolator.bag_interpolator import bag
 from fuse.interpolator.bag_interpolator import coverage
+
+DATA_PATH = r"C:\Data\NBS"
 
 
 def test_interpolate():
@@ -10,13 +13,12 @@ def test_interpolate():
 
 class TestBagInterpolator(unittest.TestCase):
     def test_align2grid(self):
-        bag_path = r"C:\Data\NBS\H12607_MB_4m_MLLW_2of2.bag"
-        output_path = r"C:\Data\NBS"
-        coverage_list = [r"C:\Data\NBS\H12607_SSSAB_1m_600kHz_2of2.tif"]
+        bag_path = os.path.join(DATA_PATH, 'H12607_MB_4m_MLLW_2of2.bag')
+        coverage_list = [os.path.join(DATA_PATH, 'H12607_SSSAB_1m_600kHz_2of2.tif')]
 
         bag_dataset = bag.bag_file()
         bag_dataset.open_file(bag_path, 'hack')
-        bag_dataset.generate_name(output_path, False)
+        bag_dataset.generate_name(DATA_PATH, False)
         coverage_object = coverage.unified_coverage(coverage_list, bag_dataset.wkt, bag_dataset.name)
 
         assert coverage_object.bounds != bag_dataset.bounds
