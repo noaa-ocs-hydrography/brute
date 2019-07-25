@@ -680,112 +680,68 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
 
     print('align2grid')
 
-    # 1
-    covRes = coverage.resolution[0]
+    # determine the ratio resolution between the BAG resolution and the coverage resolution
+    resolution_ratio = coverage.resolution[0] / resolution[0]
 
-    # 2
-    bagRes = resolution[0]
-
-    # 3
-    zres = covRes / bagRes
-    print(bagRes, zres)
-
-    # 4
-    print(coverage.array)
-    if zres == 1:
-        newarr = coverage.array
+    # resample coverage data to match BAG resolution
+    if resolution_ratio == 1:
+        resampled_coverage_array = coverage.array
     else:
         print('_zoom', _dt.now())
-        newarr = _zoom(coverage.array, zoom=[zres, zres], order=3,
-                       prefilter=False)
+        resampled_coverage_array = _zoom(coverage.array, zoom=[resolution_ratio, resolution_ratio], order=3,
+                                         prefilter=False)
         print('zoomed', _dt.now())
+    resampled_coverage_array = resampled_coverage_array.astype('float64')
+    resampled_coverage_array[resampled_coverage_array > 0] = _np.nan
+    resampled_coverage_array[resampled_coverage_array < 1] = float(nodata)
 
-    # 5
-    newarr = newarr.astype('float64')
-    newarr[newarr > 0] = _np.nan
-    newarr[newarr < 1] = float(nodata)
-    print(newarr)
-    print(coverage.shape, newarr.shape)
+    # clip resampled coverage data to the bounds of the BAG
+    output_array = _np.full(shape, nodata)
 
-    # 6
-    bagBounds = bounds
-    covBounds = coverage.bounds
-    print(bagBounds)
-    print(covBounds)
-    bulx, buly = bagBounds[0]
-    blrx, blry = bagBounds[-1]
-    culx, culy = covBounds[0]
-    clrx, clry = covBounds[-1]
-    dulx, duly, dlrx, dlry = 0, 0, 0, 0
-    if bulx != culx:
-        dulx = culx - bulx
-        print(bulx, culx, dulx)
-    if buly != culy:
-        duly = buly - culy
-        print(buly, culy, duly)
-    if blrx != clrx:
-        dlrx = blrx - clrx
-        print(blrx, clrx, dlrx)
-    if blry != clry:
-        dlry = clry - blry
-        print(blry, clry, dlry)
-    print(dulx, duly)
-    print(dlrx, dlry)
+    cov_ul, cov_lr = _np.array(coverage.bounds[0]), _np.array(coverage.bounds[1])
+    bag_ul, bag_lr = _np.array(bounds[0]), _np.array(bounds[1])
 
-    # 7
-    bShape = shape
-    bSy, bSx = bShape
-    cSy, cSx = newarr.shape
-    print(bSy, cSy)
-    print(bSx, cSx)
-    expx, expy = 0, 0
-    if newarr.shape != bShape:
-        print(bSy - cSy, bSx - cSx)
-        if cSy < bSy:
-            expy = int(_np.abs(bSy - cSy))
-            print('expy', expy)
-        if cSx < bSx:
-            expx = int(_np.abs(bSx - cSx))
-            print('expx', expx)
-    ay = _np.full((cSy + expy, cSx + expx), nodata)
-    print('expz', ay.shape, bShape)
-    rollx = int(dulx * zres)
-    rolly = int(duly * zres)
+    if bag_ul[0] > cov_lr[0] or bag_lr[0] < cov_ul[0] or bag_lr[1] > cov_ul[1] or bag_ul[1] < cov_lr[1]:
+        raise ValueError('bag dataset is outside the bounds of coverage dataset')
 
-    # 8
-    up, left = 0, 0
-    down, right = 0, 0
-    if duly < 0:
-        up = -int(rolly)
-    elif duly > 0:
-        down = abs(rolly)
-        up = 0
-    if dulx < 0:
-        left = -int(rollx)
-    elif dulx > 0:
-        right = rollx
-        left = 0
+    ul_index_delta = _np.round((bag_ul - cov_ul) / _np.array(resolution)).astype(int)
+    lr_index_delta = _np.round((bag_lr - cov_ul) / _np.array(resolution)).astype(int)
 
-    if dulx != 0 or duly != 0:
-        print('rollz', up, left, down, right)
-        temp = newarr[up:, left:]
-        print(temp.shape)
-        ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[down:ay.shape[0] + down,
-                                                                     right:ay.shape[1] + right]
-        del temp
-    else:
-        ay[:] = newarr[:]
-    print('expz', ay.shape)
-    ax = _np.full(bShape, nodata)
-    ax[:] = ay[:bSy, :bSx]
-    del newarr, ay
+    # indices to be written onto the output array
+    output_array_index_slices = [slice(0, None), slice(0, None)]
 
-    coverage.array = ax
+    # BAG leftmost X is to the left of coverage leftmost X
+    if ul_index_delta[0] < 0:
+        output_array_index_slices[1] = slice(ul_index_delta[0] * -1, output_array_index_slices[1].stop)
+        ul_index_delta[0] = 0
+
+    # BAG topmost Y is above coverage topmost Y
+    if ul_index_delta[1] < 0:
+        output_array_index_slices[0] = slice(ul_index_delta[1] * -1, output_array_index_slices[0].stop)
+        ul_index_delta[1] = 0
+
+    # BAG rightmost X is to the right of coverage rightmost X
+    if lr_index_delta[0] > resampled_coverage_array.shape[1]:
+        output_array_index_slices[1] = slice(output_array_index_slices[1].start,
+                                             resampled_coverage_array.shape[1] - lr_index_delta[0])
+        lr_index_delta[0] = resampled_coverage_array.shape[1]
+
+    # BAG bottommost Y is lower than coverage bottommost Y
+    if lr_index_delta[1] > resampled_coverage_array.shape[0]:
+        output_array_index_slices[0] = slice(output_array_index_slices[0].start,
+                                             resampled_coverage_array.shape[0] - lr_index_delta[1])
+        lr_index_delta[1] = resampled_coverage_array.shape[0]
+
+    # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
+    output_array[output_array_index_slices[0], output_array_index_slices[1]] = resampled_coverage_array[
+                                                                               ul_index_delta[1]:lr_index_delta[1],
+                                                                               ul_index_delta[0]:lr_index_delta[0]]
+    del resampled_coverage_array
+
+    coverage.array = output_array
     coverage.bounds = bounds
     coverage.shape = shape
     coverage.resolution = resolution
-
-    del ax
 
     return coverage
 

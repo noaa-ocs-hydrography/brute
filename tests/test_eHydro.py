@@ -1,6 +1,9 @@
-def test_eHydro_scrape():
-    assert 1 == 1
+import unittest
 
 
-def test_eHydro_move():
-    assert 1 == 1
+class TestEHydro(unittest.TestCase):
+    def test_scrape(self):
+        raise NotImplementedError()
+
+    def test_move(self):
+        raise NotImplementedError()
