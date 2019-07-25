@@ -693,19 +693,19 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     # 4
     print(coverage.array)
     if zres == 1:
-        newarr = coverage.array
+        resampled_coverage_array = coverage.array
     else:
         print('_zoom', _dt.now())
-        newarr = _zoom(coverage.array, zoom=[zres, zres], order=3,
-                       prefilter=False)
+        resampled_coverage_array = _zoom(coverage.array, zoom=[zres, zres], order=3,
+                                         prefilter=False)
         print('zoomed', _dt.now())
 
     # 5
-    newarr = newarr.astype('float64')
-    newarr[newarr > 0] = _np.nan
-    newarr[newarr < 1] = float(nodata)
-    print(newarr)
-    print(coverage.shape, newarr.shape)
+    resampled_coverage_array = resampled_coverage_array.astype('float64')
+    resampled_coverage_array[resampled_coverage_array > 0] = _np.nan
+    resampled_coverage_array[resampled_coverage_array < 1] = float(nodata)
+    print(resampled_coverage_array)
+    print(coverage.shape, resampled_coverage_array.shape)
 
     # 6
     bagBounds = bounds
@@ -735,11 +735,11 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     # 7
     bShape = shape
     bSy, bSx = bShape
-    cSy, cSx = newarr.shape
+    cSy, cSx = resampled_coverage_array.shape
     print(bSy, cSy)
     print(bSx, cSx)
     expx, expy = 0, 0
-    if newarr.shape != bShape:
+    if resampled_coverage_array.shape != bShape:
         print(bSy - cSy, bSx - cSx)
         if cSy < bSy:
             expy = int(_np.abs(bSy - cSy))
@@ -747,12 +747,28 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
         if cSx < bSx:
             expx = int(_np.abs(bSx - cSx))
             print('expx', expx)
-    ay = _np.full((cSy + expy, cSx + expx), nodata)
-    print('expz', ay.shape, bShape)
+    output_array = _np.full((cSy + expy, cSx + expx), nodata)
+    print('expz', output_array.shape, bShape)
     rollx = int(dulx * zres)
     rolly = int(duly * zres)
 
     # 8
+    cov_ul = _np.array(covBounds[0])
+    bag_ul, bag_lr = _np.array(bagBounds[0]), _np.array(bagBounds[1])
+
+    dul = cov_ul - bag_ul
+    dlr = cov_ul - bag_lr
+
+    ul_index_delta = dul / _np.array(resolution)
+    lr_index_delta = dul / _np.array(resolution)
+
+    output_array = resampled_coverage_array[]
+
+    x_shift, y_shift = rollx, rolly
+
+    temp = resampled_coverage_array[y_shift:, x_shift:]
+    output_array[y_shift:temp.shape[0] + y_shift, x_shift:temp.shape[1] + x_shift] = temp
+
     up, left = 0, 0
     down, right = 0, 0
     if duly < 0:
@@ -768,17 +784,16 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
 
     if dulx != 0 or duly != 0:
         print('rollz', up, left, down, right)
-        temp = newarr[up:, left:]
+        temp = resampled_coverage_array[up:, left:]
         print(temp.shape)
-        ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[down:ay.shape[0] + down,
-                                                                     right:ay.shape[1] + right]
+        output_array[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp
         del temp
     else:
-        ay[:] = newarr[:]
-    print('expz', ay.shape)
+        output_array[:] = resampled_coverage_array[:]
+    print('expz', output_array.shape)
     ax = _np.full(bShape, nodata)
-    ax[:] = ay[:bSy, :bSx]
-    del newarr, ay
+    ax[:] = output_array[:bSy, :bSx]
+    del resampled_coverage_array, output_array
 
     coverage.array = ax
     coverage.bounds = bounds
