@@ -123,13 +123,13 @@ def write_shapefile(out_shp: str, name: str, geom, spcs: Union[str, int]):
 
     Parameters
     ----------
-    out_shp str :
+    out_shp
         String representing the complete file path for the output shapefile
-    name :
+    name
         String representing the name of the survey; Used to name the layer
-    geom :
+    geom
 
-    spcs: Union[str, int] :
+    spcs
 
     """
 
@@ -386,6 +386,7 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method,
         downloads folders for that region
     destination :
         A string representing the base path of the destination directory
+    method
     text_region: wx.TextCtrl :
          (Default value = None) Optional text field used when run via the
          included GUI; displays the current region being copied

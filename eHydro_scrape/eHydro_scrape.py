@@ -926,7 +926,7 @@ def versionSave(version: float, attributes: list):
     version += .1
     version = round(version, 1)
     datestamp = datetime.datetime.now().strftime('%Y-%m-%d')
-    verfrmt = ('_').join(str(version).split('.'))
+    verfrmt = '_'.join(str(version).split('.'))
     ver_info = {
         'version': version,
         'date': datestamp,

@@ -61,18 +61,19 @@ def coordQuery(nx, ny, sx, sy):
 
 def bagIDQuery(bounds, qId=3):
     """
-
+    TODO write description
 
     Parameters
     ----------
-    bounds :
+    bounds
+    qId
 
 
     Returns
     -------
 
     """
-    bounds = str(bounds)
+
     bagList = f'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/{qId}/query' + \
               f'?where=&text=&objectIds=&time=&geometry={bounds}&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=true&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
     bagListRequest = requests.get(bagList)
@@ -89,16 +90,13 @@ def bagIDQuery(bounds, qId=3):
 
 def surveyCompile(surveyIDs, num, qId=3, pb=None):
     """
-
+    TODO write description
 
     Parameters
     ----------
-    surveyIDs :
-
-    num :
-
-    pb :
-         (Default value = None)
+    surveyIDs
+    num
+    qId
 
     Returns
     -------
@@ -158,17 +156,14 @@ def surveyCompile(surveyIDs, num, qId=3, pb=None):
 
 def csvWriter(attr_list, csvFile, csvLocation, name, pb=None):
     """
-
+    TODO write description
 
     Parameters
     ----------
-    csvFile :
-
-    csvLocation :
-
-    name :
-
-    pb :
+    csvFile
+    csvLocation
+    name
+    pb
          (Default value = None)
 
     Returns
@@ -201,21 +196,16 @@ def csvWriter(attr_list, csvFile, csvLocation, name, pb=None):
 
 def main(name, nx, sy, sx, ny, qId=3, pb=None):
     """
-
+    TODO write description
 
     Parameters
     ----------
-    name :
-
-    nx :
-
-    sy :
-
-    sx :
-
-    ny :
-
-    pb :
+    name
+    nx
+    sy
+    sx
+    ny
+    pb
          (Default value = None)
 
     Returns
@@ -238,5 +228,5 @@ def main(name, nx, sy, sx, ny, qId=3, pb=None):
         attr_list, rows = surveyCompile(bagIDs, bagNum, qId, pb)
         csvWriter(attr_list, rows, progLoc, name, pb)
     else:
-        return (f'No {noItems} were found within: ' + \
-                f'{str({"North": ny, "West": sx, "South": sy, "East": nx})}.')
+        cardinal_directions = {"North": ny, "West": sx, "South": sy, "East": nx}
+        return (f'No {noItems} were found within: {cardinal_directions}.')
