@@ -722,12 +722,12 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
 
     # BAG rightmost X is to the right of coverage rightmost X
     if lr_index_delta[0] > resampled_coverage_array.shape[1]:
-        output_array_index_slices[1] = slice(output_array_index_slices[0].start, lr_index_delta[0] * -1)
+        output_array_index_slices[1] = slice(output_array_index_slices[1].start, lr_index_delta[0] * -1)
         lr_index_delta[0] = resampled_coverage_array.shape[1]
 
     # BAG bottommost Y is lower than coverage bottommost Y
     if lr_index_delta[1] > resampled_coverage_array.shape[0]:
-        output_array_index_slices[1] = slice(output_array_index_slices[0].start, lr_index_delta[1] * -1)
+        output_array_index_slices[0] = slice(output_array_index_slices[0].start, lr_index_delta[1] * -1)
         lr_index_delta[0] = resampled_coverage_array.shape[0]
 
     # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
