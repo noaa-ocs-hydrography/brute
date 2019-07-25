@@ -9,7 +9,7 @@ import csv as _csv
 import shutil as _shutil
 from pathlib import Path as _Path
 from tempfile import NamedTemporaryFile as _NamedTemporaryFile
-from typing import List, Union
+from typing import List
 
 import fuse.meta_review.meta_review_base as mrb
 
@@ -94,27 +94,19 @@ class meta_review_ehydro(mrb.meta_review_base):
 
     def _make_col_header(self) -> List[str]:
         """TODO write description"""
-
         csv_cols = []
-
         for c in self._metakeys:
-            if c == 'from_filename':
-                csv_cols.append(c)
-            elif c == 'from_path':
-                csv_cols.append(c)
-            elif c == 'script_version':
+            if c in ('from_filename', 'from_path', 'script_version'):
                 csv_cols.append(c)
             else:
-                csv_cols.append(f'{meta_review_ehydro._col_root["script"]}{c}')
-                csv_cols.append(f'{meta_review_ehydro._col_root["manual"]}{c}')
-
+                csv_cols.append(meta_review_ehydro._col_root['script'] + c)
+                csv_cols.append(meta_review_ehydro._col_root['manual'] + c)
         csv_cols.append('reviewed')
         csv_cols.append('Last Updated')
         csv_cols.append('Notes')
-
         return csv_cols
 
-    def write_meta_record(self, meta: Union[List[dict], dict]):
+    def write_meta_record(self, meta: List[dict]):
         """
         Open the provided file and add the list of metadata in the provided
         dictionaries.
@@ -130,7 +122,6 @@ class meta_review_ehydro(mrb.meta_review_base):
         """
 
         infile = _Path(self._metafilename)
-
         if infile.exists():
             if type(meta) == dict:  # just a single record
                 self._add_to_csv([meta])
@@ -138,8 +129,8 @@ class meta_review_ehydro(mrb.meta_review_base):
                 self._add_to_csv(meta)
             else:
                 raise ValueError('Unknown meta data container provided')
+        # just write a new file since there is not one already
         else:
-            # just write a new file since there is not one already
             self._write_new_csv(meta)
 
     def _add_to_csv(self, meta: List[dict]):
@@ -157,46 +148,39 @@ class meta_review_ehydro(mrb.meta_review_base):
         """
 
         orig = []
-
         # get the names of all the files in the new metadata
         new_meta_files = []
-
         for m in meta:
             new_meta_files.append(m['from_filename'])
-
         # update the metadata keys
         meta = self._scriptkeys(meta)
-
         # get all the metadata that is in the file already
         with open(self._metafilename, 'r', encoding='utf-8') as csvfile:
             reader = _csv.DictReader(csvfile, fieldnames=self._fieldnames)
-
             for row in reader:
                 orig.append(row)
-
         # move the data into a new temp file
-        with _NamedTemporaryFile(mode='w', newline='', delete=False) as tempfile:
-            writer = _csv.DictWriter(tempfile, fieldnames=self._fieldnames, extrasaction='ignore')
-
+        with _NamedTemporaryFile(mode='w',
+                                 newline='',
+                                 encoding='utf-8',
+                                 delete=False) as tempfile:
+            writer = _csv.DictWriter(tempfile,
+                                     fieldnames=self._fieldnames,
+                                     extrasaction='ignore')
             # check to see if the new metadata is the same as an existing entry
             for row in orig:
                 fname = row['from_filename']
-
                 # if the file is being updated, move over the updated info
                 if fname in new_meta_files:
                     idx = new_meta_files.index(fname)
                     m = meta.pop(idx)
                     new_meta_files.pop(idx)
-
                     for key in m.keys():
                         row[key] = m[key]
-
                 writer.writerow(row)
-
             # append what remains to the file
             for row in meta:
                 writer.writerow(row)
-
         # replace the original file with the temp file
         _shutil.move(tempfile.name, self._metafilename)
 
@@ -220,11 +204,9 @@ class meta_review_ehydro(mrb.meta_review_base):
             meta = self._scriptkeys(meta)
         else:
             raise ValueError('Unknown meta data container provided')
-
         with open(self._metafilename, 'w', newline='', encoding='utf-8') as csvfile:
             writer = _csv.DictWriter(csvfile, fieldnames=self._fieldnames, extrasaction='ignore')
             writer.writeheader()
-
             for row in meta:
                 writer.writerow(row)
 
@@ -244,11 +226,9 @@ class meta_review_ehydro(mrb.meta_review_base):
         """
 
         new_meta = []
-
         for row in meta:
             new_row = {}
             keys = row.keys()
-
             for key in keys:
                 if key in ('from_filename', 'from_path'):
                     new_row[key] = row[key]
@@ -257,9 +237,7 @@ class meta_review_ehydro(mrb.meta_review_base):
                     # new_row[key] = f'{row[key]},{__version__}'
                 else:
                     new_row[f'script: {key}'] = row[key]
-
             new_meta.append(new_row)
-
         return new_meta
 
     def read_meta_file(self) -> List[dict]:
@@ -278,11 +256,9 @@ class meta_review_ehydro(mrb.meta_review_base):
         with open(self._metafilename, 'r') as csvfile:
             metadata = []
             reader = _csv.DictReader(csvfile)
-
             # get the row
             for row in reader:
                 metadata.append(self._simplify_row(row))
-
         return metadata
 
     def read_meta_record(self, meta_value, meta_key: str = 'from_filename') -> dict:
@@ -304,15 +280,12 @@ class meta_review_ehydro(mrb.meta_review_base):
         """
 
         metadata = {}
-
         with open(self._metafilename, 'r') as csvfile:
             reader = _csv.DictReader(csvfile)
-
             # get the row
             for row in reader:
                 if row[meta_key] == meta_value:
                     metadata = self._simplify_row(row)
-
         return metadata
 
     def _simplify_row(self, row: dict) -> dict:
@@ -332,35 +305,28 @@ class meta_review_ehydro(mrb.meta_review_base):
         """
 
         metarow = {}
-
         # make dictionaries for sorting data into
         for name in meta_review_ehydro._col_root:
             metarow[name] = {}
-
         metarow['base'] = {}
-
         # sort each key (that has information) into the right dictionary
         for key in row:
+            # only do stuff with keys that have information
             if len(row[key]) > 0:
                 named = False
-
                 for name in meta_review_ehydro._col_root:
                     if name in key:
                         named = True
                         val = key.replace(meta_review_ehydro._col_root[name], '')
                         metarow[name][val] = row[key]
-
                 if not named:
                     metarow['base'][key] = row[key]
-
         # combine the dictionaries
         simplerow = {}
         names = [*metarow]
         names.sort(reverse=True)
-
         for name in names:
             simplerow = {**simplerow, **metarow[name]}
-
         return simplerow
 
     def row2s57(self, row: dict):
@@ -383,7 +349,6 @@ class meta_review_ehydro(mrb.meta_review_base):
         for key in row:
             if key in meta_review_ehydro._field_map:
                 s57row[meta_review_ehydro._field_map[key]] = row[key]
-
                 if row[key] in ('TRUE', 'True'):
                     s57row[meta_review_ehydro._field_map[key]] = 0
                 elif row[key] in ('FALSE', 'False'):

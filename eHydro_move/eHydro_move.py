@@ -399,9 +399,7 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method,
     """
 
     with open(config['CSVs']['USACE'], 'r') as fileName:
-        district_name = [row[:2] for row in _csv.reader(fileName, delimiter=',') if len(row) > 0]
-
-    district_name = dict(district_name[1:])
+        district_name = dict([row[:2] for row in _csv.reader(fileName, delimiter=',') if len(row) > 0][1:])
 
     for k, v in regionFiles.items():
         if text_region is not None:
