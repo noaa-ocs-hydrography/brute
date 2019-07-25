@@ -7,10 +7,6 @@ from fuse.interpolator.bag_interpolator import coverage
 DATA_PATH = r"C:\Data\NBS"
 
 
-def test_interpolate():
-    assert 1 == 1
-
-
 class TestBagInterpolator(unittest.TestCase):
     def test_align2grid(self):
         bag_path = os.path.join(DATA_PATH, 'H12607_MB_4m_MLLW_2of2.bag')
