@@ -15,16 +15,16 @@ class TestBagInterpolator(unittest.TestCase):
         bag_dataset = bag.bag_file()
         bag_dataset.open_file(bag_path, 'hack')
         bag_dataset.generate_name(DATA_PATH, False)
-        coverage_object = coverage.unified_coverage(coverage_list, bag_dataset.wkt, bag_dataset.name)
+        coverage_dataset = coverage.unified_coverage(coverage_list, bag_dataset.wkt, bag_dataset.name)
 
-        assert coverage_object.bounds != bag_dataset.bounds
-        assert coverage_object.shape != bag_dataset.shape
+        assert coverage_dataset.bounds != bag_dataset.bounds
+        assert coverage_dataset.shape != bag_dataset.shape
 
-        coverage_object = coverage.align2grid(coverage_object, bag_dataset.bounds, bag_dataset.shape,
-                                              bag_dataset.resolution, bag_dataset.nodata)
+        coverage_dataset = coverage.align2grid(coverage_dataset, bag_dataset.bounds, bag_dataset.shape,
+                                               bag_dataset.resolution, bag_dataset.nodata)
 
-        assert coverage_object.bounds == bag_dataset.bounds
-        assert coverage_object.shape == bag_dataset.shape
+        assert coverage_dataset.bounds == bag_dataset.bounds
+        assert coverage_dataset.shape == bag_dataset.shape
 
 
 if __name__ == '__main__':
