@@ -903,25 +903,26 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     print(bagRes, zres)
     #    _plt.imshow(tif[-1][::100,::100])
     #    _plt.show()
+
     ## 4
     print(tif[-1])
     if zres == 1:
-        newarr = tif[-1]
+        resampled_coverage_array = tif[-1]
     else:
         print('_zoom', _dt.now())
-        newarr = _zoom(tif[-1], zoom=[zres, zres], order=3, prefilter=False)
+        resampled_coverage_array = _zoom(tif[-1], zoom=[zres, zres], order=3, prefilter=False)
         print('zoomed', _dt.now())
     #    _plt.imshow(newarr[::100,::100])
     #    _plt.show()
 
     ## 5
-    newarr = newarr.astype('float64')
-    newarr[newarr > 0] = _np.nan
-    newarr[newarr < 1] = float(maxVal)
+    resampled_coverage_array = resampled_coverage_array.astype('float64')
+    resampled_coverage_array[resampled_coverage_array > 0] = _np.nan
+    resampled_coverage_array[resampled_coverage_array < 1] = float(maxVal)
     #    _plt.imshow(newarr[::100,::100])
     #    _plt.show()
-    print(newarr)
-    print(tif[-1].shape, newarr.shape)
+    print(resampled_coverage_array)
+    print(tif[-1].shape, resampled_coverage_array.shape)
 
     ## 6
     bagBounds = bag[2]
@@ -929,73 +930,53 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     print(bagBounds)
     print(tifBounds)
     bulx, buly = bagBounds[0]
-    blrx, blry = bagBounds[-1]
-    tulx, tuly = tifBounds[0]
-    tlrx, tlry = tifBounds[-1]
-    dulx, duly, dlrx, dlry = 0, 0, 0, 0
-    if bulx != tulx:
-        dulx = tulx - bulx
-        print(bulx, tulx, dulx)
-    if buly != tuly:
-        duly = buly - tuly
-        print(buly, tuly, duly)
-    if blrx != tlrx:
-        dlrx = blrx - tlrx
-        print(blrx, tlrx, dlrx)
-    if blry != tlry:
-        dlry = tlry - blry
-        print(blry, tlry, dlry)
-    print(dulx, duly)
-    print(dlrx, dlry)
 
     ## 7
-    bShape = bag[4]
-    bSy, bSx = bShape
-    tSy, tSx = newarr.shape
-    print(bSy, tSy)
-    print(bSx, tSx)
-    expx, expy = 0, 0
-    if newarr.shape != bShape:
-        print(bSy - tSy, bSx - tSx)
-        if tSy < bSy:
-            expy = int(_np.abs(bSy - tSy))
-            print('expy', expy)
-        if tSx < bSx:
-            expx = int(_np.abs(bSx - tSx))
-            print('expx', expx)
-    ay = _np.full((tSy + expy, tSx + expx), maxVal)
-    print('expz', ay.shape, bShape)
-    rollx = int(dulx * zres)
-    rolly = int(duly * zres)
+    shape = bag[4]
+    # clip resampled coverage data to the bounds of the BAG
+    output_array = _np.full(shape, maxVal)
+
+    cov_ul, cov_lr = _np.array(tifBounds[0]), _np.array(tifBounds[1])
+    bag_ul, bag_lr = _np.array(bagBounds[0]), _np.array(bagBounds[1])
+
+    if bag_ul[0] > cov_lr[0] or bag_lr[0] < cov_ul[0] or bag_lr[1] > cov_ul[1] or bag_ul[1] < cov_lr[1]:
+        raise ValueError('bag dataset is outside the bounds of coverage dataset')
+
+    ul_index_delta = _np.round((bag_ul - cov_ul) / _np.array((bagRes,-bagRes))).astype(int)
+    lr_index_delta = _np.round((bag_lr - cov_ul) / _np.array((bagRes,-bagRes))).astype(int)
+
 
     ## 8
-    up, left = 0, 0
-    down, right = 0, 0
-    if duly < 0:
-        up = -int(rolly)
-    elif duly > 0:
-        down = rolly
-        up = 0
-    if dulx < 0:
-        left = -int(rollx)
-    elif dulx > 0:
-        right = rollx
-        left = 0
+    # indices to be written onto the output array
+    output_array_index_slices = [slice(0, None), slice(0, None)]
 
-    if dulx != 0 or duly != 0:
-        print('rollz', up, left, down, right)
-        temp = newarr[up:, left:]
-        print(temp.shape)
-        #        _plt.imshow(temp[::100,::100])
-        #        _plt.show()
-        ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[:, :]
-        del temp
-    else:
-        ay[:] = newarr[:]
-    print('expz', ay.shape)
-    ax = _np.full(bShape, maxVal)
-    ax[:] = ay[:bSy, :bSx]
-    del newarr, ay
+    # BAG leftmost X is to the left of coverage leftmost X
+    if ul_index_delta[0] < 0:
+        output_array_index_slices[1] = slice(ul_index_delta[0] * -1, output_array_index_slices[1].stop)
+        ul_index_delta[0] = 0
+
+    # BAG topmost Y is above coverage topmost Y
+    if ul_index_delta[1] < 0:
+        output_array_index_slices[0] = slice(ul_index_delta[1] * -1, output_array_index_slices[0].stop)
+        ul_index_delta[1] = 0
+
+    # BAG rightmost X is to the right of coverage rightmost X
+    if lr_index_delta[0] > resampled_coverage_array.shape[1]:
+        output_array_index_slices[1] = slice(output_array_index_slices[1].start,
+                                             resampled_coverage_array.shape[1] - lr_index_delta[0])
+        lr_index_delta[0] = resampled_coverage_array.shape[1]
+
+    # BAG bottommost Y is lower than coverage bottommost Y
+    if lr_index_delta[1] > resampled_coverage_array.shape[0]:
+        output_array_index_slices[0] = slice(output_array_index_slices[0].start,
+                                             resampled_coverage_array.shape[0] - lr_index_delta[1])
+        lr_index_delta[1] = resampled_coverage_array.shape[0]
+
+    # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
+    output_array[output_array_index_slices[0], output_array_index_slices[1]] = resampled_coverage_array[
+                                                                               ul_index_delta[1]:lr_index_delta[1],
+                                                                               ul_index_delta[0]:lr_index_delta[0]]
+    del resampled_coverage_array
 
     ## 9
     ext = _os.path.splitext(targs[1])[1].lower()
@@ -1005,7 +986,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     #        gd_obj = _ogr.Open(targs[1])
     tif.pop()
     print(tif)
-    tif.append(ax)
+    tif.append(output_array)
     print(tif, tif[-1].shape)
     #    print ('h5')
     #    outputhdf5 = tif[1]
@@ -1017,8 +998,8 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     print('tiff')
     temp = targs[0]
     gt = (bulx, bagRes, temp[2], buly, temp[4], -bagRes)
-    write_raster(ax, gt, gd_obj, targs[2], options=['COMPRESS=LZW'])
-    del ax
+    write_raster(output_array, gt, gd_obj, targs[2], options=['COMPRESS=LZW'])
+    del output_array
 
     grids = [tif, bag]
     bShape = bag[-1].shape

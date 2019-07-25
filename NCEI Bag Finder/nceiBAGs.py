@@ -79,9 +79,12 @@ def bagIDQuery(bounds, qId=3):
     bagListRequestJSON = bagListRequest.json()
     #    print (bagListRequestJSON)
     objectIDs = bagListRequestJSON['objectIds']
-    objectNum = len(objectIDs) - 1
-    print(objectIDs, objectNum)
-    return objectIDs, objectNum
+    if objectIDs is None:
+        return [], 0
+    else:
+        objectNum = len(objectIDs) - 1
+        print(objectIDs, objectNum)
+        return objectIDs, objectNum
 
 
 def surveyCompile(surveyIDs, num, qId=3, pb=None):
@@ -172,7 +175,15 @@ def csvWriter(attr_list, csvFile, csvLocation, name, pb=None):
     -------
 
     """
-
+    if name == '':
+        num = 0
+        name = str(datetime.datetime.now().strftime('%Y%m%d')) + '_NCEI_Output'
+        while True:
+            if os.path.exists(f'{name}_{num}.txt'):
+                num += 1
+            else:
+                name = f'{name}_{num}'
+                break
     name = os.path.join(csvLocation, f'{name}.txt')
     csvOpen = open(name, 'w', newline='')
     save = csv.writer(csvOpen, delimiter=',')
@@ -212,10 +223,20 @@ def main(name, nx, sy, sx, ny, qId=3, pb=None):
 
     """
     print(name, nx, sy, sx, ny)
+
     if pb is not None:
         pb.Pulse()
+
+    if qId == 3:
+        noItems = 'BAG Files'
+    else:
+        noItems = 'Surveys'
+
     bounds = coordQuery(nx, ny, sx, sy)
     bagIDs, bagNum = bagIDQuery(bounds, qId)
-    attr_list, rows = surveyCompile(bagIDs, bagNum, qId, pb)
-    csvWriter(attr_list, rows, progLoc, name, pb)
-    return True
+    if bagNum > 0:
+        attr_list, rows = surveyCompile(bagIDs, bagNum, qId, pb)
+        csvWriter(attr_list, rows, progLoc, name, pb)
+    else:
+        return (f'No {noItems} were found within: ' + \
+                f'{str({"North": ny, "West": sx, "South": sy, "East": nx})}.')
