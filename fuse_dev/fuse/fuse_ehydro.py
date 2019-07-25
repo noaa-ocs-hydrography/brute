@@ -16,6 +16,7 @@ import fuse.interpolator.interpolator as _interp
 import fuse.meta_review.meta_review_ehydro as _mre
 import fuse.raw_read.usace as _usace
 from fuse.proc_io.proc_io import proc_io
+from fuse import score
 
 
 class fuse_ehydro(_fbc.fuse_base_class):
@@ -48,6 +49,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
              'feat_detect',
              'feat_least_depth',
              'interpolated',
+             'catzoc',
+             'supersession_score',
              'script_version',
              ]
 
@@ -218,6 +221,10 @@ class fuse_ehydro(_fbc.fuse_base_class):
             resolution = self._config['to_resolution']
             self._points.write(dataset, outfilename)
             self._meta['to_filename'] = outfilename
+            catzoc = score.catzoc(self._meta)
+            supscr = score.supersession(self._meta)
+            self._meta['CATZOC'] = catzoc
+            self._meta['supscr'] = supscr
             self._meta_obj.write_meta_record(self._meta)
             # take a gdal dataset for interpolation and return a gdal dataset
             interpfilename = f'{outfilebase}_{resolution}m_interp.{new_ext}'
@@ -247,8 +254,22 @@ class fuse_ehydro(_fbc.fuse_base_class):
             if self._db == None:
                 self._connect_to_db()
             procfile = self._meta['to_filename']
-            print(self._s57_meta)
             self._db.write(procfile, 'new', self._s57_meta)
+            
+    def score(self, infilename, date):
+        """
+        Provided a date, get the decayed quality metric and insert in the
+        database, making the information available for amalgamation.
+        """
+        self._set_log(infilename)
+        self._get_s57_stored_meta(infilename)
+        dscore = score.decay(self._meta, date)
+        if len(self._meta) > 0:
+            if self._db == None:
+                self._connect_to_db()
+            procfile = self._meta['to_filename']
+            self._s57_meta['dcyscr'] = dscore
+            self._db.write(procfile, 'metadata', self._s57_meta)
 
     def _connect_to_db(self):
         """
