@@ -712,7 +712,7 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
 
     # BAG leftmost X is to the left of coverage leftmost X
     if ul_index_delta[0] < 0:
-        output_array_index_slices[1] = slice(ul_index_delta[0] * -1, output_array_index_slices[0].stop)
+        output_array_index_slices[1] = slice(ul_index_delta[0] * -1, output_array_index_slices[1].stop)
         ul_index_delta[0] = 0
 
     # BAG topmost Y is above coverage topmost Y
