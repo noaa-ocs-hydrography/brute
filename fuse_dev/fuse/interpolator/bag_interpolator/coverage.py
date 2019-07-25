@@ -728,7 +728,7 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
     # BAG bottommost Y is lower than coverage bottommost Y
     if lr_index_delta[1] > resampled_coverage_array.shape[0]:
         output_array_index_slices[0] = slice(output_array_index_slices[0].start, lr_index_delta[1] * -1)
-        lr_index_delta[0] = resampled_coverage_array.shape[0]
+        lr_index_delta[1] = resampled_coverage_array.shape[0]
 
     # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
     output_array[output_array_index_slices[0], output_array_index_slices[1]] = resampled_coverage_array[
