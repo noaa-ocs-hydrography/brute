@@ -172,8 +172,9 @@ def csvWriter(attr_list, csvFile, csvLocation, name, pb=None):
     """
     if name == '':
         num = 0
-        name = str(datetime.datetime.now().strftime('%Y%m%d')) + '_NCEI_Output'
+        name = f'{datetime.datetime.now().strftime("%Y%m%d")}_NCEI_Output'
         while True:
+            # TODO add a graceful exit condition in case there is no matching filename
             if os.path.exists(f'{name}_{num}.txt'):
                 num += 1
             else:
