@@ -676,8 +676,8 @@ class point_interpolator:
         min_x, max_x, min_y, max_y = numpy.nan, numpy.nan, numpy.nan, numpy.nan
         lyr = input_dataset.GetLayerByIndex(0)
 
-        x_list = []
-        y_list = []
+        input_x = []
+        input_y = []
 
         for feature_index in numpy.arange(lyr.GetFeatureCount()):
             feature = lyr.GetFeature(feature_index)
@@ -686,28 +686,28 @@ class point_interpolator:
             min_x, max_x = _compare_vals(x, min_x, max_x)
             min_y, max_y = _compare_vals(y, min_y, max_y)
 
-            x_list.append(x)
-            y_list.append(y)
+            input_x.append(x)
+            input_y.append(y)
 
-        x, y = numpy.meshgrid(x_list, y_list)
+        input_x, input_y = numpy.meshgrid(input_x, input_y)
 
         numrows, numcolumns, bounds = self._get_nodes3(resolution, (min_x, min_y, max_x, max_y))
 
-        # do kriging on points
-        gaussian_regresser = sklearn.gaussian_process.GaussianProcessRegressor()
+        output_x, output_y = numpy.meshgrid(numpy.arange(bounds[0], bounds[2], resolution),
+                                            numpy.arange(bounds[1], bounds[3], resolution))
 
-        # TODO actually make this work
-        interpolated_data = gaussian_regresser.fit(x, y)
+        # use gaussian regressor to perform kriging from input points onto output meshgrid
+        interpolated_data = sklearn.gaussian_process.GaussianProcessRegressor().fit(input_x, input_y).predict(
+            numpy.stack((numpy.ravel(output_x), numpy.ravel(output_y))).T)
 
         driver = ogr.GetDriverByName('Memory')
         output_dataset = driver.Create('temp', numcolumns, numrows, 1, gdal.GDT_Float32)
         output_dataset.SetGeoTransform(input_dataset.GetGeoTransform())
 
         output_dataset.SetProjection(input_dataset.GetProjection())
-        output_dataset.GetRasterBand(1).WriteArray(interpolated_data.predict(x))
+        output_dataset.GetRasterBand(1).WriteArray(interpolated_data)
         output_dataset.FlushCache()
 
-        # TODO convert back to GDAL dataset
         return output_dataset
 
     def _get_nodes(self, resolution: float, bounds: Tuple[float, float, float, float]) -> Tuple[
