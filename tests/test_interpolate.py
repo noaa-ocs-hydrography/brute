@@ -1,8 +1,7 @@
 import os
 import unittest
 
-from fuse.interpolator.bag_interpolator import bag
-from fuse.interpolator.bag_interpolator import coverage
+from fuse.interpolator.bag_interpolator import bag, coverage
 
 DATA_PATH = r"C:\Data\NBS"
 
