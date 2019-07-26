@@ -174,12 +174,11 @@ def csvWriter(attr_list, csvFile, csvLocation, name, pb=None):
         num = 0
         name = f'{datetime.datetime.now():%Y%m%d}_NCEI_Output'
         while True:
-            # TODO add a graceful exit condition in case there is no matching filename
-            if os.path.exists(f'{name}_{num}.txt'):
-                num += 1
-            else:
+            if not os.path.exists(f'{name}_{num}.txt'):
                 name = f'{name}_{num}'
                 break
+            else:
+                num += 1
     name = os.path.join(csvLocation, f'{name}.txt')
     csvOpen = open(name, 'w', newline='')
     save = csv.writer(csvOpen, delimiter=',')
@@ -229,5 +228,5 @@ def main(name, nx, sy, sx, ny, qId=3, pb=None):
         attr_list, rows = surveyCompile(bagIDs, bagNum, qId, pb)
         csvWriter(attr_list, rows, progLoc, name, pb)
     else:
-        cardinal_directions = {"North": ny, "West": sx, "South": sy, "East": nx}
+        cardinal_directions = {'North': ny, 'West': sx, 'South': sy, 'East': nx}
         return (f'No {noItems} were found within: {cardinal_directions}.')
