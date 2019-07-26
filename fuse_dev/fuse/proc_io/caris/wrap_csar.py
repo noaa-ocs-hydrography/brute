@@ -132,7 +132,7 @@ def write_cloud(dataset, m: dict):
                                        ndv=(-1.0, -1.0, 0.0))
 
     # set up the CSAR
-    opts = cc.Options();
+    opts = cc.Options()
     opts.open_type = cc.OpenType.WRITE
     opts.position_band_name = 'Position'
     opts.band_info = bandInfo

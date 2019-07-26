@@ -168,7 +168,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
 
         self._meta = {}
         self._set_log(infilename)
-        self._pickle_meta = self._read_pickle(infilename)
+        print('calling pickle reader at fuse_ehydro level to pass polygon')
+        self._pickle_meta = self._read_pickle('infilename')
         # get the metadata
         meta = self._reader.read_metadata(infilename)
         meta['to_horiz_datum'] = self._config['to_horiz_datum']
@@ -180,7 +181,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         # write the metadata
         self._meta_obj.write_meta_record(meta)
 
-    def process(self, infilename: str, interpolate = True):
+    def process(self, infilename: str, interpolate=True):
         """
         Do the datum transformtion and interpolation.
 
@@ -191,10 +192,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
 
         Parameters
         ----------
-        infilename :
-
-        infilename: str :
-
+        infilename
+        interpolate
 
         Returns
         -------
@@ -243,12 +242,11 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._set_log(infilename)
         self._get_s57_stored_meta(infilename)
         if len(self._meta) > 0:
-            if self._db == None:
+            if self._db is None:
                 self._connect_to_db()
             procfile = self._meta['to_filename']
             print(self._s57_meta)
             self._db.write(procfile, 'new', self._s57_meta)
-
 
     def _connect_to_db(self):
         """
@@ -263,8 +261,21 @@ class fuse_ehydro(_fbc.fuse_base_class):
         else:
             raise ValueError('No database name defined in the configuration file.')
         intype = self._config['bathymetry_intermediate_file']
-        self._db = proc_io(intype, 'carisbdb51', db_loc = db_loc, db_name = db_name)
+        self._db = proc_io(intype, 'carisbdb51', db_loc=db_loc, db_name=db_name)
 
+    def disconnect(self):
+        """
+        Asks proc_io to close the database connection
+
+        """
+        if self._db:
+            self._db.close_connection()
+        else:
+            if 'database_location' in self._config:
+                db_loc = self._config['database_location']
+                raise RuntimeError(f'No connection to {db_loc} to close')
+            else:
+                raise ValueError('No database location defined in the configuration file.')
 
     def _set_log(self, infilename: str):
         """

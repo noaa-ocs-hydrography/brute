@@ -104,10 +104,10 @@ def query() -> Tuple[List[str], int, str]:
 
     # Today (ex. '2018-08-08'), unformatted
     today = datetime.datetime.today()
-    strToday = str(today.strftime('%Y-%m-%d'))
+    strToday = f'{today:%Y-%m-%d}'
     # Today - 1 (ex. '2018-08-06'), unformatted
     yesterday = today - datetime.timedelta(1)
-    strYesterday = str(yesterday.strftime('%Y-%m-%d'))
+    strYesterday = f'{yesterday:%Y-%m-%d}'
 
     if config['Timeframe']['Start Date'] != '':
         start = config['Timeframe']['Start Date']
@@ -322,35 +322,20 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> Tuple[list, l
     """
     Uses the json object return of the each queried survey id and the total
     number of surveys included to compile a list of complete returned survey
-    data, as provided in the response. The function also takes into account
-    that the survey data returns for any date/time are returned as timestamps.
-    The function looks for these fields and converts them to datetime objects
-    and finally strings.
+    data, as provided in the response.
 
     The function returns the lists of returned survey data as a list 'rows'.
-    The specific :attr:`attributes` for each survey are:
+    Within each 'row' are the values of each attribute field returned by the
+    query.  A dictionary containing the field_name - value relationships is
+    also included in the 'row'. This dictionary is used to writa a metadata
+    pickle output and create a survey outline/shape as a Geopackage in
+    :func:`downloadAndCheck`
 
-    - OBJECTID.
-    - SDSFEATURENAME.
-    - SURVEYTYPE.
-    - CHANNELAREAIDFK.
-    - SURVEYAGENCY.
-    - SURVEYDATEUPLOADED.
-    - SURVEYDATESTART.
-    - SURVEYDATEEND.
-    - SOURCEDATALOCATION.
-    - SOURCEPROJECTION.
-    - SURVEYJOBIDPK.
-    - PROJECTEDAREA.
-    - SURVEYTYPE.
-    - SOURCEDATAFORMAT.
-    - Shape__Area.
-    - Shape__Length.
-
-    Added to the end of this list but not included in the list for csv export
-    is a dictionary of the same information and the survey outline/shape as a
-    WTK Multipolygon object. This data is used to writa a metadata pickle
-    output and a geopackage in func:`downloadAndCheck`
+    Notes
+    -----
+    The versioning of the attribute fields is handled by :func:`versionComp`.
+    For more information about the versions of .pickle files written by this
+    script, please refer to the ``README`` included in the folder ``versions``
 
     Parameters
     ----------
@@ -402,8 +387,8 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> Tuple[list, l
 
                         try:
                             date = datetime.datetime.utcfromtimestamp(date / 1000)
-                            row.append(str(date.strftime('%Y-%m-%d')))
-                            metadata[attribute] = str(date.strftime('%Y-%m-%d'))
+                            row.append(f'{date:%Y-%m-%d}')
+                            metadata[attribute] = f'{date:%Y-%m-%d}'
                         except OSError as e:
                             print(e, date)
                             row.append('error')
@@ -750,7 +735,7 @@ def csvCompare(rows: list, csvFile: List[str], newSurveysNum: int, pb=None) -> T
     """
 
     print(len(rows), end=' ')
-    before = str(len(rows))
+    before = len(rows)
 
     if pb is not None:
         pb.SetRange(len(rows))
@@ -772,8 +757,8 @@ def csvCompare(rows: list, csvFile: List[str], newSurveysNum: int, pb=None) -> T
             if pb is not None:
                 pb.SetValue(x)
 
-    print(len(rows))
-    after = str(len(rows))
+    after = len(rows)
+    print(after)
     numstring = f'\t\tSurveys in Query: {before}\n\t\tNew Surveys: {after}'
 
     if len(rows) != 0:
@@ -849,25 +834,63 @@ def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
 
 
 def versionFind() -> Tuple[dict, list]:
+    """
+    Returns the highest version number of files included the the ``versions``
+    folder and returns its contents
+
+    Returns
+    -------
+    version : float
+        Highest version number in the ``versions`` folder
+    attributes: list
+        List of attribute field names associated with that version
+
+    """
     ver_files = os.listdir(versioning)
     version = 0.0
     attributes = []
 
     for ver in ver_files:
         ver_path = os.path.join(versioning, ver)
+        try:
+            with open(ver_path) as json_file:
+                data = json.load(json_file)
+                fver = data['version']
 
-        with open(ver_path) as json_file:
-            data = json.load(json_file)
-            fver = data['version']
-
-        if fver > version:
-            version = fver
-            attributes = [attribute for attribute in data['attributes']]
+            if fver > version:
+                version = fver
+                attributes = [attribute for attribute in data['attributes']]
+        except json.JSONDecodeError:
+            continue
 
     return version, attributes
 
 
 def versionComp(page) -> Tuple[dict, list]:
+    """
+    Compares the attribute field names of the query against the current list of
+    known attribute fields.
+
+    The current attribute field names are held in a ``.json`` file in the
+    ``versions`` folder.  On each run of this script the first survey query's
+    attribute field names are compared to the highest version avaiable. If the
+    attribute field names are different than the current version, the version
+    number is incremented and the new version attribute field names are saved
+    in a new file.
+
+    Parameters
+    ----------
+    page : json
+        json object returned by the eHydro query in :func:`surveyCompile`
+
+    Returns
+    -------
+    version : float
+        Version to be written in the .pickle dictionary
+    type : list
+        List of attribute field names of the current or new version
+
+    """
     attr_list = []
     fields = page['fields']
 
@@ -883,11 +906,27 @@ def versionComp(page) -> Tuple[dict, list]:
         return version, attr_list
 
 
-def versionSave(version, attributes: list):
+def versionSave(version: float, attributes: list):
+    """
+    Saves a new version the attribute field names found in an eHydro query.
+
+    This function assumes that a new version of attribute field names is being
+    saved. It will increment the :var:`version` passed to it by .1 and use the
+    list :var:`attributes` passed as the new fields.  The information is saved
+    as a ``.json`` file in the ``versions`` folder.
+
+    Parameters
+    ----------
+    version : float
+        Version number of the previous version recognized
+    attributes : list
+        List of attribute field names to be used by the new version
+
+    """
     version += .1
     version = round(version, 1)
     datestamp = datetime.datetime.now().strftime('%Y-%m-%d')
-    verfrmt = ('_').join(str(version).split('.'))
+    verfrmt = '_'.join(str(version).split('.'))
     ver_info = {
         'version': version,
         'date': datestamp,
@@ -897,7 +936,7 @@ def versionSave(version, attributes: list):
     for field in attributes:
         ver_info['attributes'].append(field)
 
-    filename = os.path.join(r'R:\Scripts\vlab-nbs', 'eHydro_scrape', 'versions', f'{verfrmt}.json')
+    filename = os.path.join(versioning, f'{verfrmt}.json')
 
     with open(f'{filename}', 'w') as outfile:
         json.dump(ver_info, outfile)
@@ -1066,6 +1105,22 @@ def main(pb=None, to=None):
     runType = config['Data Checking']['Override']
     logType = config['Output Log']['Log Type']
     fileLog, nameLog = logOpen(logType, to)
+
+    if runType == 'no':
+        csvPath = csvLocation
+    elif runType == 'yes':
+        x = 0
+        datestamp = date()
+
+        while True:
+            name = f'{datestamp}_{x}_{csvName}'
+            csvPath = os.path.join(running, name)
+
+            if os.path.exists(csvPath):
+                x += 1
+            else:
+                break
+
     qf = False
 
     try:
@@ -1133,24 +1188,10 @@ def main(pb=None, to=None):
     try:
         csvFile.insert(0, attributes)
         csvSave = csvFile
-
-        if runType == 'no':
-            csvPath = csvLocation
-            csvWriter(csvSave, csvPath, pb)
-        elif runType == 'yes':
-            x = 0
-            datestamp = date()
-
-            while True:
-                name = f'{datestamp}_{x}_{csvName}'
-                csvPath = os.path.join(running, name)
-
-                if os.path.exists(csvPath):
-                    x += 1
-                else:
-                    break
-            csvWriter(csvSave, csvPath, pb)
+        csvWriter(csvSave, csvPath, pb)
         logWriter(fileLog, f'\tAdding results to {csvPath}')
+    except UnboundLocalError as e:
+        logWriter(fileLog, f'\t{e}, unable to save results to {csvPath}')
     except:
         logWriter(fileLog, f'\tUnable to add results to {csvPath}')
 

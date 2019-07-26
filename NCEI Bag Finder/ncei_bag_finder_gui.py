@@ -6,6 +6,7 @@ Created on Mon Mar 11 15:48:05 2019
 """
 
 import os
+import webbrowser
 
 import nceiBAGs
 import ncei_ui
@@ -25,12 +26,38 @@ class Form(ncei_ui.Form):
         """ """
         self.status_bar.SetStatusText('')
         name = self.text_file.GetValue()
-        nx = self.text_west.GetValue()
-        sy = self.text_south.GetValue()
-        sx = self.text_east.GetValue()
-        ny = self.text_north.GetValue()
-        if nceiBAGs.main(name, nx, sy, sx, ny, self.progress_bar):
-            self.status_bar.SetStatusText('Done!')
+        xmin = float(self.text_west.GetValue())
+        ymin = float(self.text_south.GetValue())
+        xmax = float(self.text_east.GetValue())
+        ymax = float(self.text_north.GetValue())
+        sel = self.radio_query.GetSelection()
+        bcm = self.bound_check(xmin, ymin, xmax, ymax)
+        if not sel:
+            qId = 3
+        if sel:
+            qId = 0
+        if bcm is not None:
+            self.status_bar.SetStatusText(bcm)
+        else:
+            msg = nceiBAGs.main(name, xmin, ymin, xmax, ymax, qId, self.progress_bar)
+            if msg is None:
+                self.status_bar.SetStatusText('Done!')
+            else:
+                self.progress_bar.SetValue(0)
+                self.status_bar.SetStatusText(msg)
+
+    def bound_check(self, xmin, ymin, xmax, ymax):
+        xaxis = xmin < xmax
+        yaxis = ymin < ymax
+        if not xaxis and not yaxis:
+            return 'Please check your North ({ymax}), South ({ymin}), East({xmax}), and West ({xmin})'
+        elif not xaxis:
+            return f'Please check your East ({xmax}) and West ({xmin})'
+        elif not yaxis:
+            return f'Please check your North ({ymax}) and South ({ymin})'
+
+    def programAbout(self, event):
+        webbrowser.open(r'https://vlab.ncep.noaa.gov/web/national-bathymetric-source/blogs/-/blogs/getting-survey-info-via-ncei-s-rest-api', new=2, autoraise=True)
 
     def programQuit(self, event):
         """
@@ -40,7 +67,7 @@ class Form(ncei_ui.Form):
         Parameters
         ----------
         event :
-            
+
 
         Returns
         -------
@@ -56,7 +83,7 @@ class Form(ncei_ui.Form):
         Parameters
         ----------
         event :
-            
+
 
         Returns
         -------
