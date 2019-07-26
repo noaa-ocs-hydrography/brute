@@ -166,7 +166,7 @@ class bdb51_io:
                 self.connected = True
                 command_dict['success'] = True
             except RuntimeError as error:
-                msg = msg + str(error)
+                msg += str(error)
                 command_dict['success'] = False
 
         command_dict['log'] = msg

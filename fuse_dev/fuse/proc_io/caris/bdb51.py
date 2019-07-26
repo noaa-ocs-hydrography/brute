@@ -142,10 +142,8 @@ class bdb51:
 
         Parameters
         ----------
-        port :
-
-        port: int :
-
+        port
+            port number
 
         Returns
         -------
