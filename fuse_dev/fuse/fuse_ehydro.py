@@ -183,7 +183,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         # write the metadata
         self._meta_obj.write_meta_record(meta)
 
-    def process(self, infilename: str, interpolate = True):
+    def process(self, infilename: str, interpolate=True):
         """
         Do the datum transformtion and interpolation.
 
@@ -194,10 +194,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
 
         Parameters
         ----------
-        infilename :
-
-        infilename: str :
-
+        infilename
+        interpolate
 
         Returns
         -------
@@ -246,7 +244,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._set_log(infilename)
         self._get_s57_stored_meta(infilename)
         if len(self._meta) > 0:
-            if self._db == None:
+            if self._db is None:
                 self._connect_to_db()
             procfile = self._meta['to_filename']
             print(self._s57_meta)
@@ -265,7 +263,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         else:
             raise ValueError('No database name defined in the configuration file.')
         intype = self._config['bathymetry_intermediate_file']
-        self._db = proc_io(intype, 'carisbdb51', db_loc = db_loc, db_name = db_name)
+        self._db = proc_io(intype, 'carisbdb51', db_loc=db_loc, db_name=db_name)
 
     def disconnect(self):
         """

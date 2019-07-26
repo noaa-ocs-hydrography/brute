@@ -20,10 +20,11 @@ a row reaches +180 degrees on the right hand boundry.
 
 import os
 import string
+
 import numpy as np
-from shapely.geometry import Polygon
 import osgeo.ogr as ogr
 import osgeo.osr as osr
+from shapely.geometry import Polygon
 
 _basedigits = string.digits + string.ascii_uppercase
 
@@ -41,7 +42,7 @@ def get_tile_name(tile_number: int, name_len: int = 7) -> str:
     name = ''.join(name)
     name = name.zfill(name_len)
     return name
-            
+
 def get_dimension(r: int) -> float:
     """
     Return the dimension in degrees as defined by
@@ -62,7 +63,7 @@ def get_num_rows(r: int) -> int:
     Return the number of rows for a given "R" value and assuming coverage from
     -90 to + 90.
     """
-    return 2**(r)
+    return 2 ** r
 
 def dig2num(d: str) -> int:
     """
@@ -177,7 +178,7 @@ def get_shapely(xy_res: str, bbox: list):
     names = []
     for m in range(len(suby)-1):
         for n in range(len(subx)-1):
-            p = Polygon([(subx[n], suby[m]), 
+            p = Polygon([(subx[n], suby[m]),
                          (subx[n], suby[m + 1]),
                          (subx[n + 1], suby[m + 1]),
                          (subx[n + 1], suby[m])])
@@ -185,7 +186,8 @@ def get_shapely(xy_res: str, bbox: list):
             names.append(get_tile_name(idn[m,n]))
             c += 1
     return collect, names
-    
+
+
 def _get_subbounds(bounds, a_min: float, a_max: float):
     """
     Return the subset that intersect or are contained by the bounds.
@@ -227,5 +229,3 @@ def _get_closest_bounds(bounds, a: float):
     b[1] = bounds[id2]
     ida = min(id1, id2)
     return b, ida
-    
-    

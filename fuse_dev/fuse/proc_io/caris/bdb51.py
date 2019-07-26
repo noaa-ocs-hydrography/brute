@@ -20,7 +20,7 @@ from tempfile import NamedTemporaryFile
 from typing import Dict
 
 from fuse.proc_io.caris import helper
-from osgeo import gdal
+
 
 class bdb51:
     """
@@ -142,10 +142,8 @@ class bdb51:
 
         Parameters
         ----------
-        port :
-
-        port: int :
-
+        port
+            port number
 
         Returns
         -------
@@ -164,7 +162,7 @@ class bdb51:
 
         args = ["cmd.exe", "/K", "set pythonpath= &&",  # setup the commandline
                 activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
-                python_path, db_obj, str(port), str(self._bufsize), # call the script for the object
+                python_path, db_obj, str(port), str(self._bufsize),  # call the script for the object
                 ]
         args = ' '.join(args)
         self._logger.log(logging.DEBUG, args)
@@ -212,12 +210,9 @@ class bdb51:
 
         Parameters
         ----------
-        dataset :
-            param instruction:
-        dataset: str :
-
-        instruction: str :
-
+        dataset
+        instruction
+        metadata
 
         Returns
         -------
@@ -226,10 +221,8 @@ class bdb51:
         if metadata is None:
             raise ValueError('Metadata is required for database upload')
         else:
-            command = {'command': 'upload'}
-            command['action'] = instruction
-            command['bathy_path'] = dataset
-            with NamedTemporaryFile(delete = False) as t:
+            command = {'command': 'upload', 'action': instruction, 'bathy_path': dataset}
+            with NamedTemporaryFile(delete=False) as t:
                 pickle.dump(metadata, t)
             command['meta_path'] = t.name
             response = self._set_command(command)
@@ -294,4 +287,3 @@ class bdb51:
             raise ValueError('command / response state is unexpected')
 
         return response
-

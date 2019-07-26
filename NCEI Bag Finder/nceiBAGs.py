@@ -42,16 +42,17 @@ def coordQuery(nx, ny, sx, sy):
 
     """
 
-    nxStr, nyStr, sxStr, syStr = str(nx), str(ny), str(sx), str(sy)
-    corner = 'https://gis.ngdc.noaa.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/project' + \
-             f'?inSR=4326&outSR=102100&geometries=%7B"geometryType"+%3A+"esriGeometryPoint"%2C+"geometries"+%3A+%5B%0D%0A+++++%7B%0D%0A+++++++"x"+%3A+{nxStr}%2C%0D%0A+++++++"y"+%3A+{syStr}%0D%0A+++++%7D%2C%7B%0D%0A+++++++"x"+%3A+{sxStr}%2C%0D%0A+++++++"y"+%3A+{nyStr}%0D%0A+++++%7D%0D%0A++%5D%0D%0A%7D&transformation=&transformForward=true&vertical=false&f=json'
-    cornerRequest = requests.get(corner)
-    cornerRequestJSON = cornerRequest.json()
-    #    print (cornerRequestJSON)
+    coords = {'geometryType': 'esriGeometryPoint', 'geometries': [{'x': nx, 'y': sy}, {'x': sx, 'y': ny}]}
+    query = 'https://gis.ngdc.noaa.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/project' + \
+            f'?inSR=4326&outSR=102100&geometries={coords}&transformation=&transformForward=true&vertical=false&f=json'
+
+    coordsRequest = requests.get(query)
+    coordsRequestJSON = coordsRequest.json()
+    #    print (coordsRequestJSON)
     bounds = []
     z = 0
-    for i in range(len(cornerRequestJSON['geometries'])):
-        for k, j in cornerRequestJSON['geometries'][i].items():
+    for i in range(len(coordsRequestJSON['geometries'])):
+        for k, j in coordsRequestJSON['geometries'][i].items():
             bounds.append((zList[z], j))
             z += 1
     bounds = dict(bounds)
@@ -61,18 +62,19 @@ def coordQuery(nx, ny, sx, sy):
 
 def bagIDQuery(bounds, qId=3):
     """
-
+    TODO write description
 
     Parameters
     ----------
-    bounds :
+    bounds
+    qId
 
 
     Returns
     -------
 
     """
-    bounds = str(bounds)
+
     bagList = f'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/{qId}/query' + \
               f'?where=&text=&objectIds=&time=&geometry={bounds}&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=true&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
     bagListRequest = requests.get(bagList)
@@ -89,16 +91,13 @@ def bagIDQuery(bounds, qId=3):
 
 def surveyCompile(surveyIDs, num, qId=3, pb=None):
     """
-
+    TODO write description
 
     Parameters
     ----------
-    surveyIDs :
-
-    num :
-
-    pb :
-         (Default value = None)
+    surveyIDs
+    num
+    qId
 
     Returns
     -------
@@ -110,11 +109,10 @@ def surveyCompile(surveyIDs, num, qId=3, pb=None):
     opts = ','.join(attributes[qId])
     if pb is not None:
         pb.SetRange(num)
-    for num in surveyIDs:
+    for surveyNum in surveyIDs:
         print(x, end=' ')
-        bagID = str(num)
         query = f'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/{qId}/query' + \
-                f'?where=&text=&objectIds={bagID}&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields={opts}&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
+                f'?where=&text=&objectIds={surveyNum}&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields={opts}&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
         response = requests.get(query)
         page = response.json()
         if x == 0:
@@ -137,8 +135,7 @@ def surveyCompile(surveyIDs, num, qId=3, pb=None):
                         date = (page['features'][0]['attributes'][attribute])
 
                         try:
-                            date = datetime.datetime.utcfromtimestamp(date / 1000)
-                            row.append(str(date.strftime('%Y-%m-%d')))
+                            row.append(f'{datetime.datetime.utcfromtimestamp(date / 1000):%Y-%m-%d}')
                         except OSError as e:
                             print(e, date)
                             row.append('error')
@@ -158,17 +155,14 @@ def surveyCompile(surveyIDs, num, qId=3, pb=None):
 
 def csvWriter(attr_list, csvFile, csvLocation, name, pb=None):
     """
-
+    TODO write description
 
     Parameters
     ----------
-    csvFile :
-
-    csvLocation :
-
-    name :
-
-    pb :
+    csvFile
+    csvLocation
+    name
+    pb
          (Default value = None)
 
     Returns
@@ -177,13 +171,13 @@ def csvWriter(attr_list, csvFile, csvLocation, name, pb=None):
     """
     if name == '':
         num = 0
-        name = str(datetime.datetime.now().strftime('%Y%m%d')) + '_NCEI_Output'
+        name = f'{datetime.datetime.now():%Y%m%d}_NCEI_Output'
         while True:
-            if os.path.exists(f'{name}_{num}.txt'):
-                num += 1
-            else:
+            if not os.path.exists(f'{name}_{num}.txt'):
                 name = f'{name}_{num}'
                 break
+            else:
+                num += 1
     name = os.path.join(csvLocation, f'{name}.txt')
     csvOpen = open(name, 'w', newline='')
     save = csv.writer(csvOpen, delimiter=',')
@@ -201,21 +195,16 @@ def csvWriter(attr_list, csvFile, csvLocation, name, pb=None):
 
 def main(name, nx, sy, sx, ny, qId=3, pb=None):
     """
-
+    TODO write description
 
     Parameters
     ----------
-    name :
-
-    nx :
-
-    sy :
-
-    sx :
-
-    ny :
-
-    pb :
+    name
+    nx
+    sy
+    sx
+    ny
+    pb
          (Default value = None)
 
     Returns
@@ -238,5 +227,5 @@ def main(name, nx, sy, sx, ny, qId=3, pb=None):
         attr_list, rows = surveyCompile(bagIDs, bagNum, qId, pb)
         csvWriter(attr_list, rows, progLoc, name, pb)
     else:
-        return (f'No {noItems} were found within: ' + \
-                f'{str({"North": ny, "West": sx, "South": sy, "East": nx})}.')
+        cardinal_directions = {'North': ny, 'West': sx, 'South': sy, 'East': nx}
+        return (f'No {noItems} were found within: {cardinal_directions}.')
