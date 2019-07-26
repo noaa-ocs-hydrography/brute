@@ -213,11 +213,13 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     meta['special_handling'] = _check_special_handling(basename)
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
-    
+
     e_pick = ehydro_pickle_use(xmlfilename)
-    meta_from_ehydro = e_pick._read_pickle()#to handle files
-    meta_from_ehydro = e_pick._when_use_pickle(meta_xml)    meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
-    
+    # TODO which of these three below should be used?
+    meta_from_ehydro = e_pick._read_pickle()  # to handle files
+    meta_from_ehydro = e_pick._when_use_pickle(meta_xml)
+    meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
+
     list_keys_empty = []
     combined_row = {}
     subset_row = {}
