@@ -119,7 +119,7 @@ class Form ( wx.Frame ):
 		opts_prog.AddButton( self.opts_progOK )
 		self.opts_progCancel = wx.Button( self, wx.ID_CANCEL )
 		opts_prog.AddButton( self.opts_progCancel )
-		opts_prog.Realize();
+        opts_prog.Realize()
 
 		container_form.Add( opts_prog, 0, wx.BOTTOM|wx.EXPAND|wx.TOP, 5 )
 
@@ -183,7 +183,7 @@ class Done ( wx.Dialog ):
 		opts_done.AddButton( self.opts_doneOK )
 		self.opts_doneCancel = wx.Button( self, wx.ID_CANCEL )
 		opts_done.AddButton( self.opts_doneCancel )
-		opts_done.Realize();
+        opts_done.Realize()
 
 		container_dialog.Add( opts_done, 0, wx.EXPAND|wx.ALIGN_CENTER_HORIZONTAL, 5 )
 

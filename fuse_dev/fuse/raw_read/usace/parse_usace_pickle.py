@@ -34,8 +34,9 @@ class pickle_file:
 
         Parameters
         ----------
-        infilename :
+        infilename
             Complete file path of a survey .xyz file
+        pickle_ext
 
         Returns
         -------
@@ -71,8 +72,9 @@ def read_pickle(infilename: str, pickle_ext: bool = False) -> dict:
 
     Parameters
     ----------
-    infilename :
+    infilename
         Complete file path of a survey .xyz file
+    pickle_ext
 
     Returns
     -------
