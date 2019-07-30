@@ -7,9 +7,6 @@ Created on Mon Mar 25 11:55:07 2019
 
 import os
 import sys
-
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir))
-
 from datetime import datetime as _dt
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir))

@@ -104,10 +104,10 @@ def query() -> Tuple[List[str], int, str]:
 
     # Today (ex. '2018-08-08'), unformatted
     today = datetime.datetime.today()
-    strToday = str(today.strftime('%Y-%m-%d'))
+    strToday = f'{today:%Y-%m-%d}'
     # Today - 1 (ex. '2018-08-06'), unformatted
     yesterday = today - datetime.timedelta(1)
-    strYesterday = str(yesterday.strftime('%Y-%m-%d'))
+    strYesterday = f'{yesterday:%Y-%m-%d}'
 
     if config['Timeframe']['Start Date'] != '':
         start = config['Timeframe']['Start Date']
@@ -387,8 +387,8 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> Tuple[list, l
 
                         try:
                             date = datetime.datetime.utcfromtimestamp(date / 1000)
-                            row.append(str(date.strftime('%Y-%m-%d')))
-                            metadata[attribute] = str(date.strftime('%Y-%m-%d'))
+                            row.append(f'{date:%Y-%m-%d}')
+                            metadata[attribute] = f'{date:%Y-%m-%d}'
                         except OSError as e:
                             print(e, date)
                             row.append('error')
@@ -735,7 +735,7 @@ def csvCompare(rows: list, csvFile: List[str], newSurveysNum: int, pb=None) -> T
     """
 
     print(len(rows), end=' ')
-    before = str(len(rows))
+    before = len(rows)
 
     if pb is not None:
         pb.SetRange(len(rows))
@@ -757,8 +757,8 @@ def csvCompare(rows: list, csvFile: List[str], newSurveysNum: int, pb=None) -> T
             if pb is not None:
                 pb.SetValue(x)
 
-    print(len(rows))
-    after = str(len(rows))
+    after = len(rows)
+    print(after)
     numstring = f'\t\tSurveys in Query: {before}\n\t\tNew Surveys: {after}'
 
     if len(rows) != 0:
@@ -926,7 +926,7 @@ def versionSave(version: float, attributes: list):
     version += .1
     version = round(version, 1)
     datestamp = datetime.datetime.now().strftime('%Y-%m-%d')
-    verfrmt = ('_').join(str(version).split('.'))
+    verfrmt = '_'.join(str(version).split('.'))
     ver_info = {
         'version': version,
         'date': datestamp,
