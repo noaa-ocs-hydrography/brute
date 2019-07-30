@@ -204,6 +204,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
         Returns
         -------
 
+        TODO: need to add checks to make sure the metadata is ready.
+            Perhaps this should be added to the metadata object?
         """
 
         self._get_stored_meta(infilename)
@@ -248,6 +250,9 @@ class fuse_ehydro(_fbc.fuse_base_class):
     def post(self, infilename):
         """
         Make the data available for amalgamation.
+        
+        TODO: need to add checks to make sure the metadata is ready.
+            Perhaps this should be added to the metadata object?
         """
         self._set_log(infilename)
         self._get_s57_stored_meta(infilename)
