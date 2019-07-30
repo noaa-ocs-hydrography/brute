@@ -138,7 +138,9 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
     bag_elev :
         orignal bag data
     bag_uncr :
-        param cov_array:
+        bag uncertainty layer
+    cov_array :
+        array of non-bathymetry coverage
     ugrids :
         List of interpolated data objects for BAG depth and uncertainty data
     maxVal :
@@ -147,22 +149,6 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
         User input. Determines whether origninal and interpolated or only interpolated data is output
     debug :
         Whether or not polyList includes all or only the last step in the evaluation process (Default value = False)
-    bag_elev: _np.array :
-
-    bag_uncr: _np.array :
-
-    cov_array: _np.array :
-
-    ugrids: list :
-
-    maxVal: _np.array :
-
-    ioVal: Union[int :
-
-    bool] :
-         (Default value = False)
-    debug: Union[int :
-
 
     Returns
     -------
