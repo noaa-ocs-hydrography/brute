@@ -104,7 +104,9 @@ def get_tile_from_point(xy: str, point: list):
     pxb, idx = _get_closest_bounds(xb, x)
     pyb, idy = _get_closest_bounds(yb, y)
     bounds = [pxb.min(), pyb.min(), pxb.max(), pyb.max()]
-    lin_id = _get_subn(len(xb), [x], [y])[0,0]
+    rx = dig2num(xy[0])
+    ncols = get_num_cols(rx)
+    lin_id = _get_subn(ncols, [idx], [idy])[0,0]
     name = get_tile_name(lin_id)
     return bounds, name
 
