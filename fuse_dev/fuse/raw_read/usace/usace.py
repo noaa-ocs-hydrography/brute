@@ -6,6 +6,7 @@ Created on Wed Jul 17 12:49:10 2019
 """
 
 import os as _os
+import pickle as _pickle
 import re as _re
 import sys as _sys
 import logging as _logging
@@ -25,7 +26,7 @@ class Base:
         self.xyz_suffixes = ('_A', '_FULL')
         self.xyz_files = {}
 
-        self._logger = _logging.getLogger(f'fuse_{self.version}')
+        self._logger = _logging.getLogger(f'fuse')
 
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)
@@ -45,9 +46,10 @@ class Base:
         -------
 
         """
-
-        self.version = 'CENAE'
-        return self._parse_ehydro_xyz_header(infilename)
+        meta_pickle = self._parse_pickle(infilename)
+        meta_xml = self._parse_usace_xml(infilename)
+        meta_xml['poly_name'] = meta_pickle['poly_name']
+        return meta_xml
 
     def read_bathymetry(self, infilename: str):
         """
@@ -88,7 +90,7 @@ class Base:
         for n in xyz:
             yield n
 
-    def meta_xml(self, filename: str) -> dict:
+    def _parse_pickle(self, filename: str) -> dict:
         """
         Retrieves metadata for USACE E-Hydro files
         function returns metadata dictionary
@@ -104,7 +106,6 @@ class Base:
 
 
         """
-        xml_name = self.name_gen(filename, ext='xml', sfx=False)
         pickle_name = self.name_gen(filename, ext='pickle', sfx=False)
         pickle_dict = parse_usace_pickle.read_pickle(pickle_name, pickle_ext=True)
         pickle_keys = parse_usace_pickle.dict_keys(pickle_dict)
@@ -471,6 +472,40 @@ class Base:
         else:
             meta = {}
         return meta
+
+    def _parse_usace_xml(self, infilename):
+        """
+        Read all available meta data.
+        returns dictionary
+
+        Parameters
+        ----------
+        infilename: str
+
+        """
+        xmlfilename = self.name_gen(infilename, ext='xml', sfx=False)
+        if _os.path.isfile(xmlfilename):
+            with open(xmlfilename, 'r') as xml_file:
+                xml_txt = xml_file.read()
+            xmlbasename = _os.path.basename(xmlfilename)
+            xml_data = parse_usace_xml.XML_Meta(xml_txt, filename=xmlbasename)
+            if xml_data.version == 'USACE_FGDC':
+                meta_xml = xml_data._extract_meta_USACE_FGDC()
+            elif xml_data.version == 'ISO-8859-1':
+                meta_xml = xml_data._extract_meta_USACE_ISO()
+                if 'ISO_xml' not in meta_xml:
+                    meta_xml = xml_data._extract_meta_USACE_FGDC(override='Y')
+            else:
+                meta_xml = xml_data.convert_xml_to_dict2()
+            ext_dict = xml_data.extended_xml_fgdc()
+            ext_dict = parse_usace_xml.ext_xml_map_enddate(ext_dict)
+            meta_xml = parse_usace_xml.xml_SPCSconflict_flag(meta_xml)
+        else:
+            ext_dict = {}
+            meta_xml = {}
+        meta_xml['from_path'] = infilename
+        meta_xml['from_filename'] = _os.path.basename(infilename)
+        return {**meta_xml, **ext_dict}
 
     def _parse_ehydro_xml(self, infilename):
         """
