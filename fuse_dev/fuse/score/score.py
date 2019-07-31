@@ -7,8 +7,8 @@ V 0.0.1 20190725
 
 Utilities for calculating metrics for scoring the quality of data.
 """
-from datetime import datetime
-import math
+from datetime import datetime as _datetime
+import math as _math
 
 def catzoc(metadata: dict) -> int:
     """
@@ -45,11 +45,15 @@ def supersession(metadata: dict) -> float:
     Return the superssion score as defined in Wyllie 2017 at US Hydro for the
     catzoc score.
     """
-    feat_score = _get_feature_detection(metadata)
-    cov_score = _get_coverage(metadata)
-    horz_score = _get_horizontal_uncertainty(metadata)
-    vert_score = _get_vertical_uncertainty
-    return min(feat_score, cov_score, horz_score, vert_score)
+    if "feat_detect" in metadata and 'complete_coverage' in metadata and 'horiz_uncert_fixed' in metadata and 'vert_uncert_fixed' in metadata:
+        feat_score = _get_feature_detection(metadata)
+        cov_score = _get_coverage(metadata)
+        horz_score = _get_horizontal_uncertainty(metadata)
+        vert_score = _get_vertical_uncertainty(metadata)
+        return min(feat_score, cov_score, horz_score, vert_score)
+    else:
+        survey_name = metadata['from_filename']
+        raise ValueError(f'Metadata is not available to score {survey_name}')
 
 def _get_feature_detection(metadata: dict) -> float:
     """
@@ -58,11 +62,11 @@ def _get_feature_detection(metadata: dict) -> float:
     """
     detected = metadata['feat_detect'].upper() == 'TRUE'
     least_depth = metadata['feat_least_depth'].upper() == 'TRUE'
-    size = float(metadata['feat_size'])
-    if size <= 2: 
-        size_okay = True
-    else:
-        size_okay = False
+    size_okay = False
+    if 'feat_size' in metadata:
+        size = float(metadata['feat_size'])
+        if size <= 2: 
+            size_okay = True
     if detected and least_depth and size_okay:
         return 100
     else:
@@ -82,8 +86,8 @@ def _get_horizontal_uncertainty(metadata: dict) -> float:
     """
     Determine the horizontal uncertainty score and return.
     """
-    h_fix = float(['horiz_uncert_fixed'])
-    h_var = float(['horiz_uncert_vari'])
+    h_fix = float(metadata['horiz_uncert_fixed'])
+    h_var = float(metadata['horiz_uncert_vari'])
     if h_fix <= 5 and h_var <= 0.05:
         s = 100
     elif h_fix <= 20:
@@ -112,12 +116,14 @@ def _get_vertical_uncertainty(metadata: dict) -> float:
         s = 60
     return s
 
-def decay(metadata: dict, date: datetime, alpha: float = 0.022 ) -> float:
+def decay(metadata: dict, date: _datetime, alpha: float = 0.022 ) -> float:
     """
     Return the decayed supersession_score.
     """
-    survey_date = metadata['end_date']
-    ss = metadata['supersession_score']
-    dt = date - survey_date
-    ds = ss * math.exp(-alpha * dt)
+    sd = _datetime.strptime(metadata['end_date'],'%Y%m%d')
+    ss = float(metadata['supersession_score'])
+    dt = date - sd
+    days = dt.days + dt.seconds / (24 * 60 * 60)
+    years = days / 365
+    ds = ss * _math.exp(-alpha * years)
     return ds
