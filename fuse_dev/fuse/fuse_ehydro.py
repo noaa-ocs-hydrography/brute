@@ -172,8 +172,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
 
         self._meta = {}
         self._set_log(infilename)
-        print('calling pickle reader at fuse_ehydro level to pass polygon')
-        self._pickle_meta = self._read_pickle('infilename')
+        self._pickle_meta = self._read_pickle(infilename)
         # get the metadata
         meta = self._reader.read_metadata(infilename)
         meta['to_horiz_datum'] = self._config['to_horiz_datum']
