@@ -48,8 +48,9 @@ class Base:
         """
         meta_pickle = self._parse_pickle(infilename)
         meta_xml = self._parse_usace_xml(infilename)
+        meta_date = self._parse_start_date(infilename, {**meta_xml, **meta_pickle})
         meta_xml['poly_name'] = meta_pickle['poly_name']
-        return meta_xml
+        return {**meta_xml, **meta_date}
 
     def read_bathymetry(self, infilename: str):
         """
@@ -110,6 +111,31 @@ class Base:
         pickle_dict = parse_usace_pickle.read_pickle(pickle_name, pickle_ext=True)
         pickle_keys = parse_usace_pickle.dict_keys(pickle_dict)
         return pickle_dict
+
+    def _parse_start_date(self, infilename: str, metadata: dict) -> dict:
+        start = {}
+        file_date = None
+        xml_date = None
+        pickle_date = None
+        filename_dict = self._parse_filename(infilename)
+
+        if 'start_date' in filename_dict:
+            file_date = filename_dict['start_date']
+
+        if 'start_date' in metadata:
+            xml_date = metadata['start_date']
+
+        if 'SURVEYDATESTART' in metadata:
+            pickle_date = metadata['SURVEYDATESTART']
+
+        if xml_date is not None:
+            start = {'start_date': xml_date}
+        elif file_date is not None:
+            start = {'start_date': file_date}
+        elif pickle_date is not None:
+            start = {'start_date': pickle_date}
+
+        return start
 
     def name_gen(self, filename: str, ext: str = None, sfx: bool = True) -> str:
         """
@@ -484,6 +510,7 @@ class Base:
 
         """
         xmlfilename = self.name_gen(infilename, ext='xml', sfx=False)
+
         if _os.path.isfile(xmlfilename):
             with open(xmlfilename, 'r') as xml_file:
                 xml_txt = xml_file.read()
