@@ -21,44 +21,60 @@ from fuse import score
 
 class fuse_ehydro(_fbc.fuse_base_class):
     """TODO write description"""
-    _cols = ['from_filename',
+    _datums = ['from_fips',
+              'from_horiz_datum',
+              'from_horiz_units',
+              'to_horiz_datum',
+              'from_vert_datum',
+              'from_vert_key',
+              'from_vert_units',
+              'to_vert_datum',
+              'to_vert_units',
+              ]
+    
+    _quality_metrics = ['from_horiz_unc',
+                        'from_vert_unc',
+                        'complete_coverage',
+                        'complete_bathymetry',
+                        'vert_uncert_fixed',
+                        'vert_uncert_vari',
+                        'horiz_uncert_fixed',
+                        'horiz_uncert_vari',
+                        'feat_size',
+                        'feat_detect',
+                        'feat_least_depth',
+                        ]
+    
+    _paths = ['from_filename',
              'from_path',
              'to_filename',
-             'start_date',
-             'end_date',
-             'from_fips',
-             'from_horiz_datum',
-             'from_horiz_units',
-             'from_horiz_unc',
-             'to_horiz_datum',
-             'from_vert_datum',
-             'from_vert_key',
-             'from_vert_units',
-             'from_vert_unc',
-             'to_vert_datum',
-             'to_vert_units',
-             'agency',
-             'source_indicator',
-             'source_type',
-             'complete_coverage',
-             'complete_bathymetry',
-             'vert_uncert_fixed',
-             'vert_uncert_vari',
-             'horiz_uncert_fixed',
-             'horiz_uncert_vari',
-             'feat_size',
-             'feat_detect',
-             'feat_least_depth',
-             'interpolated',
-             'catzoc',
-             'supersession_score',
-             'script_version',
              ]
+    
+    _dates = ['start_date',
+              'end_date',
+              ]
+    
+    _source_info = ['agency',
+                    'source_indicator',
+                    'source_type',
+                    'interpolated',
+                    'version_reference',
+                    ]
+    
+    _scores = ['catzoc',
+               'supersession_score',
+               ]
 
     def __init__(self, config_filename):
         super().__init__(config_filename)
-        self._meta_obj = _mre.meta_review_ehydro(self._config['metapath'],
-                                                 fuse_ehydro._cols)
+        cols = {**fuse_ehydro._paths, 
+                **fuse_ehydro._dates,
+                **fuse_ehydro._datums,
+                **fuse_ehydro._quality_metrics,
+                **fuse_ehydro._scores,
+                **fuse_ehydro._source_info,
+                }
+        self._meta_obj = _mre.meta_review_ehydro(self._config['metapath'], cols)
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()
@@ -204,10 +220,6 @@ class fuse_ehydro(_fbc.fuse_base_class):
             resolution = self._config['to_resolution']
             self._points.write(dataset, outfilename)
             self._meta['to_filename'] = outfilename
-            catzoc = score.catzoc(self._meta)
-            supscr = score.supersession(self._meta)
-            self._meta['CATZOC'] = catzoc
-            self._meta['supscr'] = supscr
             self._meta_obj.write_meta_record(self._meta)
             # take a gdal dataset for interpolation and return a gdal dataset
             interpfilename = f'{outfilebase}_{resolution}m_interp.{new_ext}'
@@ -249,8 +261,11 @@ class fuse_ehydro(_fbc.fuse_base_class):
         """
         self._set_log(infilename)
         self._get_s57_stored_meta(infilename)
-        dscore = score.decay(self._meta, date)
-        if len(self._meta) > 0:
+        if self._metadata_ready(self._meta, fuse_ehydro._quality_metrics):
+            if not self._metadata_ready(self._meta, fuse_ehydro._scores):
+                self._meta['CATZOC'] = score.catzoc(self._meta)
+                self._meta['supersession_score'] = score.supersession(self._meta)
+            dscore = score.decay(self._meta, date)
             if self._db == None:
                 self._connect_to_db()
             procfile = self._meta['to_filename']
@@ -369,3 +384,14 @@ class fuse_ehydro(_fbc.fuse_base_class):
         if len(self._meta) > 0:
             self._s57_meta = self._meta_obj.row2s57(self._meta)
         # need to catch if this file is not in the metadata record yet here.
+        
+    def _metadata_ready(metadata, reference):
+        """
+        Check the metadata to see if the required fields are populated.
+        """
+        ready = True
+        for f in reference:
+            if f not in metadata:
+                ready = False
+                break
+        return ready
