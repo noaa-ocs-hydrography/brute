@@ -65,7 +65,6 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._set_data_writer()
         self._db = None
         self._meta = {}  # initialize the metadata holder
-        self._pickle_meta = {}  # initialize the survey pickle object
         self.logger = _logging.getLogger('fuse')
         self.logger.setLevel(_logging.DEBUG)
 
@@ -135,22 +134,6 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._writer = proc_io('gdal', ext)
         self._points = proc_io('point', 'csar')
 
-    def _read_pickle(self, infilename: str):
-        """
-
-
-        Parameters
-        ----------
-        infilename :
-
-
-        Returns
-        -------
-
-        """
-
-        pickle = _usace.parse_usace_pickle.pickle_file(infilename)
-        return pickle.pickle_meta
 
     def read(self, infilename: str):
         """
@@ -172,7 +155,6 @@ class fuse_ehydro(_fbc.fuse_base_class):
 
         self._meta = {}
         self._set_log(infilename)
-        self._pickle_meta = self._read_pickle(infilename)
         # get the metadata
         meta = self._reader.read_metadata(infilename)
         meta['to_horiz_datum'] = self._config['to_horiz_datum']
@@ -233,8 +215,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
             self._meta_interp['interpolated'] = True
             self._meta_interp['from_filename'] = interpkeyfilename
             self._meta_interp['to_filename'] = interpfilename
-            if 'poly_name' in self._pickle_meta:
-                shapename = self._pickle_meta['poly_name']
+            if 'poly_name' in self._meta_interp:
+                shapename = self._meta_interp['poly_name']
                 shapepath = _os.path.join(infilepath, shapename)
                 dataset = self._interpolator.interpolate(dataset, shapepath)
             else:
