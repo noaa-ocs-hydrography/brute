@@ -43,7 +43,7 @@ class bdb51:
         log : returning a log message
     """
 
-    def __init__(self, database_loc: str, database_name: str, caris_env_name: str = 'NBS35',
+    def __init__(self, database_loc: str, database_name: str, caris_env_name: str = 'CARIS35',
                  host='localhost'):
         """
         Instantiate the object and connect to the database referenced, waiting
