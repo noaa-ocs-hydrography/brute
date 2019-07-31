@@ -15,8 +15,8 @@ import fuse.fuse_base_class as _fbc
 import fuse.interpolator.interpolator as _interp
 import fuse.meta_review.meta_review_ehydro as _mre
 import fuse.raw_read.usace as _usace
-from fuse.proc_io.proc_io import proc_io
 from fuse import score
+from fuse.proc_io.proc_io import proc_io
 
 
 class fuse_ehydro(_fbc.fuse_base_class):
@@ -112,7 +112,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         engine = self._config['interpolation_engine']
         res = float(self._config['to_resolution'])
         method = self._config['interpolation_method']
-        self._interpolator = _interp.interpolator(engine, method, res)
+        self._interpolator = _interp.Interpolator(engine, method, res)
 
     def _set_data_writer(self):
         """
@@ -134,7 +134,6 @@ class fuse_ehydro(_fbc.fuse_base_class):
             ext2 = ext
         self._writer = proc_io('gdal', ext)
         self._points = proc_io('point', 'csar')
-
 
     def read(self, infilename: str):
         """

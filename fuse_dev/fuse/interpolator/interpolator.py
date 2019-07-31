@@ -14,7 +14,7 @@ import fuse.interpolator.point_interpolator as pinterp
 from osgeo import gdal
 
 
-class interpolator:
+class Interpolator:
     """An abstraction for data interpolation."""
 
     def __init__(self, interpolation_engine: str, interp_type: str, resolution: float):
@@ -31,7 +31,7 @@ class interpolator:
         """Set up and configure the interpolation tools."""
 
         if self._interp_engine == 'point':
-            self._engine = pinterp.point_interpolator()
+            self._engine = pinterp.PointInterpolator()
         elif self._interp_engine == 'bag':
             self._engine = binterp.bag_interpolator()
         else:

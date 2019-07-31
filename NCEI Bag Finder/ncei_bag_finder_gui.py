@@ -57,7 +57,9 @@ class Form(ncei_ui.Form):
             return f'Please check your North ({ymax}) and South ({ymin})'
 
     def programAbout(self, event):
-        webbrowser.open(r'https://vlab.ncep.noaa.gov/web/national-bathymetric-source/blogs/-/blogs/getting-survey-info-via-ncei-s-rest-api', new=2, autoraise=True)
+        webbrowser.open(
+            r'https://vlab.ncep.noaa.gov/web/national-bathymetric-source/blogs/-/blogs/getting-survey-info-via-ncei-s-rest-api',
+            new=2, autoraise=True)
 
     def programQuit(self, event):
         """

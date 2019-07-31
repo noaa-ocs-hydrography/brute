@@ -28,8 +28,8 @@ def read_res_x_and_y(xml_tree):
 
     try:
         ret = xml_tree.xpath('//*/gmd:spatialRepresentationInfo/gmd:MD_Georectified/'
-                                  'gmd:axisDimensionProperties/gmd:MD_Dimension/gmd:resolution/gco:Measure',
-                                  namespaces=_ns)
+                             'gmd:axisDimensionProperties/gmd:MD_Dimension/gmd:resolution/gco:Measure',
+                             namespaces=_ns)
     except _et.Error as e:
         print("unable to read res x and y: %s" % e)
         return
@@ -37,9 +37,9 @@ def read_res_x_and_y(xml_tree):
     if len(ret) == 0:
         try:
             ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
-                                      'axisDimensionProperties/smXML:MD_Dimension/resolution/'
-                                      'smXML:Measure/smXML:value',
-                                      namespaces=_ns2)
+                                 'axisDimensionProperties/smXML:MD_Dimension/resolution/'
+                                 'smXML:Measure/smXML:value',
+                                 namespaces=_ns2)
         except _et.Error as e:
             print("unable to read res x and y: %s" % e)
             return
@@ -52,17 +52,18 @@ def read_res_x_and_y(xml_tree):
         print("unable to read res x and y: %s" % e)
         return
 
+
 def read_corners_sw_and_ne(xml_tree):
     """ attempts to read corners SW and NE """
     try:
         ret = xml_tree.xpath('//*/gmd:spatialRepresentationInfo/gmd:MD_Georectified/'
-                                  'gmd:cornerPoints/gml:Point/gml:coordinates',
-                                  namespaces=_ns)[0].text.split()
+                             'gmd:cornerPoints/gml:Point/gml:coordinates',
+                             namespaces=_ns)[0].text.split()
     except (_et.Error, IndexError) as e:
         try:
             ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
-                                      'cornerPoints/gml:Point/gml:coordinates',
-                                      namespaces=_ns2)[0].text.split()
+                                 'cornerPoints/gml:Point/gml:coordinates',
+                                 namespaces=_ns2)[0].text.split()
         except (_et.Error, IndexError) as e:
             print("unable to read corners SW and NE: %s" % e)
             return
@@ -79,15 +80,15 @@ def read_wkt_prj(xml_tree):
     """ attempts to read the WKT projection string """
     try:
         ret = xml_tree.xpath('//*/gmd:referenceSystemInfo/gmd:MD_ReferenceSystem/'
-                                  'gmd:referenceSystemIdentifier/gmd:RS_Identifier/gmd:code/gco:CharacterString',
-                                  namespaces=_ns)
+                             'gmd:referenceSystemIdentifier/gmd:RS_Identifier/gmd:code/gco:CharacterString',
+                             namespaces=_ns)
     except _et.Error as e:
         print("unable to read the WKT projection string: %s" % e)
         return
     if len(ret) == 0:
         try:
             ret = xml_tree.xpath('//*/referenceSystemInfo/smXML:MD_CRS',
-                                      namespaces=_ns2)
+                                 namespaces=_ns2)
         except _et.Error as e:
             print("unable to read the WKT projection string: %s" % e)
             return

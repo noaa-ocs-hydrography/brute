@@ -1,6 +1,7 @@
 import os
 import unittest
 
+from fuse.interpolator import interpolator
 from fuse.interpolator.bag_interpolator import bag, coverage
 
 DATA_PATH = r"C:\Data\NBS"
@@ -24,6 +25,13 @@ class TestBagInterpolator(unittest.TestCase):
 
         assert coverage_dataset.bounds == bag_dataset.bounds
         assert coverage_dataset.shape == bag_dataset.shape
+
+
+class TestPointInterpolator(unittest.TestCase):
+    def test_kriging(self):
+        input_path = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'Original',
+                                  'BR_01_BRH_20190117_CS_4788_40X', 'BR_01_BRH_20190117_CS_4788_40X.XYZ')
+        kriging_interpolator = interpolator.Interpolator('point', 'kriging', 500)
 
 
 if __name__ == '__main__':

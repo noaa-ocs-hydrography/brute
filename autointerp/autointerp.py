@@ -942,9 +942,8 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     if bag_ul[0] > cov_lr[0] or bag_lr[0] < cov_ul[0] or bag_lr[1] > cov_ul[1] or bag_ul[1] < cov_lr[1]:
         raise ValueError('bag dataset is outside the bounds of coverage dataset')
 
-    ul_index_delta = _np.round((bag_ul - cov_ul) / _np.array((bagRes,-bagRes))).astype(int)
-    lr_index_delta = _np.round((bag_lr - cov_ul) / _np.array((bagRes,-bagRes))).astype(int)
-
+    ul_index_delta = _np.round((bag_ul - cov_ul) / _np.array((bagRes, -bagRes))).astype(int)
+    lr_index_delta = _np.round((bag_lr - cov_ul) / _np.array((bagRes, -bagRes))).astype(int)
 
     ## 8
     # indices to be written onto the output array
@@ -1557,6 +1556,7 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
     msg = f'Done! Took: {delta}'
     print(msg)
     return msg
+
 
 class chunk:
     """

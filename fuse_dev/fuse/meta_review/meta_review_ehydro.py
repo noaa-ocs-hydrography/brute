@@ -45,8 +45,8 @@ class meta_review_ehydro(mrb.meta_review_base):
         'reviewed': 'r_name',
         'script_version': 's_scpv',
         'source_indicator': 'SORIND',
-        'catzoc' : 'CATZOC',
-        'supersession_score' : 'supscr',
+        'catzoc': 'CATZOC',
+        'supersession_score': 'supscr',
     }
 
     _vert_datum = {

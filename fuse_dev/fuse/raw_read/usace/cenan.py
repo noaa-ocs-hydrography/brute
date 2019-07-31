@@ -10,11 +10,11 @@ Read the various data sources available for a particular data stream such that
 any available bathymetry or metadata can be accessed.
 """
 
-import os as _os
-import sys as _sys
 import logging as _logging
+import os as _os
 import pickle as _pickle
 import re as _re
+import sys as _sys
 from datetime import datetime as _datetime
 from xml.etree.ElementTree import parse as _parse
 

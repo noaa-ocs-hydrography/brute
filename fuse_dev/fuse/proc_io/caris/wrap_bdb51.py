@@ -77,7 +77,7 @@ class bdb51_io:
                 if data:
                     command = pickle.loads(data)
                     response = self.take_commands(command)
-                    print('Response', response, end = '\n\n')
+                    print('Response', response, end='\n\n')
                     data = pickle.dumps(response)
                     # print('pickled data size is {}, buffer size is {}'.format(len(data), self.buffer_size))
                     lensent = self.sock.send(data)
@@ -281,7 +281,7 @@ class bdb51_io:
         # upload coverage
         surface.upload_coverage(file_path)
         return 'Uploaded {} to {}'.format(file_path, self.database)
-    
+
     def _update_metadata(self, new_metadata: dict) -> str:
         """
         Query for the data object and update the metadata with the provided
@@ -291,7 +291,7 @@ class bdb51_io:
         cql = "OBJNAM = '{}'".format(new_metadata['OBJNAM'])
         print(cql)
         features = self._db.query('surfac', cql)
-        for n,f in enumerate(features):
+        for n, f in enumerate(features):
             if n > 0:
                 msg = "More than one object found in query with provided key!"
                 break

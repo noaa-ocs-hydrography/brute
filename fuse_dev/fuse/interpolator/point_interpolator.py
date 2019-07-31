@@ -66,7 +66,7 @@ def _compare_vals(value: float, min_value: float, max_value: float) -> Tuple[flo
     return min_value, max_value
 
 
-class point_interpolator:
+class PointInterpolator:
     """Interpolation methods for creating a raster from points."""
 
     def __init__(self, window_scalar: float = 1.1):
@@ -720,6 +720,7 @@ class point_interpolator:
                                                                                output_x[output_start:output_end],
                                                                                output_y[output_start:output_end])
 
+            print(f'completed chunk {part_index} of {total_parts}')
             interpolated_data[output_start:output_end + 1] = current_interpolated_data
             variance[output_start:output_end + 1] = current_variance
 
