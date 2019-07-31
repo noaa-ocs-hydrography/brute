@@ -166,7 +166,7 @@ class bdb51_io:
                 self.connected = True
                 command_dict['success'] = True
             except RuntimeError as error:
-                msg = msg + str(error)
+                msg += str(error)
                 command_dict['success'] = False
 
         command_dict['log'] = msg
@@ -234,8 +234,7 @@ class bdb51_io:
                 msg = 'Updating only bathy is not implemented yet'
                 # query for the object and replace the bathy
             elif action == 'metadata':
-                msg = 'Updating only metadata is not implemented yet'
-                # query for the object and replace the metadata
+                msg = self._update_metadata(metadata)
             else:
                 raise ValueError('Upload action type not understood')
 
@@ -282,24 +281,29 @@ class bdb51_io:
         # upload coverage
         surface.upload_coverage(file_path)
         return 'Uploaded {} to {}'.format(file_path, self.database)
-
-    def query(self, command_dict: dict) -> dict:
+    
+    def _update_metadata(self, new_metadata: dict) -> str:
         """
-        Query for and return data from the db.
-
-        Parameters
-        ----------
-        command_dict :
-
-        command_dict: dict :
-
-
-        Returns
-        -------
-
+        Query for the data object and update the metadata with the provided
+        dictionary.
         """
-
-        pass
+        n = -1
+        cql = "OBJNAM = '{}'".format(new_metadata['OBJNAM'])
+        print(cql)
+        features = self._db.query('surfac', cql)
+        for n,f in enumerate(features):
+            if n > 0:
+                msg = "More than one object found in query with provided key!"
+                break
+            else:
+                current_metadata = f.attributes
+                for key in new_metadata:
+                    current_metadata[key] = new_metadata[key]
+                self._db.commit()
+                msg = "FID found: {}".format(str(f.id))
+        if n == -1:
+            msg = "No object with the provided name found."
+        return msg
 
     def die(self, command_dict: dict) -> dict:
         """

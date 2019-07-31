@@ -16,6 +16,7 @@ import fuse.interpolator.interpolator as _interp
 import fuse.meta_review.meta_review_ehydro as _mre
 import fuse.raw_read.usace as _usace
 from fuse.proc_io.proc_io import proc_io
+from fuse import score
 
 
 class fuse_ehydro(_fbc.fuse_base_class):
@@ -44,11 +45,14 @@ class fuse_ehydro(_fbc.fuse_base_class):
         'complete_bathymetry',
         'vert_uncert_fixed',
         'vert_uncert_vari',
-        'horiz_uncert',
+        'horiz_uncert_fixed',
+        'horiz_uncert_vari',
         'feat_size',
         'feat_detect',
         'feat_least_depth',
         'interpolated',
+        'catzoc',
+        'supersession_score',
         'script_version'
     ]
 
@@ -61,7 +65,6 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._set_data_writer()
         self._db = None
         self._meta = {}  # initialize the metadata holder
-        self._pickle_meta = {}  # initialize the survey pickle object
         self.logger = _logging.getLogger('fuse')
         self.logger.setLevel(_logging.DEBUG)
 
@@ -132,22 +135,6 @@ class fuse_ehydro(_fbc.fuse_base_class):
         self._writer = proc_io('gdal', ext)
         self._points = proc_io('point', 'csar')
 
-    def _read_pickle(self, infilename: str):
-        """
-
-
-        Parameters
-        ----------
-        infilename :
-
-
-        Returns
-        -------
-
-        """
-
-        pickle = _usace.parse_usace_pickle.pickle_file(infilename)
-        return pickle.pickle_meta
 
     def read(self, infilename: str):
         """
@@ -169,8 +156,6 @@ class fuse_ehydro(_fbc.fuse_base_class):
 
         self._meta = {}
         self._set_log(infilename)
-        print('calling pickle reader at fuse_ehydro level to pass polygon')
-        self._pickle_meta = self._read_pickle('infilename')
         # get the metadata
         meta = self._reader.read_metadata(infilename)
         meta['to_horiz_datum'] = self._config['to_horiz_datum']
@@ -199,6 +184,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
         Returns
         -------
 
+        TODO: need to add checks to make sure the metadata is ready.
+            Perhaps this should be added to the metadata object?
         """
 
         self._get_stored_meta(infilename)
@@ -219,6 +206,10 @@ class fuse_ehydro(_fbc.fuse_base_class):
             resolution = self._config['to_resolution']
             self._points.write(dataset, outfilename)
             self._meta['to_filename'] = outfilename
+            catzoc = score.catzoc(self._meta)
+            supscr = score.supersession(self._meta)
+            self._meta['CATZOC'] = catzoc
+            self._meta['supscr'] = supscr
             self._meta_obj.write_meta_record(self._meta)
 
             # take a gdal dataset for interpolation and return a gdal dataset
@@ -228,8 +219,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
             self._meta_interp['interpolated'] = True
             self._meta_interp['from_filename'] = interpkeyfilename
             self._meta_interp['to_filename'] = interpfilename
-            if 'poly_name' in self._pickle_meta:
-                shapename = self._pickle_meta['poly_name']
+            if 'poly_name' in self._meta_interp:
+                shapename = self._meta_interp['poly_name']
                 shapepath = _os.path.join(infilepath, shapename)
                 dataset = self._interpolator.interpolate(dataset, shapepath)
             else:
@@ -242,6 +233,9 @@ class fuse_ehydro(_fbc.fuse_base_class):
     def post(self, infilename):
         """
         Make the data available for amalgamation.
+
+        TODO: need to add checks to make sure the metadata is ready.
+            Perhaps this should be added to the metadata object?
         """
         self._set_log(infilename)
         self._get_s57_stored_meta(infilename)
@@ -249,8 +243,22 @@ class fuse_ehydro(_fbc.fuse_base_class):
             if self._db is None:
                 self._connect_to_db()
             procfile = self._meta['to_filename']
-            print(self._s57_meta)
             self._db.write(procfile, 'new', self._s57_meta)
+
+    def score(self, infilename, date):
+        """
+        Provided a date, get the decayed quality metric and insert in the
+        database, making the information available for amalgamation.
+        """
+        self._set_log(infilename)
+        self._get_s57_stored_meta(infilename)
+        dscore = score.decay(self._meta, date)
+        if len(self._meta) > 0:
+            if self._db == None:
+                self._connect_to_db()
+            procfile = self._meta['to_filename']
+            self._s57_meta['dcyscr'] = dscore
+            self._db.write(procfile, 'metadata', self._s57_meta)
 
     def _connect_to_db(self):
         """

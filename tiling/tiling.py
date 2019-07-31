@@ -104,21 +104,23 @@ def get_tile_from_point(xy: str, point: list):
     pxb, idx = _get_closest_bounds(xb, x)
     pyb, idy = _get_closest_bounds(yb, y)
     bounds = [pxb.min(), pyb.min(), pxb.max(), pyb.max()]
-    lin_id = _get_subn(len(xb), [x], [y])[0,0]
+    rx = dig2num(xy[0])
+    ncols = get_num_cols(rx)
+    lin_id = _get_subn(ncols, [idx], [idy])[0,0]
     name = get_tile_name(lin_id)
     return bounds, name
 
-def build_gpkg(xy_res: str, bbox: list, path: str = '.'):
+def build_gpkg(xy_level: str, bbox: list, path: str = '.'):
     """
     Create a geopackage with the tile set.
     """
     # get the bounds subset
-    xb,yb = get_tile_set_bounds(xy_res)
+    xb,yb = get_tile_set_bounds(xy_level)
     x_min, y_min, x_max, y_max = bbox
     subx, idx = _get_subbounds(xb, x_min, x_max)
     suby, idy = _get_subbounds(yb, y_min, y_max)
     # get the linear indicies for the tiles to get the names
-    rx = dig2num(xy_res[0])
+    rx = dig2num(xy_level[0])
     ncols = get_num_cols(rx)
     idn = _get_subn(ncols, idx, idy)
     c = 0
@@ -151,11 +153,10 @@ def build_gpkg(xy_res: str, bbox: list, path: str = '.'):
             f.SetField(name_field, get_tile_name(idn[m,n]))
             c += 1
             lyr.CreateFeature(f)
-            f = None
-            tile = None
-    outfilename = os.path.join(path, f'{xy_res}_tesselation.gpkg')
+            del tile, f
+    outfilename = os.path.join(path, f'{xy_level}_tesselation.gpkg')
     ogr.GetDriverByName("GPKG").CopyDataSource(ds, outfilename)
-    ds = None
+    del ds
 
 def get_shapely(xy_res: str, bbox: list):
     """

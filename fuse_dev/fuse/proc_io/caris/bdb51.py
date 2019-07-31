@@ -142,10 +142,8 @@ class bdb51:
 
         Parameters
         ----------
-        port :
-
-        port: int :
-
+        port
+            port number
 
         Returns
         -------
@@ -176,7 +174,7 @@ class bdb51:
             print(err)
             self._logger.log(logging.DEBUG, err)
 
-    def connect(self):
+    def connect(self) -> bool:
         """
         Form and send the connect command to the BDB51 wapper.
         """
@@ -185,7 +183,7 @@ class bdb51:
         response = self._set_command(command)
         return response['success']
 
-    def status(self):
+    def status(self) -> bool:
         """
         Check to see if the subprocess is still communicating and connected to
         the database.
@@ -205,7 +203,7 @@ class bdb51:
             self.connected = response['connected']
         return response['success']
 
-    def upload(self, dataset: str, instruction: str, metadata: dict):
+    def upload(self, dataset: str, instruction: str, metadata: dict) -> bool:
         """
         Send the BDB environment instructions on where data is and what to do
         with it.
@@ -234,7 +232,7 @@ class bdb51:
                 print(metadata)
             return response['success']
 
-    def die(self, delay: int = 0):
+    def die(self, delay: int = 0) -> bool:
         """
         Destroy the BDB51 wrapper object and environment.
 
