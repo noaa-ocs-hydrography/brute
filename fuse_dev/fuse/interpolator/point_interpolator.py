@@ -33,9 +33,9 @@ from typing import Tuple, Any
 import matplotlib.pyplot as plt
 import numpy
 import scipy
-import sklearn.gaussian_process
 from matplotlib.mlab import griddata as mlab_griddata
 from osgeo import gdal, ogr, osr
+from pykrige.ok import OrdinaryKriging
 
 
 def _compare_vals(value: float, min_value: float, max_value: float) -> Tuple[float, float]:
@@ -678,6 +678,7 @@ class point_interpolator:
 
         input_x = []
         input_y = []
+        input_z = []
 
         for feature_index in numpy.arange(lyr.GetFeatureCount()):
             feature = lyr.GetFeature(feature_index)
@@ -688,30 +689,59 @@ class point_interpolator:
 
             input_x.append(x)
             input_y.append(y)
+            input_z.append(z)
 
-        input_x, input_y = numpy.meshgrid(input_x, input_y)
+        input_x = numpy.array(input_x)
+        input_y = numpy.array(input_y)
+        input_z = numpy.array(input_z)
 
         numrows, numcolumns, bounds = self._get_nodes3(resolution, (min_x, min_y, max_x, max_y))
 
-        output_x, output_y = numpy.meshgrid(numpy.arange(bounds[0], bounds[2], resolution),
-                                            numpy.arange(bounds[1], bounds[3], resolution))
+        output_x = numpy.arange(bounds[0], bounds[2], resolution)
+        output_y = numpy.arange(bounds[1], bounds[3], resolution)
+        interpolated_data = numpy.empty((len(output_y), len(output_x)), dtype=float)
+        variance = numpy.empty((len(output_y), len(output_x)), dtype=float)
 
-        # use gaussian regressor to perform kriging from input points onto output meshgrid
-        interpolated_data = sklearn.gaussian_process.GaussianProcessRegressor().fit(input_x, input_y).predict(
-            numpy.stack((numpy.ravel(output_x), numpy.ravel(output_y))).T)
+        total_parts = 9
+        side_length = numpy.sqrt(total_parts)
 
-        inmemory_raster_driver = gdal.GetDriverByName('MEM')
-        output_dataset = inmemory_raster_driver.Create('temp', numcolumns, numrows, 1, gdal.GDT_Float32)
+        for part_index in range(0, total_parts):
+            input_start = int((part_index / side_length) * len(input_x))
+            input_end = int(((part_index + 1) / side_length) * len(input_x)) - 1
+
+            interpolator = OrdinaryKriging(input_x[input_start:input_end], input_y[input_start:input_end],
+                                           input_z[input_start:input_end], variogram_model='linear', verbose=False,
+                                           enable_plotting=False)
+
+            output_start = int((part_index / side_length) * len(output_x))
+            output_end = int(((part_index + 1) / side_length) * len(output_x)) - 1
+
+            current_interpolated_data, current_variance = interpolator.execute('grid',
+                                                                               output_x[output_start:output_end],
+                                                                               output_y[output_start:output_end])
+
+            interpolated_data[output_start:output_end + 1] = current_interpolated_data
+            variance[output_start:output_end + 1] = current_variance
+
+        del current_interpolated_data, current_variance
+        uncertainty = numpy.sqrt(variance) * 2.5
+
+        memory_raster_driver = gdal.GetDriverByName('MEM')
+        output_dataset = memory_raster_driver.Create('temp', numcolumns, numrows, 1, gdal.GDT_Float32)
 
         input_geotransform = input_dataset.GetGeoTransform()
         output_dataset.SetGeoTransform((input_geotransform[0], resolution, 0, input_geotransform[3], resolution))
         output_dataset.SetProjection(input_dataset.GetProjection().ExportToWkt())
 
-        output_band = output_dataset.GetRasterBand(1)
-        output_band.SetNoDataValue(nodata)
-        output_band.WriteArray(interpolated_data)
+        band_1 = output_dataset.GetRasterBand(1)
+        band_1.SetNoDataValue(nodata)
+        band_1.WriteArray(interpolated_data.data)
 
-        del output_band
+        band_2 = output_dataset.GetRasterBand(2)
+        band_2.SetNoDataValue(nodata)
+        band_2.WriteArray(uncertainty)
+
+        del band_1, band_2
         return output_dataset
 
     def _get_nodes(self, resolution: float, bounds: Tuple[float, float, float, float]) -> Tuple[
