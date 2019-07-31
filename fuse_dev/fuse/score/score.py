@@ -7,8 +7,9 @@ V 0.0.1 20190725
 
 Utilities for calculating metrics for scoring the quality of data.
 """
-from datetime import datetime as _datetime
 import math as _math
+from datetime import datetime as _datetime
+
 
 def catzoc(metadata: dict) -> int:
     """
@@ -40,20 +41,28 @@ def catzoc(metadata: dict) -> int:
     else:
         return 6
 
+
 def supersession(metadata: dict) -> float:
     """
     Return the superssion score as defined in Wyllie 2017 at US Hydro for the
     catzoc score.
     """
-    if "feat_detect" in metadata and 'complete_coverage' in metadata and 'horiz_uncert_fixed' in metadata and 'vert_uncert_fixed' in metadata:
-        feat_score = _get_feature_detection(metadata)
-        cov_score = _get_coverage(metadata)
-        horz_score = _get_horizontal_uncertainty(metadata)
-        vert_score = _get_vertical_uncertainty(metadata)
-        return min(feat_score, cov_score, horz_score, vert_score)
-    else:
-        survey_name = metadata['from_filename']
-        raise ValueError(f'Metadata is not available to score {survey_name}')
+
+    required_entries = ['feat_detect', 'complete_coverage', 'horiz_uncert_fixed', 'vert_uncert_fixed',
+                        'horiz_uncert_vari', 'vert_uncert_vari']
+
+    for required_entry in required_entries:
+        if required_entry not in metadata:
+            survey_name = metadata['from_filename']
+            raise ValueError(
+                f'Metadata for survey "{survey_name}" does not contain an entry for "{required_entry}" and is thus not available to score')
+
+    feat_score = _get_feature_detection(metadata)
+    cov_score = _get_coverage(metadata)
+    horz_score = _get_horizontal_uncertainty(metadata)
+    vert_score = _get_vertical_uncertainty(metadata)
+    return min(feat_score, cov_score, horz_score, vert_score)
+
 
 def _get_feature_detection(metadata: dict) -> float:
     """
@@ -65,13 +74,14 @@ def _get_feature_detection(metadata: dict) -> float:
     size_okay = False
     if 'feat_size' in metadata:
         size = float(metadata['feat_size'])
-        if size <= 2: 
+        if size <= 2:
             size_okay = True
     if detected and least_depth and size_okay:
         return 100
     else:
         return 80
-    
+
+
 def _get_coverage(metadata: dict) -> float:
     """
     Determine the coverage score and return.
@@ -81,7 +91,8 @@ def _get_coverage(metadata: dict) -> float:
         return 100
     else:
         return 80
-    
+
+
 def _get_horizontal_uncertainty(metadata: dict) -> float:
     """
     Determine the horizontal uncertainty score and return.
@@ -94,11 +105,12 @@ def _get_horizontal_uncertainty(metadata: dict) -> float:
         s = 90
     elif h_fix <= 50:
         s = 80
-    elif h_fix <= 500: 
+    elif h_fix <= 500:
         s = 70
     else:
         s = 60
     return s
+
 
 def _get_vertical_uncertainty(metadata: dict) -> float:
     """
@@ -110,17 +122,18 @@ def _get_vertical_uncertainty(metadata: dict) -> float:
         s = 100
     elif v_fix <= 1 and v_var <= 0.02:
         s = 90
-    elif v_fix <= 2 and v_var <= 0.05: 
+    elif v_fix <= 2 and v_var <= 0.05:
         s = 70
     else:
         s = 60
     return s
 
-def decay(metadata: dict, date: _datetime, alpha: float = 0.022 ) -> float:
+
+def decay(metadata: dict, date: _datetime, alpha: float = 0.022) -> float:
     """
     Return the decayed supersession_score.
     """
-    sd = _datetime.strptime(metadata['end_date'],'%Y%m%d')
+    sd = _datetime.strptime(metadata['end_date'], '%Y%m%d')
     ss = float(metadata['supersession_score'])
     dt = date - sd
     days = dt.days + dt.seconds / (24 * 60 * 60)

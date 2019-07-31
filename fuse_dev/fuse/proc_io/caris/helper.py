@@ -59,7 +59,7 @@ def retrieve_env_path(env_name: str) -> str:
 
     """
 
-    desired_env_loc = r"C:\Environments\conda\CARIS35"  # os.path.join(os.environ['conda_prefix'], os.pardir, env_name)
+    desired_env_loc = os.path.join(os.environ['conda_prefix'], os.pardir, env_name)
 
     if os.path.exists(desired_env_loc):
         return desired_env_loc
