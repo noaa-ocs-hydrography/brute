@@ -666,7 +666,7 @@ class point_interpolator:
         return interp_data
 
     def _kriging_interp_points(self, input_dataset: gdal.Dataset, resolution: float, radius: float,
-                               nodata: float = 1000000) -> gdal.Dataset:
+                               nodata: float = 1000000.0) -> gdal.Dataset:
         """
         Interpolate the provided gdal vector points and return the interpolated
         data.
@@ -700,14 +700,18 @@ class point_interpolator:
         interpolated_data = sklearn.gaussian_process.GaussianProcessRegressor().fit(input_x, input_y).predict(
             numpy.stack((numpy.ravel(output_x), numpy.ravel(output_y))).T)
 
-        driver = ogr.GetDriverByName('Memory')
-        output_dataset = driver.Create('temp', numcolumns, numrows, 1, gdal.GDT_Float32)
-        output_dataset.SetGeoTransform(input_dataset.GetGeoTransform())
+        inmemory_raster_driver = gdal.GetDriverByName('MEM')
+        output_dataset = inmemory_raster_driver.Create('temp', numcolumns, numrows, 1, gdal.GDT_Float32)
 
-        output_dataset.SetProjection(input_dataset.GetProjection())
-        output_dataset.GetRasterBand(1).WriteArray(interpolated_data)
-        output_dataset.FlushCache()
+        input_geotransform = input_dataset.GetGeoTransform()
+        output_dataset.SetGeoTransform((input_geotransform[0], resolution, 0, input_geotransform[3], resolution))
+        output_dataset.SetProjection(input_dataset.GetProjection().ExportToWkt())
 
+        output_band = output_dataset.GetRasterBand(1)
+        output_band.SetNoDataValue(nodata)
+        output_band.WriteArray(interpolated_data)
+
+        del output_band
         return output_dataset
 
     def _get_nodes(self, resolution: float, bounds: Tuple[float, float, float, float]) -> Tuple[
