@@ -21,7 +21,7 @@ import numpy as _np
 from osgeo import gdal, ogr, osr
 
 
-class vdatum:
+class VDatum:
     """An object for working with VDatum."""
 
     def __init__(self, config: dict, reader):

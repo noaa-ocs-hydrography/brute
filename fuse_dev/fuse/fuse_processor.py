@@ -7,11 +7,11 @@ Created on Thu Jan 31 10:03:30 2019
 @author: grice
 """
 
-import os as _os
 import configparser as _cp
+import os as _os
 
 
-class fuse_base_class:
+class FuseProcessor:
     """The fuse object."""
 
     def __init__(self, configfilename: str = 'generic.config'):

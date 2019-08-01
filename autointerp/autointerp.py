@@ -1438,7 +1438,7 @@ def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tup
                 ts = _dt.now()
                 index = ySlice, xSlice
                 print(f'\nTile {chunkGrid[index] + 1} of {z} - {ts}')
-                tile = chunk(sliceInfo, index, bagShape)
+                tile = Chunk(sliceInfo, index, bagShape)
                 tiffTile = tifObjras[tile.yMin:tile.yMax, tile.xMin:tile.xMax]
                 #                tiffTile[tiffTile < 0] = chunkGrid[index]
                 #                tiffTile[tiffTile > 0] = -chunkGrid[index]
@@ -1558,7 +1558,8 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
     print(msg)
     return msg
 
-class chunk:
+
+class Chunk:
     """
     chunk() serves as the data container for individual tile data. It's
     inputs inlcude sliceInfo=[buffer, height, width], chunkSlice=tile[y,x]

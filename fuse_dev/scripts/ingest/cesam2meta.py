@@ -18,7 +18,7 @@ from glob import glob
 import fuse.fuse_ehydro as ffe
 
 if __name__ == '__main__':
-    cesam = ffe.fuse_ehydro('cesam.config')  # this config is local for testing
+    cesam = ffe.FuseProcessor_eHydro('cesam.config')  # this config is local for testing
     for path in cesam.rawdata_path:
         flist = glob(os.path.join(path, '*.xyz'))
         for f in flist:

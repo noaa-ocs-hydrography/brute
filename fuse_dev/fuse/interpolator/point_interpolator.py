@@ -69,7 +69,7 @@ def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, floa
     return valmin, valmax
 
 
-class point_interpolator:
+class PointInterpolator:
     """Interpolation methods for creating a raster from points."""
 
     def __init__(self, window_scalar: float = 1.1):

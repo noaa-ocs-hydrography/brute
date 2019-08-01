@@ -12,10 +12,10 @@ class TestBagInterpolator(unittest.TestCase):
         bag_path = os.path.join(DATA_PATH, 'H12607_MB_4m_MLLW_2of2.bag')
         coverage_list = [os.path.join(DATA_PATH, 'H12607_SSSAB_1m_600kHz_2of2.tif')]
 
-        bag_dataset = bag.bag_file()
+        bag_dataset = bag.BagFile()
         bag_dataset.open_file(bag_path, 'hack')
         bag_dataset.generate_name(DATA_PATH, False)
-        coverage_dataset = coverage.unified_coverage(coverage_list, bag_dataset.wkt, bag_dataset.name)
+        coverage_dataset = coverage.UnifiedCoverage(coverage_list, bag_dataset.wkt, bag_dataset.name)
 
         assert coverage_dataset.bounds != bag_dataset.bounds
         assert coverage_dataset.shape != bag_dataset.shape

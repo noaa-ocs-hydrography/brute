@@ -22,7 +22,7 @@ from typing import Dict
 from fuse.proc_io.caris import helper
 
 
-class bdb51:
+class BDB51:
     """
     A class for doing I/O with the CARIS Bathy DataBASE 5.1 server.
 

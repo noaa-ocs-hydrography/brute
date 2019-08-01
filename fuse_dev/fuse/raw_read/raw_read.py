@@ -11,7 +11,7 @@ any available bathymetry or metadata can be accessed.
 """
 
 
-class read_raw_abstract:
+class RawReader:
     """An abstract raw data reader."""
 
     def __init__(self, datatype):

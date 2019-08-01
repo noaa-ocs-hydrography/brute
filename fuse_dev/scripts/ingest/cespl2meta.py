@@ -17,7 +17,7 @@ from glob import glob
 import fuse.fuse_ehydro as ffe
 
 if __name__ == '__main__':
-    cespl = ffe.fuse_ehydro('cespl.config')  # this config is local for testing
+    cespl = ffe.FuseProcessor_eHydro('cespl.config')  # this config is local for testing
     root = cespl.rawdata_path[0]
     top = [os.path.join(root, name) for name in os.listdir(root)]
     total = len(top)

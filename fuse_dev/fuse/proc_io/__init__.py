@@ -1,1 +1,1 @@
-from .proc_io import proc_io as io
+from .proc_io import ProcIO as io

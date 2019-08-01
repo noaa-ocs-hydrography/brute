@@ -95,7 +95,7 @@ class Form(autointerp_ui.Form):
             self.choice_catzoc.GetCurrentSelection()
         )
         ioOut = self.radio_data.GetSelection()
-        interp = _bip.process.intitialize(desPath, 'linear', catzoc, ioOut)
+        interp = _bip.process.Intitializor(desPath, 'linear', catzoc, ioOut)
         interp.linear(bagPath, tifPath)
         self.progressBar.SetValue(100)
 

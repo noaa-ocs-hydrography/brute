@@ -10,11 +10,11 @@ Read the various data sources available for a particular data stream such that
 any available bathymetry or metadata can be accessed.
 """
 
-import os as _os
-import sys as _sys
 import logging as _logging
+import os as _os
 import pickle as _pickle
 import re as _re
+import sys as _sys
 from datetime import datetime as _datetime
 from xml.etree.ElementTree import parse as _parse
 
@@ -22,7 +22,7 @@ import numpy as _np
 from fuse.datum_transform import usefips as _usefips
 
 
-class read_raw:
+class CENANRawReader:
     """An abstract raw data reader."""
 
     _ussft2m = 0.30480060960121924  # US survey feet to meters
@@ -135,11 +135,11 @@ class read_raw:
         merged_meta = {**default_meta, **name_meta, **file_meta}
         if 'from_horiz_unc' in merged_meta:
             if merged_meta['from_horiz_units'] == 'US Survey Foot':
-                val = read_raw._ussft2m * float(merged_meta['from_horiz_unc'])
+                val = CENANRawReader._ussft2m * float(merged_meta['from_horiz_unc'])
                 merged_meta['horiz_uncert'] = val
         if 'from_vert_unc' in merged_meta:
             if merged_meta['from_vert_units'] == 'US Survey Foot':
-                val = read_raw._ussft2m * float(merged_meta['from_vert_unc'])
+                val = CENANRawReader._ussft2m * float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
         sorind = f"{name_meta['projid']}_{name_meta['uniqueid']}_{name_meta['subprojid']}_{name_meta['start_date']}_" + \

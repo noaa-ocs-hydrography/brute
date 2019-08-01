@@ -11,7 +11,7 @@ import logging as _logging
 import os as _os
 
 import fuse.datum_transform.transform as _trans
-import fuse.fuse_base_class as _fbc
+import fuse.fuse_processor as _fbc
 import fuse.interpolator.interpolator as _interp
 import fuse.meta_review.meta_review_ehydro as _mre
 import fuse.raw_read.usace as _usace
@@ -19,7 +19,7 @@ from fuse.proc_io.proc_io import proc_io
 from fuse import score
 
 
-class fuse_ehydro(_fbc.fuse_base_class):
+class FuseProcessor_eHydro(_fbc.FuseProcessor):
     """TODO write description"""
     _datums = ['from_fips',
               'from_horiz_datum',
@@ -31,7 +31,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
               'to_vert_datum',
               'to_vert_units',
               ]
-    
+
     _quality_metrics = ['from_horiz_unc',
                         'from_vert_unc',
                         'complete_coverage',
@@ -44,37 +44,37 @@ class fuse_ehydro(_fbc.fuse_base_class):
                         'feat_detect',
                         'feat_least_depth',
                         ]
-    
+
     _paths = ['from_filename',
              'from_path',
              'to_filename',
              ]
-    
+
     _dates = ['start_date',
               'end_date',
               ]
-    
+
     _source_info = ['agency',
                     'source_indicator',
                     'source_type',
                     'interpolated',
                     'version_reference',
                     ]
-    
+
     _scores = ['catzoc',
                'supersession_score',
                ]
 
     def __init__(self, config_filename):
         super().__init__(config_filename)
-        cols = {**fuse_ehydro._paths, 
+        cols = {**fuse_ehydro._paths,
                 **fuse_ehydro._dates,
                 **fuse_ehydro._datums,
                 **fuse_ehydro._quality_metrics,
                 **fuse_ehydro._scores,
                 **fuse_ehydro._source_info,
                 }
-        self._meta_obj = _mre.meta_review_ehydro(self._config['metapath'], cols)
+        self._meta_obj = _mre.MetaReviewer_eHydro(self._config['metapath'], cols)
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()
@@ -100,19 +100,19 @@ class fuse_ehydro(_fbc.fuse_base_class):
         try:
             reader_type = self._config['raw_reader_type'].casefold()
             if reader_type == 'cenan':
-                self._reader = _usace.cenan.read_raw()
+                self._reader = _usace.cenan.CENANRawReader()
             elif reader_type == 'cemvn':
-                self._reader = _usace.cemvn.read_raw()
+                self._reader = _usace.cemvn.CEMVNRawReader()
             elif reader_type == 'cesaj':
-                self._reader = _usace.cesaj.read_raw()
+                self._reader = _usace.cesaj.CESAJRawReader()
             elif reader_type == 'cesam':
-                self._reader = _usace.cesam.read_raw()
+                self._reader = _usace.cesam.CESAMRawReader()
             elif reader_type == 'ceswg':
-                self._reader = _usace.ceswg.read_raw()
+                self._reader = _usace.ceswg.CESWGRawReader()
             elif reader_type == 'cespl':
-                self._reader = _usace.cespl.read_raw()
+                self._reader = _usace.cespl.CESPLRawReader()
             elif reader_type == 'cenae':
-                self._reader = _usace.cenae.read_raw()
+                self._reader = _usace.cenae.CENAERawReader()
             else:
                 raise ValueError('reader type not implemented')
         except:
@@ -121,7 +121,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
     def _set_data_transform(self):
         """Set up the datum transformation engine."""
 
-        self._transform = _trans.transform(self._config, self._reader)
+        self._transform = _trans.DatumTransformer(self._config, self._reader)
 
     def _set_data_interpolator(self):
         """Set up the interpolator engine."""
@@ -129,7 +129,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         engine = self._config['interpolation_engine']
         res = float(self._config['to_resolution'])
         method = self._config['interpolation_method']
-        self._interpolator = _interp.interpolator(engine, method, res)
+        self._interpolator = _interp.Interpolator(engine, method, res)
 
     def _set_data_writer(self):
         """
@@ -149,8 +149,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
             ext2 = 'gpkg'
         else:
             ext2 = ext
-        self._writer = proc_io('gdal', ext)
-        self._points = proc_io('point', 'csar')
+        self._writer = ProcIO('gdal', ext)
+        self._points = ProcIO('point', 'csar')
 
     def read(self, infilename: str):
         """
@@ -253,7 +253,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
                 self._connect_to_db()
             procfile = self._meta['to_filename']
             self._db.write(procfile, 'new', self._s57_meta)
-            
+
     def score(self, infilename, date):
         """
         Provided a date, get the decayed quality metric and insert in the
@@ -285,7 +285,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         else:
             raise ValueError('No database name defined in the configuration file.')
         intype = self._config['bathymetry_intermediate_file']
-        self._db = proc_io(intype, 'carisbdb51', db_loc=db_loc, db_name=db_name)
+        self._db = ProcIO(intype, 'carisbdb51', db_loc=db_loc, db_name=db_name)
 
     def disconnect(self):
         """
@@ -384,7 +384,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         if len(self._meta) > 0:
             self._s57_meta = self._meta_obj.row2s57(self._meta)
         # need to catch if this file is not in the metadata record yet here.
-        
+
     def _metadata_ready(metadata, reference):
         """
         Check the metadata to see if the required fields are populated.

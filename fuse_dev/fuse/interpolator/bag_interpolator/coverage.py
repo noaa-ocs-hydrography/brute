@@ -43,7 +43,7 @@ def _maxValue(arr: _np.array):
     return int(nums[index])
 
 
-class geotiff:
+class GeoTIFF:
     """
     This class serves as the main container for geotiff data.
 
@@ -161,7 +161,7 @@ class geotiff:
         return array, shape, 0
 
 
-class geopackage:
+class Geopackage:
     """
     This class serves as the main container for geopackage data.
 
@@ -335,7 +335,7 @@ class geopackage:
         return _os.path.splitext(fName)[0]
 
 
-class unified_coverage:
+class UnifiedCoverage:
     """TODO write description"""
 
     def __init__(self, coverage_files, bag_wkt=None, bag_name='Test_Data.bag'):
@@ -375,10 +375,10 @@ class unified_coverage:
             ext = _os.path.splitext(fName)[1].lower()
 
             if ext in ('.tiff', '.tif'):
-                rast = geotiff()
+                rast = GeoTIFF()
                 rast.open_file(item)
             elif ext in ('.shp', '.gpkg'):
-                rast = geopackage()
+                rast = Geopackage()
                 rast.open_file(item, bag_wkt)
 
             bndRasts.append(rast)

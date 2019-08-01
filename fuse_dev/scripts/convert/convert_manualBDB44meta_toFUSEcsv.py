@@ -39,13 +39,13 @@ def fromNCEI_convert_manualfile():
         
     """
     inputtab= r"N:\Data\metadata\NewYork\BAG.txt"
-    test=r"N:\New_Directory_1\NorthEast_PBC\NOAA_NCEI_OCS\BAGs\MLLW\Metadata\BAG_fuse_meta_test1.csv"
-    #test2 = r"N:\Data\metadata\NewYork\BathyPointStore.txt"
-    csvfilename = test
-    csvfilename2 =r"N:\New_Directory_1\NorthEast_PBC\NOAA_NCEI_OCS\BAGs\MLLW\Metadata\ncei_files__meta_test.csv"
+    inputtabBPS =r"N:\New_Directory_1\NorthEast_PBC\NOAA_NCEI_OCS\BathyPointStore\MLLW\Metadata\BathyPointStore_colrename.txt"
+    csvfilename = r"N:\New_Directory_1\NorthEast_PBC\NOAA_NCEI_OCS\BAGs\MLLW\Metadata\BAG_fuse_meta_test1a.csv"
+    csvfilenamebps =r"N:\New_Directory_1\NorthEast_PBC\NOAA_NCEI_OCS\BathyPointStore\MLLW\Metadata\BPS_Fuse_files_meta_test.csv"
     meta, out_meta = _OCSmanualkeys(inputtab,  map_columns_OCS, map_columns_OCS2, out_map_columns_OCS)
     m.write_meta2csv(meta, csvfilename)
-    m.write_meta2csv(out_meta, csvfilename2)
+    metabps, out_metabps = _OCSmanualkeys(inputtabBPS,  map_columns_OCS, map_columns_OCS2, out_map_columns_OCS)
+    m.write_meta2csv(metabps, csvfilenamebps)
 
 col_NCEI_template = [    
     'from_filename',
