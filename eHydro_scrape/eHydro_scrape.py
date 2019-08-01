@@ -467,12 +467,20 @@ def write_geopackage(out_path: str, name: str, poly: str,
 
     # Make a geometry, from Shapely object
     geom = ogr.CreateGeometryFromWkt(poly)
+
     feat.SetGeometry(geom)
 
     layer.CreateFeature(feat)
 
     # Save and close everything
-    del ds, layer, feat, geom
+    del ds, layer, feat
+
+    linear_geom = geom.GetLinearGeometry()
+    geojson = linear_geom.ExportToJson()
+
+    del geom
+
+    return geojson
 
 
 def contentSearch(contents: List[str]) -> int:
@@ -581,9 +589,9 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
         if poly != 'error':
             shpfilename = os.path.join(holding, agency, f'{surname}.gpkg')
             meta['poly_name'] = f'{surname}.gpkg'
-            write_geopackage(shpfilename, surname, poly, spcs)
+            geojson = write_geopackage(shpfilename, surname, poly, spcs)
+            meta['poly'] = geojson
             sfile = os.path.relpath(f'{surname}.gpkg')
-
         metafilename = os.path.join(holding, agency, f'{surname}.pickle')
 
         with open(metafilename, 'wb') as metafile:
