@@ -188,7 +188,7 @@ def retrieve_meta_for_Ehydro_notable(highresfolder, ehydrofolder, district, meta
             with open(xmlfilename, 'r') as xml_file:
                 xml_txt = xml_file.read()
             xmlbasename = os.path.basename(xmlfilename)
-            xml_data = p_usace_xml.XML_Meta(xml_txt, filename=xmlbasename)
+            xml_data = p_usace_xml.XMLMetadata(xml_txt, filename=xmlbasename)
             if xml_data.version == 'USACE_FGDC':
                 meta_xml = xml_data._extract_meta_CEMVN()
             elif xml_data.version == 'ISO-8859-1':

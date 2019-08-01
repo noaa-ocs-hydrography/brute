@@ -22,7 +22,7 @@ from typing import Dict
 from fuse.proc_io.caris import helper
 
 
-class bdb51:
+class BDB51:
     """
     A class for doing I/O with the CARIS Bathy DataBASE 5.1 server.
 
@@ -43,7 +43,7 @@ class bdb51:
         log : returning a log message
     """
 
-    def __init__(self, database_loc: str, database_name: str, caris_env_name: str = 'NBS35',
+    def __init__(self, database_loc: str, database_name: str, caris_env_name: str = 'CARIS35',
                  host='localhost'):
         """
         Instantiate the object and connect to the database referenced, waiting

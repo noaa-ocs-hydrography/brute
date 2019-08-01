@@ -1,2 +1,2 @@
 from . import helper
-from .bdb51 import bdb51 as bdb5
+from .bdb51 import BDB51 as bdb5

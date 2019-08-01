@@ -75,13 +75,13 @@ def extract_s57_dict(xmlfilename):
         xml_txt = xml_file.read()
 
     xmlbasename = path.basename(xmlfilename)
-    xml_data = XML_Meta(xml_txt, filename=xmlbasename)
+    xml_data = XMLMetadata(xml_txt, filename=xmlbasename)
     s57_dict = xml_data.get_s57_dict()
 
     return s57_dict
 
 
-class XML_Meta(object):
+class XMLMetadata:
     """
     Helper class to manage xml metadata. This class takes an xml string and
     parses the string based on a dictionary with keys that

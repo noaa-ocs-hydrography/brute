@@ -1,13 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-read_raw_cenan.py
+Created on Wed Jul 17 12:49:10 2019
 
-Created on Fri Feb  1 16:35:18 2019
-
-@author: grice
-
-Read the various data sources available for a particular data stream such that
-any available bathymetry or metadata can be accessed.
+@author: Casiano.Koprowski
 """
 
 import logging as _logging
@@ -21,18 +16,18 @@ from xml.etree.ElementTree import parse as _parse
 import numpy as _np
 from fuse.datum_transform import usefips as _usefips
 
+from . import parse_usace_pickle
+from . import parse_usace_xml
 
-class CENANRawReader:
-    """An abstract raw data reader."""
 
-    _ussft2m = 0.30480060960121924  # US survey feet to meters
+class USACERawReader:
+    def __init__(self, version=None):
+        self.version = version
+        self.ussft2m = 0.30480060960121924  # US survey feet to meters
+        self.xyz_suffixes = ('_A', '_FULL')
+        self.xyz_files = {}
 
-    def __init__(self):
-        """
-        No init needed?
-        """
-
-        self._logger = _logging.getLogger('fuse')
+        self._logger = _logging.getLogger(f'fuse')
 
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)
@@ -42,20 +37,21 @@ class CENANRawReader:
     def read_metadata(self, infilename: str):
         """
         Read all available meta data.
+        returns dictionary
 
         Parameters
         ----------
-        infilename :
-
-        infilename: str :
-
+        infilename: str
 
         Returns
         -------
 
         """
-
-        return self._parse_ehydro_xyz_header(infilename)
+        meta_pickle = self._parse_pickle(infilename)
+        meta_xml = self._parse_usace_xml(infilename)
+        meta_date = self._parse_start_date(infilename, {**meta_xml, **meta_pickle})
+        meta_xml['poly_name'] = meta_pickle['poly_name']
+        return {**meta_xml, **meta_date}
 
     def read_bathymetry(self, infilename: str):
         """
@@ -96,6 +92,75 @@ class CENANRawReader:
         for n in xyz:
             yield n
 
+    def _parse_pickle(self, filename: str) -> dict:
+        """
+        Retrieves metadata for USACE E-Hydro files
+        function returns metadata dictionary
+
+        Parameters
+        ----------
+        filename: str
+
+
+        Returns
+        -------
+        metadata : dict
+
+
+        """
+        pickle_name = self.name_gen(filename, ext='pickle', sfx=False)
+        pickle_dict = parse_usace_pickle.read_pickle(pickle_name, pickle_ext=True)
+        pickle_keys = parse_usace_pickle.dict_keys(pickle_dict)
+        return pickle_dict
+
+    def _parse_start_date(self, infilename: str, metadata: dict) -> dict:
+        start = {}
+        file_date = None
+        xml_date = None
+        pickle_date = None
+        filename_dict = self._parse_filename(infilename)
+
+        if 'start_date' in filename_dict:
+            file_date = filename_dict['start_date']
+
+        if 'start_date' in metadata:
+            xml_date = metadata['start_date']
+
+        if 'SURVEYDATESTART' in metadata:
+            pickle_date = metadata['SURVEYDATESTART']
+
+        if xml_date is not None:
+            start = {'start_date': xml_date}
+        elif file_date is not None:
+            start = {'start_date': file_date}
+        elif pickle_date is not None:
+            start = {'start_date': pickle_date}
+
+        return start
+
+    def name_gen(self, filename: str, ext: str = None, sfx: bool = True) -> str:
+        """
+        Returns the suffix of the a survey's xyz file and the file name
+        for a different extension
+
+        """
+        filebase, fileext = _os.path.splitext(filename)
+        suffix = None
+        for item in self.xyz_suffixes:
+            if _re.compile(f'{item}$', _re.IGNORECASE).search(filebase):
+                suffix = item
+        if suffix is not None and ext is not None:
+            base = _re.sub(_re.compile(f'{suffix}$', _re.IGNORECASE), '', filebase) + f'.{ext}'
+        elif suffix is None and ext is not None:
+            base = filebase + f'.{ext}'
+        else:
+            base = filename
+
+        if sfx:
+            return base, suffix
+        else:
+            return base
+
     def _parse_ehydro_xyz_header(self, infilename: str, meta_source: str = 'xyz', default_meta: str = '') -> dict:
         """
         Parse an USACE eHydro file for the available meta data.
@@ -135,11 +200,11 @@ class CENANRawReader:
         merged_meta = {**default_meta, **name_meta, **file_meta}
         if 'from_horiz_unc' in merged_meta:
             if merged_meta['from_horiz_units'] == 'US Survey Foot':
-                val = CENANRawReader._ussft2m * float(merged_meta['from_horiz_unc'])
+                val = self.ussft2m * float(merged_meta['from_horiz_unc'])
                 merged_meta['horiz_uncert'] = val
         if 'from_vert_unc' in merged_meta:
             if merged_meta['from_vert_units'] == 'US Survey Foot':
-                val = CENANRawReader._ussft2m * float(merged_meta['from_vert_unc'])
+                val = self.ussft2m * float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
         sorind = f"{name_meta['projid']}_{name_meta['uniqueid']}_{name_meta['subprojid']}_{name_meta['start_date']}_" + \
@@ -434,6 +499,41 @@ class CENANRawReader:
         else:
             meta = {}
         return meta
+
+    def _parse_usace_xml(self, infilename):
+        """
+        Read all available meta data.
+        returns dictionary
+
+        Parameters
+        ----------
+        infilename: str
+
+        """
+        xmlfilename = self.name_gen(infilename, ext='xml', sfx=False)
+
+        if _os.path.isfile(xmlfilename):
+            with open(xmlfilename, 'r') as xml_file:
+                xml_txt = xml_file.read()
+            xmlbasename = _os.path.basename(xmlfilename)
+            xml_data = parse_usace_xml.XMLMetadata(xml_txt, filename=xmlbasename)
+            if xml_data.version == 'USACE_FGDC':
+                meta_xml = xml_data._extract_meta_USACE_FGDC()
+            elif xml_data.version == 'ISO-8859-1':
+                meta_xml = xml_data._extract_meta_USACE_ISO()
+                if 'ISO_xml' not in meta_xml:
+                    meta_xml = xml_data._extract_meta_USACE_FGDC(override='Y')
+            else:
+                meta_xml = xml_data.convert_xml_to_dict2()
+            ext_dict = xml_data.extended_xml_fgdc()
+            ext_dict = parse_usace_xml.ext_xml_map_enddate(ext_dict)
+            meta_xml = parse_usace_xml.xml_SPCSconflict_flag(meta_xml)
+        else:
+            ext_dict = {}
+            meta_xml = {}
+        meta_xml['from_path'] = infilename
+        meta_xml['from_filename'] = _os.path.basename(infilename)
+        return {**meta_xml, **ext_dict}
 
     def _parse_ehydro_xml(self, infilename):
         """

@@ -18,7 +18,7 @@ import caris.bathy.db as bdb
 from get_access import *
 
 
-class bdb51_io:
+class BDB51IO:
     """
     An object for handling CARIS BDB I/O through the Python interface.
     """
@@ -352,7 +352,7 @@ def main(port: int, buffer_size: int):
 
     """
 
-    db_io = bdb51_io(port, buffer_size)
+    db_io = BDB51IO(port, buffer_size)
 
 
 if __name__ == '__main__':

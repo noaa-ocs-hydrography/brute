@@ -8,7 +8,7 @@ Created on Thu Jun  6 15:30:21 2019
 from datetime import datetime as _dt
 
 import numpy as _np
-from fuse.proc_io.proc_io import proc_io
+from fuse.proc_io.proc_io import ProcIO
 
 from . import bag as _bag
 from . import coverage as _cvg
@@ -21,7 +21,7 @@ _catZones = {
 }
 
 
-class intitialize:
+class Intitializor:
     """TODO write description"""
 
     def __init__(self, outlocation: str, mode: str, catzoc, io: bool):
@@ -60,10 +60,10 @@ class intitialize:
 
         """
 
-        bag = _bag.bag_file()
+        bag = _bag.BagFile()
         bag.open_file(filepath, 'hack')
         bag.generate_name(self._outlocation, self._io)
-        coverage = _cvg.unified_coverage(coverage_list, bag.wkt, bag.name)
+        coverage = _cvg.UnifiedCoverage(coverage_list, bag.wkt, bag.name)
         coverage = _cvg.align2grid(coverage, bag.bounds, bag.shape, bag.resolution, bag.nodata)
 
         z, tiles, tile_info = _itp.sliceFinder(bag.size, bag.shape, bag.resolution[0])
@@ -79,12 +79,12 @@ class intitialize:
                     ts = _dt.now()
                     index = ySlice, xSlice
                     print(f'\nTile {tiles[index] + 1} of {z} - {ts}')
-                    tile = _itp.tile(tile_info, index, bagShape)
+                    tile = _itp.BagTile(tile_info, index, bagShape)
                     covgTile = _itp.chunk(coverage.array, tile, mode='a')
                     bathTile = _itp.chunk(bag.elevation, tile, mode='a')
                     uncrTile = _itp.chunk(bag.uncertainty, tile, mode='a')
                     print('interp is next')
-                    interp = _itp.linear(bathTile, uncrTile, covgTile, self._uval)
+                    interp = _itp.LinearInterpolator(bathTile, uncrTile, covgTile, self._uval)
                     del covgTile, bathTile, uncrTile
                     unitedBag = _itp.chunk(interp.bathy, tile, mode='c',
                                            copy=unitedBag)
@@ -103,8 +103,8 @@ class intitialize:
             ts = _dt.now()
             print('\nTile 1 of 1 -', ts)
             print('interp is next')
-            interp = _itp.linear(bag.elevation, bag.uncertainty,
-                                 coverage.array, self._uval)
+            interp = _itp.LinearInterpolator(bag.elevation, bag.uncertainty,
+                                             coverage.array, self._uval)
             ugrids = [interp.bathy, interp.uncrt, interp.unint]
             del interp
             td = _dt.now()
@@ -115,12 +115,12 @@ class intitialize:
                                                                       coverage.array, ugrids, bag.nodata, self._io)
         print(coverage.array)
 
-        save = _bag.gdal_create('MLLW')
+        save = _bag.BagToGDALConverter('MLLW')
         #        save.components2gdal([bag.elevation, bag.uncertainty], bag.shape,
         #                             bag.bounds, bag.resolution, bag.wkt, bag.nodata)
         save.bag2gdal(bag)
 
-        writer = proc_io('gdal', 'bag')
+        writer = ProcIO('gdal', 'bag')
         print(save.dataset.GetGeoTransform())
         writer.write(save.dataset, bag.outfilename)
 

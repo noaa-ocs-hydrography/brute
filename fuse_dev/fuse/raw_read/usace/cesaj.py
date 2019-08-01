@@ -19,7 +19,6 @@ import pickle as _pickle
 import re as _re
 
 _ussft2m = 0.30480060960121924  # US survey feet to meters
-# import datetime as _datetime
 import dateutil.parser as parser
 from datetime import datetime
 import numpy as _np
@@ -43,7 +42,7 @@ except:
 ##-----------------------------------------------------------------------------
 
 
-class read_raw:
+class CESAJRawReader:
     """
     This class passes back bathymetry
     & a metadata dictionary from the e-Hydro files
@@ -56,7 +55,7 @@ class read_raw:
     
     """
 
-    def read_metadata(self, infilename: str):
+    def read_metadata(self, infilename: str) -> dict:
         """
         Read all available meta data.
         returns dictionary
@@ -68,13 +67,12 @@ class read_raw:
         
         Returns
         -------
-        -> dict
+        dict
         
         """
         version = 'CESAJ'
         self.version = version
-        return retrieve_meta_for_Ehydro_out_onefile(
-            infilename)  # return retrieve_meta_for_Ehydro_out_onefile(infilename, inputehydrocsv)
+        return retrieve_meta_for_Ehydro_out_onefile(infilename)
 
     def read_bathymetry_dat(self, infilename: str) -> _np.array:
         """
@@ -152,7 +150,7 @@ def return_surveyid(filenamepath: str, ex_string: str) -> str:
     
     Returns
     -------
-    surveybasename
+    surveybasename: str:
     
     """
     basename = os.path.basename(filenamepath)
@@ -172,10 +170,10 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     Parameters
     ----------
     filename: str :
-        
 
     Returns
     -------
+    dict:
 
     """
     # next if pull the subset of the table in the dataframe related to the list of files passed to it.
@@ -184,14 +182,14 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     f = filename
     basename = os.path.basename(f)
 
-    e_t = Extract_Txt(f)
+    e_t = XYZHeaderReader(f)
     # xml pull here.
     xmlfilename = get_xml_match(f)
     if os.path.isfile(xmlfilename):
         with open(xmlfilename, 'r') as xml_file:
             xml_txt = xml_file.read()
         xmlbasename = os.path.basename(xmlfilename)
-        xml_data = p_usace_xml.XML_Meta(xml_txt, filename=xmlbasename)
+        xml_data = p_usace_xml.XMLMetadata(xml_txt, filename=xmlbasename)
         if xml_data.version == 'USACE_FGDC':
             meta_xml = xml_data._extract_meta_USACE_FGDC()  # CEMVN()
         elif xml_data.version == 'ISO-8859-1':
@@ -213,7 +211,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
 
-    e_pick = ehydro_pickle_use(xmlfilename)
+    e_pick = eHydroPickleReader(xmlfilename)
     meta_from_ehydro = e_pick._read_pickle()  # to handle files
     meta_from_ehydro = e_pick._when_use_pickle(meta_xml)
     meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
@@ -260,46 +258,46 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
         err_file = "Error_file_if_date_checkfail.txt"
         with open(err_file, 'a') as error:
             error.write(f'{f} : extra dict END DATE SEARCH call fail \n')
-
     return merged_meta
 
 
 ###----------------------------------------------------------------------------
-class ehydro_pickle_use(object):
+class eHydroPickleReader(object):
 
-    def __init__(self, infilename):
-
+    def __init__(self, infilename: str):
         """
         Pass filename that matches the pickle file you want to match 
         but with any extension
         (Here we tend to pass the xmlfilename as it already has been matched
         in the cases of _A.xyz etc., but one could use a .xyz file)
-    
-    
+
+
         Parameters
         ----------
-        infilename :
-    
-    
+        infilename: str:
+
+
         Returns
         -------
-        self.filename = infilename
+        self.filename = infilename: str:
+
         """
         self.filename = infilename
 
-    def _read_pickle(self):
+    def _read_pickle(self) -> dict:
         """
         Read in picklefile that ehydro_move creates from the E-Hydro REST API
         table attributes.
-    
-    
+
+
         Parameters
         ----------
-        infilename :
-    
-    
+        self.infilename: str:
+
+
         Returns
         -------
+        pickle_meta: dict:
     
         """
         print(f'reading in pickle based on: {self.filename}')  # making sure pickle passing is working
@@ -310,20 +308,22 @@ class ehydro_pickle_use(object):
         # self.meta_from_ehydro = self.pickle_meta#separating while debugging to track original
         return pickle_meta
 
-    def _Check_for_SPCSconflicts(self, meta_xml):  # , meta_from_ehydro = None
+    def _Check_for_SPCSconflicts(self, meta_xml):
         """
-        Cheacking to see if the SPCS codes conflict between sources
-        
+        Checking to see if the SPCS codes conflict between sources
+
         Parameters
         ----------
-        meta_xml :
-        xml_data : (class object)
-        self :# meta_from_ehydro :
-    
+        meta_xml: dict:
+        self.meta_from_ehydro: dict
+
         Returns
         -------
+        no_SPCS_conflict: str:
+        no_SPCS_conflict_withpickle: str:
+        meta_from_ehydro: dict:
+
         """
-        # if meta_from_ehydro == None:
         meta_from_ehydro = self.meta_from_ehydro
 
         no_SPCS_conflict = ''
@@ -339,7 +339,7 @@ class ehydro_pickle_use(object):
                 meta_xml = p_usace_xml.xml_SPCSconflict_otherspcs(meta_xml,
                                                                   f"{p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']}")
                 if p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
-                                              meta_from_ehydro['SOURCEPROJECTION']) == meta_xml['from_fips']:
+                                              meta_from_ehydro['SOURCEPROJECTION']) == \meta_xml['from_fips']:
                     no_SPCS_conflict_withpickle = 'True'
                 else:
                     no_SPCS_conflict_withpickle = 'False'
@@ -352,23 +352,23 @@ class ehydro_pickle_use(object):
         self.meta_from_ehydro
         return no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro
 
-    def _when_use_pickle(self, meta_xml):  # , meta_from_ehydro
+    def _when_use_pickle(self, meta_xml):
         """
         If there is no SPCS code in the xml, use the pickle/ REST API SPCS code
-        
+
         Additional check to see if their is a conflict. District specific rules on conflict resolution may need to apply.
         1st assumption is that the REST API has the correct SPCS code according to E-Hydro team. (John McKenzie) and reinterated by
         District contacts thus far (as of June 2019) base on E-hydro upload procedures.
-        
+
         Parameters
         ----------
-        meta_xml :
-        xml_data(xml reader class)
-        self :
-    
-    
+        meta_xml: dict:
+        self.meta_from_ehydro : dict:
+
+
         Returns
         -------
+        meta_from_ehydro: dict:
         """
         meta_from_ehydro = self.meta_from_ehydro
         if 'SOURCEPROJECTION' in meta_from_ehydro:
@@ -377,7 +377,6 @@ class ehydro_pickle_use(object):
                 no_SPCS_conflict, no_SPCS_conflict_withpickle = self._Check_for_SPCSconflicts(meta_xml,
                                                                                               meta_from_ehydro)
                 if no_SPCS_conflict_withpickle == 'False':
-                    # test
                     meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
                                                                                meta_from_ehydro['SOURCEPROJECTION'])
             else:
@@ -390,13 +389,13 @@ class ehydro_pickle_use(object):
         """
         if xml_meta is blank and if meta does not have information use pickle data for date
         next: Check survey start & end date against filename and other locations
-        
+
         Parameters
         ----------
         meta_xml :
         self: # uses meta_from_ehydro :
-    
-    
+
+
         Returns
         """
         meta_from_ehydro = self.meta_from_ehydro
@@ -412,7 +411,7 @@ class ehydro_pickle_use(object):
 
 
 ###----------------------------------------------------------------------------
-class Extract_Txt(object):
+class XYZHeaderReader(object):
     """Extract both information from the filename as well as from the text file's header"""
 
     def __init__(self, preloadeddata, version='', filename=''):
@@ -659,7 +658,7 @@ def get_xml_xt(filename, extension):
 
     """
     end_len = len(extension)
-    if filename[-end_len:] == extension:
+    if filename[-end_len:].upper() == extension:
         basef = filename[:-end_len]
     else:
         basef = filename
@@ -682,18 +681,25 @@ def get_xml_match(f):
     -------
 
     """
-    if '_A.xyz' in f:
-        xmlfilename = get_xml_xt(f, '_A.xyz')
-    elif '_FULL.xyz' in f:
-        xmlfilename = get_xml_xt(f, '_FULL.xyz')
-    elif '_FULL.XYZ' in f:
-        xmlfilename = get_xml_xt(f, '_FULL.XYZ')
-    elif '_A.XYZ' in f:
-        xmlfilename = get_xml_xt(f, '_A.XYZ')
-    elif '.ppxyz' in f:
-        xmlfilename = get_xml_xt(f, '.ppxyz')
-    else:
-        xmlfilename = get_xml(f)
+    ext_list = ['_FULL.XYZ', '_A.XYZ', '.PPXYZ']
+    for extension in ext_list:
+        if extension in f.upper():
+            xmlfilename = get_xml_xt(f, extension)
+        else:
+            xmlfilename = get_xml(f)
+
+    #    if '_A.xyz' in f:
+    #        xmlfilename = get_xml_xt(f, '_A.xyz')
+    #    elif '_FULL.xyz' in f:
+    #        xmlfilename = get_xml_xt(f, '_FULL.xyz')
+    #    elif '_FULL.XYZ' in f:
+    #        xmlfilename = get_xml_xt(f, '_FULL.XYZ')
+    #    elif '_A.XYZ' in f:
+    #        xmlfilename = get_xml_xt(f, '_A.XYZ')
+    #    elif '.ppxyz' in f:
+    #        xmlfilename = get_xml_xt(f, '.ppxyz')
+    #    else:
+    #        xmlfilename = get_xml(f)
     return xmlfilename
 
 

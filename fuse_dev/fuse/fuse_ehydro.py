@@ -11,15 +11,15 @@ import logging as _logging
 import os as _os
 
 import fuse.datum_transform.transform as _trans
-import fuse.fuse_base_class as _fbc
+import fuse.fuse_processor as _fbc
 import fuse.interpolator.interpolator as _interp
 import fuse.meta_review.meta_review_ehydro as _mre
 import fuse.raw_read.usace as _usace
 from fuse import score
-from fuse.proc_io.proc_io import proc_io
+from fuse.proc_io.proc_io import ProcIO
 
 
-class fuse_ehydro(_fbc.fuse_base_class):
+class FuseProcessor_eHydro(_fbc.FuseProcessor):
     """TODO write description"""
     _cols = [
         'from_filename',
@@ -58,7 +58,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
 
     def __init__(self, config_filename):
         super().__init__(config_filename)
-        self._meta_obj = _mre.meta_review_ehydro(self._config['metapath'], fuse_ehydro._cols)
+        self._meta_obj = _mre.MetaReviewer_eHydro(self._config['metapath'], FuseProcessor_eHydro._cols)
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()
@@ -85,17 +85,19 @@ class fuse_ehydro(_fbc.fuse_base_class):
             reader_type = self._config['raw_reader_type'].casefold()
 
             if reader_type == 'cenan':
-                self._reader = _usace.cenan.read_raw()
+                self._reader = _usace.cenan.CENANRawReader()
             elif reader_type == 'cemvn':
-                self._reader = _usace.cemvn.read_raw()
+                self._reader = _usace.cemvn.CEMVNRawReader()
             elif reader_type == 'cesaj':
-                self._reader = _usace.cesaj.read_raw()
+                self._reader = _usace.cesaj.CESAJRawReader()
             elif reader_type == 'cesam':
-                self._reader = _usace.cesam.read_raw()
+                self._reader = _usace.cesam.CESAMRawReader()
             elif reader_type == 'ceswg':
-                self._reader = _usace.ceswg.read_raw()
+                self._reader = _usace.ceswg.CESWGRawReader()
             elif reader_type == 'cespl':
-                self._reader = _usace.cespl.read_raw()
+                self._reader = _usace.cespl.CESPLRawReader()
+            elif reader_type == 'cenae':
+                self._reader = _usace.cenae.CENAERawReader()
             else:
                 raise ValueError('reader type not implemented')
         except:
@@ -104,7 +106,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
     def _set_data_transform(self):
         """Set up the datum transformation engine."""
 
-        self._transform = _trans.transform(self._config, self._reader)
+        self._transform = _trans.DatumTransformer(self._config, self._reader)
 
     def _set_data_interpolator(self):
         """Set up the interpolator engine."""
@@ -132,9 +134,8 @@ class fuse_ehydro(_fbc.fuse_base_class):
             ext2 = 'gpkg'
         else:
             ext2 = ext
-        self._writer = proc_io('gdal', ext)
-        self._points = proc_io('point', 'csar')
-
+        self._writer = ProcIO('gdal', ext)
+        self._points = ProcIO('point', 'csar')
     def read(self, infilename: str):
         """
         Extract metadata from the provided eHydro file path and write the metadata
@@ -272,7 +273,7 @@ class fuse_ehydro(_fbc.fuse_base_class):
         else:
             raise ValueError('No database name defined in the configuration file.')
         intype = self._config['bathymetry_intermediate_file']
-        self._db = proc_io(intype, 'carisbdb51', db_loc=db_loc, db_name=db_name)
+        self._db = ProcIO(intype, 'carisbdb51', db_loc=db_loc, db_name=db_name)
 
     def disconnect(self):
         """
