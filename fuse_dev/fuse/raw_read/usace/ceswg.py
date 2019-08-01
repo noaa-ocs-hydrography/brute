@@ -43,7 +43,7 @@ except:
 ##-----------------------------------------------------------------------------
 
 
-class read_raw:
+class CESWGRawReader:
     """
     This class passes back bathymetry
     & a metadata dictionary from the e-Hydro files
@@ -183,14 +183,14 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     f = filename
     basename = os.path.basename(f)
 
-    e_t = Extract_Txt(f)
+    e_t = XYZHeaderReader(f)
     # xml pull here.
     xmlfilename = get_xml_match(f)
     if os.path.isfile(xmlfilename):
         with open(xmlfilename, 'r') as xml_file:
             xml_txt = xml_file.read()
         xmlbasename = os.path.basename(xmlfilename)
-        xml_data = p_usace_xml.XML_Meta(xml_txt, filename=xmlbasename)
+        xml_data = p_usace_xml.XMLMetadata(xml_txt, filename=xmlbasename)
         if xml_data.version == 'USACE_FGDC':
             meta_xml = xml_data._extract_meta_USACE_FGDC()  # CEMVN()
         elif xml_data.version == 'ISO-8859-1':
@@ -210,8 +210,8 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     meta['special_handling'] = _check_special_handling(basename)#special handling is saved with text meta as it has to do with the text file
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
-    
-    e_pick = ehydro_pickle_use(xmlfilename)
+
+    e_pick = eHydroPickleReader(xmlfilename)
     meta_from_ehydro = e_pick._read_pickle()#to handle files
     meta_from_ehydro = e_pick._when_use_pickle(meta_xml)
     meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
@@ -258,7 +258,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     return merged_meta
 
 ###----------------------------------------------------------------------------
-class ehydro_pickle_use(object):
+class eHydroPickleReader(object):
     
     def __init__(self, infilename):
         
@@ -399,7 +399,7 @@ class ehydro_pickle_use(object):
         return meta_from_ehydro
     
 ###----------------------------------------------------------------------------
-class Extract_Txt(object):
+class XYZHeaderReader(object):
     """Extract both information from the filename as well as from the text file's header"""
 
     def __init__(self, preloadeddata, version='', filename=''):

@@ -19,7 +19,7 @@ from . import bag_hack as _bh
 _gdal.UseExceptions()
 
 
-class bag_file:
+class BagFile:
     """This class serves as the main container for BAG data."""
 
     def __init__(self):
@@ -334,7 +334,7 @@ class bag_file:
             self.outfilename = _os.path.join(outlocation, name)
 
 
-class gdal_create:
+class BagToGDALConverter:
     """This class serves as the main container for converting processed bag
     data into a :obj:`gdal.Dataset` object.
 

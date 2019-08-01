@@ -24,7 +24,7 @@ from fuse.proc_io import caris
 __version__ = 'Test'
 
 
-class proc_io:
+class ProcIO:
     """
     A class to abstract the reading and writing of bathymetry.
     """

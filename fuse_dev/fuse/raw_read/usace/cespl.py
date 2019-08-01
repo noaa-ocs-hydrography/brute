@@ -35,7 +35,7 @@ except:
 
 ##-----------------------------------------------------------------------------
 
-class read_raw:
+class CESPLRawReader:
     """
     This class passes back bathymetry
     & a metadata dictionary from the e-Hydro files
@@ -120,14 +120,14 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     basename = basename.rstrip('.xyz')
     # empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
-    e_t = Extract_Txt(f)
+    e_t = XYZHeaderReader(f)
     # xml pull here.
     xmlfilename = get_xml_match(f)
     if os.path.isfile(xmlfilename):
         with open(xmlfilename, 'r') as xml_file:
             xml_txt = xml_file.read()
         xmlbasename = os.path.basename(xmlfilename)
-        xml_data = p_usace_xml.XML_Meta(xml_txt, filename=xmlbasename)
+        xml_data = p_usace_xml.XMLMetadata(xml_txt, filename=xmlbasename)
         if xml_data.version == 'USACE_FGDC':
             meta_xml = xml_data._extract_meta_USACE_FGDC()  # CEMVN()
         elif xml_data.version == 'ISO-8859-1':
@@ -188,7 +188,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
 
 
 ###----------------------------------------------------------------------------
-class Extract_Txt(object):
+class XYZHeaderReader(object):
     """
     Extract both information from the filename as well as from the text file's header
     """

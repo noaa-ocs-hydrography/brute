@@ -8,14 +8,11 @@ Created on Tue Jul 16 13:36:08 2019
 from . import usace
 
 
-class read_raw(usace.Base):
+class CENAERawReader(usace.USACERawReader):
     """An abstract raw data reader."""
 
     def __init__(self):
         """
         No init needed?
         """
-        usace.Base.__init__(self, version='CENAE')
-
-
-
+        usace.USACERawReader.__init__(self, version='CENAE')
