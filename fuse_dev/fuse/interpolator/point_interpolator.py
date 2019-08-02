@@ -33,7 +33,6 @@ from typing import Tuple, Any
 import matplotlib.pyplot as plt
 import numpy
 import scipy
-from matplotlib.mlab import griddata as mlab_griddata
 from osgeo import gdal, ogr, osr
 from pykrige.ok import OrdinaryKriging
 
@@ -114,10 +113,6 @@ class PointInterpolator:
         if interpolation_type == 'linear':
             # do the triangulation interpolation
             ds2 = self._gdal_linear_interp_points(dataset, resolution)
-        elif interpolation_type == 'natural':
-            ds2 = self._gdal_mlab_natural_interp_points(dataset, resolution)
-            if shrink:
-                ds4 = self._shrink_coverage(ds2, resolution, window)
         elif interpolation_type == 'invlin':
             ds2 = self._gdal_invdist_scilin_interp_points(dataset, resolution,
                                                           window)
@@ -146,7 +141,7 @@ class PointInterpolator:
             # mask
             ds3 = self._get_mask(dataset, resolution, window)
             ds5 = self._mask_with_raster(ds2, ds3)
-        elif interpolation_type in ['natural', 'invlin']:
+        elif interpolation_type == 'invlin':
             ds3 = self._get_shape_mask(ds2, shapefile, resolution)
             if shrink:
                 ds5 = self._mask_with_raster(ds4, ds3)
@@ -154,7 +149,7 @@ class PointInterpolator:
                 ds5 = self._mask_with_raster(ds2, ds3)
 
         # write the files out using the above function
-        if interpolation_type in ['linear', 'natural', 'invlin']:
+        if interpolation_type in ['linear', 'invlin']:
             return ds5
         elif interpolation_type == 'invdist':
             return ds4 if shrink else ds3
@@ -486,77 +481,6 @@ class PointInterpolator:
         algorithm = f"linear:radius=0:nodata={int(nodata)}"
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
                                 algorithm=algorithm)
-        return interp_data
-
-    def _gdal_mlab_natural_interp_points(self, dataset: gdal.Dataset, resolution: float,
-                                         nodata: float = 1000000) -> gdal.Dataset:
-        """
-        Interpolate the provided gdal vector points and return the interpolated
-        data.
-
-        Parameters
-        ----------
-        dataset: gdal.Dataset :
-            TODO write description
-        resolution: float :
-            TODO write description
-        nodata: float :
-            TODO write description (Default value = 1000000)
-
-        Returns
-        -------
-        type
-            interpolated dataset
-
-        """
-
-        print('_gdal_mlab_natural_interp_points')
-        # Find the bounds of the provided data
-        xmin, xmax, ymin, ymax = numpy.nan, numpy.nan, numpy.nan, numpy.nan
-        lyr = dataset.GetLayerByIndex(0)
-        proj = lyr.GetSpatialRef().ExportToWkt()
-        count = lyr.GetFeatureCount()
-        xvals, yvals, zvals = [], [], []
-
-        for n in numpy.arange(count):
-            f = lyr.GetFeature(n)
-            x, y, z = f.geometry().GetPoint()
-            xvals.append(x)
-            yvals.append(y)
-            zvals.append(z)
-            xmin, xmax = _compare_vals(x, xmin, xmax)
-            ymin, ymax = _compare_vals(y, ymin, ymax)
-
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
-        print(bounds)
-        xbound, ybound = bounds[0], bounds[1]
-        xvals, yvals, zvals = numpy.array(xvals), numpy.array(yvals), numpy.array(zvals)
-        xvals, yvals = (xvals - xbound) / resolution, (yvals - ybound) / resolution
-
-        print('start', xvals, yvals, zvals)
-        xi, yi = numpy.arange(numcolumns), numpy.arange(numrows)
-        interp_obj = mlab_griddata(xvals, yvals, zvals, xi, yi, interp='nn')
-        interp_grid, interp_mask = interp_obj.data, interp_obj.mask
-        interp_grid[numpy.isnan(interp_grid)] = nodata
-        plt.figure()
-        plt.imshow(interp_grid)
-        plt.show()
-        plt.figure()
-        plt.imshow(interp_mask)
-        plt.show()
-        print('stop')
-
-        interp_data = gdal.GetDriverByName('MEM').Create('', numcolumns, numrows, 1, gdal.GDT_Float32)
-        interp_gt = (xbound, resolution, 0, ybound, 0, resolution)
-        interp_data.SetGeoTransform(interp_gt)
-        interp_data.SetProjection(proj)
-
-        band = interp_data.GetRasterBand(1)
-        band.SetNoDataValue(float(nodata))
-        band.WriteArray(interp_grid)
-
-        del band
-
         return interp_data
 
     def _gdal_invdist_scilin_interp_points(self, dataset: gdal.Dataset, resolution: float, radius: float,
