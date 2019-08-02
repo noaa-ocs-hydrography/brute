@@ -629,9 +629,11 @@ class PointInterpolator:
         total_parts = 36
         side_length = numpy.sqrt(total_parts)
 
+        row, col = 0, 0
+
         for part_index in range(0, total_parts):
-            input_start = int((part_index / side_length) * len(input_x))
-            input_end = int(((part_index + 1) / side_length) * len(input_x)) - 1
+            input_start = int((part_index / total_parts) * len(input_x))
+            input_end = int(((part_index + 1) / total_parts) * len(input_x)) - 1
 
             start_time = datetime.datetime.now()
 
@@ -639,33 +641,40 @@ class PointInterpolator:
                                            input_z[input_start:input_end], variogram_model='linear', verbose=False,
                                            enable_plotting=False)
 
-            grid_x_start = int((part_index / side_length) * len(output_grid_x))
-            grid_x_end = int(((part_index + 1) / side_length) * len(output_grid_x)) - 1
-            grid_y_start = int((part_index / side_length) * len(output_grid_y))
-            grid_y_end = int(((part_index + 1) / side_length) * len(output_grid_y)) - 1
+            grid_x_start = int(col * len(output_grid_x) / side_length)
+            grid_x_end = int((col + 1) * len(output_grid_x) / side_length - 1)
+            grid_y_start = int(row * len(output_grid_y) / side_length)
+            grid_y_end = int((row + 1) * len(output_grid_y) / side_length - 1)
 
             current_interpolated_data, current_variance = interpolator.execute('grid',
                                                                                output_grid_x[grid_x_start:grid_x_end],
                                                                                output_grid_y[grid_y_start:grid_y_end])
 
-            print(
-                f'completed chunk {part_index} of {total_parts} (took {(datetime.datetime.now() - start_time).total_seconds()} s)')
+            duration = (datetime.datetime.now() - start_time)
+
+            print(f'completed chunk {part_index + 1} of {total_parts} (took {duration.total_seconds()} s)')
             interpolated_data[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = current_interpolated_data
             variance[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = current_variance
+
+            if col >= side_length:
+                col = 0
+                row += 1
+            else:
+                col += 1
 
         del current_interpolated_data, current_variance
         uncertainty = numpy.sqrt(variance) * 2.5
 
         memory_raster_driver = gdal.GetDriverByName('MEM')
-        output_dataset = memory_raster_driver.Create('temp', numcolumns, numrows, 1, gdal.GDT_Float32)
+        output_dataset = memory_raster_driver.Create('temp', numcolumns, numrows, 2, gdal.GDT_Float32)
 
         input_geotransform = input_dataset.GetGeoTransform()
-        output_dataset.SetGeoTransform((input_geotransform[0], resolution, 0, input_geotransform[3], resolution))
-        output_dataset.SetProjection(input_dataset.GetProjection().ExportToWkt())
+        output_dataset.SetGeoTransform((input_geotransform[0], resolution, 0.0, 0.0, input_geotransform[3], resolution))
+        output_dataset.SetProjection(input_dataset.GetProjection())
 
         band_1 = output_dataset.GetRasterBand(1)
         band_1.SetNoDataValue(nodata)
-        band_1.WriteArray(interpolated_data.data)
+        band_1.WriteArray(interpolated_data)
 
         band_2 = output_dataset.GetRasterBand(2)
         band_2.SetNoDataValue(nodata)
