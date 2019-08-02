@@ -264,8 +264,8 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         """
         self._set_log(infilename)
         self._get_s57_stored_meta(infilename)
-        if self._metadata_ready(self._meta, fuse_ehydro._quality_metrics):
-            if not self._metadata_ready(self._meta, fuse_ehydro._scores):
+        if self._metadata_ready(self._meta, FuseProcessor_eHydro._quality_metrics):
+            if not self._metadata_ready(self._meta, FuseProcessor_eHydro._scores):
                 self._meta['CATZOC'] = score.catzoc(self._meta)
                 self._meta['supersession_score'] = score.supersession(self._meta)
                 self._meta_obj.write_meta_record(self._meta)
@@ -279,7 +279,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             
         else:
             log = 'Attempted scoring but required quality metrics were not available.'
-        self._logger.log(logging.DEBUG, log)
+        self._logger.log(_logging.DEBUG, log)
             
 
     def _connect_to_db(self):
