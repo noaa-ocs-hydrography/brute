@@ -58,6 +58,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
                     'source_indicator',
                     'source_type',
                     'interpolated',
+                    'license'
                     ]
                     
     _processing_info = ['logfilename',
@@ -70,13 +71,12 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
 
     def __init__(self, config_filename):
         super().__init__(config_filename)
-        cols = {**FuseProcessor_eHydro._paths,
-                **FuseProcessor_eHydro._dates,
-                **FuseProcessor_eHydro._datums,
-                **FuseProcessor_eHydro._quality_metrics,
-                **FuseProcessor_eHydro._scores,
-                **FuseProcessor_eHydro._source_info,
-                }
+        cols = FuseProcessor_eHydro._paths \
+            + FuseProcessor_eHydro._dates \
+            + FuseProcessor_eHydro._datums \
+            + FuseProcessor_eHydro._quality_metrics \
+            + FuseProcessor_eHydro._scores \
+            + FuseProcessor_eHydro._source_info
         self._meta_obj = _mre.MetaReviewer_eHydro(self._config['metapath'], cols)
         self._set_data_reader()
         self._set_data_transform()
