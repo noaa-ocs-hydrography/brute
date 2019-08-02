@@ -279,7 +279,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             
         else:
             log = 'Attempted scoring but required quality metrics were not available.'
-        self._logger.log(_logging.DEBUG, log)
+        self.logger.log(_logging.DEBUG, log)
             
 
     def _connect_to_db(self):
@@ -395,7 +395,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             self._s57_meta = self._meta_obj.row2s57(self._meta)
         # need to catch if this file is not in the metadata record yet here.
 
-    def _metadata_ready(metadata, reference):
+    def _metadata_ready(self, metadata, reference):
         """
         Check the metadata to see if the required fields are populated.
         """
