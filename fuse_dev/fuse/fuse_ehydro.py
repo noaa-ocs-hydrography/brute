@@ -58,9 +58,16 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
                     'source_indicator',
                     'source_type',
                     'interpolated',
-                    'version_reference',
                     ]
+<<<<<<< Updated upstream
 
+=======
+                    
+    _processing_info = ['logfilename',
+                        'version_reference',
+                        ]
+    
+>>>>>>> Stashed changes
     _scores = ['catzoc',
                'supersession_score',
                ]
@@ -265,12 +272,19 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             if not self._metadata_ready(self._meta, fuse_ehydro._scores):
                 self._meta['CATZOC'] = score.catzoc(self._meta)
                 self._meta['supersession_score'] = score.supersession(self._meta)
+                self._meta_obj.write_meta_record(self._meta)
             dscore = score.decay(self._meta, date)
             if self._db == None:
                 self._connect_to_db()
             procfile = self._meta['to_filename']
             self._s57_meta['dcyscr'] = dscore
             self._db.write(procfile, 'metadata', self._s57_meta)
+            log = f'Posting new decay score of {dscore} to database.'
+            
+        else:
+            log = 'Attempted scoring but required quality metrics were not available.'
+        self._logger.log(logging.DEBUG, log)
+            
 
     def _connect_to_db(self):
         """

@@ -283,7 +283,11 @@ class eHydroPickleReader(object):
         
         """
         self.filename = infilename
+<<<<<<< Updated upstream
 
+=======
+    
+>>>>>>> Stashed changes
     def _read_pickle(self) -> dict:
         """
         Read in picklefile that ehydro_move creates from the E-Hydro REST API
