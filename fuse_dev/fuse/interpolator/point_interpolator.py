@@ -626,7 +626,7 @@ class PointInterpolator:
         interpolated_data = numpy.empty((len(output_y), len(output_x)), dtype=float)
         variance = numpy.empty((len(output_y), len(output_x)), dtype=float)
 
-        total_parts = 9
+        total_parts = 36
         side_length = numpy.sqrt(total_parts)
 
         for part_index in range(0, total_parts):
@@ -637,7 +637,7 @@ class PointInterpolator:
                                            input_z[input_start:input_end], variogram_model='linear', verbose=False,
                                            enable_plotting=False)
 
-            output_start = int((part_index / side_length) * len(output_x))
+            output_x_start = int((part_index / side_length) * len(output_x))
             output_end = int(((part_index + 1) / side_length) * len(output_x)) - 1
 
             current_interpolated_data, current_variance = interpolator.execute('grid',
@@ -645,8 +645,8 @@ class PointInterpolator:
                                                                                output_y[output_start:output_end])
 
             print(f'completed chunk {part_index} of {total_parts}')
-            interpolated_data[output_start:output_end + 1] = current_interpolated_data
-            variance[output_start:output_end + 1] = current_variance
+            interpolated_data[output_start:output_end] = current_interpolated_data
+            variance[output_start:output_end] = current_variance
 
         del current_interpolated_data, current_variance
         uncertainty = numpy.sqrt(variance) * 2.5

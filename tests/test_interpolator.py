@@ -1,8 +1,11 @@
 import os
 import unittest
 
+import gdal
+from fuse.fuse_ehydro import FuseProcessor_eHydro
 from fuse.interpolator import interpolator
 from fuse.interpolator.bag_interpolator import bag, coverage
+from fuse.proc_io.proc_io import ProcIO
 
 DATA_PATH = r"C:\Data\NBS"
 
@@ -30,9 +33,22 @@ class TestBagInterpolator(unittest.TestCase):
 
 class TestPointInterpolator(unittest.TestCase):
     def test_kriging(self):
-        input_path = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'Original',
-                                  'BR_01_BRH_20190117_CS_4788_40X', 'BR_01_BRH_20190117_CS_4788_40X.XYZ')
-        kriging_interpolator = interpolator.Interpolator('point', 'kriging', 500)
+        input_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'Original',
+                                       'BR_01_BRH_20190117_CS_4788_40X')
+        input_path = os.path.join(input_directory, 'BR_01_BRH_20190117_CS_4788_40X.XYZ')
+
+        processed_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'MLLW', 'Data',
+                                           'Active')
+        processed_path = os.path.join(processed_directory, 'BR_01_BRH_20190117_CS_4788_40X.csar')
+        output_path = os.path.join(processed_directory, 'interpolated.BAG')
+
+        cenan_fuse_processor = FuseProcessor_eHydro(os.path.join('data', 'cenan_kriging.config'))
+        cenan_fuse_processor.read(input_path)
+        cenan_fuse_processor.process(input_path)
+
+        bag_dataset = gdal.Open(processed_path)
+        interpolated_bag_dataset = interpolator.Interpolator('point', 'kriging', 500).interpolate(bag_dataset)
+        ProcIO('gdal', 'bag').write(interpolated_bag_dataset, output_path)
 
 
 if __name__ == '__main__':
