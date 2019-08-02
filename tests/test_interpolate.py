@@ -9,12 +9,13 @@ DATA_PATH = r"C:\Data\NBS"
 
 class TestBagInterpolator(unittest.TestCase):
     def test_align2grid(self):
-        bag_path = os.path.join(DATA_PATH, 'H12607_MB_4m_MLLW_2of2.bag')
-        coverage_list = [os.path.join(DATA_PATH, 'H12607_SSSAB_1m_600kHz_2of2.tif')]
+        bag_testing_directory = os.path.join(DATA_PATH, 'testing', 'bag_interpolator', 'H12607')
+        bag_path = os.path.join(bag_testing_directory, 'H12607_MB_4m_MLLW_2of2.bag')
+        coverage_list = [os.path.join(bag_testing_directory, 'H12607_SSSAB_1m_600kHz_2of2.tif')]
 
         bag_dataset = bag.BagFile()
         bag_dataset.open_file(bag_path, 'hack')
-        bag_dataset.generate_name(DATA_PATH, False)
+        bag_dataset.generate_name(bag_testing_directory, False)
         coverage_dataset = coverage.UnifiedCoverage(coverage_list, bag_dataset.wkt, bag_dataset.name)
 
         assert coverage_dataset.bounds != bag_dataset.bounds

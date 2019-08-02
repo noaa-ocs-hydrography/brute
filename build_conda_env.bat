@@ -1,0 +1,1 @@
+conda env create --file %~dp0environment.yml
