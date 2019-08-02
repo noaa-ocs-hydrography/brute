@@ -166,15 +166,15 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     function returns metadata dictionary
     
     input is filename of .xyz file with path
-
+    
     Parameters
     ----------
     filename: str :
-
+    
     Returns
     -------
     dict:
-
+    
     """
     # next if pull the subset of the table in the dataframe related to the list of files passed to it.
     merged_meta = {}
@@ -270,17 +270,17 @@ class eHydroPickleReader(object):
         but with any extension
         (Here we tend to pass the xmlfilename as it already has been matched
         in the cases of _A.xyz etc., but one could use a .xyz file)
-
-
+          
+          
         Parameters
         ----------
         infilename: str:
-
-
+        
+        
         Returns
         -------
         self.filename = infilename: str:
-
+        
         """
         self.filename = infilename
 
@@ -298,7 +298,7 @@ class eHydroPickleReader(object):
         Returns
         -------
         pickle_meta: dict:
-    
+
         """
         print(f'reading in pickle based on: {self.filename}')  # making sure pickle passing is working
         pickle_meta = parse_usace_pickle.read_pickle(self.filename)
@@ -324,6 +324,7 @@ class eHydroPickleReader(object):
         meta_from_ehydro: dict:
 
         """
+
         meta_from_ehydro = self.meta_from_ehydro
 
         no_SPCS_conflict = ''
@@ -339,7 +340,8 @@ class eHydroPickleReader(object):
                 meta_xml = p_usace_xml.xml_SPCSconflict_otherspcs(meta_xml,
                                                                   f"{p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']}")
                 if p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
-                                              meta_from_ehydro['SOURCEPROJECTION']) == \meta_xml['from_fips']:
+                                              meta_from_ehydro['SOURCEPROJECTION']) == \
+                        meta_xml['from_fips']:
                     no_SPCS_conflict_withpickle = 'True'
                 else:
                     no_SPCS_conflict_withpickle = 'False'
@@ -369,6 +371,8 @@ class eHydroPickleReader(object):
         Returns
         -------
         meta_from_ehydro: dict:
+
+
         """
         meta_from_ehydro = self.meta_from_ehydro
         if 'SOURCEPROJECTION' in meta_from_ehydro:

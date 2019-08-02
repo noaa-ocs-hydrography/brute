@@ -46,25 +46,25 @@ class CESAMRawReader:
     """
     This class passes back bathymetry
     & a metadata dictionary from the e-Hydro files
-
+    
     Parameters
     ----------
-
+    
     Returns
     -------
-
+    
     """
 
     def read_metadata(self, infilename: str) -> dict:
         """
         Read all available meta data.
         returns dictionary
-
+        
         Parameters
         ----------
         infilename: str :
-
-
+        
+        
         Returns
         -------
         dict
@@ -78,12 +78,12 @@ class CESAMRawReader:
         """
         Read the bathymetry from the .dat file. The dat file is less precise,
         but had no header and is in a standardized format
-
+        
         Parameters
         ----------
         infilename :
-
-
+        
+        
         Returns
         -------
         xyz
@@ -112,15 +112,15 @@ class CESAMRawReader:
         the header when reading the file
         
         Note: The high resolution multibeam files are available as .xyz on E-Hydro
-
+        
         Parameters
         ----------
         infilename: str :
-
+        
         Returns
         -------
         xyz
-
+        
         """
         version = 'CESAM'
         self.version = version
@@ -163,13 +163,13 @@ def return_surveyid(filenamepath: str, ex_string: str) -> str:
     """
     strip end of filename off
     surveybasename =return_surveyid(filenamepath, ex_string)
-
+    
     Parameters
     ----------
     filenamepath: str :
         param ex_string:
     ex_string: str :
-
+    
     Returns
     -------
     surveybasename: str:
@@ -188,15 +188,15 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     function returns metadata dictionary
     
     input is filename of .xyz file with path
-
+    
     Parameters
     ----------
     filename: str :
-
+    
     Returns
     -------
     dict:
-
+    
     """
     # next if pull the subset of the table in the dataframe related to the list of files passed to it.
     merged_meta = {}
@@ -287,17 +287,17 @@ class eHydroPickleReader(object):
         but with any extension
         (Here we tend to pass the xmlfilename as it already has been matched
         in the cases of _A.xyz etc., but one could use a .xyz file)
-
-
+          
+          
         Parameters
         ----------
         infilename: str:
-
-
+        
+        
         Returns
         -------
         self.filename = infilename: str:
-
+        
         """
         self.filename = infilename
 
@@ -315,7 +315,7 @@ class eHydroPickleReader(object):
         Returns
         -------
         pickle_meta: dict:
-    
+
         """
         print(f'reading in pickle based on: {self.filename}')  # making sure pickle passing is working
         pickle_meta = parse_usace_pickle.read_pickle(self.filename)
@@ -338,6 +338,7 @@ class eHydroPickleReader(object):
         meta_from_ehydro: dict:
 
         """
+
         meta_from_ehydro = self.meta_from_ehydro
 
         no_SPCS_conflict = ''
@@ -353,7 +354,8 @@ class eHydroPickleReader(object):
                 meta_xml = p_usace_xml.xml_SPCSconflict_otherspcs(meta_xml,
                                                                   f"{p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']}")
                 if p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
-                                              meta_from_ehydro['SOURCEPROJECTION']) == \meta_xml['from_fips']:
+                                              meta_from_ehydro['SOURCEPROJECTION']) == \
+                        meta_xml['from_fips']:
                     no_SPCS_conflict_withpickle = 'True'
                 else:
                     no_SPCS_conflict_withpickle = 'False'
@@ -383,6 +385,8 @@ class eHydroPickleReader(object):
         Returns
         -------
         meta_from_ehydro: dict:
+
+
         """
         meta_from_ehydro = self.meta_from_ehydro
         if 'SOURCEPROJECTION' in meta_from_ehydro:
@@ -752,14 +756,14 @@ def _start_xyz(infilename):
     """
     looks for the first line of the xyz data after the header
     returns the row number of first line of data
-
+    
     Parameters
     ----------
     infilename :
-
+    
     Returns
     -------
-
+    
     """
     first_instance = ''
     numberofrows = []
@@ -779,7 +783,7 @@ def _start_xyz(infilename):
 def _is_header2(line, version=None):
     """
     looks at header
-
+    
     Parameters
     ----------
     line :
@@ -1151,16 +1155,16 @@ def _parse_LWRP_(line):
 def _parse_Gage_Reading(line, allcap1):
     """
     Looks for the water level Gage
-
+    
     Parameters
     ----------
     line :
         param allcap1:
     allcap1 :
-
+    
     Returns
     -------
-
+    
     """
     if allcap1 == 1:
         name = line.split('GAGE_READING==')[-1]
@@ -1176,14 +1180,14 @@ def _parse_Gage_Reading(line, allcap1):
 def _parse_sound_velocity(line):
     """
     Looks for Sound Velocity
-
+    
     Parameters
     ----------
     line :
-
+    
     Returns
     -------
-
+    
     """
     name = line.split('SOUND VELOCITY')[-1]
     name = name.strip('\n')
@@ -1194,14 +1198,14 @@ def _parse_sound_velocity(line):
 def _parse_Ranges(line):
     """
     looks at ranges
-
+    
     Parameters
     ----------
     line :
-
+    
     Returns
     -------
-
+    
     """
     name = line.split('Range:')[-1]
     name = name.strip('\n')
@@ -1212,15 +1216,15 @@ def _parse_Ranges(line):
 def _is_RTK(line):
     """
     pulls RTK line
-
+    
     Parameters
     ----------
     line :
-
-
+    
+    
     Returns
     -------
-
+    
     """
     pattern_coordinates = '[RTK]'  # at least six digits# should be seven then . plus two digits
     if _re.findall(pattern_coordinates, line) is not None:
@@ -1232,15 +1236,15 @@ def _is_RTK(line):
 def _is_RTK_Tide(line):
     """
     looks for RTK Tide
-
+    
     Parameters
     ----------
     line :
-
-
+    
+    
     Returns
     -------
-
+    
     """
     if _re.findall('[VRS RTK TIDES]', line) is not None:
         return False
@@ -1251,15 +1255,15 @@ def _is_RTK_Tide(line):
 def _parse_processedBy(line):
     """
     parse ProcessedBy
-
+    
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     metadata = {'ProcessedBy': line}
     return metadata
@@ -1268,15 +1272,15 @@ def _parse_processedBy(line):
 def _parse_CheckedBy(line):
     """
     parse_CheckedBy
-
+    
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     metadata = {'CheckedBy': line.split('CheckedBy==')[1]}
     return metadata
@@ -1284,15 +1288,15 @@ def _parse_CheckedBy(line):
 
 def _parse_ReviewedBy(line):
     """
-
+    
     Parameters
     ----------
     line :
-
-
+    
+    
     Returns
     -------
-
+    
     """
     metadata = {'ReviewedBy': line.split('ReviewedBy==')[1]}
     return metadata
@@ -1303,17 +1307,17 @@ def check_date_order(m, mm):
     """
     ingest dates from e-hydro file name, and xml if available
     do a date check.
-
+    
     Parameters
     ----------
     m :
         param mm:
     mm :
-
-
+    
+    
     Returns
     -------
-
+    
     """
     date_list = []  # date_list = [begdate, enddate,filename_date]
     if 'begdate' in m:
@@ -1447,15 +1451,15 @@ def check_abst_date(filename_date, daterange):
 def check_datelist(next_date):
     """
     checks date list
-
+    
     Parameters
     ----------
     next_date :
-
-
+    
+    
     Returns
     -------
-
+    
     """
     dateonly_list = []
     for day in next_date:
@@ -1467,17 +1471,17 @@ def check_datelist(next_date):
 def check_date_format_hasday(date_string, b_or_e=None):
     """
     check_date_format_hasday
-
+    
     Parameters
     ----------
     date_string :
         param b_or_e:  (Default value = None)
     b_or_e :
          (Default value = None)
-
+    
     Returns
     -------
-
+    
     """
     pattern_missing_valid_day = '[\d][\d][\d][\d][\d][\d][0][0]'
     if b_or_e is None:
