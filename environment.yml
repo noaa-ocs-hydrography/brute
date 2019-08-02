@@ -1,0 +1,16 @@
+name: NBS
+channels:
+  - conda-forge
+dependencies:
+  - python=3.6.7
+  - numpy
+  - scipy
+  - matplotlib
+  - gdal
+  - fiona
+  - mongoengine
+  - astropy
+  - pytables
+  - pykrige
+  - lxml
+  - requests
