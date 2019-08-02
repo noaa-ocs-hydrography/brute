@@ -26,7 +26,7 @@ Sources:
 """
 
 # __version__ = 'point_interpolator 0.0.1'
-
+import datetime
 import os
 from typing import Tuple, Any
 
@@ -621,10 +621,10 @@ class PointInterpolator:
 
         numrows, numcolumns, bounds = self._get_nodes3(resolution, (min_x, min_y, max_x, max_y))
 
-        output_x = numpy.arange(bounds[0], bounds[2], resolution)
-        output_y = numpy.arange(bounds[1], bounds[3], resolution)
-        interpolated_data = numpy.empty((len(output_y), len(output_x)), dtype=float)
-        variance = numpy.empty((len(output_y), len(output_x)), dtype=float)
+        output_grid_x = numpy.arange(bounds[0], bounds[2], resolution)
+        output_grid_y = numpy.arange(bounds[1], bounds[3], resolution)
+        interpolated_data = numpy.empty((len(output_grid_y), len(output_grid_x)), dtype=float)
+        variance = numpy.empty((len(output_grid_y), len(output_grid_x)), dtype=float)
 
         total_parts = 36
         side_length = numpy.sqrt(total_parts)
@@ -633,20 +633,25 @@ class PointInterpolator:
             input_start = int((part_index / side_length) * len(input_x))
             input_end = int(((part_index + 1) / side_length) * len(input_x)) - 1
 
+            start_time = datetime.datetime.now()
+
             interpolator = OrdinaryKriging(input_x[input_start:input_end], input_y[input_start:input_end],
                                            input_z[input_start:input_end], variogram_model='linear', verbose=False,
                                            enable_plotting=False)
 
-            output_x_start = int((part_index / side_length) * len(output_x))
-            output_end = int(((part_index + 1) / side_length) * len(output_x)) - 1
+            grid_x_start = int((part_index / side_length) * len(output_grid_x))
+            grid_x_end = int(((part_index + 1) / side_length) * len(output_grid_x)) - 1
+            grid_y_start = int((part_index / side_length) * len(output_grid_y))
+            grid_y_end = int(((part_index + 1) / side_length) * len(output_grid_y)) - 1
 
             current_interpolated_data, current_variance = interpolator.execute('grid',
-                                                                               output_x[output_start:output_end],
-                                                                               output_y[output_start:output_end])
+                                                                               output_grid_x[grid_x_start:grid_x_end],
+                                                                               output_grid_y[grid_y_start:grid_y_end])
 
-            print(f'completed chunk {part_index} of {total_parts}')
-            interpolated_data[output_start:output_end] = current_interpolated_data
-            variance[output_start:output_end] = current_variance
+            print(
+                f'completed chunk {part_index} of {total_parts} (took {(datetime.datetime.now() - start_time).total_seconds()} s)')
+            interpolated_data[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = current_interpolated_data
+            variance[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = current_variance
 
         del current_interpolated_data, current_variance
         uncertainty = numpy.sqrt(variance) * 2.5
