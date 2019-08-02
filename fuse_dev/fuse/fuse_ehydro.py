@@ -15,7 +15,7 @@ import fuse.fuse_processor as _fbc
 import fuse.interpolator.interpolator as _interp
 import fuse.meta_review.meta_review_ehydro as _mre
 import fuse.raw_read.usace as _usace
-from fuse.proc_io.proc_io import proc_io
+from fuse.proc_io.proc_io import ProcIO
 from fuse import score
 
 
@@ -59,27 +59,23 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
                     'source_type',
                     'interpolated',
                     ]
-<<<<<<< Updated upstream
-
-=======
                     
     _processing_info = ['logfilename',
                         'version_reference',
                         ]
     
->>>>>>> Stashed changes
     _scores = ['catzoc',
                'supersession_score',
                ]
 
     def __init__(self, config_filename):
         super().__init__(config_filename)
-        cols = {**fuse_ehydro._paths,
-                **fuse_ehydro._dates,
-                **fuse_ehydro._datums,
-                **fuse_ehydro._quality_metrics,
-                **fuse_ehydro._scores,
-                **fuse_ehydro._source_info,
+        cols = {**FuseProcessor_eHydro._paths,
+                **FuseProcessor_eHydro._dates,
+                **FuseProcessor_eHydro._datums,
+                **FuseProcessor_eHydro._quality_metrics,
+                **FuseProcessor_eHydro._scores,
+                **FuseProcessor_eHydro._source_info,
                 }
         self._meta_obj = _mre.MetaReviewer_eHydro(self._config['metapath'], cols)
         self._set_data_reader()
@@ -157,7 +153,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         else:
             ext2 = ext
         self._writer = ProcIO('gdal', ext)
-        self._points = ProcIO('point', 'csar')
+        self._points = ProcIO('point', ext2)
 
     def read(self, infilename: str):
         """
