@@ -53,7 +53,7 @@ class read_raw:
     
     """
 
-    def read_metadata(self, infilename: str): ->dict
+    def read_metadata(self, infilename: str) ->dict:
         """
         Read all available meta data.
         returns dictionary
@@ -211,21 +211,21 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
         xmlbasename = os.path.basename(xmlfilename)
         xml_data = p_usace_xml.XML_Meta(xml_txt, filename=xmlbasename)
         if xml_data.version == 'USACE_FGDC':
-            meta_xml = xml_data._extract_meta_USACE_FGDC()  # xml_data._extract_meta_CEMVN() is the version it is pulling#xml_data.my_etree_dict1#
+            meta_xml = xml_data._extract_meta_USACE_FGDC()
         elif xml_data.version == 'ISO-8859-1':
-            meta_xml = xml_data._extract_meta_USACE_ISO()  # is the version it is pulling  #xml_data.my_etree_dict1#
+            meta_xml = xml_data._extract_meta_USACE_ISO()
             if 'ISO_xml' not in meta_xml:
                 meta_xml = xml_data._extract_meta_USACE_FGDC(
                     override='Y')  # xml_data._extract_meta_ISOlabel_USACE_FGDC()
         else:
-            meta_xml = xml_data.convert_xml_to_dict2()# specify how to handle
+            meta_xml = xml_data.convert_xml_to_dict2()
         ext_dict = xml_data.extended_xml_fgdc()
         ext_dict = p_usace_xml.ext_xml_map_enddate(ext_dict)
         meta_xml = p_usace_xml.xml_SPCSconflict_flag(meta_xml)
     else:
         ext_dict = {}
         meta_xml = {}
-    meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESAM', default_meta='')#
+    meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESAM', default_meta='')
     meta['special_handling'] = _check_special_handling(basename)#special handling is saved with text meta as it has to do with the text file
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
@@ -554,17 +554,17 @@ class Extract_Txt(object):
             PROJECT_NAME
             SURVEY_NAME
             DATES_OF_SURVEY
-
+        
         Parameters
         ----------
         infilename :
             param version:  (Default value = None)
         version :
              (Default value = None)
-
+        
         Returns
         -------
-
+        
         """
         header = []
         metalist = []
@@ -620,17 +620,17 @@ class Extract_Txt(object):
         picked dictionary), look for the default file.  If that files does not
         exist, look for a file named 'default.pkl' in the same directory as the
         provided file name.
-
+        
         Parameters
         ----------
         infilename :
             param default_meta:
         default_meta :
             
-
+        
         Returns
         -------
-
+        
         """
         if len(default_meta) == 0:
             path, infile = os.path.split(infilename)
@@ -650,38 +650,38 @@ def get_xml(filename):
     input USACE .xyz/.XYZ filename or any last extension and return .xml
     xmlname = get_xml(filename) this makes this friendlier to .ppxyz files
     for instance
-
+    
     Parameters
     ----------
     filename :
         
-
+    
     Returns
     -------
-
+    
     """
     basef = filename.rpartition('.')[0]
     xml_name = f'{basef}.xml'
     return xml_name
-
-
+    
+    
 def get_xml_xt(filename, extension):
     """
     input USACE text filename and ending to chop to get to basename
     output will be the .xml file name
     (_A.xyz for instance or _FULL.XYZ are examples of extensions)
     xmlname = get_xml_xt(filename, extension)
-
+    
     Parameters
     ----------
     filename :
         param extension:
     extension :
         
-
+    
     Returns
     -------
-
+    
     """
     end_len = len(extension)
     if filename[-end_len:].upper() == extension:
@@ -697,15 +697,15 @@ def get_xml_match(f):
     input USACE .xyz/.XYZ filename or any last extension and return .xml
     it will try to match the non-full survey to the full density survey
     inorder to use the matching xml
-
+    
     Parameters
     ----------
     f :
         
-
+    
     Returns
     -------
-
+    
     """
     ext_list = ['_FULL.XYZ', '_A.XYZ', '.PPXYZ']
     for extension in ext_list:
@@ -725,7 +725,7 @@ def _check_special_handling(basename):
     ----------
     basename :
         
-
+    
     Returns
     -------
     """
@@ -764,7 +764,6 @@ def _start_xyz(infilename):
                 if line.find(',') > 0:
                     commas_present = ','
         first_instance = numberofrows[0]
-
     return first_instance, commas_present
 
 
@@ -778,10 +777,10 @@ def _is_header2(line, version=None):
         param version:  (Default value = None)
     version :
          (Default value = None)
-
+    
     Returns
     -------
-
+    
     """
     if version is None:
         version = ''
@@ -808,15 +807,15 @@ def _is_header2(line, version=None):
 def _parse_projectname(line):
     """
     Parse the project name line.
-
+    
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     name = line.split('=')[-1]
     name = name.strip('\n')
@@ -876,15 +875,15 @@ def _parse_notes_chart(line):
 def _parse_note(line):
     """
     Parse the notes line.
-
+    
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     metadata = {}
     # find the horizontal datum information.
@@ -937,15 +936,15 @@ def _parse_note(line):
 def _parse_surveyname(line):
     """
     Parse the survey name line.
-
+    
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     name = line.split('=')[-1]
     name = name.strip('\n')
@@ -956,15 +955,15 @@ def _parse_surveyname(line):
 def _parse_surveydates(line):
     """
     Parse the project dates line.
-
+    
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     metadata = {}
     datestr = line.split('=')[-1]
@@ -988,15 +987,15 @@ def _xyztext2date(textdate):
     """
     Take the date as provided in a text string as "day month year" as in
     "20 March 2017" and return the format "YearMonthDay" as in "20170320".
-
+    
     Parameters
     ----------
     textdate :
         
-
+    
     Returns
     -------
-
+    
     """
     try:
         date = datetime.strptime(textdate, '%d %B %Y')
@@ -1017,15 +1016,15 @@ def _parse_sounding_frequency(line):
     Note: LOW & HIGH are usually settings for the
     single beam in New Orleans
     400kHz seems to be their multibeam.
-
+    
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     name = line.split('SOUNDING_FREQUENCY==')[-1].strip('\n')
     metadata = {'sounding_frequency': name}
@@ -1035,15 +1034,15 @@ def _parse_sounding_frequency(line):
 def _parse_survey_type(line):
     """
     returns survey type
-
+    
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     name = line.split('SURVEY_TYPE==')[-1]
     name = name.strip('\n')
@@ -1054,15 +1053,15 @@ def _parse_survey_type(line):
 def _parse_survey_crew(line):
     """
     returns survey crew
-
+    
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     name = line.split('SURVEY_CREW==')[-1]
     name = name.strip('\n')
@@ -1073,15 +1072,15 @@ def _parse_survey_crew(line):
 def _parse_sea_condition(line):
     """
     sea conditions
-
+    
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     name = line.split('SEA_CONDITION==')[-1]
     name = name.strip('\n')
@@ -1092,15 +1091,15 @@ def _parse_sea_condition(line):
 def _parse_vessel_name(line):
     """
     vessel name
-
+    
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     name = line.split('VESSEL_NAME==')[-1]
     name = name.strip('\n')
@@ -1111,15 +1110,15 @@ def _parse_vessel_name(line):
 def _parse_LWRP_(line):
     """
     Checks to see if its in Low Water Reference Plane
-
+    
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     name = line.split('LWRP==')[-1]
     name = name.split('LWRP=')[-1]
@@ -1348,17 +1347,17 @@ def check_abst_date(filename_date, daterange):
     Expecting values from:
     #filename_date = m['filename_date']
     #dateramge = xml_meta['daterange']
-
+    
     Parameters
     ----------
     filename_date :
         param daterange:
     daterange :
         
-
+    
     Returns
     -------
-
+    
     """
     next_date = []
     mnum = ''
