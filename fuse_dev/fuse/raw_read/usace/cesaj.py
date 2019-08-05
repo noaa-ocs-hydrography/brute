@@ -53,7 +53,7 @@ class read_raw:
     
     """
 
-    def read_metadata(self, infilename: str): ->dict
+    def read_metadata(self, infilename: str) ->dict:
         """
         Read all available meta data.
         returns dictionary
@@ -280,7 +280,7 @@ class ehydro_pickle_use(object):
         """
         self.filename = infilename
     
-    def _read_pickle(self): -> dict
+    def _read_pickle(self)-> dict:
         """
         Read in picklefile that ehydro_move creates from the E-Hydro REST API
         table attributes.
