@@ -120,7 +120,10 @@ def decay(metadata: dict, date: _datetime, alpha: float = 0.022 ) -> float:
     """
     Return the decayed supersession_score.
     """
-    sd = _datetime.strptime(metadata['end_date'],'%Y%m%d')
+    if 'end_date' in metadata:
+        sd = _datetime.strptime(metadata['end_date'],'%Y%m%d')
+    else:
+        sd = _datetime.strptime(metadata['start_date'],'%Y%m%d')
     ss = float(metadata['supersession_score'])
     dt = date - sd
     days = dt.days + dt.seconds / (24 * 60 * 60)
