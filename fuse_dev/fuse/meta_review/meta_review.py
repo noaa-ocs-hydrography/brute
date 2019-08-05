@@ -1,5 +1,5 @@
 """
-meta_review_base.py
+meta_review.py
 
 20190130 grice
 
@@ -9,7 +9,7 @@ A base class for reading and writing metadata for review.
 from typing import List
 
 
-class meta_review_base:
+class MetaReviewer:
     def __init__(self, metafilename: str, metakeys: List[str]):
         """
         Initialize with the filename to use for meta data input / output.

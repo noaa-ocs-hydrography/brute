@@ -33,7 +33,6 @@ from typing import Tuple, Any
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy
-from matplotlib.mlab import griddata as mlab_griddata
 from osgeo import gdal, ogr, osr
 
 
@@ -69,7 +68,7 @@ def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, floa
     return valmin, valmax
 
 
-class point_interpolator:
+class PointInterpolator:
     """Interpolation methods for creating a raster from points."""
 
     def __init__(self, window_scalar: float = 1.1):
@@ -114,10 +113,6 @@ class point_interpolator:
 
         if interpolation_type == 'linear':
             linear = True
-        elif interpolation_type == 'natural':
-            if shapefile is None:
-                raise ValueError('Supporting shapefile required')
-            natural = True
         elif interpolation_type == 'invdist_scilin':
             if shapefile is None:
                 raise ValueError('Supporting shapefile required')
@@ -134,10 +129,6 @@ class point_interpolator:
         if linear:
             # do the triangulation interpolation
             ds2 = self._gdal_linear_interp_points(dataset, resolution)
-        elif natural:
-            ds2 = self._gdal_mlab_natural_interp_points(dataset, resolution)
-            if shrink:
-                ds4 = self._shrink_coverage(ds2, resolution, window)
         elif invlin:
             ds2 = self._gdal_invdist_scilin_interp_points(dataset, resolution,
                                                           window)
@@ -158,7 +149,7 @@ class point_interpolator:
             # mask
             ds3 = self._get_mask(dataset, resolution, window)
             ds5 = self._mask_with_raster(ds2, ds3)
-        elif natural or invlin:
+        elif invlin:
             ds3 = self._get_shape_mask(ds2, shapefile, resolution)
             if shrink:
                 ds5 = self._mask_with_raster(ds4, ds3)
@@ -166,7 +157,7 @@ class point_interpolator:
                 ds5 = self._mask_with_raster(ds2, ds3)
 
         # write the files out using the above function
-        if linear or natural or invlin:
+        if linear or invlin:
             return ds5
         elif invdist:
             if shrink:
@@ -260,7 +251,7 @@ class point_interpolator:
         mask = self._shrink_coverage(data, resolution, window)
         return mask
 
-    def _getShpRast(self, file: str, to_proj: str, to_gt: tuple, to_res: int, to_y, to_x, nodata: float = 0) -> Tuple[
+    def _getShpRast(self, file: str, to_proj: str, to_gt: tuple, to_res: int, to_shape, nodata: float = 0) -> Tuple[
         gdal.Dataset, Any]:
         """
         Import shapefile
@@ -275,10 +266,8 @@ class point_interpolator:
             gdal.GeoTransform object of the interpolated dataset
         to_res: int :
             Resolution of the input dataset
-        to_y :
-            TODO write description
-        to_x:
-            TODO write description
+        shape : tuple(int, int)
+            Shape of the the input dataset
         nodata: float :
             Nodata value for the ouput gdal.Dataset object (Default value = 0)
 
@@ -344,78 +333,53 @@ class point_interpolator:
 
         # Rasterize
         gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[1])
-
         newarr = band.ReadAsArray()
-        plt.figure()
-        plt.imshow(newarr)
-        plt.show()
 
-        # 6
-        print(x_orig, y_orig)
-        print(x_min, y_min)
-        ollx, olly = x_orig, y_orig
-        rllx, rlly = x_min, y_min
-        dllx, dlly = 0, 0
-        if ollx != rllx:
-            dllx = rllx - ollx
-            print(ollx, rllx, dllx)
-        if olly != rlly:
-            dlly = olly - rlly
-            print(olly, rlly, dlly)
-        print(dllx, dlly)
+        # clip resampled coverage data to the bounds of the BAG
+        output_array = np.full(to_shape, nodata)
 
-        # 7
-        oShape = (to_y, to_x)
-        oSy, oSx = oShape
-        rSy, rSx = newarr.shape
-        print(oSy, rSy)
-        print(oSx, rSx)
-        expx, expy = 0, 0
-        if newarr.shape != oShape:
-            print(oSy - rSy, oSx - rSx)
-            if rSy < oSy:
-                expy = int(np.abs(oSy - rSy))
-                print('expy', expy)
-            if rSx < oSx:
-                expx = int(np.abs(oSx - rSx))
-                print('expx', expx)
-        ay = np.full((rSy + expy, rSx + expx), nodata)
-        print('expz', ay.shape, oShape)
-        rollx = int(dllx / to_res)
-        rolly = int(dlly / to_res)
+        cov_ul, cov_lr = np.array(x_orig), np.array(y_orig)
+        bag_ul, bag_lr = np.array(x_min), np.array(y_min)
 
-        # 8
-        up, left = 0, 0
-        down, right = 0, 0
-        if dlly < 0:
-            down = abs(rolly)
-            up = 0
-        elif dlly > 0:
-            up = -int(rolly)
-        if dllx < 0:
-            left = -int(rollx)
-        elif dllx > 0:
-            right = abs(rollx)
-            left = 0
+        if bag_ul[0] > cov_lr[0] or bag_lr[0] < cov_ul[0] or bag_lr[1] > cov_ul[1] or bag_ul[1] < cov_lr[1]:
+            raise ValueError('bag dataset is outside the bounds of coverage dataset')
 
-        if dllx != 0 or dlly != 0:
-            print('rollz', up, left, down, right)
-            temp = newarr[up:, left:]
-            print(temp.shape)
-            plt.imshow(temp)
-            plt.show()
-            ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[:, :]
-            del temp
-        else:
-            ay[:] = newarr[:]
+        ul_index_delta = np.round((bag_ul - cov_ul) / np.array(to_res)).astype(int)
+        lr_index_delta = np.round((bag_lr - cov_ul) / np.array(to_res)).astype(int)
 
-        print('expz', ay.shape)
-        ax = np.full(oShape, nodata)
-        ax[:] = ay[:oSy, :oSx]
+        # indices to be written onto the output array
+        output_array_index_slices = [slice(0, None), slice(0, None)]
 
-        del newarr, ay, band, source_ds, target_ds
+        # BAG leftmost X is to the left of coverage leftmost X
+        if ul_index_delta[0] < 0:
+            output_array_index_slices[1] = slice(ul_index_delta[0] * -1, output_array_index_slices[1].stop)
+            ul_index_delta[0] = 0
 
-        ax_y, ax_x = ax.shape
+        # BAG topmost Y is above coverage topmost Y
+        if ul_index_delta[1] < 0:
+            output_array_index_slices[0] = slice(ul_index_delta[1] * -1, output_array_index_slices[0].stop)
+            ul_index_delta[1] = 0
+
+        # BAG rightmost X is to the right of coverage rightmost X
+        if lr_index_delta[0] > newarr.shape[1]:
+            output_array_index_slices[1] = slice(output_array_index_slices[1].start,
+                                                 newarr.shape[1] - lr_index_delta[0])
+            lr_index_delta[0] = newarr.shape[1]
+
+        # BAG bottommost Y is lower than coverage bottommost Y
+        if lr_index_delta[1] > newarr.shape[0]:
+            output_array_index_slices[0] = slice(output_array_index_slices[0].start,
+                                                 newarr.shape[0] - lr_index_delta[1])
+            lr_index_delta[1] = newarr.shape[0]
+
+        # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
+        output_array[output_array_index_slices[0], output_array_index_slices[1]] = newarr[
+                                                                                   ul_index_delta[1]:lr_index_delta[1],
+                                                                                   ul_index_delta[0]:lr_index_delta[0]]
+
+        del newarr, band, source_ds, target_ds
+
+        ax_y, ax_x = output_array.shape
 
         target_ds = gdal.GetDriverByName('MEM').Create('', ax_x, ax_y, 1, gdal.GDT_Float32)
         x_orig, y_orig = to_gt[0], to_gt[3]
@@ -423,7 +387,7 @@ class point_interpolator:
         target_ds.SetGeoTransform(target_gt)
         band = target_ds.GetRasterBand(1)
         band.SetNoDataValue(nodata)
-        band.WriteArray(ax)
+        band.WriteArray(output_array)
 
         target_gt = target_ds.GetGeoTransform()
 
@@ -450,7 +414,7 @@ class point_interpolator:
         """
 
         band = grid.GetRasterBand(1)
-        bandy, bandx = grid.RasterYSize, grid.RasterXSize
+        shape = (grid.RasterYSize, grid.RasterXSize)
         raster = band.ReadAsArray()
         plt.figure()
         plt.imshow(raster)
@@ -461,7 +425,7 @@ class point_interpolator:
         proj = osr.SpatialReference(wkt=grid_ref)
         proj.MorphFromESRI()
         print(grid_ref, grid_gt)
-        shape_ds, shape_gt = self._getShpRast(shapefile, proj, grid_gt, int(resolution), bandy, bandx)
+        shape_ds, shape_gt = self._getShpRast(shapefile, proj, grid_gt, int(resolution), shape)
         print('transformed', shape_gt)
         return shape_ds
 
@@ -502,77 +466,6 @@ class point_interpolator:
         algorithm = f"linear:radius=0:nodata={int(nodata)}"
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
                                 algorithm=algorithm)
-        return interp_data
-
-    def _gdal_mlab_natural_interp_points(self, dataset: gdal.Dataset, resolution: float,
-                                         nodata: float = 1000000) -> gdal.Dataset:
-        """
-        Interpolate the provided gdal vector points and return the interpolated
-        data.
-
-        Parameters
-        ----------
-        dataset: gdal.Dataset :
-            TODO write description
-        resolution: float :
-            TODO write description
-        nodata: float :
-            TODO write description (Default value = 1000000)
-
-        Returns
-        -------
-        type
-            interpolated dataset
-
-        """
-
-        print('_gdal_mlab_natural_interp_points')
-        # Find the bounds of the provided data
-        xmin, xmax, ymin, ymax = np.nan, np.nan, np.nan, np.nan
-        lyr = dataset.GetLayerByIndex(0)
-        proj = lyr.GetSpatialRef().ExportToWkt()
-        count = lyr.GetFeatureCount()
-        xvals, yvals, zvals = [], [], []
-
-        for n in np.arange(count):
-            f = lyr.GetFeature(n)
-            x, y, z = f.geometry().GetPoint()
-            xvals.append(x)
-            yvals.append(y)
-            zvals.append(z)
-            xmin, xmax = _compare_vals(x, xmin, xmax)
-            ymin, ymax = _compare_vals(y, ymin, ymax)
-
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
-        print(bounds)
-        xbound, ybound = bounds[0], bounds[1]
-        xvals, yvals, zvals = np.array(xvals), np.array(yvals), np.array(zvals)
-        xvals, yvals = (xvals - xbound) / resolution, (yvals - ybound) / resolution
-
-        print('start', xvals, yvals, zvals)
-        xi, yi = np.arange(numcolumns), np.arange(numrows)
-        interp_obj = mlab_griddata(xvals, yvals, zvals, xi, yi, interp='nn')
-        interp_grid, interp_mask = interp_obj.data, interp_obj.mask
-        interp_grid[np.isnan(interp_grid)] = nodata
-        plt.figure()
-        plt.imshow(interp_grid)
-        plt.show()
-        plt.figure()
-        plt.imshow(interp_mask)
-        plt.show()
-        print('stop')
-
-        interp_data = gdal.GetDriverByName('MEM').Create('', numcolumns, numrows, 1, gdal.GDT_Float32)
-        interp_gt = (xbound, resolution, 0, ybound, 0, resolution)
-        interp_data.SetGeoTransform(interp_gt)
-        interp_data.SetProjection(proj)
-
-        band = interp_data.GetRasterBand(1)
-        band.SetNoDataValue(float(nodata))
-        band.WriteArray(interp_grid)
-
-        del band
-
         return interp_data
 
     def _gdal_invdist_scilin_interp_points(self, dataset: gdal.Dataset, resolution: float, radius: float,

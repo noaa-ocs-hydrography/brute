@@ -5,21 +5,22 @@ Created on Wed Jul 17 12:49:10 2019
 @author: Casiano.Koprowski
 """
 
+import logging as _logging
 import os as _os
 import pickle as _pickle
 import re as _re
 import sys as _sys
-import logging as _logging
 from datetime import datetime as _datetime
 from xml.etree.ElementTree import parse as _parse
 
 import numpy as _np
-from . import parse_usace_xml
-from . import parse_usace_pickle
 from fuse.datum_transform import usefips as _usefips
 
+from . import parse_usace_pickle
+from . import parse_usace_xml
 
-class Base:
+
+class USACERawReader:
     def __init__(self, version=None):
         self.version = version
         self.ussft2m = 0.30480060960121924  # US survey feet to meters
@@ -515,7 +516,7 @@ class Base:
             with open(xmlfilename, 'r') as xml_file:
                 xml_txt = xml_file.read()
             xmlbasename = _os.path.basename(xmlfilename)
-            xml_data = parse_usace_xml.XML_Meta(xml_txt, filename=xmlbasename)
+            xml_data = parse_usace_xml.XMLMetadata(xml_txt, filename=xmlbasename)
             if xml_data.version == 'USACE_FGDC':
                 meta_xml = xml_data._extract_meta_USACE_FGDC()
             elif xml_data.version == 'ISO-8859-1':

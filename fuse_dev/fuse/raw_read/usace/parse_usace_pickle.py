@@ -9,7 +9,7 @@ import os as _os
 import pickle as _pickle
 
 
-class pickle_file:
+class PickleFile:
     """TODO write description"""
 
     def __init__(self, infilename):

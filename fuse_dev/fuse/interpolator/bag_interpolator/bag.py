@@ -10,7 +10,6 @@ from typing import Tuple, List
 
 import numpy as _np
 import tables as _tb
-from hyo2 import bag as _bag
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
 
@@ -19,7 +18,7 @@ from . import bag_hack as _bh
 _gdal.UseExceptions()
 
 
-class bag_file:
+class BagFile:
     """This class serves as the main container for BAG data."""
 
     def __init__(self):
@@ -52,38 +51,10 @@ class bag_file:
 
         if method == 'gdal':
             self._file_gdal(filepath)
-        elif method == 'hyo':
-            self._file_hyo(filepath)
         elif method == 'hack':
             self._file_hack(filepath)
         else:
             raise ValueError('Open method not implemented.')
-
-    def _file_hyo(self, filepath: str):
-        """
-        Used to read a BAG file using HydrOffice's hyo2.bag module.
-
-        This function reads and populates this object's attributes
-
-        Parameters
-        ----------
-        filepath : str
-            The complete file path of the input BAG file
-
-        """
-
-        self._known_data(filepath)
-        bag_obj = _bag.BAGFile(filepath)
-        bag_obj.populate_metadata()
-        self.elevation = self._nan2ndv(bag_obj.elevation(), self.nodata)
-        self.uncertainty = self._nan2ndv(bag_obj.uncertainty(), self.nodata)
-        self.shape = bag_obj.elevation_shape()
-        self.bounds = self._meta2bounds(bag_obj.meta)
-        self.resolution = (bag_obj.meta.res_x, bag_obj.meta.res_y)
-        self.wkt = bag_obj.meta.wkt_srs
-
-        print(self.bounds)
-        del bag_obj
 
     def _file_gdal(self, filepath: str):
         """
@@ -334,7 +305,7 @@ class bag_file:
             self.outfilename = _os.path.join(outlocation, name)
 
 
-class gdal_create:
+class BagToGDALConverter:
     """This class serves as the main container for converting processed bag
     data into a :obj:`gdal.Dataset` object.
 

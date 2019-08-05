@@ -10,7 +10,7 @@ Abstract datum transformation.
 from fuse.datum_transform import use_vdatum as uv
 
 
-class transform:
+class DatumTransformer:
     """
     An object for abstracting the datum transformation API.  This should allow
     for different transformation machines and versions.
@@ -47,7 +47,7 @@ class transform:
         """
 
         if 'vdatum_path' in self._config:
-            self._engine = uv.vdatum(self._config, self._reader)
+            self._engine = uv.VDatum(self._config, self._reader)
         else:
             raise ValueError('No java path provided')
 

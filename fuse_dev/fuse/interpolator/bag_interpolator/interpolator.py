@@ -196,7 +196,7 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
     return nbag, nunc, polyList if debug else cpoly.astype(_np.int)
 
 
-class linear:
+class LinearInterpolator:
     """
     Interpolates input data and convolves the ouput of the interpolation, if
     applicable.
@@ -394,7 +394,7 @@ def chunk(arr, tile, mode=None, copy=None):
         raise ValueError("Mode value required.")
 
 
-class tile:
+class BagTile:
     """
     tiles() serves as the data container for individual tile data. It's
     inputs inlcude sliceInfo=[buffer, height, width], chunkSlice=tile[y,x]
