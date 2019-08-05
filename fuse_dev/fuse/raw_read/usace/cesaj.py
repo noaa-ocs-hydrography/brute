@@ -452,7 +452,7 @@ class XYZHeaderReader(object):
             Default value = '')
         meta_source :
              (Default value = 'xyz')
-
+        
         Returns
         -------
 
