@@ -21,6 +21,15 @@ from fuse import score
 
 class FuseProcessor_eHydro(_fbc.FuseProcessor):
     """TODO write description"""
+    _default_quality_metrics = {'complete_coverage': False,
+                                'bathymetry': True,
+                                'vert_uncert_fixed': 0.5,
+                                'vert_uncert_vari': 0.1,
+                                'horiz_uncert_fixed': 5.0,
+                                'horiz_uncert_vari': 0.05,
+                                'feat_detect': False,
+                                }
+    
     _datums = ['from_fips',
               'from_horiz_datum',
               'from_horiz_units',
@@ -182,8 +191,14 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         meta['to_vert_units'] = 'metres'
         meta['interpolated'] = 'False'
         meta['posted'] = False
+        if not self._quality_metadata_ready(meta):
+            default = FuseProcessor_eHydro._default_quality_metrics
+            msg = f'Not all quality metadata was found.  Using default values: {default}'
+            self.logger.log(_logging.DEBUG, msg)
+            meta = {**default, **meta}
         # write the metadata
         self._meta_obj.write_meta_record(meta)
+        self._close_log()
 
     def process(self, infilename: str, interpolate=True):
         """
@@ -240,6 +255,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             self._meta_obj.write_meta_record(meta_interp)
         else:
             self.logger.log(_logging.DEBUG, 'No fips code found')
+        self._close_log()
 
     def post(self, infilename):
         """
@@ -262,6 +278,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             self._db.write(procfile, 'new', s57_meta)
             # need to check for proper insertion...
             self._meta_obj.write_meta_record(metadata)
+        self._close_log()
 
     def score(self, infilename, date):
         """
@@ -283,6 +300,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         else:
             log = 'Insertion of decay score failed.'
         self.logger.log(_logging.DEBUG, log)
+        self._close_log()
             
 
     def _connect_to_db(self):
@@ -331,6 +349,9 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         """
 
         metapath, metafile = _os.path.split(self._config['metapath'])
+        root, ext = _os.path.splitext(infilename)
+        if ext == '.interpolated':
+            infilename = root
         filepath, filename = _os.path.split(infilename)
         fname, ext = _os.path.splitext(filename)
         logname = _os.path.join(metapath, f'{fname}.log')
@@ -344,6 +365,25 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         formatter = _logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         fh.setFormatter(formatter)
         self.logger.addHandler(fh)
+        
+    def _close_log(self):
+        """
+        Close the object logging file.
+
+        Parameters
+        ----------
+        infilename :
+
+        infilename: str :
+
+
+        Returns
+        -------
+
+        """
+        # remove handlers
+        for h in self.logger.handlers:
+            self.logger.removeHandler(h)
 
     def _get_stored_meta(self, infilename: str):
         """
