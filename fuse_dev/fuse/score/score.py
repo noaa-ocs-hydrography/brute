@@ -61,7 +61,10 @@ def _get_feature_detection(metadata: dict) -> float:
     features, detect the least depth, and the size of the feature.
     """
     detected = metadata['feat_detect'].upper() == 'TRUE'
-    least_depth = metadata['feat_least_depth'].upper() == 'TRUE'
+    if detected:
+        least_depth = metadata['feat_least_depth'].upper() == 'TRUE'
+    else:
+        least_depth = False
     size_okay = False
     if 'feat_size' in metadata:
         size = float(metadata['feat_size'])
