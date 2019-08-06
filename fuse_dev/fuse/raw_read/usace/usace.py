@@ -47,11 +47,17 @@ class USACERawReader:
         -------
 
         """
-        meta_pickle = self._parse_pickle(infilename)
+        basexyzname, suffix = self.name_gen(infilename, ext='xyz')
         meta_xml = self._parse_usace_xml(infilename)
-        meta_date = self._parse_start_date(infilename, {**meta_xml, **meta_pickle})
+        meta_xyz = self._parse_ehydro_xyz_header(basexyzname)
+        meta_filename = self._parse_filename(basexyzname)
+        meta_pickle = self._parse_pickle(infilename)
+        meta_date = self._parse_start_date(infilename,
+                                           {**meta_pickle, **meta_xyz,
+                                            **meta_xml})
         meta_xml['poly_name'] = meta_pickle['poly_name']
-        return {**meta_xml, **meta_date}
+        return {**meta_pickle, **meta_filename, **meta_xyz, **meta_xml,
+                **meta_date}
 
     def read_bathymetry(self, infilename: str):
         """
@@ -112,6 +118,38 @@ class USACERawReader:
         pickle_dict = parse_usace_pickle.read_pickle(pickle_name, pickle_ext=True)
         pickle_keys = parse_usace_pickle.dict_keys(pickle_dict)
         return pickle_dict
+
+    def _parse_usace_xml(self, infilename):
+        """
+        Read all available meta data.
+        returns dictionary
+        Parameters
+        ----------
+        infilename: str
+        """
+        xmlfilename = self.name_gen(infilename, ext='xml', sfx=False)
+        if _os.path.isfile(xmlfilename):
+            with open(xmlfilename, 'r') as xml_file:
+                xml_txt = xml_file.read()
+            xmlbasename = _os.path.basename(xmlfilename)
+            xml_data = parse_usace_xml.XMLMetadata(xml_txt, filename=xmlbasename)
+            if xml_data.version == 'USACE_FGDC':
+                meta_xml = xml_data._extract_meta_USACE_FGDC()
+            elif xml_data.version == 'ISO-8859-1':
+                meta_xml = xml_data._extract_meta_USACE_ISO()
+                if 'ISO_xml' not in meta_xml:
+                    meta_xml = xml_data._extract_meta_USACE_FGDC(override='Y')
+            else:
+                meta_xml = xml_data.convert_xml_to_dict2()
+            ext_dict = xml_data.extended_xml_fgdc()
+            ext_dict = parse_usace_xml.ext_xml_map_enddate(ext_dict)
+            meta_xml = parse_usace_xml.xml_SPCSconflict_flag(meta_xml)
+        else:
+            ext_dict = {}
+            meta_xml = {}
+        meta_xml['from_path'] = infilename
+        meta_xml['from_filename'] = _os.path.basename(infilename)
+        return {**meta_xml, **ext_dict}
 
     def _parse_start_date(self, infilename: str, metadata: dict) -> dict:
         start = {}
@@ -200,11 +238,11 @@ class USACERawReader:
         merged_meta = {**default_meta, **name_meta, **file_meta}
         if 'from_horiz_unc' in merged_meta:
             if merged_meta['from_horiz_units'] == 'US Survey Foot':
-                val = CENANRawReader._ussft2m * float(merged_meta['from_horiz_unc'])
+                val = self.ussft2m * float(merged_meta['from_horiz_unc'])
                 merged_meta['horiz_uncert'] = val
         if 'from_vert_unc' in merged_meta:
             if merged_meta['from_vert_units'] == 'US Survey Foot':
-                val = CENANRawReader._ussft2m * float(merged_meta['from_vert_unc'])
+                val = self.ussft2m * float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
         sorind = f"{name_meta['projid']}_{name_meta['uniqueid']}_{name_meta['subprojid']}_{name_meta['start_date']}_" + \
