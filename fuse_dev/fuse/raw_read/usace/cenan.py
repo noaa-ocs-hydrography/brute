@@ -375,7 +375,9 @@ class CENANRawReader:
         if len(dateout) == 1:
             pass
         elif len(dateout) == 2:
-            metadata['end_date'] = self._xyztext2date(dateout[1])
+            end_date = self._xyztext2date(dateout[1])
+            if end_date is not None:
+                metadata['end_date'] = end_date
         else:
             print('ambiguous date found!')
         return metadata
