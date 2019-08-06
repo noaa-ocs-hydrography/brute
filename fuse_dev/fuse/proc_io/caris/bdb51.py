@@ -271,7 +271,11 @@ class BDB51:
                 while True:
                     if self._response is not None:  # we need a way to check if the connection is alive
                         response = self._response
-                        self._logger.log(logging.DEBUG, str(response))
+                        if 'log' in response:
+                            msg = response['log']
+                        else:
+                            msg = str(response)
+                        self._logger.log(logging.DEBUG, msg)
 
                         if not response['success']:
                             print('{} failed!'.format(response['command']))

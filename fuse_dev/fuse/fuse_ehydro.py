@@ -22,44 +22,68 @@ from fuse.proc_io.proc_io import ProcIO
 
 class FuseProcessor_eHydro(_fbc.FuseProcessor):
     """TODO write description"""
-    _cols = [
-        'from_filename',
-        'from_path',
-        'to_filename',
-        'start_date',
-        'end_date',
-        'from_fips',
-        'from_horiz_datum',
-        'from_horiz_units',
-        'from_horiz_unc',
-        'to_horiz_datum',
-        'from_vert_datum',
-        'from_vert_key',
-        'from_vert_units',
-        'from_vert_unc',
-        'to_vert_datum',
-        'to_vert_units',
-        'agency',
-        'source_indicator',
-        'source_type',
-        'complete_coverage',
-        'complete_bathymetry',
-        'vert_uncert_fixed',
-        'vert_uncert_vari',
-        'horiz_uncert_fixed',
-        'horiz_uncert_vari',
-        'feat_size',
-        'feat_detect',
-        'feat_least_depth',
-        'interpolated',
-        'catzoc',
-        'supersession_score',
-        'script_version'
-    ]
+    _default_quality_metrics = {'complete_coverage': False,
+                                'bathymetry': True,
+                                'vert_uncert_fixed': 0.5,
+                                'vert_uncert_vari': 0.1,
+                                'horiz_uncert_fixed': 5.0,
+                                'horiz_uncert_vari': 0.05,
+                                'feat_detect': False,
+                                }
+
+    _datums = ['from_fips',
+               'from_horiz_datum',
+               'from_horiz_units',
+               'to_horiz_datum',
+               'from_vert_datum',
+               'from_vert_key',
+               'from_vert_units',
+               'to_vert_datum',
+               'to_vert_units',
+               ]
+
+    _quality_metrics = ['from_horiz_unc',
+                        'from_vert_unc',
+                        'complete_coverage',
+                        'bathymetry',
+                        'vert_uncert_fixed',
+                        'vert_uncert_vari',
+                        'horiz_uncert_fixed',
+                        'horiz_uncert_vari',
+                        'feat_size',
+                        'feat_detect',
+                        'feat_least_depth',
+                        ]
+
+    _paths = ['from_filename',
+              'from_path',
+              'to_filename',
+              ]
+
+    _dates = ['start_date',
+              'end_date',
+              ]
+
+    _source_info = ['agency',
+                    'source_indicator',
+                    'source_type',
+                    'interpolated',
+                    'posted',
+                    'license',
+                    ]
+
+    _processing_info = ['logfilename',
+                        'version_reference',
+                        ]
+
+    _scores = ['catzoc',
+               'supersession_score',
+               ]
 
     def __init__(self, config_filename):
         super().__init__(config_filename)
-        self._meta_obj = _mre.MetaReviewer_eHydro(self._config['metapath'], FuseProcessor_eHydro._cols)
+        cols = FuseProcessor_eHydro._paths + FuseProcessor_eHydro._dates + FuseProcessor_eHydro._datums + FuseProcessor_eHydro._quality_metrics + FuseProcessor_eHydro._scores + FuseProcessor_eHydro._source_info
+        self._meta_obj = _mre.MetaReviewer_eHydro(self._config['metapath'], cols)
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()
@@ -136,7 +160,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         else:
             ext2 = ext
         self._writer = ProcIO('gdal', ext)
-        self._points = ProcIO('point', 'csar')
+        self._points = ProcIO('point', ext2)
 
     def read(self, infilename: str):
         """
@@ -156,7 +180,6 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
 
         """
 
-        self._meta = {}
         self._set_log(infilename)
         # get the metadata
         meta = self._reader.read_metadata(infilename)
@@ -164,10 +187,15 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         meta['to_vert_datum'] = self._config['to_vert_datum']
         meta['to_vert_units'] = 'metres'
         meta['interpolated'] = 'False'
-        # meta['script_version'] = f'{meta['script_version']}' #,{__version__}{i2c.__version__}'
-        self._meta.update(meta)
+        meta['posted'] = False
+        if not self._quality_metadata_ready(meta):
+            default = FuseProcessor_eHydro._default_quality_metrics
+            msg = f'Not all quality metadata was found.  Using default values: {default}'
+            self.logger.log(_logging.DEBUG, msg)
+            meta = {**default, **meta}
         # write the metadata
         self._meta_obj.write_meta_record(meta)
+        self._close_log()
 
     def process(self, infilename: str, interpolate=True):
         """
@@ -190,10 +218,9 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             Perhaps this should be added to the metadata object?
         """
 
-        self._get_stored_meta(infilename)
+        metadata = self._get_stored_meta(infilename)
         self._set_log(infilename)
-
-        if 'from_fips' in self._meta:
+        if 'from_fips' in metadata:
             # convert the bathy for the original data
             outpath = self._config['outpath']
             infilepath, infilebase = _os.path.split(infilename)
@@ -202,65 +229,75 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             new_ext = self._config['bathymetry_intermediate_file']
             outfilename = f'{outfilebase}.{new_ext}'
             # oddly _transform becomes the bathymetry reader here...
-
             # return a gdal dataset in the right datums for combine
-            dataset = self._transform.translate(infilename, self._meta)
+            dataset = self._transform.translate(infilename, metadata)
             resolution = self._config['to_resolution']
             self._points.write(dataset, outfilename)
-            self._meta['to_filename'] = outfilename
-            catzoc = score.catzoc(self._meta)
-            supscr = score.supersession(self._meta)
-            self._meta['CATZOC'] = catzoc
-            self._meta['supscr'] = supscr
-            self._meta_obj.write_meta_record(self._meta)
-
+            metadata['to_filename'] = outfilename
+            self._meta_obj.write_meta_record(metadata)
             # take a gdal dataset for interpolation and return a gdal dataset
             interpfilename = f'{outfilebase}_{resolution}m_interp.{new_ext}'
             interpkeyfilename = f'{infilebase}.interpolated'
-            self._meta_interp = self._meta.copy()
-            self._meta_interp['interpolated'] = True
-            self._meta_interp['from_filename'] = interpkeyfilename
-            self._meta_interp['to_filename'] = interpfilename
-            if 'poly_name' in self._meta_interp:
-                shapename = self._meta_interp['poly_name']
+            meta_interp = metadata.copy()
+            meta_interp['interpolated'] = True
+            meta_interp['from_filename'] = interpkeyfilename
+            meta_interp['to_filename'] = interpfilename
+            if 'poly_name' in meta_interp:
+                shapename = meta_interp['poly_name']
                 shapepath = _os.path.join(infilepath, shapename)
                 dataset = self._interpolator.interpolate(dataset, shapepath)
             else:
                 dataset = self._interpolator.interpolate(dataset)
             self._writer.write(dataset, interpfilename)
-            self._meta_obj.write_meta_record(self._meta_interp)
+            self._meta_obj.write_meta_record(meta_interp)
         else:
             self.logger.log(_logging.DEBUG, 'No fips code found')
+        self._close_log()
 
     def post(self, infilename):
         """
         Make the data available for amalgamation.
-
+        
         TODO: need to add checks to make sure the metadata is ready.
             Perhaps this should be added to the metadata object?
         """
+        metadata = self._get_stored_meta(infilename)
         self._set_log(infilename)
-        self._get_s57_stored_meta(infilename)
-        if len(self._meta) > 0:
+        if self._quality_metadata_ready(metadata):
+            if not self._score_metadata_ready(metadata):
+                metadata['catzoc'] = score.catzoc(metadata)
+                metadata['supersession_score'] = score.supersession(metadata)
             if self._db is None:
                 self._connect_to_db()
-            procfile = self._meta['to_filename']
-            self._db.write(procfile, 'new', self._s57_meta)
+            procfile = metadata['to_filename']
+            metadata['posted'] = True
+            s57_meta = self._get_meta_as_s57(metadata)
+            self._db.write(procfile, 'new', s57_meta)
+            # need to check for proper insertion...
+            self._meta_obj.write_meta_record(metadata)
+        self._close_log()
 
     def score(self, infilename, date):
         """
         Provided a date, get the decayed quality metric and insert in the
         database, making the information available for amalgamation.
         """
+        metadata = self._get_stored_meta(infilename)
         self._set_log(infilename)
-        self._get_s57_stored_meta(infilename)
-        dscore = score.decay(self._meta, date)
-        if len(self._meta) > 0:
+        if metadata['posted'].upper() == 'TRUE':
+            dscore = score.decay(metadata, date)
             if self._db == None:
                 self._connect_to_db()
-            procfile = self._meta['to_filename']
-            self._s57_meta['dcyscr'] = dscore
-            self._db.write(procfile, 'metadata', self._s57_meta)
+            procfile = metadata['to_filename']
+            s57_meta = self._get_meta_as_s57(metadata)
+            s57_meta['dcyscr'] = dscore
+            self._db.write(procfile, 'metadata', s57_meta)
+            log = f'Posting new decay score of {dscore} to database.'
+
+        else:
+            log = 'Insertion of decay score failed.'
+        self.logger.log(_logging.DEBUG, log)
+        self._close_log()
 
     def _connect_to_db(self):
         """
@@ -308,11 +345,13 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         """
 
         metapath, metafile = _os.path.split(self._config['metapath'])
+        root, ext = _os.path.splitext(infilename)
+        if ext == '.interpolated':
+            infilename = root
         filepath, filename = _os.path.split(infilename)
         fname, ext = _os.path.splitext(filename)
         logname = _os.path.join(metapath, f'{fname}.log')
         self._meta['logfilename'] = logname
-
         # remove handlers that might have existed from previous files
         for h in self.logger.handlers:
             self.logger.removeHandler(h)
@@ -328,7 +367,26 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         fh.setFormatter(formatter)
         self.logger.addHandler(fh)
 
-    def _get_stored_meta(self, infilename: str):
+    def _close_log(self):
+        """
+        Close the object logging file.
+
+        Parameters
+        ----------
+        infilename :
+
+        infilename: str :
+
+
+        Returns
+        -------
+
+        """
+        # remove handlers
+        for h in self.logger.handlers:
+            self.logger.removeHandler(h)
+
+    def _get_stored_meta(self, infilename: str) -> dict:
         """
         Get the metadata in a local dictionary so that it can be used within
         the instantiated object.
@@ -347,38 +405,79 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
 
         # file name is the key rather than the path
         path, f = _os.path.split(infilename)
-
         if 'from_filename' not in self._meta:
             self._meta = self._meta_obj.read_meta_record(f)
         elif self._meta['from_filename'] is not infilename:
             self._meta = self._meta_obj.read_meta_record(f)
+        # need to catch if this file is not in the metadata record yet here.
+        return self._meta
 
-        # TODO need to catch if this file is not in the metadata record yet here.
-
-    def _get_s57_stored_meta(self, infilename: str):
+    def _get_meta_as_s57(self, metadata):
         """
-        Get the metadata in a local dictionary so that it can be used within
-        the instantiated object.  In this case the metadata is converted to
-        an s57 version of the metadata.
+        The metadata is converted to an s57 version of the metadata.
 
         Parameters
         ----------
-        infilename :
-
-        infilename: str :
+        metadata
 
 
         Returns
         -------
 
         """
+        s57_meta = self._meta_obj.row2s57(metadata)
+        return s57_meta
 
-        # file name is the key rather than the path
-        path, f = _os.path.split(infilename)
-        if 'from_filename' not in self._meta:
-            self._meta = self._meta_obj.read_meta_record(f)
-        elif self._meta['from_filename'] is not infilename:
-            self._meta = self._meta_obj.read_meta_record(f)
-        if len(self._meta) > 0:
-            self._s57_meta = self._meta_obj.row2s57(self._meta)
-        # need to catch if this file is not in the metadata record yet here.
+    def _quality_metadata_ready(self, metadata):
+        """
+        Check the metadata to see if the required fields are populated.
+        """
+        # check the feature metadata
+        if 'feat_detect' in metadata:
+            if metadata['feat_detect'] == True:
+                if 'feat_least_depth' in metadata and 'feat_size' in metadata:
+                    feature_ready = True
+                else:
+                    feature_ready = False
+            else:
+                feature_ready = True
+        else:
+            feature_ready = False
+        if not feature_ready:
+            msg = 'Quality metadata for features is not yet available.'
+            self.logger.log(_logging.DEBUG, msg)
+        # check the uncertainty metadata
+        if 'vert_uncert_fixed' in metadata and 'vert_uncert_vari' in metadata:
+            vert_uncert_ready = True
+        else:
+            vert_uncert_ready = False
+        if 'horiz_uncert_fixed' in metadata and 'horiz_uncert_vari' in metadata:
+            horiz_uncert_ready = True
+        else:
+            horiz_uncert_ready = False
+        if not vert_uncert_ready or not horiz_uncert_ready:
+            msg = 'Quality metadata for uncertainty is not yet available.'
+            self.logger.log(_logging.DEBUG, msg)
+        # check the coverage
+        if 'complete_coverage' in metadata and 'bathymetry' in metadata:
+            coverage_ready = True
+        else:
+            coverage_ready = False
+        ready = feature_ready and vert_uncert_ready and horiz_uncert_ready and coverage_ready
+        return ready
+
+    def _date_metadata_ready(self, metadata):
+        """
+        Check the metadata to see if the required fields are populated.
+        """
+        if 'end_date' not in metadata or 'start_date' not in metadata:
+            ready = False
+        else:
+            ready = True
+        return ready
+
+    def _score_metadata_ready(self, metadata):
+        if 'catzoc' in metadata and 'supersession_score' in metadata:
+            return True
+        else:
+            return False
