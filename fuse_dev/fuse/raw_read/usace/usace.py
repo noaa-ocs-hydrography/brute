@@ -200,11 +200,11 @@ class USACERawReader:
         merged_meta = {**default_meta, **name_meta, **file_meta}
         if 'from_horiz_unc' in merged_meta:
             if merged_meta['from_horiz_units'] == 'US Survey Foot':
-                val = self.ussft2m * float(merged_meta['from_horiz_unc'])
+                val = CENANRawReader._ussft2m * float(merged_meta['from_horiz_unc'])
                 merged_meta['horiz_uncert'] = val
         if 'from_vert_unc' in merged_meta:
             if merged_meta['from_vert_units'] == 'US Survey Foot':
-                val = self.ussft2m * float(merged_meta['from_vert_unc'])
+                val = CENANRawReader._ussft2m * float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
         sorind = f"{name_meta['projid']}_{name_meta['uniqueid']}_{name_meta['subprojid']}_{name_meta['start_date']}_" + \
@@ -355,10 +355,6 @@ class USACERawReader:
             else:
                 metadata['from_horiz_units'] = horiz_units.lstrip(' ')
             metadata['from_horiz_datum'] = horiz_datum
-        else:
-            metadata['from_wkt'] = 'unknown'
-            metadata['from_horiz_units'] = 'unknown'
-            metadata['from_horiz_datum'] = 'unknown'
         # find the vertical datum information
         if line.find('MEAN LOWER LOW WATER') > 0:
             metadata['from_vert_key'] = 'MLLW'
@@ -366,8 +362,6 @@ class USACERawReader:
             metadata['from_vert_key'] = 'MLLW'
         elif line.find('MEAN LOW WATER') > 0:
             metadata['from_vert_key'] = 'MLW'
-        else:
-            metadata['vert_key'] = 'Unknown'
         vert_units_tags = ['NAVD88', 'NAVD1988', 'NAVD 1988']
         for tag in vert_units_tags:
             vert_units_end = line.find(tag)
@@ -381,8 +375,6 @@ class USACERawReader:
         metadata['from_vert_datum'] = vert_units
         if vert_units.find('FEET') > 0:
             metadata['from_vert_units'] = 'US Survey Foot'
-        else:
-            metadata['from_vert_units'] = 'unknown'
         return metadata
 
     def _parse_projectname(self, line):
@@ -442,9 +434,11 @@ class USACERawReader:
         else:
             delim = ' to '
         dateout = datestr.split(delim)
-        metadata['start_date'] = self._xyztext2date(dateout[0])
+        start_date = self._xyztext2date(dateout[0])
+        if start_date is not None:
+            metadata['start_date'] = start_date
         if len(dateout) == 1:
-            metadata['end_date'] = 'unknown'
+            pass
         elif len(dateout) == 2:
             metadata['end_date'] = self._xyztext2date(dateout[1])
         else:
@@ -470,7 +464,7 @@ class USACERawReader:
             numdate = date.strftime('%Y%m%d')
             return numdate
         except:
-            return 'unknown'
+            return None
 
     def _load_default_metadata(self, infilename, default_meta):
         """
@@ -499,41 +493,6 @@ class USACERawReader:
         else:
             meta = {}
         return meta
-
-    def _parse_usace_xml(self, infilename):
-        """
-        Read all available meta data.
-        returns dictionary
-
-        Parameters
-        ----------
-        infilename: str
-
-        """
-        xmlfilename = self.name_gen(infilename, ext='xml', sfx=False)
-
-        if _os.path.isfile(xmlfilename):
-            with open(xmlfilename, 'r') as xml_file:
-                xml_txt = xml_file.read()
-            xmlbasename = _os.path.basename(xmlfilename)
-            xml_data = parse_usace_xml.XMLMetadata(xml_txt, filename=xmlbasename)
-            if xml_data.version == 'USACE_FGDC':
-                meta_xml = xml_data._extract_meta_USACE_FGDC()
-            elif xml_data.version == 'ISO-8859-1':
-                meta_xml = xml_data._extract_meta_USACE_ISO()
-                if 'ISO_xml' not in meta_xml:
-                    meta_xml = xml_data._extract_meta_USACE_FGDC(override='Y')
-            else:
-                meta_xml = xml_data.convert_xml_to_dict2()
-            ext_dict = xml_data.extended_xml_fgdc()
-            ext_dict = parse_usace_xml.ext_xml_map_enddate(ext_dict)
-            meta_xml = parse_usace_xml.xml_SPCSconflict_flag(meta_xml)
-        else:
-            ext_dict = {}
-            meta_xml = {}
-        meta_xml['from_path'] = infilename
-        meta_xml['from_filename'] = _os.path.basename(infilename)
-        return {**meta_xml, **ext_dict}
 
     def _parse_ehydro_xml(self, infilename):
         """
