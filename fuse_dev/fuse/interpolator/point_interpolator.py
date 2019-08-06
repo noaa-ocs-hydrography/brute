@@ -103,42 +103,42 @@ class PointInterpolator:
 
         """
 
-        if interpolation_type in ['natural', 'invdist_scilin'] and shapefile == None:
+        if interpolation_type == 'invdist_scilin' and shapefile is None:
             raise ValueError('Supporting shapefile required')
 
         data_array = self._gdal2vector(dataset)
         _, _, maxrad = self._get_point_spacing(data_array)
         window = maxrad * self.window_scale
 
+        # ~~~~~~~~~~~~~ INTERPOLATION ~~~~~~~~~~~~~~~~
         if interpolation_type == 'linear':
             # do the triangulation interpolation
             ds2 = self._gdal_linear_interp_points(dataset, resolution)
         elif interpolation_type == 'invlin':
-            ds2 = self._gdal_invdist_scilin_interp_points(dataset, resolution,
-                                                          window)
+            ds2 = self._gdal_invdist_scilin_interp_points(dataset, resolution, window)
+
+            # shrink the coverage back on the edges
             if shrink:
                 ds4 = self._shrink_coverage(ds2, resolution, window)
         elif interpolation_type == 'invdist':
             # do the inverse distance interpolation
             ds3 = self._gdal_invdist_interp_points(dataset, resolution, window)
-            # shrink the coverage back on the edges and in the holidays on the
+
+            # shrink the coverage back on the edges
             if shrink:
                 ds4 = self._shrink_coverage(ds3, resolution, window)
-                # shrink the coverage back on the edges and in the holidays on the inv dist
-                if shrink:
-                    ds4 = self._shrink_coverage(ds3, resolution, window)
         elif interpolation_type == 'kriging':
             ds3 = self._kriging_interp_points(dataset, resolution, window)
 
-            # shrink the coverage back on the edges and in the holidays on the inv dist
+            # shrink the coverage back on the edges
             if shrink:
                 ds4 = self._shrink_coverage(ds3, resolution, window)
         else:
             print('No interpolation method recognized')
 
+        # ~~~~~~~~~~~~~ TRIMMING ~~~~~~~~~~~~~~~~
         if interpolation_type == 'linear':
-            # trim the triangulated interpolation back using the inv dist as a
-            # mask
+            # trim triangulated interpolation back using the inv dist as a mask
             ds3 = self._get_mask(dataset, resolution, window)
             ds5 = self._mask_with_raster(ds2, ds3)
         elif interpolation_type == 'invlin':
@@ -148,7 +148,7 @@ class PointInterpolator:
             else:
                 ds5 = self._mask_with_raster(ds2, ds3)
 
-        # write the files out using the above function
+        # ~~~~~~~~~~~~~ WRITING ~~~~~~~~~~~~~~~~
         if interpolation_type in ['linear', 'invlin']:
             return ds5
         elif interpolation_type == 'invdist':
