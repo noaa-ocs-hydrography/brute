@@ -223,6 +223,10 @@ Not_mapping_to_attributeyet = ['MatchtoScriptVariable',
 
 #Full list of attributes:'MatchtoScriptVariable', 'FileName', 'Note', '', 'ChannelName', 'Text Channel or Survey Name', 'ProjectName', 'Enddat1', 'Startdat1', 'VertDat', 'VDatumTransformation', 'Source Vertical Units', 'Source Coordval', 'Survey Number', 'Survey Type', 'Survey Name', 'SoundingDensity_rm (ft)', 'Benchmark', 'RTK', 'TECSOU', 'SonarSystem', 'SonarManufacturer', 'Multibeam Angle', 'Vessel Name', 'Source Sounding Density 3x3', 'Sounding Density 5x5', 'SurveyInfo', 'Collector for USACE', 'Source', '', 'MCD Priority', 'flcvrg', 'f_dtct', 'f_lstd', 'f_size', 'flbath', 'ManualReview', 'csar_1'
 def import_usace_manual(inputtab):
+    """
+    import_usace_manual(inputtab)
+    newOrderedDict
+    """
     df1=pd.DataFrame()
     file1= csv.DictReader(open(inputtab), delimiter= '\t')
     fieldnamelist=file1.fieldnames
@@ -235,6 +239,10 @@ def import_usace_manual(inputtab):
             df1.loc[r,key]=newOrderedDict[key]
 
 def import_BPS_manual(inputtab):
+    """
+    import_BPS_manual(inputtab)
+    newOrderedDict
+    """
     df1=pd.DataFrame()
     file1= csv.DictReader(open(inputtab), delimiter= '\t')
     fieldnamelist=file1.fieldnames
@@ -246,26 +254,18 @@ def import_BPS_manual(inputtab):
         for key in newOrderedDict.keys():
             df1.loc[r,key]=newOrderedDict[key]
 
-#meta=_manualkeys(metadata, map_columns, out_map_columns)
-
 def _manualkeys(inputtab, map_columns, out_map_columns ):
     """
     Prepend 'manual: ' to each key in the list of dictionaries such that the
     list goes to the right column when written to a csv.
+    new_meta
     """
     meta = csv.DictReader(open(inputtab), delimiter= '\t')
     outputkey =[]
     new_meta = []    
-    #inputkeys = map_columns.values()
+
     inputkeys = out_map_columns.keys()
     outputkey = map_columns.keys()
-#    try:
-#        for row in meta:
-#            print(row)
-#            print('testing 2')
-#    except csv.Error as e:
-#        sys.exit('file {}, line {}: {}'.format(errorfile, meta.line_num, e))
-#        print('testing')
     try:
         print('in progress')
         for row in meta:
@@ -297,14 +297,12 @@ def _manualkeys(inputtab, map_columns, out_map_columns ):
         sys.exit('file {}, line {}: {}'.format(errorfile, meta.line_num, e))
         print('weird, not working')
     return new_meta
-#m.write_meta2csv(new_meta, csvfilename)
 
-#meta=_manualkeys(metadata, map_columns, out_map_columns)
-#meta = _OCSmanualkeys(file1,  map_columns_OCS, map_columns_OCS2, out_map_columns_OCS)
 def _OCSmanualkeys(inputtab, map_columns_OCS, map_columns_OCS2, out_map_columns_OCS):
     """
     Prepend 'manual: ' to each key in the list of dictionaries such that the
     list goes to the right column when written to a csv.
+    new_meta, out_meta
     """
     meta = csv.DictReader(open(inputtab), delimiter= '\t')
     outputkey =[]
