@@ -1,4 +1,5 @@
 import os
+import pathlib
 import unittest
 
 import gdal
@@ -13,6 +14,10 @@ DATA_PATH = r"C:\Data\NBS"
 class TestBagInterpolator(unittest.TestCase):
     def test_align2grid(self):
         bag_testing_directory = os.path.join(DATA_PATH, 'testing', 'bag_interpolator', 'H12607')
+
+        if not os.path.exists(bag_testing_directory):
+            raise EnvironmentError(f'test directory not found: {bag_testing_directory}')
+
         bag_path = os.path.join(bag_testing_directory, 'H12607_MB_4m_MLLW_2of2.bag')
         coverage_list = [os.path.join(bag_testing_directory, 'H12607_SSSAB_1m_600kHz_2of2.tif')]
 
@@ -33,22 +38,31 @@ class TestBagInterpolator(unittest.TestCase):
 
 class TestPointInterpolator(unittest.TestCase):
     def test_kriging(self):
-        input_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'Original',
-                                       'BR_01_BRH_20190117_CS_4788_40X')
-        input_path = os.path.join(input_directory, 'BR_01_BRH_20190117_CS_4788_40X.XYZ')
-
+        input_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'Original')
         processed_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'MLLW', 'Data',
                                            'Active')
-        processed_path = os.path.join(processed_directory, 'BR_01_BRH_20190117_CS_4788_40X.csar')
-        output_path = os.path.join(processed_directory, 'interpolated.BAG')
 
-        cenan_fuse_processor = FuseProcessor_eHydro(os.path.join('data', 'cenan_kriging.config'))
+        if not os.path.exists(input_directory):
+            raise EnvironmentError(f'data directory not found: {input_directory}')
+        if not os.path.exists(processed_directory):
+            pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
+
+        survey_name = 'NB_01_MAI_20190311_CS_4809_30X'
+
+        input_path = os.path.join(input_directory, survey_name, f'{survey_name}.XYZ')
+        config_path = os.path.join('data', 'cenan_kriging.config')
+        processed_path = os.path.join(processed_directory, f'{survey_name}.csar')
+        output_path = os.path.join(processed_directory, 'interpolated.XYZ')
+
+        cenan_fuse_processor = FuseProcessor_eHydro(config_path)
         cenan_fuse_processor.read(input_path)
         cenan_fuse_processor.process(input_path)
 
         bag_dataset = gdal.Open(processed_path)
         interpolated_bag_dataset = interpolator.Interpolator('point', 'kriging', 500).interpolate(bag_dataset)
         ProcIO('gdal', 'bag').write(interpolated_bag_dataset, output_path)
+
+        assert os.path.exists(os.path.join(processed_directory, f'{survey_name}.csar'))
 
 
 if __name__ == '__main__':

@@ -9,6 +9,7 @@ Created on Thu Jan 31 10:30:11 2019
 
 import logging as _logging
 import os as _os
+import pathlib
 
 import fuse.datum_transform.transform as _trans
 import fuse.fuse_processor as _fbc
@@ -136,6 +137,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             ext2 = ext
         self._writer = ProcIO('gdal', ext)
         self._points = ProcIO('point', 'csar')
+
     def read(self, infilename: str):
         """
         Extract metadata from the provided eHydro file path and write the metadata
@@ -314,6 +316,10 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         # remove handlers that might have existed from previous files
         for h in self.logger.handlers:
             self.logger.removeHandler(h)
+
+        log_dir = _os.path.split(logname)[0]
+        if not _os.path.exists(log_dir):
+            pathlib.Path(log_dir).mkdir(parents=True, exist_ok=True)
 
         # create file handler for this filename
         fh = _logging.FileHandler(logname)
