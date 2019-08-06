@@ -143,10 +143,7 @@ class PointInterpolator:
             ds5 = self._mask_with_raster(ds2, ds3)
         elif interpolation_type == 'invlin':
             ds3 = self._get_shape_mask(ds2, shapefile, resolution)
-            if shrink:
-                ds5 = self._mask_with_raster(ds4, ds3)
-            else:
-                ds5 = self._mask_with_raster(ds2, ds3)
+            ds5 = self._mask_with_raster(ds4 if shrink else ds2, ds3)
 
         # ~~~~~~~~~~~~~ WRITING ~~~~~~~~~~~~~~~~
         if interpolation_type in ['linear', 'invlin']:
