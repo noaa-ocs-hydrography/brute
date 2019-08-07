@@ -35,8 +35,7 @@ class CENANRawReader(usace.USACERawReader):
         -------
 
         """
-#        basexyzname, suffix = self.name_gen(infilename, ext='.xyz')
-#        return self._parse_ehydro_xyz_header(basexyzname)
+
         basexyzname, suffix = self.name_gen(infilename, ext='.xyz')
         meta_xyz = self._parse_ehydro_xyz_header(basexyzname)
         meta_filename = self._parse_filename(basexyzname)
