@@ -47,7 +47,7 @@ class USACERawReader:
         -------
 
         """
-        basexyzname, suffix = self.name_gen(infilename, ext='xyz')
+        basexyzname, suffix = self.name_gen(infilename, ext='.xyz')
         meta_xml = self._parse_usace_xml(infilename)
         meta_xyz = self._parse_ehydro_xyz_header(basexyzname)
         meta_filename = self._parse_filename(basexyzname)
@@ -55,7 +55,6 @@ class USACERawReader:
         meta_date = self._parse_start_date(infilename,
                                            {**meta_pickle, **meta_xyz,
                                             **meta_xml})
-        meta_xml['poly_name'] = meta_pickle['poly_name']
         return {**meta_pickle, **meta_filename, **meta_xyz, **meta_xml,
                 **meta_date}
 
@@ -114,9 +113,12 @@ class USACERawReader:
 
 
         """
-        pickle_name = self.name_gen(filename, ext='pickle', sfx=False)
-        pickle_dict = parse_usace_pickle.read_pickle(pickle_name, pickle_ext=True)
-        pickle_keys = parse_usace_pickle.dict_keys(pickle_dict)
+
+        pickle_name = self.name_gen(filename, ext='.pickle', sfx=False)
+        if _os.path.isfile(pickle_name):
+            pickle_dict = parse_usace_pickle.read_pickle(pickle_name, pickle_ext=True)
+        else:
+            pickle_dict = {}
         return pickle_dict
 
     def _parse_usace_xml(self, infilename):
@@ -127,7 +129,7 @@ class USACERawReader:
         ----------
         infilename: str
         """
-        xmlfilename = self.name_gen(infilename, ext='xml', sfx=False)
+        xmlfilename = self.name_gen(infilename, ext='.xml', sfx=False)
         if _os.path.isfile(xmlfilename):
             with open(xmlfilename, 'r') as xml_file:
                 xml_txt = xml_file.read()
@@ -184,13 +186,19 @@ class USACERawReader:
         """
         filebase, fileext = _os.path.splitext(filename)
         suffix = None
+
         for item in self.xyz_suffixes:
             if _re.compile(f'{item}$', _re.IGNORECASE).search(filebase):
                 suffix = item
+
         if suffix is not None and ext is not None:
-            base = _re.sub(_re.compile(f'{suffix}$', _re.IGNORECASE), '', filebase) + f'.{ext}'
+            if fileext.lower() == ext.lower():
+                ext = fileext
+            base = _re.sub(_re.compile(f'{suffix}$', _re.IGNORECASE), '', filebase) + f'{ext}'
         elif suffix is None and ext is not None:
-            base = filebase + f'.{ext}'
+            if fileext.lower() == ext.lower():
+                ext = fileext
+            base = filebase + f'{ext}'
         else:
             base = filename
 
