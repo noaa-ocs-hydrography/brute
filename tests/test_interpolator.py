@@ -49,13 +49,14 @@ class TestPointInterpolator(unittest.TestCase):
         input_path = os.path.join(input_directory, survey_name, f'{survey_name}.XYZ')
         config_path = os.path.join('data', 'cenan_kriging.config')
         processed_path = os.path.join(processed_directory, f'{survey_name}.csar')
-        output_path = os.path.join(processed_directory, 'interpolated.XYZ')
+        output_path = os.path.join(processed_directory, f'{survey_name}_5m_interp.csar')
 
         cenan_fuse_processor = FuseProcessor_eHydro(config_path)
         cenan_fuse_processor.read(input_path)
         cenan_fuse_processor.process(input_path)
 
         assert os.path.exists(processed_path)
+        assert os.path.exists(output_path)
 
 
 if __name__ == '__main__':

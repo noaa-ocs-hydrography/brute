@@ -584,37 +584,111 @@ class PointInterpolator:
         interpolated_data = numpy.empty((len(output_grid_y), len(output_grid_x)), dtype=float)
         variance = numpy.empty((len(output_grid_y), len(output_grid_x)), dtype=float)
 
-        total_parts = 36
+        total_parts = 64
         side_length = numpy.sqrt(total_parts)
 
         row, col = 0, 0
 
-        for part_index in range(0, total_parts):
-            input_start = int((part_index / total_parts) * len(input_x))
-            input_end = int(((part_index + 1) / total_parts) * len(input_x)) - 1
+        x_min, y_min, x_max, y_max = bounds
 
-            start_time = datetime.datetime.now()
+        x_range = x_max - x_min
+        y_range = y_max - y_min
 
-            interpolator = OrdinaryKriging(input_x[input_start:input_end], input_y[input_start:input_end],
-                                           input_z[input_start:input_end], variogram_model='linear', verbose=False,
-                                           enable_plotting=False)
+        # with concurrent.futures.ProcessPoolExecutor() as concurrency_pool:
+        #     futures = {}
+        #
+        #     for part_index in range(total_parts):
+        #         print(f'processing chunk {part_index + 1} of {total_parts}')
+        #
+        #         grid_x_start = int(col * len(output_grid_x) / side_length)
+        #         grid_x_end = int((col + 1) * len(output_grid_x) / side_length - 1)
+        #         grid_y_start = int(row * len(output_grid_y) / side_length)
+        #         grid_y_end = int((row + 1) * len(output_grid_y) / side_length - 1)
+        #
+        #         chunk_x_min = x_min + ((x_range / side_length) * part_index)
+        #         chunk_x_max = x_min + ((x_range / side_length) * (part_index + 1))
+        #         chunk_y_min = y_min + ((y_range / side_length) * part_index)
+        #         chunk_y_max = y_min + ((y_range / side_length) * (part_index + 1))
+        #
+        #         point_indices = numpy.where(
+        #             (input_x >= chunk_x_min) & (input_x < chunk_x_max) & (input_y >= chunk_y_min) & (
+        #                     input_y < chunk_y_max))[0]
+        #
+        #         if len(point_indices) > 0:
+        #             print('points in chunk')
+        #
+        #             interpolator = OrdinaryKriging(input_x[point_indices], input_y[point_indices],
+        #                                            input_z[point_indices],
+        #                                            variogram_model='linear', verbose=False, enable_plotting=False)
+        #
+        #             current_future = concurrency_pool.submit(interpolator.execute, 'grid',
+        #                                                      output_grid_x[grid_x_start:grid_x_end],
+        #                                                      output_grid_y[grid_y_start:grid_y_end])
+        #             futures[current_future] = (slice(grid_y_start, grid_y_end), slice(grid_x_start, grid_x_end))
+        #         else:
+        #             print('no points in chunk')
+        #
+        #             interpolated_data[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = numpy.full(
+        #                 (grid_y_end - grid_y_start, grid_x_end - grid_x_start), numpy.nan)
+        #             variance[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = numpy.full(
+        #                 (grid_y_end - grid_y_start, grid_x_end - grid_x_start), numpy.nan)
+        #
+        #         if col < side_length:
+        #             col += 1
+        #         else:
+        #             row += 1
+        #             col = 0
+        #
+        #     for completed_future in concurrent.futures.as_completed(futures):
+        #         chunk_slices = futures[completed_future]
+        #
+        #         current_interpolated_data, current_variance = completed_future.result()
+        #
+        #         interpolated_data[chunk_slices] = current_interpolated_data
+        #         variance[chunk_slices] = current_variance
+
+        for part_index in range(total_parts):
+            print(f'processing chunk {part_index + 1} of {total_parts}')
 
             grid_x_start = int(col * len(output_grid_x) / side_length)
             grid_x_end = int((col + 1) * len(output_grid_x) / side_length - 1)
             grid_y_start = int(row * len(output_grid_y) / side_length)
             grid_y_end = int((row + 1) * len(output_grid_y) / side_length - 1)
 
-            current_interpolated_data, current_variance = interpolator.execute('grid',
-                                                                               output_grid_x[grid_x_start:grid_x_end],
-                                                                               output_grid_y[grid_y_start:grid_y_end])
+            chunk_x_min = x_min + ((x_range / side_length) * part_index)
+            chunk_x_max = x_min + ((x_range / side_length) * (part_index + 1))
+            chunk_y_min = y_min + ((y_range / side_length) * part_index)
+            chunk_y_max = y_min + ((y_range / side_length) * (part_index + 1))
 
-            duration = (datetime.datetime.now() - start_time)
+            point_indices = numpy.where(
+                (input_x >= chunk_x_min) & (input_x < chunk_x_max) & (input_y >= chunk_y_min) & (
+                        input_y < chunk_y_max))[0]
 
-            print(f'completed chunk {part_index + 1} of {total_parts} (took {duration.total_seconds()} s)')
+            if len(point_indices) > 0:
+                start_time = datetime.datetime.now()
+
+                interpolator = OrdinaryKriging(input_x[point_indices], input_y[point_indices], input_z[point_indices],
+                                               variogram_model='linear', verbose=False, enable_plotting=False)
+
+                current_interpolated_data, current_variance = interpolator.execute('grid',
+                                                                                   output_grid_x[
+                                                                                   grid_x_start:grid_x_end],
+                                                                                   output_grid_y[
+                                                                                   grid_y_start:grid_y_end])
+
+                duration = (datetime.datetime.now() - start_time)
+                print(f'interpolation took {duration.total_seconds()} s')
+            else:
+                current_interpolated_data = numpy.full((grid_y_end - grid_y_start, grid_x_end - grid_x_start),
+                                                       numpy.nan)
+                current_variance = numpy.full((grid_y_end - grid_y_start, grid_x_end - grid_x_start),
+                                              numpy.nan)
+                print('no points in chunk')
+
             interpolated_data[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = current_interpolated_data
             variance[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = current_variance
 
-            if col >= side_length:
+            if col >= side_length - 1:
                 col = 0
                 row += 1
             else:
