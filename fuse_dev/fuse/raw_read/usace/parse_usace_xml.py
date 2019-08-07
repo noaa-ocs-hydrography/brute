@@ -53,7 +53,7 @@ horz_datum = {
     'Local': '131'
 }
 
-_ussft2m = 0.30480060960121924  # US survey feet to meters
+#_ussft2m = 0.30480060960121924  # US survey feet to meters
 
 
 def extract_s57_dict(xmlfilename):
@@ -1596,15 +1596,13 @@ def extract_from_iso_meta(xml_meta):
         Vert_unc = xml_meta['Implied_Vertical_Accuracy']
         Hor_unc = Hor_unc.strip('+/- ')
         Vert_unc = Vert_unc.strip('+/- ')
-        if 'Feet' in Hor_unc:
+        if 'Feet' in Hor_unc:#keeping uncertainty in feet
             Hor_unc = Hor_unc.rstrip('Feet').strip().rstrip('.')
             Hor_unc = float(Hor_unc)
-            Hor_unc = Hor_unc * _ussft2m
             xml_meta['from_horiz_unc'] = str(Hor_unc)
         if 'Feet' in Vert_unc:
             Vert_unc = Vert_unc.rstrip('Feet').strip().rstrip('.')
             Vert_unc = float(Vert_unc)
-            Vert_unc = Vert_unc * _ussft2m
             xml_meta['from_vert_unc'] = str(Vert_unc)
         if xml_meta['System'] == 'single beam':
             xml_meta['TECSOU'] = '1'
@@ -1876,16 +1874,16 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     if horizpar.find('DGPS, 1 Meter') >= 0:
         m['horiz_uncert'] = '1'  # (POSACC) DGPS, 1 Meter
     elif horizpar.find('DGPS, +/-1.0 Meter (3.28 feet)') >= 0:
-        m['horiz_uncert'] = '1'  # (POSACC) DGPS, 1 Meter
+        m['horiz_uncert'] = '3.28'  # (POSACC) DGPS, 1 Meter
     elif horizpar.find('International Feet') >= 0:
         m['from_horiz_units'] = 'ft'  # international feet code for vdatum
     vertaccr = meta_xml['vertaccr']
     if vertaccr.find('Expected values 0.5 -1.0 Foot') >= 0:
-        m['vert_acc'] = '0.3'  # 1 ft =   0.30480060960121924 m
+        m['vert_acc'] =  '1.0' # 1 ft =   0.30480060960121924 m#'0.3'm
     elif vertaccr.find('Bar Test, 0.5 Foot') >= 0:
-        m['vert_acc'] = '0.15'  #
+        m['vert_acc'] = '0.5'#'0.15'm  #
     elif vertaccr.find('+/- 0.03 meter (0.1 foot)') >= 0:
-        m['vert_acc'] = '0.03'  #
+        m['vert_acc'] = '0.1'#'0.03'm #
     return m
 
 
