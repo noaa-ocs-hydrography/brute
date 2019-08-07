@@ -110,48 +110,36 @@ class PointInterpolator:
         _, _, maxrad = self._get_point_spacing(data_array)
         window = maxrad * self.window_scale
 
-        # ~~~~~~~~~~~~~ INTERPOLATION ~~~~~~~~~~~~~~~~
         if interpolation_type == 'linear':
-            # do the triangulation interpolation
-            ds2 = self._gdal_linear_interp_points(dataset, resolution)
+            # linear interpolation using triangulation
+            interpolated_dataset = self._gdal_linear_interp_points(dataset, resolution)
+
+            # trim interpolation back using the original dataset as a mask
+            output_dataset = self._mask_with_raster(interpolated_dataset, self._get_mask(dataset, resolution, window))
         elif interpolation_type == 'invlin':
-            ds2 = self._gdal_invdist_scilin_interp_points(dataset, resolution, window)
+            interpolated_dataset = self._gdal_invdist_scilin_interp_points(dataset, resolution, window)
 
-            # shrink the coverage back on the edges
-            if shrink:
-                ds4 = self._shrink_coverage(ds2, resolution, window)
+            output_dataset = self._mask_with_raster(
+                self._shrink_coverage(interpolated_dataset, resolution, window) if shrink else interpolated_dataset,
+                self._get_shape_mask(interpolated_dataset, shapefile, resolution))
         elif interpolation_type == 'invdist':
-            # do the inverse distance interpolation
-            ds3 = self._gdal_invdist_interp_points(dataset, resolution, window)
+            # inverse distance interpolation
+            interpolated_dataset = self._gdal_invdist_interp_points(dataset, resolution, window)
 
             # shrink the coverage back on the edges
-            if shrink:
-                ds4 = self._shrink_coverage(ds3, resolution, window)
+            output_dataset = self._shrink_coverage(interpolated_dataset, resolution,
+                                                   window) if shrink else interpolated_dataset
         elif interpolation_type == 'kriging':
-            ds3 = self._kriging_interp_points(dataset, resolution, window)
+            # interpolate using Ordinary Kriging
+            interpolated_dataset = self._kriging_interp_points(dataset, resolution, window)
 
             # shrink the coverage back on the edges
-            if shrink:
-                ds4 = self._shrink_coverage(ds3, resolution, window)
+            output_dataset = self._shrink_coverage(interpolated_dataset, resolution,
+                                                   window) if shrink else interpolated_dataset
         else:
-            print('No interpolation method recognized')
+            raise ValueError(f'Interpolation type "{interpolation_type}" not recognized.')
 
-        # ~~~~~~~~~~~~~ TRIMMING ~~~~~~~~~~~~~~~~
-        if interpolation_type == 'linear':
-            # trim triangulated interpolation back using the inv dist as a mask
-            ds3 = self._get_mask(dataset, resolution, window)
-            ds5 = self._mask_with_raster(ds2, ds3)
-        elif interpolation_type == 'invlin':
-            ds3 = self._get_shape_mask(ds2, shapefile, resolution)
-            ds5 = self._mask_with_raster(ds4 if shrink else ds2, ds3)
-
-        # ~~~~~~~~~~~~~ WRITING ~~~~~~~~~~~~~~~~
-        if interpolation_type in ['linear', 'invlin']:
-            return ds5
-        elif interpolation_type == 'invdist':
-            return ds4 if shrink else ds3
-        else:
-            raise ValueError('Interpolation type not understood')
+        return output_dataset
 
     def _gdal2vector(self, dataset: gdal.Dataset) -> numpy.array:
         """
@@ -803,26 +791,25 @@ class PointInterpolator:
 
         """
 
-        data = dataset.ReadAsArray()
-        data_rb = dataset.GetRasterBand(1)
-        nodata = data_rb.GetNoDataValue()
-        idx = numpy.nonzero(data == nodata)
-        data[idx] = numpy.nan
-        # divide the window size by the resolution to get the number of cells
-        rem_cells = int(numpy.round(radius / resolution))
-        # print(f'Shrinking coverage back {rem_cells} cells.')
+        for band_index in range(1, dataset.RasterCount + 1):
+            band = dataset.GetRasterBand(1)
+            nodata_value = band.GetNoDataValue()
+            band_data = band.ReadAsArray()
 
-        for n in numpy.arange(rem_cells):
-            ew = numpy.diff(data, axis=0)
-            idx_ew = numpy.nonzero(numpy.isnan(ew))
-            ns = numpy.diff(data, axis=1)
-            idx_ns = numpy.nonzero(numpy.isnan(ns))
-            data[idx_ew] = numpy.nan
-            data[idx_ew[0] + 1, idx_ew[1]] = numpy.nan
-            data[idx_ns] = numpy.nan
-            data[idx_ns[0], idx_ns[1] + 1] = numpy.nan
+            # convert nodata values to NaN
+            band_data[band_data == nodata_value] = numpy.nan
 
-        idx = numpy.nonzero(numpy.isnan(data))
-        data[idx] = nodata
-        data_rb.WriteArray(data)
+            # divide the window size by the resolution to get the number of cells by which to shrink the coverage
+            for _ in numpy.arange(int(numpy.round(radius / resolution))):
+                ew_diffs_nan_indices = numpy.where(numpy.isnan(numpy.diff(band_data, axis=0)))
+                ns_diffs_nan_indices = numpy.where(numpy.isnan(numpy.diff(band_data, axis=1)))
+                band_data[ew_diffs_nan_indices] = numpy.nan
+                band_data[ew_diffs_nan_indices[0] + 1, ew_diffs_nan_indices[1]] = numpy.nan
+                band_data[ns_diffs_nan_indices] = numpy.nan
+                band_data[ns_diffs_nan_indices[0], ns_diffs_nan_indices[1] + 1] = numpy.nan
+
+            # convert NaN to nodata values
+            band_data[numpy.isnan(band_data)] = nodata_value
+            band.WriteArray(band_data)
+
         return dataset

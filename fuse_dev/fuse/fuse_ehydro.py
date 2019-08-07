@@ -22,63 +22,71 @@ from fuse.proc_io.proc_io import ProcIO
 
 class FuseProcessor_eHydro(_fbc.FuseProcessor):
     """TODO write description"""
-    _default_quality_metrics = {'complete_coverage': False,
-                                'bathymetry': True,
-                                'vert_uncert_fixed': 0.5,
-                                'vert_uncert_vari': 0.1,
-                                'horiz_uncert_fixed': 5.0,
-                                'horiz_uncert_vari': 0.05,
-                                'feat_detect': False,
-                                }
+    _default_quality_metrics = {
+        'complete_coverage': False,
+        'bathymetry': True,
+        'vert_uncert_fixed': 0.5,
+        'vert_uncert_vari': 0.1,
+        'horiz_uncert_fixed': 5.0,
+        'horiz_uncert_vari': 0.05,
+        'feat_detect': False,
+    }
 
-    _datums = ['from_fips',
-               'from_horiz_datum',
-               'from_horiz_units',
-               'to_horiz_datum',
-               'from_vert_datum',
-               'from_vert_key',
-               'from_vert_units',
-               'to_vert_datum',
-               'to_vert_units',
-               ]
+    _datums = [
+        'from_fips',
+        'from_horiz_datum',
+        'from_horiz_units',
+        'to_horiz_datum',
+        'from_vert_datum',
+        'from_vert_key',
+        'from_vert_units',
+        'to_vert_datum',
+        'to_vert_units',
+    ]
 
-    _quality_metrics = ['from_horiz_unc',
-                        'from_vert_unc',
-                        'complete_coverage',
-                        'bathymetry',
-                        'vert_uncert_fixed',
-                        'vert_uncert_vari',
-                        'horiz_uncert_fixed',
-                        'horiz_uncert_vari',
-                        'feat_size',
-                        'feat_detect',
-                        'feat_least_depth',
-                        ]
+    _quality_metrics = [
+        'from_horiz_unc',
+        'from_vert_unc',
+        'complete_coverage',
+        'bathymetry',
+        'vert_uncert_fixed',
+        'vert_uncert_vari',
+        'horiz_uncert_fixed',
+        'horiz_uncert_vari',
+        'feat_size',
+        'feat_detect',
+        'feat_least_depth',
+    ]
 
-    _paths = ['from_filename',
-              'from_path',
-              'to_filename',
-              ]
+    _paths = [
+        'from_filename',
+        'from_path',
+        'to_filename',
+    ]
 
-    _dates = ['start_date',
-              'end_date',
-              ]
+    _dates = [
+        'start_date',
+        'end_date',
+    ]
 
-    _source_info = ['agency',
-                    'source_indicator',
-                    'source_type',
-                    'interpolated',
-                    'posted',
-                    'license',
-                    ]
+    _source_info = [
+        'agency',
+        'source_indicator',
+        'source_type',
+        'interpolated',
+        'posted',
+        'license',
+    ]
 
-    _processing_info = ['logfilename',
-                        'version_reference',
-                        ]
+    _processing_info = [
+        'logfilename',
+        'version_reference',
+    ]
 
-    _scores = ['catzoc',
-               'supersession_score',
-               ]
+    _scores = [
+        'catzoc',
+        'supersession_score',
+    ]
 
     def __init__(self, config_filename):
         super().__init__(config_filename)
@@ -405,9 +413,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
 
         # file name is the key rather than the path
         path, f = _os.path.split(infilename)
-        if 'from_filename' not in self._meta:
-            self._meta = self._meta_obj.read_meta_record(f)
-        elif self._meta['from_filename'] is not infilename:
+        if 'from_filename' not in self._meta or self._meta['from_filename'] is not infilename:
             self._meta = self._meta_obj.read_meta_record(f)
         # need to catch if this file is not in the metadata record yet here.
         return self._meta

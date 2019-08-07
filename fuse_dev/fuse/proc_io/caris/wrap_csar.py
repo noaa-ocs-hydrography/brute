@@ -36,7 +36,7 @@ def write_csar(dataset, m: dict):
 
     print('write_csar')
     dataset = np.array(dataset)
-    print(m, dataset, dataset.shape)
+    # print('{}\n{}\n{}'.format(m, dataset, dataset.shape))
     dataset[dataset == m['nodata']] = np.nan
     d_min = np.nanmax(dataset)
     dataset[dataset == np.nan] = m['nodata']

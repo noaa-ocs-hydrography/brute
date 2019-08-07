@@ -339,11 +339,11 @@ class ProcIO:
         meta['dimy'] = dataset.RasterYSize
         # print(meta)
         meta['crs'] = dataset.GetProjection()
-        rb = dataset.GetRasterBand(1)  # should this be hardcoded for 1?
-        meta['nodata'] = rb.GetNoDataValue()
+        # TODO should this be hardcoded for 1?
+        meta['nodata'] = dataset.GetRasterBand(1).GetNoDataValue()
 
         # get the gdal data raster
-        data = rb.ReadAsArray()
+        data = dataset.ReadAsArray()
         return data, meta
 
     def _point2array(self, dataset: gdal.Dataset) -> np.array:

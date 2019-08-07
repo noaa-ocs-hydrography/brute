@@ -2,11 +2,8 @@ import os
 import pathlib
 import unittest
 
-import gdal
 from fuse.fuse_ehydro import FuseProcessor_eHydro
-from fuse.interpolator import interpolator
 from fuse.interpolator.bag_interpolator import bag, coverage
-from fuse.proc_io.proc_io import ProcIO
 
 DATA_PATH = r"C:\Data\NBS"
 
@@ -47,7 +44,7 @@ class TestPointInterpolator(unittest.TestCase):
         if not os.path.exists(processed_directory):
             pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
 
-        survey_name = 'NB_01_MAI_20190311_CS_4809_30X'
+        survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
 
         input_path = os.path.join(input_directory, survey_name, f'{survey_name}.XYZ')
         config_path = os.path.join('data', 'cenan_kriging.config')
@@ -58,11 +55,7 @@ class TestPointInterpolator(unittest.TestCase):
         cenan_fuse_processor.read(input_path)
         cenan_fuse_processor.process(input_path)
 
-        bag_dataset = gdal.Open(processed_path)
-        interpolated_bag_dataset = interpolator.Interpolator('point', 'kriging', 500).interpolate(bag_dataset)
-        ProcIO('gdal', 'bag').write(interpolated_bag_dataset, output_path)
-
-        assert os.path.exists(os.path.join(processed_directory, f'{survey_name}.csar'))
+        assert os.path.exists(processed_path)
 
 
 if __name__ == '__main__':
