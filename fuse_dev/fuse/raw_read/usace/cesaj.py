@@ -92,7 +92,7 @@ class CESAJRawReader:
         """
         # get the dat file for CESAJ# Jacksonville
         stub, ext = os.path.splitext(infilename)
-        bathyfilename = f'{stub}.dat'  # this is where fstrings are being used
+        bathyfilename = f'{stub}.dat'#this is where fstrings are being used 
         """
         F-strings provide a way to embed expressions inside string literals, using a minimal syntax.
         It should be noted that an f-string is really an expression evaluated at run time, not a constant

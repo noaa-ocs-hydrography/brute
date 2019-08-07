@@ -102,7 +102,7 @@ class CESAMRawReader:
         one can also include expressions within the quoted strings, The expressions in an f-string are evaluated in left-to-right order. This is detectable only if the expressions have side effects:
         https://www.python.org/dev/peps/pep-0498/
         """
-        
+
         xyz = _np.loadtxt(bathyfilename, delimiter=' ')
         self.xy  # remove later using still during debugging
         return xyz
@@ -204,7 +204,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     merge2 = {}
     f = filename
     basename = os.path.basename(f)
-    
+
     e_t = XYZHeaderReader(f)
     # xml pull here.
     xmlfilename = get_xml_match(f)
