@@ -10,11 +10,21 @@ Created on Thu Jan 31 10:03:30 2019
 import configparser as _cp
 import os as _os
 import logging as _logging
+import fuse.raw_read.usace as _usace
 import fuse.datum_transform.transform as _trans
 import fuse.interpolator.interpolator as _interp
 import fuse.meta_review as _mr
 from fuse.proc_io.proc_io import ProcIO
 from fuse import score
+
+_ehydro_quality_metrics = {'complete_coverage': False,
+                            'bathymetry': True,
+                            'vert_uncert_fixed': 0.5,
+                            'vert_uncert_vari': 0.1,
+                            'horiz_uncert_fixed': 5.0,
+                            'horiz_uncert_vari': 0.05,
+                            'feat_detect': False,
+                            }
 
 class FuseProcessor:
     """The fuse object."""
@@ -195,7 +205,34 @@ class FuseProcessor:
         -------
 
         """
-        pass
+
+        try:
+            reader_type = self._config['raw_reader_type'].casefold()
+            if reader_type == 'cenan':
+                self._reader = _usace.cenan.CENANRawReader()
+                self._read_type = 'ehydro'
+            elif reader_type == 'cemvn':
+                self._reader = _usace.cemvn.CEMVNRawReader()
+                self._read_type = 'ehydro'
+            elif reader_type == 'cesaj':
+                self._reader = _usace.cesaj.CESAJRawReader()
+                self._read_type = 'ehydro'
+            elif reader_type == 'cesam':
+                self._reader = _usace.cesam.CESAMRawReader()
+                self._read_type = 'ehydro'
+            elif reader_type == 'ceswg':
+                self._reader = _usace.ceswg.CESWGRawReader()
+                self._read_type = 'ehydro'
+            elif reader_type == 'cespl':
+                self._reader = _usace.cespl.CESPLRawReader()
+                self._read_type = 'ehydro'
+            elif reader_type == 'cenae':
+                self._reader = _usace.cenae.CENAERawReader()
+                self._read_type = 'ehydro'
+            else:
+                raise ValueError('reader type not implemented')
+        except:
+            raise ValueError("No reader type found in the configuration file.")
     
     def _set_data_transform(self):
         """Set up the datum transformation engine."""
@@ -248,7 +285,61 @@ class FuseProcessor:
 
         """
 
-        pass
+        if self._read_type == 'ehydro':
+            self._read_ehydro(infilename)
+        else:
+            raise ValueError('Reader type not implemented')
+    
+    def _read_ehydro(self, infilename: str):
+        """
+        Extract metadata from the provided eHydro file path and write the metadata
+        to the specified metadata file.  The bathymetry will be interpolated and
+        writen to a CSAR file in the specificed csarpath.
+
+        Parameters
+        ----------
+        infilename :
+
+        infilename: str :
+
+
+        Returns
+        -------
+
+        """
+
+        self._set_log(infilename)
+        # get the metadata
+        meta = self._reader.read_metadata(infilename)
+        if 
+            _datums = ['from_horiz_datum',
+              'from_horiz_type',
+              'from_horiz_units',
+              'from_horiz_key',
+              'from_vert_datum',
+              'from_vert_key',
+              'from_vert_units',
+              'from_vert_direction',
+              'to_horiz_type',
+              'to_horiz_units',
+              'to_horiz_key',
+              'to_vert_key',
+              'to_vert_units',
+              'to_vert_direction',
+              ]
+        meta['to_horiz_datum'] = self._config['to_horiz_datum']
+        meta['to_vert_datum'] = self._config['to_vert_datum']
+        meta['to_vert_units'] = 'metres'
+        meta['interpolated'] = 'False'
+        meta['posted'] = False
+        if not self._quality_metadata_ready(meta):
+            default = _ehydro_quality_metrics
+            msg = f'Not all quality metadata was found.  Using default values: {default}'
+            self.logger.log(_logging.DEBUG, msg)
+            meta = {**default, **meta}
+        # write the metadata
+        self._meta_obj.write_meta_record(meta)
+        self._close_log()
 
     def process(self, infilename: str, interpolate=True):
         """
@@ -476,6 +567,17 @@ class FuseProcessor:
         """
         s57_meta = self._meta_obj.row2s57(metadata)
         return s57_meta
+
+    def _datum_metadata_ready(self, metadata):
+        """
+        Check the metadata to see if the required fields are populated.
+        """
+        ready = True
+        for key in FuseProcessor._datums:
+            if key not in metadata:
+                ready = False
+                break
+        return ready
 
     def _quality_metadata_ready(self, metadata):
         """
