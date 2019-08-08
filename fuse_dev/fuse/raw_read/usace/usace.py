@@ -55,6 +55,8 @@ class USACERawReader:
             The complete metadata pulled from multiple sources
 
         """
+
+        meta_supplement = {}
         basexyzname, suffix = self.name_gen(infilename, ext='.xyz')
         meta_xml = self._parse_usace_xml(infilename)
         meta_xyz = self._parse_ehydro_xyz_header(basexyzname)
@@ -63,11 +65,10 @@ class USACERawReader:
         meta_date = self._parse_start_date(infilename,
                                            {**meta_pickle, **meta_xyz,
                                             **meta_xml})
-#        if suffix is not None and suffix.upper() in self.xyz_suffixes:
-#            meta_xml['from_horiz_reolution'] = 3
-#            self._check_grid(infilename)
+        meta_determine = self._data_determination(meta_supplement, infilename)
+        meta_supplement = {**meta_determine, **meta_date, **meta_supplement}
         return {**meta_pickle, **meta_filename, **meta_xyz, **meta_xml,
-                **meta_date}
+                **meta_supplement}
 
     def read_bathymetry(self, infilename: str):
         """
@@ -236,6 +237,16 @@ class USACERawReader:
             return base, suffix
         else:
             return base
+
+    def _data_determination(self, meta_dict: dict, infilename: str) -> dict:
+        base, suffix = self.name_gen(infilename)
+        if suffix is not None and suffix.upper() == '_FULL':
+            meta_dict['interpolate'] = False
+            meta_dict['from_horiz_reolution'] = 3
+        elif suffix is not None and suffix.upper() == '_A':
+            self._check_grid(infilename)
+            meta_dict['from_horiz_reolution'] = 3
+        return meta_dict
 
     def _check_grid(self, infilename):
         data = self._parse_ehydro_xyz_bathy(infilename)
