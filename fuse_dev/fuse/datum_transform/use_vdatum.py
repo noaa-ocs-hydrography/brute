@@ -21,6 +21,27 @@ import numpy as _np
 from osgeo import gdal, ogr, osr
 
 
+from_hdatum = ['from_horiz_frame',
+                'from_horiz_type',
+                'from_horiz_units',
+                'from_horiz_key',
+                ]
+
+from_vdatum = ['from_vert_key',
+               'from_vert_units',
+               'from_vert_direction',
+               ]
+
+to_hdatum = ['to_horiz_frame',
+             'to_horiz_type',
+             'to_horiz_units',
+             ]
+
+to_vdatum = ['to_vert_key',
+             'to_vert_units',
+             'to_vert_direction',
+             ]
+
 class VDatum:
     """An object for working with VDatum."""
 
@@ -58,7 +79,7 @@ class VDatum:
         else:
             raise ValueError('No java path provided')
 
-    def translate(self, infilename: str, in_hordat, in_verdat, out_epsg: int, out_verdat) -> gdal.Dataset:
+    def translate(self, infilename: str, instructions: dict) -> gdal.Dataset:
         """
         Translate the provided filename from the provided in datums to the out
         datums and return a gdal object.
@@ -69,15 +90,8 @@ class VDatum:
         ----------
         infilename :
             param in_hordat:
-        in_verdat :
-            param out_epsg:
-        out_verdat :
-            
-        infilename: str :
-            
-        in_hordat :
-            
-        out_epsg: int :
+
+        instructions : dict :
             
 
         Returns
@@ -86,12 +100,15 @@ class VDatum:
         """
 
         self._logger.log(_logging.DEBUG, 'Begin datum transformation')
-        outxyz, out_zone = self._translatexyz(infilename, in_hordat, in_verdat, out_epsg, out_verdat)
+        if not self._have_instructions(instructions):
+            raise ValueError('The required fields for transforming datums are not available')
+        outxyz, out_zone = self._translatexyz(infilename, instructions)
+        out_verdat = instructions['to_vert_key'].upper()
         out_gdal = self._xyz2gdal(outxyz, out_zone, out_verdat)  # passing UTM zone instead of EPSG code
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
         return out_gdal
 
-    def _translatexyz(self, infilename: str, in_hordat: str, in_verdat: str, out_epsg: int, out_verdat: str) -> Tuple[
+    def _translatexyz(self, infilename: str, instructions: dict) -> Tuple[
         _np.array, int]:
         """
         TODO write description
@@ -129,20 +146,23 @@ class VDatum:
         vdlogfilename = _os.path.join(vd_dir.name, 'outfile.txt.log')
         _np.savetxt(outfilename, bathy, delimiter=',')
         # set up vdatum
-        self._setup_vdatum(in_hordat, in_verdat, out_epsg, out_verdat)
+        self._setup_vdatum(instructions)
         # run vdatum
         self._convert_file(outfilename, vd_dir.name)
-        # read out UTM Zone from VDatum log file
-        with open(vdlogfilename, 'r') as vd_log:
-            for line in vd_log.readlines():
-                if line.startswith('Zone:'):
-                    Output = line[54:82]
-                    Inputzone = line[27:53]
-                    out_zone = Output.rstrip(' ')
+        if 'to_horiz_key' in instructions:
+            out_zone = instructions['to_horiz_key']
+        else:
+            # read out UTM Zone from VDatum log file
+            with open(vdlogfilename, 'r') as vd_log:
+                for line in vd_log.readlines():
+                    if line.startswith('Zone:'):
+                        Output = line[54:82]
+                        Inputzone = line[27:53]
+                        out_zone = Output.rstrip(' ')
         new_bathy = _np.loadtxt(vdfilename, delimiter=',')
         return new_bathy, out_zone
 
-    def _setup_vdatum(self, in_fips: int, in_verdat: str, out_epsg: int, out_verdat: str):
+    def _setup_vdatum(self, instructions: dict):
         """
         Setup the VDatum command line arguments to convert points.
         
@@ -156,29 +176,27 @@ class VDatum:
 
         Parameters
         ----------
-        in_fips :
-            param in_verdat:
-        out_epsg :
-            param out_verdat:
-        in_fips: int :
-            
-        in_verdat: str :
-            
-        out_epsg: int :
-            
-        out_verdat: str :
+        instructions : dict :
             
 
         Returns
         -------
 
         """
-
-        ihorz = rf'ihorz:NAD83:spc:us_ft:{in_fips}'
-        ivert = f' ivert:{in_verdat.lower()}:us_ft:height'
-        ohorz = ' ohorz:NAD83:utm:m:'
-        overt = f' overt:{out_verdat.lower()}:m:height'
-        georef = f'{ihorz}{ivert}{ohorz}{overt}'
+        ihorz_vals = [instructions[v] for v in from_hdatum]
+        ihorz = 'ihorz:' + ':'.join(ihorz_vals)
+        ivert_vals = [instructions[v] for v in from_vdatum]
+        ivert = 'ivert:'  + ':'.join(ivert_vals)
+        ohorz_vals = [instructions[v] for v in to_hdatum]
+        ohorz = 'ohorz:' + ':'.join(ohorz_vals)
+        # having the output zone is optional
+        if 'to_horiz_key' in instructions:
+            ohorz = ohorz + ':' + instructions['to_horiz_key']
+        else:
+            ohorz = ohorz + ':'
+        overt_vals = [instructions[v] for v in to_vdatum]
+        overt = 'overt:' + ':'.join(overt_vals)
+        georef = f'{ihorz} {ivert} {ohorz} {overt}'
         java_str = _os.path.join(self._java_path, 'java')
         file_str = ' -file:txt:comma,0,1,2,skip0:'
         self._shell = f'{java_str} -jar vdatum.jar {georef}{file_str}'
@@ -267,3 +285,13 @@ class VDatum:
             feature.SetGeometry(newp)
             layer.CreateFeature(feature)
         return dataset
+
+    def _have_instructions(self, instructions):
+        """Confirm the existance of required information for datum transformations."""
+        ready = True
+        req = from_hdatum + from_vdatum + to_hdatum + to_vdatum
+        for key in req:
+            if key not in instructions:
+                ready = False
+                break
+        return ready

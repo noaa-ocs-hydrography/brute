@@ -30,6 +30,7 @@ class FuseProcessor:
     """The fuse object."""
     
     _datums = ['from_horiz_datum',
+              'from_horiz_frame',
               'from_horiz_type',
               'from_horiz_units',
               'from_horiz_key',
@@ -37,7 +38,7 @@ class FuseProcessor:
               'from_vert_key',
               'from_vert_units',
               'from_vert_direction',
-              'to_horiz_datum',
+              'to_horiz_frame',
               'to_horiz_type',
               'to_horiz_units',
               'to_horiz_key',
@@ -310,26 +311,38 @@ class FuseProcessor:
 
         self._set_log(infilename)
         # get the metadata
-        meta = self._reader.read_metadata(infilename)
-        if 
-            _datums = ['from_horiz_datum',
-              'from_horiz_type',
-              'from_horiz_units',
-              'from_horiz_key',
-              'from_vert_datum',
-              'from_vert_key',
-              'from_vert_units',
-              'from_vert_direction',
-              'to_horiz_type',
-              'to_horiz_units',
-              'to_horiz_key',
-              'to_vert_key',
-              'to_vert_units',
-              'to_vert_direction',
-              ]
-        meta['to_horiz_datum'] = self._config['to_horiz_datum']
-        meta['to_vert_datum'] = self._config['to_vert_datum']
-        meta['to_vert_units'] = 'metres'
+        raw_meta = self._reader.read_metadata(infilename)
+        meta = raw_meta.copy()
+        # translate from the reader to common metadata keys for datum transformations
+        if 'from_fips' in meta:
+            meta['from_horiz_key'] = meta['from_fips']
+        if 'from_horiz_units' in meta:
+            if meta['from_horiz_units'].upper() == 'US SURVEY FOOT':
+                meta['from_horiz_units'] = 'us_ft'
+            else:
+                raise ValueError(f'Input datum units are unknown: {meta["from_horiz_units"]}')
+        if 'from_vert_key' in meta:
+            meta['from_vert_key'] = meta['from_vert_key'].lower()
+        if 'from_vert_units' in meta:
+            if meta['from_vert_units'].upper() == 'US SURVEY FOOT':
+                meta['from_vert_units'] = 'us_ft'
+            else:
+                raise ValueError(f'Input datum units are unknown: {meta["from_vert_units"]}')
+        # insert a few default values for datum stuff if it isn't there already
+        if 'from_vert_direction' not in meta:
+            meta['from_vert_direction'] = 'height'
+        if 'from_horiz_frame' not in meta:
+            meta['from_horiz_frame'] = 'NAD83'
+        if 'from_horiz_type' not in meta:
+            meta['from_horiz_type'] = 'spc'
+        # get the rest from the config file
+        meta['to_horiz_frame'] = self._config['to_horiz_frame']
+        meta['to_horiz_type'] = self._config['to_horiz_type']
+        meta['to_horiz_units'] = self._config['to_horiz_units']
+        meta['to_horiz_key'] = self._config['to_horiz_key']
+        meta['to_vert_key'] = self._config['to_vert_key']
+        meta['to_vert_units'] = self._config['to_vert_units']
+        meta['to_vert_direction'] = self._config['to_vert_direction']
         meta['interpolated'] = 'False'
         meta['posted'] = False
         if not self._quality_metadata_ready(meta):
