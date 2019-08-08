@@ -18,7 +18,7 @@ import os as os
 import pickle as _pickle
 import re as _re
 
-_ussft2m = 0.30480060960121924  # US survey feet to meters
+#_ussft2m = 0.30480060960121924  # US survey feet to meters
 import dateutil.parser as parser
 from datetime import datetime
 import numpy as _np
@@ -496,11 +496,11 @@ class XYZHeaderReader(object):
         merged_meta = {**default_meta, **name_meta, **file_meta}
         if 'from_horiz_unc' in merged_meta:
             if merged_meta['from_horiz_units'] == 'US Survey Foot':
-                val = _ussft2m * float(merged_meta['from_horiz_unc'])
+                val = float(merged_meta['from_horiz_unc'])
                 merged_meta['horiz_uncert'] = val
         if 'from_vert_unc' in merged_meta:
             if merged_meta['from_vert_units'] == 'US Survey Foot':
-                val = _ussft2m * float(merged_meta['from_vert_unc'])
+                val = float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
         sorind = f"{name_meta['projid']}_{name_meta['uniqueid']}_{name_meta['subprojid']}_{name_meta['start_date']}_" + \
