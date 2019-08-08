@@ -28,13 +28,90 @@ Sources:
 # __version__ = 'point_interpolator 0.0.1'
 import datetime
 import os
-from typing import Tuple, Any
+from concurrent import futures
+from typing import Tuple, Any, Union
 
 import matplotlib.pyplot as plt
 import numpy
 import scipy
+import scipy.spatial.distance
 from osgeo import gdal, ogr, osr
 from pykrige.ok import OrdinaryKriging
+
+
+def plot_interpolation(survey_points: numpy.array, interpolated_raster: Union[numpy.array, gdal.Dataset],
+                       interpolation_method: str):
+    survey_x = survey_points[:, 0]
+    survey_y = survey_points[:, 1]
+    survey_z = survey_points[:, 2]
+
+    figure = plt.figure()
+    figure.suptitle(interpolation_method)
+    axis_1 = figure.add_subplot(1, 2, 2)
+    axis_1.set_title('survey points')
+    axis_1.scatter(survey_x, survey_y, c=survey_z, s=0.5)
+    axis_2 = figure.add_subplot(1, 2, 2)
+    axis_2.set_title('interpolated raster')
+    axis_2.imshow(interpolated_raster, extent=get_bounds(survey_points))
+    plt.show()
+
+
+def point_spacing(input_points: numpy.array) -> Tuple[float, float, float]:
+    """
+    Take a numpy xyz array and return the min, mean, and max spacing
+    between different points in the XY direction for interpolation without
+    holes.  The returned units will be the same as the provided horizontal
+    coordinate system.
+
+    Parameters
+    ----------
+    input_points
+        TODO write description
+
+    Returns
+    -------
+    type
+        minimum, mean, and maximum
+
+    """
+
+    pairwise_distances = scipy.spatial.distance.pdist(input_points, 'euclidean')
+    return numpy.min(pairwise_distances), numpy.mean(pairwise_distances), numpy.max(pairwise_distances)
+
+
+def get_bounds(points: numpy.array) -> Tuple[float, float, float, float]:
+    return numpy.min(points[:, 0]), numpy.max(points[:, 0]), numpy.min(points[:, 1]), numpy.max(points[:, 1])
+
+
+def get_points(point_cloud_dataset: gdal.Dataset, layer_index: int = 0) -> numpy.array:
+    """
+    Take a gdal vector xyz point cloud and return a numpy array.
+
+    Parameters
+    ----------
+    dataset
+        a GDAL point cloud dataset
+    layer_index
+        index of layer to read
+
+    Returns
+    -------
+    type
+        numpy array
+
+    XYZ points
+
+    """
+
+    point_layer = point_cloud_dataset.GetLayerByIndex(layer_index)
+    num_points = point_layer.GetFeatureCount()
+    output_points = numpy.empty((num_points, 3))
+
+    for point_index in range(num_points):
+        feature = point_layer.GetFeature(point_index)
+        output_points[point_index, :] = feature.geometry().GetPoint()
+
+    return output_points
 
 
 def _compare_vals(value: float, min_value: float, max_value: float) -> Tuple[float, float]:
@@ -75,8 +152,8 @@ class PointInterpolator:
 
         self.window_scale = window_scalar
 
-    def interpolate(self, dataset: gdal.Dataset, interpolation_type: str, resolution: float, shapefile: str = None,
-                    shrink: bool = True) -> gdal.Dataset:
+    def interpolate(self, input_dataset: gdal.Dataset, interpolation_type: str, resolution: float,
+                    shapefile: str = None, shrink: bool = True) -> gdal.Dataset:
         """
         Interpolate the provided dataset.
 
@@ -85,15 +162,15 @@ class PointInterpolator:
 
         Parameters
         ----------
-        dataset: gdal.Dataset :
+        input_dataset
             TODO write description
-        interpolation_type: str :
+        interpolation_type
             TODO write description
-        resolution: float :
+        resolution
             TODO write description
-        shapefile: str :
+        shapefile
             TODO write description (Default value = None)
-        shrink: bool :
+        shrink
             TODO write description (Default value = True)
 
         Returns
@@ -106,99 +183,42 @@ class PointInterpolator:
         if interpolation_type == 'invdist_scilin' and shapefile is None:
             raise ValueError('Supporting shapefile required')
 
-        data_array = self._gdal2vector(dataset)
-        _, _, maxrad = self._get_point_spacing(data_array)
-        window = maxrad * self.window_scale
+        input_points = get_points(input_dataset)
+        _, _, max_spacing = point_spacing(input_points)
+        window_size = max_spacing * self.window_scale
 
         if interpolation_type == 'linear':
             # linear interpolation using triangulation
-            interpolated_dataset = self._gdal_linear_interp_points(dataset, resolution)
+            interpolated_dataset = self._interp_points_gdal_linear(input_dataset, resolution)
 
             # trim interpolation back using the original dataset as a mask
-            output_dataset = self._mask_with_raster(interpolated_dataset, self._get_mask(dataset, resolution, window))
+            output_dataset = self._mask_with_raster(interpolated_dataset,
+                                                    self._get_mask(input_dataset, resolution, window_size))
         elif interpolation_type == 'invlin':
-            interpolated_dataset = self._gdal_invdist_scilin_interp_points(dataset, resolution, window)
+            interpolated_dataset = self._interp_points_gdal_invdist_scipy_linear(input_dataset, resolution, window_size)
 
             output_dataset = self._mask_with_raster(
-                self._shrink_coverage(interpolated_dataset, resolution, window) if shrink else interpolated_dataset,
+                self._shrink_coverage(interpolated_dataset, resolution,
+                                      window_size) if shrink else interpolated_dataset,
                 self._get_shape_mask(interpolated_dataset, shapefile, resolution))
         elif interpolation_type == 'invdist':
             # inverse distance interpolation
-            interpolated_dataset = self._gdal_invdist_interp_points(dataset, resolution, window)
+            interpolated_dataset = self._interp_points_gdal_invdist(input_dataset, resolution, window_size)
 
             # shrink the coverage back on the edges
             output_dataset = self._shrink_coverage(interpolated_dataset, resolution,
-                                                   window) if shrink else interpolated_dataset
+                                                   window_size) if shrink else interpolated_dataset
         elif interpolation_type == 'kriging':
             # interpolate using Ordinary Kriging
-            interpolated_dataset = self._kriging_interp_points(dataset, resolution, window)
+            interpolated_dataset = self._interp_points_kriging(input_dataset, resolution, window_size)
 
             # shrink the coverage back on the edges
             output_dataset = self._shrink_coverage(interpolated_dataset, resolution,
-                                                   window) if shrink else interpolated_dataset
+                                                   window_size) if shrink else interpolated_dataset
         else:
             raise ValueError(f'Interpolation type "{interpolation_type}" not recognized.')
 
         return output_dataset
-
-    def _gdal2vector(self, dataset: gdal.Dataset) -> numpy.array:
-        """
-        Take a gdal vector xyz point cloud and return a numpy array.
-
-        Parameters
-        ----------
-        dataset: gdal.Dataset :
-            TODO write description
-
-        Returns
-        -------
-        type
-            vector dataset
-
-        """
-
-        # get the data out of the gdal data structure
-        lyr = dataset.GetLayerByIndex(0)
-        count = lyr.GetFeatureCount()
-        data = numpy.zeros((count, 3))
-
-        for n in numpy.arange(count):
-            f = lyr.GetFeature(n)
-            data[n, :] = f.geometry().GetPoint()
-
-        return data
-
-    def _get_point_spacing(self, dataset: numpy.array) -> Tuple[float, float, float]:
-        """
-        Take a numpy xyz array and return the min, mean, and max spacing
-        between different points in the XY direction for interpolation without
-        holes.  The returned units will be the same as the provided horizontal
-        coordinate system.
-
-        Parameters
-        ----------
-        dataset: numpy.array :
-            TODO write description
-
-        Returns
-        -------
-        type
-            minimum, mean, and maximum
-
-        """
-
-        count = len(dataset)
-        min_dist = numpy.zeros(count) + numpy.inf
-
-        # roll the array through, comparing all points and saving the minimum dist.
-        for n in numpy.arange(1, count):
-            tmp = numpy.roll(dataset, n, axis=0)
-            dist = (numpy.sqrt(numpy.square(dataset[:, 0] - tmp[:, 0]) + numpy.square(dataset[:, 1] - tmp[:, 1])))
-            idx = numpy.nonzero(dist < min_dist)[0]
-            if len(idx) > 0:
-                min_dist[idx] = dist[idx]
-
-        return min_dist.min(), min_dist.mean(), min_dist.max()
 
     def _get_mask(self, dataset: gdal.Dataset, resolution: float, window: float) -> gdal.Dataset:
         """
@@ -220,7 +240,7 @@ class PointInterpolator:
 
         """
 
-        data = self._gdal_invdist_interp_points(dataset, resolution, window)
+        data = self._interp_points_gdal_invdist(dataset, resolution, window)
         mask = self._shrink_coverage(data, resolution, window)
         return mask
 
@@ -389,9 +409,6 @@ class PointInterpolator:
         band = grid.GetRasterBand(1)
         shape = (grid.RasterYSize, grid.RasterXSize)
         raster = band.ReadAsArray()
-        plt.figure()
-        plt.imshow(raster)
-        plt.show()
         del band
         grid_ref = grid.GetProjectionRef()
         grid_gt = grid.GetGeoTransform()
@@ -402,7 +419,7 @@ class PointInterpolator:
         print('transformed', shape_gt)
         return shape_ds
 
-    def _gdal_linear_interp_points(self, dataset: gdal.Dataset, resolution: float,
+    def _interp_points_gdal_linear(self, dataset: gdal.Dataset, resolution: float,
                                    nodata: float = 1000000) -> gdal.Grid:
         """
         Interpolate the provided gdal vector points and return the interpolated
@@ -429,20 +446,31 @@ class PointInterpolator:
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
 
+        input_points = []
+
         for n in numpy.arange(count):
             f = lyr.GetFeature(n)
             x, y, z = f.geometry().GetPoint()
+            input_points.append((x, y, z))
             xmin, xmax = _compare_vals(x, xmin, xmax)
             ymin, ymax = _compare_vals(y, ymin, ymax)
+
+        input_points = numpy.array(input_points)
 
         numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
         algorithm = f"linear:radius=0:nodata={int(nodata)}"
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
                                 algorithm=algorithm)
+
+        interpolated_data = numpy.flip(interp_data.ReadAsArray(), axis=0)
+        interpolated_data[interpolated_data == nodata] = numpy.nan
+
+        plot_interpolation(input_points, interpolated_data, 'linear')
+
         return interp_data
 
-    def _gdal_invdist_scilin_interp_points(self, dataset: gdal.Dataset, resolution: float, radius: float,
-                                           nodata: float = 1000000) -> gdal.Dataset:
+    def _interp_points_gdal_invdist_scipy_linear(self, dataset: gdal.Dataset, resolution: float, radius: float,
+                                                 nodata: float = 1000000) -> gdal.Dataset:
         """
         Interpolate the provided gdal vector points and return the interpolated
         data.
@@ -467,19 +495,23 @@ class PointInterpolator:
 
         print('_gdal_invdist_scilin_interp_points')
         # Find the bounds of the provided data
-        xmin, xmax, ymin, ymax = numpy.nan, numpy.nan, numpy.nan, numpy.nan
         lyr = dataset.GetLayerByIndex(0)
         count = lyr.GetFeatureCount()
 
+        input_points = []
+
         for n in numpy.arange(count):
             f = lyr.GetFeature(n)
-            x, y, z = f.geometry().GetPoint()
-            xmin, xmax = _compare_vals(x, xmin, xmax)
-            ymin, ymax = _compare_vals(y, ymin, ymax)
+            input_points.append(f.geometry().GetPoint())
+
+        input_points = numpy.array(input_points)
+        xmin = numpy.min(input_points[:, 0])
+        xmax = numpy.max(input_points[:, 0])
+        ymin = numpy.min(input_points[:, 1])
+        ymax = numpy.max(input_points[:, 1])
 
         numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
-        algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}" + \
-                    f":angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
+        algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}:angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
                                 algorithm=algorithm)
         arr = interp_data.ReadAsArray()
@@ -493,9 +525,8 @@ class PointInterpolator:
         interp_grid = scipy.interpolate.griddata((xcoord, ycoord), zvals, (xi, yi), method='linear', fill_value=nodata)
 
         interp_grid[numpy.isnan(interp_grid)] = nodata
-        plt.figure()
-        plt.imshow(interp_grid)
-        plt.show()
+
+        plot_interpolation(input_points, interp_grid, 'IDW + linear')
         print('stop')
 
         band = interp_data.GetRasterBand(1)
@@ -505,7 +536,7 @@ class PointInterpolator:
 
         return interp_data
 
-    def _gdal_invdist_interp_points(self, dataset: gdal.Dataset, resolution: float, radius: float,
+    def _interp_points_gdal_invdist(self, dataset: gdal.Dataset, resolution: float, radius: float,
                                     nodata: float = 1000000) -> gdal.Dataset:
         """
         Interpolate the provided gdal vector points and return the interpolated
@@ -547,162 +578,99 @@ class PointInterpolator:
                                 algorithm=algorithm)
         return interp_data
 
-    def _kriging_interp_points(self, input_dataset: gdal.Dataset, resolution: float, radius: float,
+    def _interp_points_kriging(self, point_cloud_dataset: gdal.Dataset, resolution: float, radius: float,
                                nodata: float = 1000000.0) -> gdal.Dataset:
         """
         Interpolate the provided gdal vector points and return the interpolated
         data.
         """
 
-        # Find the bounds of the provided data
-        min_x, max_x, min_y, max_y = numpy.nan, numpy.nan, numpy.nan, numpy.nan
-        lyr = input_dataset.GetLayerByIndex(0)
-
-        input_x = []
-        input_y = []
-        input_z = []
-
-        for feature_index in numpy.arange(lyr.GetFeatureCount()):
-            feature = lyr.GetFeature(feature_index)
-            x, y, z = feature.geometry().GetPoint()
-
-            min_x, max_x = _compare_vals(x, min_x, max_x)
-            min_y, max_y = _compare_vals(y, min_y, max_y)
-
-            input_x.append(x)
-            input_y.append(y)
-            input_z.append(z)
-
-        input_x = numpy.array(input_x)
-        input_y = numpy.array(input_y)
-        input_z = numpy.array(input_z)
-
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, (min_x, min_y, max_x, max_y))
+        input_points = get_points(point_cloud_dataset)
+        input_min_x, input_max_x, input_min_y, input_max_y = get_bounds(input_points)
+        num_rows, num_columns, bounds = self._get_nodes3(resolution,
+                                                         (input_min_x, input_min_y, input_max_x, input_max_y))
 
         output_grid_x = numpy.arange(bounds[0], bounds[2], resolution)
         output_grid_y = numpy.arange(bounds[1], bounds[3], resolution)
         interpolated_data = numpy.empty((len(output_grid_y), len(output_grid_x)), dtype=float)
         variance = numpy.empty((len(output_grid_y), len(output_grid_x)), dtype=float)
 
-        total_parts = 64
-        side_length = numpy.sqrt(total_parts)
+        side_length = 5
+        total_parts = side_length ** 2
 
         row, col = 0, 0
 
-        x_min, y_min, x_max, y_max = bounds
+        min_x, min_y, max_x, max_y = bounds
 
-        x_range = x_max - x_min
-        y_range = y_max - y_min
+        x_range = max_x - min_x
+        y_range = max_y - min_y
 
-        # with concurrent.futures.ProcessPoolExecutor() as concurrency_pool:
-        #     futures = {}
-        #
-        #     for part_index in range(total_parts):
-        #         print(f'processing chunk {part_index + 1} of {total_parts}')
-        #
-        #         grid_x_start = int(col * len(output_grid_x) / side_length)
-        #         grid_x_end = int((col + 1) * len(output_grid_x) / side_length - 1)
-        #         grid_y_start = int(row * len(output_grid_y) / side_length)
-        #         grid_y_end = int((row + 1) * len(output_grid_y) / side_length - 1)
-        #
-        #         chunk_x_min = x_min + ((x_range / side_length) * part_index)
-        #         chunk_x_max = x_min + ((x_range / side_length) * (part_index + 1))
-        #         chunk_y_min = y_min + ((y_range / side_length) * part_index)
-        #         chunk_y_max = y_min + ((y_range / side_length) * (part_index + 1))
-        #
-        #         point_indices = numpy.where(
-        #             (input_x >= chunk_x_min) & (input_x < chunk_x_max) & (input_y >= chunk_y_min) & (
-        #                     input_y < chunk_y_max))[0]
-        #
-        #         if len(point_indices) > 0:
-        #             print('points in chunk')
-        #
-        #             interpolator = OrdinaryKriging(input_x[point_indices], input_y[point_indices],
-        #                                            input_z[point_indices],
-        #                                            variogram_model='linear', verbose=False, enable_plotting=False)
-        #
-        #             current_future = concurrency_pool.submit(interpolator.execute, 'grid',
-        #                                                      output_grid_x[grid_x_start:grid_x_end],
-        #                                                      output_grid_y[grid_y_start:grid_y_end])
-        #             futures[current_future] = (slice(grid_y_start, grid_y_end), slice(grid_x_start, grid_x_end))
-        #         else:
-        #             print('no points in chunk')
-        #
-        #             interpolated_data[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = numpy.full(
-        #                 (grid_y_end - grid_y_start, grid_x_end - grid_x_start), numpy.nan)
-        #             variance[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = numpy.full(
-        #                 (grid_y_end - grid_y_start, grid_x_end - grid_x_start), numpy.nan)
-        #
-        #         if col < side_length:
-        #             col += 1
-        #         else:
-        #             row += 1
-        #             col = 0
-        #
-        #     for completed_future in concurrent.futures.as_completed(futures):
-        #         chunk_slices = futures[completed_future]
-        #
-        #         current_interpolated_data, current_variance = completed_future.result()
-        #
-        #         interpolated_data[chunk_slices] = current_interpolated_data
-        #         variance[chunk_slices] = current_variance
+        start_time = datetime.datetime.now()
 
-        for part_index in range(total_parts):
-            print(f'processing chunk {part_index + 1} of {total_parts}')
+        with futures.ProcessPoolExecutor() as concurrency_pool:
+            running_futures = {}
 
-            grid_x_start = int(col * len(output_grid_x) / side_length)
-            grid_x_end = int((col + 1) * len(output_grid_x) / side_length - 1)
-            grid_y_start = int(row * len(output_grid_y) / side_length)
-            grid_y_end = int((row + 1) * len(output_grid_y) / side_length - 1)
+            for part_index in range(total_parts):
+                print(f'processing chunk {part_index + 1} of {total_parts}')
 
-            chunk_x_min = x_min + ((x_range / side_length) * part_index)
-            chunk_x_max = x_min + ((x_range / side_length) * (part_index + 1))
-            chunk_y_min = y_min + ((y_range / side_length) * part_index)
-            chunk_y_max = y_min + ((y_range / side_length) * (part_index + 1))
+                grid_x_start = int(col * len(output_grid_x) / side_length)
+                grid_x_end = int((col + 1) * len(output_grid_x) / side_length - 1)
+                grid_y_start = int(row * len(output_grid_y) / side_length)
+                grid_y_end = int((row + 1) * len(output_grid_y) / side_length - 1)
 
-            point_indices = numpy.where(
-                (input_x >= chunk_x_min) & (input_x < chunk_x_max) & (input_y >= chunk_y_min) & (
-                        input_y < chunk_y_max))[0]
+                chunk_x_min = min_x + ((x_range / side_length) * part_index)
+                chunk_x_max = min_x + ((x_range / side_length) * (part_index + 1))
+                chunk_y_min = min_y + ((y_range / side_length) * part_index)
+                chunk_y_max = min_y + ((y_range / side_length) * (part_index + 1))
 
-            if len(point_indices) > 0:
-                start_time = datetime.datetime.now()
+                chunk_points = input_points[numpy.where(
+                    (input_points[:, 0] >= chunk_x_min) & (input_points[:, 0] < chunk_x_max) & (
+                            input_points[:, 1] >= chunk_y_min) & (input_points[:, 1] < chunk_y_max))[0]]
 
-                interpolator = OrdinaryKriging(input_x[point_indices], input_y[point_indices], input_z[point_indices],
-                                               variogram_model='linear', verbose=False, enable_plotting=False)
+                print(f'found {chunk_points.shape[0]} points in chunk')
 
-                current_interpolated_data, current_variance = interpolator.execute('grid',
-                                                                                   output_grid_x[
-                                                                                   grid_x_start:grid_x_end],
-                                                                                   output_grid_y[
-                                                                                   grid_y_start:grid_y_end])
+                if chunk_points.shape[0] > 0:
+                    interpolator = OrdinaryKriging(chunk_points[:, 0], chunk_points[:, 1], chunk_points[:, 2],
+                                                   variogram_model='linear', verbose=False, enable_plotting=False)
 
-                duration = (datetime.datetime.now() - start_time)
-                print(f'interpolation took {duration.total_seconds()} s')
-            else:
-                current_interpolated_data = numpy.full((grid_y_end - grid_y_start, grid_x_end - grid_x_start),
-                                                       numpy.nan)
-                current_variance = numpy.full((grid_y_end - grid_y_start, grid_x_end - grid_x_start),
-                                              numpy.nan)
-                print('no points in chunk')
+                    current_future = concurrency_pool.submit(interpolator.execute, 'grid',
+                                                             output_grid_x[grid_x_start:grid_x_end],
+                                                             output_grid_y[grid_y_start:grid_y_end])
+                    running_futures[current_future] = [slice(grid_y_start, grid_y_end),
+                                                       slice(grid_x_start, grid_x_end)]
+                else:
+                    interpolated_data[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = numpy.full(
+                        (grid_y_end - grid_y_start, grid_x_end - grid_x_start), numpy.nan)
+                    variance[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = numpy.full(
+                        (grid_y_end - grid_y_start, grid_x_end - grid_x_start), numpy.nan)
 
-            interpolated_data[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = current_interpolated_data
-            variance[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = current_variance
+                if col >= side_length - 1:
+                    col = 0
+                    row += 1
+                else:
+                    col += 1
 
-            if col >= side_length - 1:
-                col = 0
-                row += 1
-            else:
-                col += 1
+            for completed_future in futures.as_completed(running_futures):
+                chunk_slices = running_futures[completed_future]
 
-        del current_interpolated_data, current_variance
+                current_interpolated_data, current_variance = completed_future.result()
+
+                interpolated_data[chunk_slices] = current_interpolated_data
+                variance[chunk_slices] = current_variance
+
+        duration = (datetime.datetime.now() - start_time)
+        print(f'interpolating {total_parts} chunks took {duration.total_seconds()} s')
+
         uncertainty = numpy.sqrt(variance) * 2.5
 
-        memory_raster_driver = gdal.GetDriverByName('MEM')
-        output_dataset = memory_raster_driver.Create('temp', numcolumns, numrows, 2, gdal.GDT_Float32)
+        plot_interpolation(input_points, interpolated_data, 'kriging')
 
-        input_geotransform = input_dataset.GetGeoTransform()
+        memory_raster_driver = gdal.GetDriverByName('MEM')
+        output_dataset = memory_raster_driver.Create('temp', num_columns, num_rows, 2, gdal.GDT_Float32)
+
+        input_geotransform = point_cloud_dataset.GetGeoTransform()
         output_dataset.SetGeoTransform((input_geotransform[0], resolution, 0.0, 0.0, input_geotransform[3], resolution))
-        output_dataset.SetProjection(input_dataset.GetProjection())
+        output_dataset.SetProjection(point_cloud_dataset.GetProjection())
 
         band_1 = output_dataset.GetRasterBand(1)
         band_1.SetNoDataValue(nodata)
