@@ -49,6 +49,7 @@ class FuseProcessor:
               ]
 
     _quality_metrics = ['from_horiz_unc',
+                        'from_horiz_resolution',
                         'from_vert_unc',
                         'complete_coverage',
                         'bathymetry',
@@ -56,6 +57,7 @@ class FuseProcessor:
                         'vert_uncert_vari',
                         'horiz_uncert_fixed',
                         'horiz_uncert_vari',
+                        'to_horiz_resolution',
                         'feat_size',
                         'feat_detect',
                         'feat_least_depth',
@@ -106,7 +108,7 @@ class FuseProcessor:
             + FuseProcessor._quality_metrics \
             + FuseProcessor._scores \
             + FuseProcessor._source_info
-        self._meta_obj = _mr.MetaReviewer_eHydro(self._config['metapath'], self._cols)
+        self._meta_obj = _mr.MetaReviewer(self._config['metapath'], self._cols)
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()

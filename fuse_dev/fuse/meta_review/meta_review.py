@@ -11,10 +11,7 @@ from pathlib import Path as _Path
 from tempfile import NamedTemporaryFile as _NamedTemporaryFile
 from typing import List
 
-import fuse.meta_review.meta_review as mrb
-
-
-class MetaReviewer_eHydro(mrb.MetaReviewer):
+class MetaReviewer:
     """The ehydro metadata object."""
 
     # ordered dict to ensure looping through the keys always gets 'manual' last.
