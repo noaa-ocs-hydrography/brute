@@ -37,14 +37,22 @@ class USACERawReader:
     def read_metadata(self, infilename: str):
         """
         Read all available meta data.
-        returns dictionary
+
+        The USACE metadata is retuned in order of precedence:
+            1. The survey's ``.xml``.
+            2. The survey's ``.xyz`` header.
+            3. The file name.
+            4. The metadata pickle pulled from eHydro.
 
         Parameters
         ----------
-        infilename: str
+        infilename : str
+            File path of the input ``.xyz`` data
 
         Returns
         -------
+        dict :
+            The complete metadata pulled from multiple sources
 
         """
         basexyzname, suffix = self.name_gen(infilename, ext='.xyz')
@@ -55,6 +63,9 @@ class USACERawReader:
         meta_date = self._parse_start_date(infilename,
                                            {**meta_pickle, **meta_xyz,
                                             **meta_xml})
+        if suffix is not None and suffix.upper() in self.xyz_suffixes:
+#            meta_xml['from_horiz_reolution'] = 3
+#            self._check_grid(infilename)
         return {**meta_pickle, **meta_filename, **meta_xyz, **meta_xml,
                 **meta_date}
 
@@ -183,6 +194,25 @@ class USACERawReader:
         Returns the suffix of the a survey's xyz file and the file name
         for a different extension
 
+        If the survey's xyz file name contains ``_A.xyz`` or ``_FULL.xyz`` this
+        suffix is removed from the 'base' name of the file.
+
+        Parameters
+        ----------
+        filename : str
+            Input file
+        ext : str, optional
+            New extention to be applied to the base
+        sfx : bool, optional
+            Whether or not the function passes back the suffix found in
+            `filename`
+
+        Returns
+        -------
+        type :
+            ``tuple(base, suffix)`` if ``sfx`` is ``True``;
+            ``base`` if ``sfx`` is ``False``
+
         """
         filebase, fileext = _os.path.splitext(filename)
         suffix = None
@@ -206,6 +236,10 @@ class USACERawReader:
             return base, suffix
         else:
             return base
+
+    def _check_grid(self, infilename):
+        data = self._parse_ehydro_xyz_bathy(infilename)
+        ...
 
     def _parse_ehydro_xyz_header(self, infilename: str, meta_source: str = 'xyz', default_meta: str = '') -> dict:
         """
@@ -665,12 +699,23 @@ class USACERawReader:
                     continue
                 elif self._is_header(line):
                     pass
+                elif line == '':
+                    pass
                 else:
                     if ',' in line:
                         output = f'Comma delimited file found: {infilename}'
                         self._logger.log(_logging.DEBUG, output)
                         raise ValueError(output)
                     else:
-                        bathy.append([float(x) for x in line.split(' ')])
+                        row = []
+                        for x in line.strip().split(' '):
+                            try:
+                                if x == '' or x == ' ':
+                                    pass
+                                else:
+                                    row.append(float(x))
+                            except ValueError as e:
+                                print(f'{e}: >{x}<')
+                        bathy.append(row)
         bathy = _np.asarray(bathy)
         return bathy

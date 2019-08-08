@@ -24,15 +24,23 @@ class CENANRawReader(usace.USACERawReader):
 
     def read_metadata(self, infilename: str):
         """
-        Read all available meta data.
-        returns dictionary
+        Function overwite of :func:`usace.USACERawReader.read_metadata` based
+        on where the best metadata is for this district
+
+        The CENAN metadata is retuned in order of precedence:
+            1. The survey's ``.xyz`` header.
+            2. The file name.
+            3. The metadata pickle pulled from eHydro.
 
         Parameters
         ----------
-        infilename: str
+        infilename : str
+            File path of the input ``.xyz`` data
 
         Returns
         -------
+        dict :
+            The complete metadata pulled from multiple sources
 
         """
 
