@@ -47,7 +47,7 @@ class CENAERawReader(usace.USACERawReader):
         meta_date = self._parse_start_date(infilename,
                                            {**meta_pickle, **meta_xyz,
                                             **meta_xml})
-        if suffix is not None and suffix.upper() in self.xyz_suffixes:
+#        if suffix is not None and suffix.upper() in self.xyz_suffixes:
 #            meta_xml['from_horiz_reolution'] = 3
 #            self._check_grid(infilename)
         return {**meta_pickle, **meta_filename, **meta_xml, **meta_xyz,
