@@ -99,8 +99,8 @@ class MetaReviewer:
             if c in ('from_filename', 'from_path', 'script_version'):
                 csv_cols.append(c)
             else:
-                csv_cols.append(MetaReviewer_eHydro._col_root['script'] + c)
-                csv_cols.append(MetaReviewer_eHydro._col_root['manual'] + c)
+                csv_cols.append(MetaReviewer._col_root['script'] + c)
+                csv_cols.append(MetaReviewer._col_root['manual'] + c)
         csv_cols.append('reviewed')
         csv_cols.append('Last Updated')
         csv_cols.append('Notes')
@@ -308,7 +308,7 @@ class MetaReviewer:
 
         metarow = {}
         # make dictionaries for sorting data into
-        for name in MetaReviewer_eHydro._col_root:
+        for name in MetaReviewer._col_root:
             metarow[name] = {}
         metarow['base'] = {}
         # sort each key (that has information) into the right dictionary
@@ -316,10 +316,10 @@ class MetaReviewer:
             # only do stuff with keys that have information
             if len(row[key]) > 0:
                 named = False
-                for name in MetaReviewer_eHydro._col_root:
+                for name in MetaReviewer._col_root:
                     if name in key:
                         named = True
-                        val = key.replace(MetaReviewer_eHydro._col_root[name], '')
+                        val = key.replace(MetaReviewer._col_root[name], '')
                         metarow[name][val] = row[key]
                 if not named:
                     metarow['base'][key] = row[key]
@@ -349,21 +349,21 @@ class MetaReviewer:
 
         # remap the keys
         for key in row:
-            if key in MetaReviewer_eHydro._field_map:
-                s57row[MetaReviewer_eHydro._field_map[key]] = row[key]
+            if key in MetaReviewer._field_map:
+                s57row[MetaReviewer._field_map[key]] = row[key]
                 if row[key] in ('TRUE', 'True'):
-                    s57row[MetaReviewer_eHydro._field_map[key]] = 0
+                    s57row[MetaReviewer._field_map[key]] = 0
                 elif row[key] in ('FALSE', 'False'):
-                    s57row[MetaReviewer_eHydro._field_map[key]] = 1
+                    s57row[MetaReviewer._field_map[key]] = 1
 
         # enforce additional required formating
         if 'VERDAT' in s57row:
-            s57row['VERDAT'] = MetaReviewer_eHydro._vert_datum[s57row['VERDAT']]
+            s57row['VERDAT'] = MetaReviewer._vert_datum[s57row['VERDAT']]
         elif 'HORDAT' in s57row:
             h = s57row['HORDAT']
-            for name in MetaReviewer_eHydro._horz_datum:
+            for name in MetaReviewer._horz_datum:
                 if name in h:
-                    s57row['HORDAT'] = MetaReviewer_eHydro._horz_datum[name]
+                    s57row['HORDAT'] = MetaReviewer._horz_datum[name]
                     break
         elif 'SUREND' in s57row:
             s57row['SORDAT'] = s57row['SUREND']

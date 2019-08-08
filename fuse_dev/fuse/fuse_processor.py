@@ -188,8 +188,14 @@ class FuseProcessor:
         """
         options = {'rawpaths': 'path to raw data',
                    'outpath': 'path to output data',
-                   'to_horiz_datum': 'output horizontal datum',
-                   'to_vert_datum': 'output vertical datum',
+                   'to_horiz_datum' : 'output horizontal datum description',
+                   'to_horiz_frame' : 'output horizontal datum frame',
+                   'to_horiz_type' : 'output horizontal datum type',
+                   'to_horiz_units' : 'output horizontal datum units',
+                   'to_vert_key' : 'output vertical datum key',
+                   'to_vert_units' : 'output vertical datum units',
+                   'to_vert_direction' : 'output vertical datum direction',
+                   'to_vert_datum': 'output vertical datum description',
                    'metapath': 'metadata output',
                    }
         for key in options.keys():
@@ -341,10 +347,12 @@ class FuseProcessor:
         meta['to_horiz_frame'] = self._config['to_horiz_frame']
         meta['to_horiz_type'] = self._config['to_horiz_type']
         meta['to_horiz_units'] = self._config['to_horiz_units']
-        meta['to_horiz_key'] = self._config['to_horiz_key']
+        if 'to_horiz_key' in self._config:
+            meta['to_horiz_key'] = self._config['to_horiz_key']
         meta['to_vert_key'] = self._config['to_vert_key']
         meta['to_vert_units'] = self._config['to_vert_units']
         meta['to_vert_direction'] = self._config['to_vert_direction']
+        meta['to_vert_datum'] = self._config['to_vert_datum']
         meta['interpolated'] = 'False'
         meta['posted'] = False
         if not self._quality_metadata_ready(meta):
@@ -379,7 +387,7 @@ class FuseProcessor:
 
         metadata = self._get_stored_meta(infilename)
         self._set_log(infilename)
-        if 'from_fips' in metadata:
+        if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
             outpath = self._config['outpath']
             infilepath, infilebase = _os.path.split(infilename)
@@ -410,7 +418,8 @@ class FuseProcessor:
             self._writer.write(dataset, interpfilename)
             self._meta_obj.write_meta_record(meta_interp)
         else:
-            self.logger.log(_logging.DEBUG, 'No fips code found')
+            msg = 'All metadata for datum transformation not available.'
+            self.logger.log(_logging.DEBUG, msg)
         self._close_log()
 
     def post(self, infilename):
@@ -587,8 +596,10 @@ class FuseProcessor:
         """
         Check the metadata to see if the required fields are populated.
         """
+        tmp = FuseProcessor._datums.copy()
+        tmp.remove('to_horiz_key')
         ready = True
-        for key in FuseProcessor._datums:
+        for key in tmp:
             if key not in metadata:
                 ready = False
                 break
