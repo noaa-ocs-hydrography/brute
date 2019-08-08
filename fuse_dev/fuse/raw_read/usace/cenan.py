@@ -28,8 +28,8 @@ class CENANRawReader(usace.USACERawReader):
         on where the best metadata is for this district
 
         The CENAN metadata is retuned in order of precedence:
-            1. The survey's ``.xyz`` header.
-            2. The file name.
+            1. The file name.
+            2. The survey's ``.xyz`` header.
             3. The metadata pickle pulled from eHydro.
 
         Parameters
@@ -46,9 +46,9 @@ class CENANRawReader(usace.USACERawReader):
 
         basexyzname, suffix = self.name_gen(infilename, ext='.xyz')
         meta_xyz = self._parse_ehydro_xyz_header(basexyzname)
-        meta_filename = self._parse_filename(basexyzname)
+        meta_filename = self._parse_filename(infilename)
         meta_pickle = self._parse_pickle(infilename)
         meta_date = self._parse_start_date(infilename,
                                            {**meta_pickle, **meta_xyz})
-        return {**meta_pickle, **meta_filename, **meta_xyz,
+        return {**meta_pickle, **meta_xyz, **meta_filename,
                 **meta_date}
