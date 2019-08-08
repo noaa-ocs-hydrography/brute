@@ -261,26 +261,37 @@ class BDB51IO:
         -------
 
         """
-
-        # create a fake feature
-        crs = self._db.crs
-        fake_coverage = 'POLYGON((0 0,0 1,1 1,1 0,0 0))'
-        geom = caris.Geometry(crs, fake_coverage)
-        surface = self._db.create_feature('surfac', geom)
-        surface['OBJNAM'] = file_path
-        surface['srcfil'] = file_path
-
-        # get a metadata container to put stuff into
-        current_metadata = surface.attributes
-        # need to load the metadata dictionary that was put on disk here.
-        for key in new_metadata:
-            current_metadata[key] = new_metadata[key]
-        # commit the feature to the database
-        self._db.commit()
-
-        # upload coverage
-        surface.upload_coverage(file_path)
-        return 'Uploaded {} to {}'.format(file_path, self.database)
+        # check to see if file with same object name already exists
+        n = -1
+        cql = "OBJNAM = '{}'".format(new_metadata['OBJNAM'])
+        features = self._db.query('surfac', cql)
+        for n,f in enumerate(features):
+            pass
+        if n > -1:
+            up_msg = self._update_metadata(new_metadata)
+            objnam = new_metadata['OBJNAM']
+            msg = '{} already found in database, updating metadata only...'.format(objnam)
+            return msg + up_msg
+        else:
+            # create a fake feature
+            crs = self._db.crs
+            fake_coverage = 'POLYGON((0 0,0 1,1 1,1 0,0 0))'
+            geom = caris.Geometry(crs, fake_coverage)
+            surface = self._db.create_feature('surfac', geom)
+            surface['OBJNAM'] = file_path
+            surface['srcfil'] = file_path
+    
+            # get a metadata container to put stuff into
+            current_metadata = surface.attributes
+            # need to load the metadata dictionary that was put on disk here.
+            for key in new_metadata:
+                current_metadata[key] = new_metadata[key]
+            # commit the feature to the database
+            self._db.commit()
+    
+            # upload coverage
+            surface.upload_coverage(file_path)
+            return 'Uploaded {} to {}'.format(file_path, self.database)
     
     def _update_metadata(self, new_metadata: dict) -> str:
         """
