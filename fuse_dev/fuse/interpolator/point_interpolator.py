@@ -289,7 +289,8 @@ class PointInterpolator:
         interpolated_array = numpy.empty((len(output_y), len(output_x)), dtype=float)
         variance = numpy.empty((len(output_y), len(output_x)), dtype=float)
 
-        side_length = 5
+        # don't set this to be less than 4 unless you have a a beast of a machine to run it on
+        side_length = 4
         total_parts = side_length ** 2
 
         row, col = 0, 0
@@ -301,21 +302,26 @@ class PointInterpolator:
 
         start_time = datetime.datetime.now()
 
+        chunk_cols = int(len(output_x) / side_length)
+        chunk_rows = int(len(output_y) / side_length)
+        chunk_width = chunk_cols * resolution
+        chunk_height = chunk_rows * resolution
+
         with futures.ProcessPoolExecutor() as concurrency_pool:
             running_futures = {}
 
             for part_index in range(total_parts):
                 print(f'processing chunk {part_index + 1} of {total_parts}')
 
-                grid_x_start = int(col * len(output_x) / side_length)
-                grid_x_end = int((col + 1) * len(output_x) / side_length - 1)
-                grid_y_start = int(row * len(output_y) / side_length)
-                grid_y_end = int((row + 1) * len(output_y) / side_length - 1)
+                grid_x_start = col * chunk_cols
+                grid_x_end = grid_x_start + chunk_cols
+                grid_y_start = row * chunk_rows
+                grid_y_end = grid_y_start + chunk_rows
 
-                chunk_x_min = min_x + ((x_range / side_length) * part_index)
-                chunk_x_max = min_x + ((x_range / side_length) * (part_index + 1))
-                chunk_y_min = min_y + ((y_range / side_length) * part_index)
-                chunk_y_max = min_y + ((y_range / side_length) * (part_index + 1))
+                chunk_x_min = min_x + (col * chunk_width)
+                chunk_x_max = chunk_x_min + chunk_width
+                chunk_y_min = min_y + (row * chunk_height)
+                chunk_y_max = chunk_y_min + chunk_height
 
                 chunk_points = input_points[numpy.where(
                     (input_points[:, 0] >= chunk_x_min) & (input_points[:, 0] < chunk_x_max) & (
@@ -323,7 +329,7 @@ class PointInterpolator:
 
                 print(f'found {chunk_points.shape[0]} points in chunk')
 
-                if chunk_points.shape[0] > 0:
+                if chunk_points.shape[0] >= 3:
                     interpolator = OrdinaryKriging(chunk_points[:, 0], chunk_points[:, 1], chunk_points[:, 2],
                                                    variogram_model='linear', verbose=False, enable_plotting=False)
 
@@ -356,6 +362,11 @@ class PointInterpolator:
         print(f'interpolating {total_parts} chunks took {duration.total_seconds()} s')
 
         uncertainty = numpy.sqrt(variance) * 2.5
+
+        interpolated_array = numpy.flip(interpolated_array, axis=0)
+        uncertainty = numpy.flip(uncertainty, axis=0)
+
+        self.__plot(input_points, interpolated_array, 'kriging')
 
         memory_raster_driver = gdal.GetDriverByName('MEM')
         output_dataset = memory_raster_driver.Create('temp', cols, rows, 2, gdal.GDT_Float32)
