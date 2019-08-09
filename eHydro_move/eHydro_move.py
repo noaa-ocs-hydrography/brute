@@ -433,7 +433,7 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method,
                     if text_output is not None:
                         text_output.write(f'{_os.path.join(eHydro_folder, name)}\n')
 
-                    if method is None:
+                    if method:
                         _shutil.move(item, newName)
                     elif not method:
                         _shutil.copy2(item, newName)
