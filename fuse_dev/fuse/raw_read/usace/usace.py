@@ -284,7 +284,8 @@ class USACERawReader:
         -------
 
         """
-
+        name_sections = ('projid', 'uniqueid', 'subprojid', 'start_date',
+                          'statuscode', 'optional')
         name_meta = self._parse_filename(infilename)
         if meta_source == 'xyz':
             file_meta = self._parse_xyz_header(infilename)
@@ -301,8 +302,7 @@ class USACERawReader:
                 val = self.ussft2m * float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
-        sorind = f"{name_meta['projid']}_{name_meta['uniqueid']}_{name_meta['subprojid']}_{name_meta['start_date']}_" + \
-                 f"{name_meta['statuscode']}"
+        sorind = '_'.join([name_meta[key] for key in name_sections if key in name_meta])
         merged_meta['source_indicator'] = f'US,US,graph,{sorind}'
         # merged_meta['script_version'] = __version__
         return merged_meta
@@ -336,6 +336,9 @@ class USACERawReader:
         name, ext = _os.path.splitext(base)
         splitname = name.split('_')
 
+        split_sections = ('projid', 'uniqueid', 'subprojid', 'start_date',
+                          'statuscode', 'optional')
+
         if len(splitname) >= 5:
             meta = {
                 'from_path': infilename,
@@ -352,6 +355,13 @@ class USACERawReader:
                     for n in range(6, len(splitname)):
                         option += f'_{splitname[n]}'
                 meta['optional'] = option
+        elif len(splitname) >= 2 and len(splitname) < 5:
+            meta = {
+                    'from_path': infilename,
+                    'from_filename': base,
+                    }
+            for index in range(len(splitname)):
+                meta[split_sections[index]] = splitname[index]
         else:
             print(f'{name} appears to have a nonstandard naming convention.')
         return meta
