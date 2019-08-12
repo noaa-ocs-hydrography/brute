@@ -29,7 +29,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
                                 'horiz_uncert_vari': 0.05,
                                 'feat_detect': False,
                                 }
-    
+
     _datums = ['from_fips',
               'from_horiz_datum',
               'from_horiz_units',
@@ -52,6 +52,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
                         'feat_size',
                         'feat_detect',
                         'feat_least_depth',
+                        'interpolate',
                         ]
 
     _paths = ['from_filename',
@@ -70,11 +71,11 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
                     'posted',
                     'license',
                     ]
-                    
+
     _processing_info = ['logfilename',
                         'version_reference',
                         ]
-    
+
     _scores = ['catzoc',
                'supersession_score',
                ]
@@ -238,21 +239,28 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             self._points.write(dataset, outfilename)
             metadata['to_filename'] = outfilename
             self._meta_obj.write_meta_record(metadata)
-            # take a gdal dataset for interpolation and return a gdal dataset
-            interpfilename = f'{outfilebase}_{resolution}m_interp.{new_ext}'
-            interpkeyfilename = f'{infilebase}.interpolated'
-            meta_interp = metadata.copy()
-            meta_interp['interpolated'] = True
-            meta_interp['from_filename'] = interpkeyfilename
-            meta_interp['to_filename'] = interpfilename
-            if 'poly_name' in meta_interp:
-                shapename = meta_interp['poly_name']
-                shapepath = _os.path.join(infilepath, shapename)
-                dataset = self._interpolator.interpolate(dataset, shapepath)
+            if 'interpolate' in metadata:
+                interpolate = metadata['interpolate']
+                if interpolate == 'True':
+                    # take a gdal dataset for interpolation and return a gdal dataset
+                    interpfilename = f'{outfilebase}_{resolution}m_interp.{new_ext}'
+                    interpkeyfilename = f'{infilebase}.interpolated'
+                    meta_interp = metadata.copy()
+                    meta_interp['interpolated'] = True
+                    meta_interp['from_filename'] = interpkeyfilename
+                    meta_interp['to_filename'] = interpfilename
+                    if 'poly_name' in meta_interp:
+                        shapename = meta_interp['poly_name']
+                        shapepath = _os.path.join(infilepath, shapename)
+                        dataset = self._interpolator.interpolate(dataset, shapepath)
+                    else:
+                        dataset = self._interpolator.interpolate(dataset)
+                    self._writer.write(dataset, interpfilename)
+                    self._meta_obj.write_meta_record(meta_interp)
+                elif interpolate == 'False':
+                    print(f'{infileroot} - No interpolation required')
             else:
-                dataset = self._interpolator.interpolate(dataset)
-            self._writer.write(dataset, interpfilename)
-            self._meta_obj.write_meta_record(meta_interp)
+                raise ValueError('metadata has no >interpolate< value')
         else:
             self.logger.log(_logging.DEBUG, 'No fips code found')
         self._close_log()
@@ -260,7 +268,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
     def post(self, infilename):
         """
         Make the data available for amalgamation.
-        
+
         TODO: need to add checks to make sure the metadata is ready.
             Perhaps this should be added to the metadata object?
         """
@@ -296,12 +304,12 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             s57_meta['dcyscr'] = dscore
             self._db.write(procfile, 'metadata', s57_meta)
             log = f'Posting new decay score of {dscore} to database.'
-            
+
         else:
             log = 'Insertion of decay score failed.'
         self.logger.log(_logging.DEBUG, log)
         self._close_log()
-            
+
 
     def _connect_to_db(self):
         """
@@ -365,7 +373,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         formatter = _logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         fh.setFormatter(formatter)
         self.logger.addHandler(fh)
-        
+
     def _close_log(self):
         """
         Close the object logging file.
@@ -464,7 +472,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             coverage_ready = False
         ready = feature_ready and vert_uncert_ready and horiz_uncert_ready and coverage_ready
         return ready
-    
+
     def _date_metadata_ready(self, metadata):
         """
         Check the metadata to see if the required fields are populated.
@@ -474,7 +482,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         else:
             ready = True
         return ready
-    
+
     def _score_metadata_ready(self, metadata):
         if 'catzoc' in metadata and 'supersession_score' in metadata:
             return True
