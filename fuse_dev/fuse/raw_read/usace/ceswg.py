@@ -684,17 +684,12 @@ def get_xml_match(f):
     -------
 
     """
-    if '_A.xyz' in f:
-        xmlfilename = get_xml_xt(f, '_A.xyz')
-    elif '_FULL.xyz' in f:
-        xmlfilename = get_xml_xt(f, '_FULL.xyz')
-    elif '_FULL.XYZ' in f:
-        xmlfilename = get_xml_xt(f, '_FULL.XYZ')
-    elif '_A.XYZ' in f:
-        xmlfilename = get_xml_xt(f, '_A.XYZ')
-    elif '.ppxyz' in f:
-        xmlfilename = get_xml_xt(f, '.ppxyz')
-    else:
+    xmlfilename=''
+    ext_list = ['_FULL.XYZ', '_A.XYZ', '.PPXYZ']
+    for extension in ext_list:
+        if f.upper().find(extension)>0:
+            xmlfilename = get_xml_xt(f, extension)
+    if xmlfilename == '':
         xmlfilename = get_xml(f)
     return xmlfilename
 

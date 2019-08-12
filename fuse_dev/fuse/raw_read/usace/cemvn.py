@@ -730,12 +730,13 @@ def get_xml_match(f: str) -> str:
     -------
     
     """
+    xmlfilename=''
     ext_list = ['_FULL.XYZ', '_A.XYZ', '.PPXYZ']
     for extension in ext_list:
-        if extension in f.upper():
+        if f.upper().find(extension)>0:
             xmlfilename = get_xml_xt(f, extension)
-        else:
-            xmlfilename = get_xml(f)
+    if xmlfilename == '':
+        xmlfilename = get_xml(f)
     return xmlfilename
 
 
