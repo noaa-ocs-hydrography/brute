@@ -731,15 +731,8 @@ class USACERawReader:
                         self._logger.log(_logging.DEBUG, output)
                         raise ValueError(output)
                     else:
-                        row = []
-                        for x in line.strip().split(' '):
-                            try:
-                                if x == '' or x == ' ':
-                                    pass
-                                else:
-                                    row.append(float(x))
-                            except ValueError as e:
-                                print(f'{e}: >{x}<')
-                        bathy.append(row)
+                        row = [float(x) for x in line.split()]
+                        if len(row) == 3:
+                            bathy.append(row)
         bathy = _np.asarray(bathy)
         return bathy
