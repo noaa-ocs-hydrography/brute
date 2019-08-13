@@ -14,13 +14,16 @@ a general sense, and also for specific S57 needs.
 
 import logging as _logging
 import os as _os
-import _re as _re
+import re as _re
 import sys as _sys
 import tables as _tb
-from datetime import datetime as _datetime
+import datetime as _datetime
+from glob import glob as _glob
 
 from osgeo import gdal as _gdal
 from xml.etree import ElementTree as _et
+
+_gdal.UseExceptions()
 
 __version__ = 'BAG'
 
@@ -73,6 +76,7 @@ class BAGRawReader:
         name speace parsed from the second line.  Values are then extracted
         based on the source dictionary.  If this dictionary
         """
+        self.data = {}
 
         self._logger = _logging.getLogger(f'fuse')
 
@@ -81,7 +85,7 @@ class BAGRawReader:
             ch.setLevel(_logging.DEBUG)
             self._logger.addHandler(ch)
 
-    def read_metadata(self, infilename: str) -> dict:
+    def read_metadata(self, infilename: str, version=None) -> dict:
         """
 
         Parameters
@@ -93,9 +97,12 @@ class BAGRawReader:
         dict
 
         """
-        meta_gdal, version = self._parse_bag_gdal(infilename)
-        meta_xml = self._parse_bag_xml(infilename, version)
-        return {**meta_xml, **meta_gdal}
+        try:
+            meta_gdal, version = self._parse_bag_gdal(infilename)
+            meta_xml = self._parse_bag_xml(infilename, version=version)
+            return {**meta_xml, **meta_gdal}
+        except ValueError as e:
+            print(f'{e}')
 
 
     def _parse_bag_gdal(self, infilename: str) -> dict:
@@ -115,11 +122,15 @@ class BAGRawReader:
         """
 
         metadata = {}
-        bag_file = _gdal.Open(infilename)
-        metadata = bag_file.GetMetadata()['version']
-        return metadata
+        try:
+            bag_file = _gdal.Open(infilename)
+            metadata = {**bag_file.GetMetadata()}
+            version = float(metadata['BagVersion'][:-2])
+        except RuntimeError as e:
+            raise ValueError(f'{e}')
+        return metadata, version
 
-    def _parse_bag_xml(self, infilename: str) -> dict:
+    def _parse_bag_xml(self, infilename: str, version=None) -> dict:
         """
         Parses metadata available via the file's xml and returns them as a dict
 
@@ -134,32 +145,38 @@ class BAGRawReader:
             A dictionary object containing found metadata
 
         """
+        try:
+            with _tb.open_file(infilename, mode='r') as bag_file:
+                meta_read = [str(x, 'utf-8', 'ignore') for x in bag_file.root.BAG_root.metadata.read()]
+                meta_xml = ''.join(meta_read)
 
-        with _tb.open_file(infilename, mode='r') as bag_file:
-            meta_read = [str(x, 'utf-8', 'ignore') for x in bag_file.root.BAG_root.metadata.read()]
-            meta_xml = ''.join(meta_read)
-            encode_val = 0
+                encode_val = 0
 
-            for x in meta_xml:
-                if meta_xml[encode_val] == '>':
-                    meta_xml = meta_xml[encode_val:]
-                    break
-                else:
-                    encode_val += 1
-            start_val = 0
+                for x in meta_xml:
+                    if meta_xml[encode_val] == '>':
+                        meta_xml = meta_xml[encode_val:]
+                        break
+                    else:
+                        encode_val += 1
+                start_val = 0
 
-            for x in meta_xml:
-                if meta_xml[start_val] == '<':
-                    meta_xml = meta_xml[start_val:]
-                    break
-                else:
-                    start_val += 1
+                for x in meta_xml:
+                    if meta_xml[start_val] == '<':
+                        meta_xml = meta_xml[start_val:]
+                        break
+                    else:
+                        start_val += 1
 
-        xml_tree = _et.XML(meta_xml)
+            self.xml_tree = _et.XML(meta_xml)
+            self.namespace = self._assign_namspace(version=version)
+            self.bag_format = self._set_format(infilename, version)
+            self.get_fields()
 
-        return {}
+            return self.data
+        except _tb.HDF5ExtError as e:
+            raise ValueError(f'{e}')
 
-    def _guess_version(self):
+    def _assign_namspace(self, version=None, xml=None):
         """
         Try to guess the version of the bag for the purpose of parsing the
         fields.  The guess is based off comparing the name spaces.
@@ -179,12 +196,17 @@ class BAGRawReader:
             'xsi': "http://www.w3.org/2001/XMLSchema-instance",
             'gml': "http://www.opengis.net/gml"
         }
-        if self.ns == post15:
-            return 1.5
-        elif self.ns == pre15:
-            return 1.0
-        else:
-            return -1.0
+
+        if version is not None:
+            if version >= 1.5:
+                namespace = post15
+            elif version < 1.5:
+                namespace = pre15
+            return namespace
+        elif version is None and xml != None:
+            return parse_namespace(xml)
+
+
 
     def _set_format(self, infilename: str, version: float) -> object:
         """
@@ -200,7 +222,6 @@ class BAGRawReader:
         source = {'filename': infilename}
 
         if version >= 1.5:
-            source = {}
             # these are the bag types
             source[
                 'rows_cols'] = './/gmd:spatialRepresentationInfo/gmd:MD_Georectified/gmd:axisDimensionProperties/gmd:MD_Dimension/gmd:dimensionSize/gco:Integer'
@@ -258,49 +279,49 @@ class BAGRawReader:
 
         return source
 
-    def get_fields(self, meta_dict):
+    def get_fields(self):
         """
         Using the field available for the version type, get the data for those
         fields.
         """
         self.data = {}
-        if 'rows_cols' in meta_dict:
+        if 'rows_cols' in self.bag_format:
             self._read_rows_and_cols()
-        if 'resx_resy' in meta_dict:
+        if 'resx_resy' in self.bag_format:
             self._read_res_x_and_y()
-        if 'bbox' in meta_dict:
+        if 'bbox' in self.bag_format:
             self._read_corners_sw_and_ne()
-        if 'wkt_srs' in meta_dict:
+        if 'wkt_srs' in self.bag_format:
             self._read_wkt_prj()
-        if 'lon_min' in meta_dict:
+        if 'lon_min' in self.bag_format:
             self._read_bbox()
-        if 'abstract' in meta_dict:
+        if 'abstract' in self.bag_format:
             self._read_abstract()
-        if 'date' in meta_dict:
+        if 'date' in self.bag_format:
             self._read_date()
-        if 'unc_type' in meta_dict:
+        if 'unc_type' in self.bag_format:
             self._read_uncertainty_type()
-        if 'z_min' in meta_dict:
+        if 'z_min' in self.bag_format:
             self._read_depth_min_max()
-        if 'sourcename' in meta_dict:
+        if 'sourcename' in self.bag_format:
             self._read_source_name()
-        if 'filename' in meta_dict:
-            self.data['filename'] = meta_dict['filename']
-        if 'SORDAT' in meta_dict:
+        if 'filename' in self.bag_format:
+            self.data['filename'] = self.bag_format['filename']
+        if 'SORDAT' in self.bag_format:
             self._read_SORDAT()
-        if 'SURATH' in meta_dict:
+        if 'SURATH' in self.bag_format:
             self._read_survey_authority()
-        if 'SURSTA' in meta_dict:
+        if 'SURSTA' in self.bag_format:
             self._read_survey_start_date()
-        if 'SUREND' in meta_dict:
+        if 'SUREND' in self.bag_format:
             self._read_survey_end_date()
-        if 'VERDAT' in meta_dict:
+        if 'VERDAT' in self.bag_format:
             self._read_vertical_datum()
-        if 'HORDAT' in meta_dict:
+        if 'HORDAT' in self.bag_format:
             self._read_horizontal_datum()
-        if 'planam' in meta_dict:
+        if 'planam' in self.bag_format:
             self._read_platform_name()
-        if 'sensor' in meta_dict:
+        if 'sensor' in self.bag_format:
             self._read_sensor_types()
 
     def get_s57_dict(self):
@@ -370,12 +391,12 @@ class BAGRawReader:
                 s57['SORIND'] = 'US,US,graph,' + s[0]
         return s57
 
-    def _read_rows_and_cols(self, meta_dict):
+    def _read_rows_and_cols(self):
         """ attempts to read rows and cols info """
 
         try:
-            ret = self.xml_tree.findall(meta_dict['rows_cols'],
-                                        namespaces=self.ns)
+            ret = self.xml_tree.findall(self.bag_format['rows_cols'],
+                                        namespaces=self.namespace)
         except:
             _logging.warning("unable to read rows and cols")
             return
@@ -388,12 +409,12 @@ class BAGRawReader:
             _logging.warning("unable to read rows and cols: %s" % e)
             return
 
-    def _read_res_x_and_y(self, meta_dict):
+    def _read_res_x_and_y(self):
         """ attempts to read resolution along x- and y- axes """
 
         try:
-            ret = self.xml_tree.findall(meta_dict['resx_resy'],
-                                        namespaces=self.ns)
+            ret = self.xml_tree.findall(self.bag_format['resx_resy'],
+                                        namespaces=self.namespace)
         except:
             _logging.warning("unable to read res x and y")
             return
@@ -406,12 +427,12 @@ class BAGRawReader:
             _logging.warning("unable to read res x and y: %s" % e)
             return
 
-    def _read_corners_sw_and_ne(self, meta_dict):
+    def _read_corners_sw_and_ne(self):
         """ attempts to read corners SW and NE """
 
         try:
-            ret = self.xml_tree.find(meta_dict['bbox'],
-                                     namespaces=self.ns).text.split()
+            ret = self.xml_tree.find(self.bag_format['bbox'],
+                                     namespaces=self.namespace).text.split()
         except:
             _logging.warning("unable to read corners SW and NE")
             return
@@ -424,12 +445,12 @@ class BAGRawReader:
             _logging.warning("unable to read corners SW and NE: %s" % e)
             return
 
-    def _read_wkt_prj(self, meta_dict):
+    def _read_wkt_prj(self):
         """ attempts to read the WKT projection string """
 
         try:
-            ret = self.xml_tree.find(meta_dict['wkt_srs'],
-                                     namespaces=self.ns)
+            ret = self.xml_tree.find(self.bag_format['wkt_srs'],
+                                     namespaces=self.namespace)
         except:
             _logging.warning("unable to read the WKT projection string")
             return
@@ -441,14 +462,14 @@ class BAGRawReader:
             _logging.warning("unable to read the WKT projection string: %s" % e)
             return
 
-    def _read_bbox(self, meta_dict):
+    def _read_bbox(self):
         """ attempts to read the bounding box values """
 
         try:
-            ret_x_min = self.xml_tree.find(meta_dict['lon_min'],
-                                           namespaces=self.ns)
-            ret_x_max = self.xml_tree.find(meta_dict['lon_max'],
-                                           namespaces=self.ns)
+            ret_x_min = self.xml_tree.find(self.bag_format['lon_min'],
+                                           namespaces=self.namespace)
+            ret_x_max = self.xml_tree.find(self.bag_format['lon_max'],
+                                           namespaces=self.namespace)
         except:
             _logging.warning("unable to read the bbox's longitude values")
             return
@@ -461,10 +482,10 @@ class BAGRawReader:
             return
 
         try:
-            ret_y_min = self.xml_tree.find(meta_dict['lat_min'],
-                                           namespaces=self.ns)
-            ret_y_max = self.xml_tree.find(meta_dict['lat_max'],
-                                           namespaces=self.ns)
+            ret_y_min = self.xml_tree.find(self.bag_format['lat_min'],
+                                           namespaces=self.namespace)
+            ret_y_max = self.xml_tree.find(self.bag_format['lat_max'],
+                                           namespaces=self.namespace)
         except:
             _logging.warning("unable to read the bbox's latitude values")
             return
@@ -476,12 +497,12 @@ class BAGRawReader:
             _logging.warning("unable to read the bbox's latitude values: %s" % e)
             return
 
-    def _read_abstract(self, meta_dict):
+    def _read_abstract(self):
         """ attempts to read the abstract string """
 
         try:
-            ret = self.xml_tree.find(meta_dict['abstract'],
-                                     namespaces=self.ns)
+            ret = self.xml_tree.find(self.bag_format['abstract'],
+                                     namespaces=self.namespace)
         except:
             _logging.warning("unable to read the abstract string")
             return
@@ -492,12 +513,12 @@ class BAGRawReader:
             _logging.warning("unable to read the abstract string: %s" % e)
             return
 
-    def _read_date(self, meta_dict):
+    def _read_date(self):
         """ attempts to read the date string """
 
         try:
-            ret = self.xml_tree.find(meta_dict['date'],
-                                     namespaces=self.ns)
+            ret = self.xml_tree.find(self.bag_format['date'],
+                                     namespaces=self.namespace)
         except:
             _logging.warning("unable to read the date string")
             return
@@ -521,12 +542,12 @@ class BAGRawReader:
         else:
             self.data['date'] = tm_date
 
-    def _read_uncertainty_type(self, meta_dict):
+    def _read_uncertainty_type(self):
         """ attempts to read the uncertainty type """
 
         try:
-            ret = self.xml_tree.find(meta_dict['unc_type'],
-                                     namespaces=self.ns)
+            ret = self.xml_tree.find(self.bag_format['unc_type'],
+                                     namespaces=self.namespace)
         except:
             _logging.warning("unable to read the uncertainty type string")
             return
@@ -537,7 +558,7 @@ class BAGRawReader:
             _logging.warning("unable to read the uncertainty type attribute: %s" % e)
             return
 
-    def _read_depth_min_max(self, meta_dict):
+    def _read_depth_min_max(self):
         """
         Read the depth min and max values and store them in the object 'data'
         dictionary.  It should be noted that these are the min and max values
@@ -546,10 +567,10 @@ class BAGRawReader:
         """
 
         try:
-            ret_z_min = self.xml_tree.find(meta_dict['z_min'],
-                                           namespaces=self.ns)
-            ret_z_max = self.xml_tree.find(meta_dict['z_max'],
-                                           namespaces=self.ns)
+            ret_z_min = self.xml_tree.find(self.bag_format['z_min'],
+                                           namespaces=self.namespace)
+            ret_z_max = self.xml_tree.find(self.bag_format['z_max'],
+                                           namespaces=self.namespace)
         except:
             _logging.warning("unable to read the depth min and max values")
             return
@@ -563,15 +584,15 @@ class BAGRawReader:
             _logging.warning("unable to read the depth min and max values: %s" % e)
             return
 
-    def _read_source_name(self, meta_dict):
+    def _read_source_name(self):
         """
         Read the source file name and store it in the object 'data' dictionary
         with the key 'filename'.
         """
 
         try:
-            ret = self.xml_tree.find(meta_dict['sourcename'],
-                                     namespaces=self.ns)
+            ret = self.xml_tree.find(self.bag_format['sourcename'],
+                                     namespaces=self.namespace)
         except:
             _logging.warning("unable to read the survey name string")
             return
@@ -582,14 +603,14 @@ class BAGRawReader:
             _logging.warning("unable to read the survey name attribute: %s" % e)
             return
 
-    def _read_SORDAT(self, meta_dict):
+    def _read_SORDAT(self):
         """
         Reads a date, but what it means exactly needs to be researched...
         """
 
         try:
-            ret = self.xml_tree.find(meta_dict['SORDAT'],
-                                     namespaces=self.ns)
+            ret = self.xml_tree.find(self.bag_format['SORDAT'],
+                                     namespaces=self.namespace)
         except:
             _logging.warning("unable to read the SORDAT date string")
             return
@@ -613,15 +634,15 @@ class BAGRawReader:
         else:
             self.data['SORDAT'] = tm_date
 
-    def _read_survey_authority(self, meta_dict):
+    def _read_survey_authority(self):
         """
         Read the survey authority name and store it in the object 'data'
         dictionary with the key 'SURATH'.
         """
 
         try:
-            ret = self.xml_tree.find(meta_dict['SURATH'],
-                                     namespaces=self.ns)
+            ret = self.xml_tree.find(self.bag_format['SURATH'],
+                                     namespaces=self.namespace)
         except:
             _logging.warning("unable to read the survey authority name string")
             return
@@ -632,15 +653,15 @@ class BAGRawReader:
             _logging.warning("unable to read the survey authority name attribute: %s" % e)
             return
 
-    def _read_survey_start_date(self, meta_dict):
+    def _read_survey_start_date(self):
         """
         Read the survey start date store it in the object 'data'
         dictionary with the key 'SURSTA'.
         """
 
         try:
-            rets = self.xml_tree.find(meta_dict['SURSTA'],
-                                      namespaces=self.ns)
+            rets = self.xml_tree.find(self.bag_format['SURSTA'],
+                                      namespaces=self.namespace)
         except:
             _logging.warning("unable to read the survey start date string")
             return
@@ -665,14 +686,14 @@ class BAGRawReader:
             else:
                 self.data['SURSTA'] = tms_date
 
-    def _read_survey_end_date(self, meta_dict):
+    def _read_survey_end_date(self):
         """
         Read the survey end date and store it in the object 'data'
         dictionary with the key 'SUREND'.
         """
         try:
-            rete = self.xml_tree.find(meta_dict['SUREND'],
-                                      namespaces=self.ns)
+            rete = self.xml_tree.find(self.bag_format['SUREND'],
+                                      namespaces=self.namespace)
         except:
             _logging.warning("unable to read the survey end date string")
             return
@@ -697,15 +718,15 @@ class BAGRawReader:
             else:
                 self.data['SUREND'] = tme_date
 
-    def _read_vertical_datum(self, meta_dict):
+    def _read_vertical_datum(self):
         """
         Read the survey vertical datum and store it in the object 'data'
         dictionary with the key 'VERDAT'.
         """
 
         try:
-            ret = self.xml_tree.findall(meta_dict['VERDAT'],
-                                        namespaces=self.ns)
+            ret = self.xml_tree.findall(self.bag_format['VERDAT'],
+                                        namespaces=self.namespace)
             for r in ret:
                 # first look to see if this is the wrong branch of < v1.5
                 val = r.find('projection')
@@ -715,7 +736,7 @@ class BAGRawReader:
                     # check if this is the other (right) branch of < v1.5
                     val = r.find('datum')
                     if val is not None:
-                        val = r.find('datum/smXML:RS_Identifier/code', self.ns).text
+                        val = r.find('datum/smXML:RS_Identifier/code', self.namespace).text
                     else:
                         # by default, we know we are in >v1.5
                         datum_str = r.text
@@ -735,21 +756,21 @@ class BAGRawReader:
             _logging.warning("unable to read the survey vertical datum name attribute: %s" % e)
             return
 
-    def _read_horizontal_datum(self, meta_dict):
+    def _read_horizontal_datum(self):
         """
         Read the survey horizontal datum and store it in the object 'data'
         dictionary with the key 'HORDAT'.
         """
 
         try:
-            ret = self.xml_tree.findall(meta_dict['HORDAT'],
-                                        namespaces=self.ns)
+            ret = self.xml_tree.findall(self.bag_format['HORDAT'],
+                                        namespaces=self.namespace)
             datum = None
             for r in ret:
                 # first look to see if this is the right branch of < v1.5
                 val = r.find('projection')
                 if val is not None:
-                    datum = r.find('datum/smXML:RS_Identifier/code', self.ns).text
+                    datum = r.find('datum/smXML:RS_Identifier/code', self.namespace).text
                 else:
                     # check if this is the wrong branch of < v1.5
                     val = r.find('datum')
@@ -778,15 +799,15 @@ class BAGRawReader:
             _logging.warning("unable to read the survey horizontal datum name attribute: %s" % e)
             return
 
-    def _read_platform_name(self, meta_dict):
+    def _read_platform_name(self):
         """
         Read the platform name and store it in the object 'data' dictionary
         with the key 'planam'.
         """
 
         try:
-            ret = self.xml_tree.findall(meta_dict['planam'],
-                                        namespaces=self.ns)
+            ret = self.xml_tree.findall(self.bag_format['planam'],
+                                        namespaces=self.namespace)
         except:
             _logging.warning("unable to read the platform name string")
             return
@@ -800,15 +821,15 @@ class BAGRawReader:
             _logging.warning("unable to read the platform name attribute: %s" % e)
             return
 
-    def _read_sensor_types(self, meta_dict):
+    def _read_sensor_types(self):
         """
         Read the sensor used and store it in the object 'data' dictionary
         with the key 'sensor'.
         """
 
         try:
-            ret = self.xml_tree.findall(meta_dict['sensor'],
-                                        namespaces=self.ns)
+            ret = self.xml_tree.findall(self.bag_format['sensor'],
+                                        namespaces=self.namespace)
         except:
             _logging.warning("unable to read the sensor name string")
             return
@@ -844,3 +865,21 @@ def parse_namespace(meta_str):
             site = info.split('"')[1]
             namespace[name] = site
     return namespace
+
+
+reader = BAGRawReader()
+root = r'R:\Scripts\Testing Files\BAGs and SSS Mosaics for Interpolation'
+top = [_os.path.join(root, name) for name in _os.listdir(root)]
+total = len(top)
+x = 1
+for path in top:
+    print(f'\n\n{x}of{total}\n{path}')
+    flist = _glob(_os.path.join(path, '*.bag'))
+    for f in flist:
+        print(f)
+        reader = BAGRawReader()
+        reader.read_metadata(f)
+        print(reader.get_s57_dict(), reader.data)
+    x += 1
+
+
