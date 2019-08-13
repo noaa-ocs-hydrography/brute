@@ -33,7 +33,7 @@ class Interpolator:
         if self._interp_engine == 'point':
             self._engine = pinterp.PointInterpolator()
         elif self._interp_engine == 'bag':
-            self._engine = binterp.bag_interpolator()
+            pass
         else:
             raise ValueError('No interpolation engine type specified')
 

@@ -21,6 +21,7 @@ import datetime as _datetime
 from glob import glob as _glob
 
 from osgeo import gdal as _gdal
+from osgeo import osr as _osr
 from xml.etree import ElementTree as _et
 
 _gdal.UseExceptions()
@@ -100,7 +101,8 @@ class BAGRawReader:
         try:
             meta_gdal, version = self._parse_bag_gdal(infilename)
             meta_xml = self._parse_bag_xml(infilename, version=version)
-            return {**meta_xml, **meta_gdal}
+            meta_support = self._known_meta(infilename)
+            return {**meta_support, **meta_xml, **meta_gdal}
         except ValueError as e:
             print(f'{e}')
 
@@ -126,6 +128,14 @@ class BAGRawReader:
             bag_file = _gdal.Open(infilename)
             metadata = {**bag_file.GetMetadata()}
             version = float(metadata['BagVersion'][:-2])
+            metadata['rows'], metadata['cols'] = bag_file.RasterYSize, bag_file.RasterXSize
+            geotransform = bag_file.GetGeoTransform()
+            metadata['wkt_srs'] = bag_file.GetProjectionRef()
+            spacial_ref = _osr.SpatialReference(wkt=metadata['wkt_srs'])
+            if spacial_ref.IsProjected:
+                metadata['horiz_datum'] = spacial_ref.GetAttrValue('projcs')
+            metadata['horiz_frame'] = spacial_ref.GetAttrValue('geogcs')
+#            metadata['res_x'], metadata['res_y'] = geotransform[1], geotransform[5]
         except RuntimeError as e:
             raise ValueError(f'{e}')
         return metadata, version
@@ -175,6 +185,52 @@ class BAGRawReader:
             return self.data
         except _tb.HDF5ExtError as e:
             raise ValueError(f'{e}')
+
+    def _known_meta(self, infilename: str) -> dict:
+        """
+        Identifies known metadata and returns them as a dict
+
+        Parameters
+        ----------
+        infilename : str
+            Input file path
+
+        Returns
+        -------
+        dict
+            A dictionary object containing found metadata
+
+        """
+        meta = {}
+        coverage = self._find_coverage(infilename)
+        root, name = _os.path.split(infilename)
+        meta['from_filename'] = name
+        meta['from_path'] = infilename
+
+        return {**coverage, **meta}
+
+    def _find_coverage(self, infilename: str) -> dict:
+        """
+        Identifies supporting coverage files and returns them as a dict
+
+        Parameters
+        ----------
+        infilename : str
+            Input file path
+
+        Returns
+        -------
+        dict
+            A dictionary object containing found metadata
+
+        """
+        meta = {}
+        root, filename = _os.path.split(infilename)
+        dir_files = [name for name in _os.listdir(root) if _os.path.isfile(_os.path.join(root, name))]
+        meta['support_files'] = [support_file for support_file in dir_files if _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.tfw', '.gpkg')]
+        if len(meta['support_files']) > 0:
+            meta['interpolate'] = True
+        return meta
 
     def _assign_namspace(self, version=None, xml=None):
         """
@@ -865,21 +921,3 @@ def parse_namespace(meta_str):
             site = info.split('"')[1]
             namespace[name] = site
     return namespace
-
-
-reader = BAGRawReader()
-root = r'R:\Scripts\Testing Files\BAGs and SSS Mosaics for Interpolation'
-top = [_os.path.join(root, name) for name in _os.listdir(root)]
-total = len(top)
-x = 1
-for path in top:
-    print(f'\n\n{x}of{total}\n{path}')
-    flist = _glob(_os.path.join(path, '*.bag'))
-    for f in flist:
-        print(f)
-        reader = BAGRawReader()
-        reader.read_metadata(f)
-        print(reader.get_s57_dict(), reader.data)
-    x += 1
-
-

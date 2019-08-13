@@ -11,6 +11,7 @@ import configparser as _cp
 import os as _os
 import logging as _logging
 import fuse.raw_read.usace as _usace
+import fuse.raw_read.noaa as _noaa
 import fuse.datum_transform.transform as _trans
 import fuse.interpolator.interpolator as _interp
 import fuse.meta_review as _mr
@@ -28,7 +29,7 @@ _ehydro_quality_metrics = {'complete_coverage': False,
 
 class FuseProcessor:
     """The fuse object."""
-    
+
     _datums = ['from_horiz_datum',
               'from_horiz_frame',
               'from_horiz_type',
@@ -79,11 +80,11 @@ class FuseProcessor:
                     'posted',
                     'license',
                     ]
-                    
+
     _processing_info = ['logfilename',
                         'version_reference',
                         ]
-    
+
     _scores = ['catzoc',
                'supersession_score',
                ]
@@ -296,9 +297,11 @@ class FuseProcessor:
 
         if self._read_type == 'ehydro':
             self._read_ehydro(infilename)
+        elif self._read_type == 'bag':
+            self._read_noaa_bag(infilename)
         else:
             raise ValueError('Reader type not implemented')
-    
+
     def _read_ehydro(self, infilename: str):
         """
         Extract metadata from the provided eHydro file path and write the metadata
@@ -343,6 +346,70 @@ class FuseProcessor:
             meta['from_horiz_frame'] = 'NAD83'
         if 'from_horiz_type' not in meta:
             meta['from_horiz_type'] = 'spc'
+        # get the rest from the config file
+        meta['to_horiz_frame'] = self._config['to_horiz_frame']
+        meta['to_horiz_type'] = self._config['to_horiz_type']
+        meta['to_horiz_units'] = self._config['to_horiz_units']
+        if 'to_horiz_key' in self._config:
+            meta['to_horiz_key'] = self._config['to_horiz_key']
+        meta['to_vert_key'] = self._config['to_vert_key']
+        meta['to_vert_units'] = self._config['to_vert_units']
+        meta['to_vert_direction'] = self._config['to_vert_direction']
+        meta['to_vert_datum'] = self._config['to_vert_datum']
+        meta['interpolated'] = 'False'
+        meta['posted'] = False
+        if not self._quality_metadata_ready(meta):
+            default = _ehydro_quality_metrics
+            msg = f'Not all quality metadata was found.  Using default values: {default}'
+            self.logger.log(_logging.DEBUG, msg)
+            meta = {**default, **meta}
+        # write the metadata
+        self._meta_obj.write_meta_record(meta)
+        self._close_log()
+
+    def _read_noaa_bag(self, infilename: str):
+        """
+        Extract metadata from the provided bag file path and write the metadata
+        to the specified metadata file.
+
+        Parameters
+        ----------
+        infilename :
+
+        infilename: str :
+
+
+        Returns
+        -------
+
+        """
+
+        self._set_log(infilename)
+        # get the metadata
+        raw_meta = self._reader.read_metadata(infilename)
+        meta = raw_meta.copy()
+        # translate from the reader to common metadata keys for datum transformations
+#        if 'from_fips' in meta:
+#            meta['from_horiz_key'] = meta['from_fips']
+#        if 'from_horiz_units' in meta:
+#            if meta['from_horiz_units'].upper() == 'US SURVEY FOOT':
+#                meta['from_horiz_units'] = 'us_ft'
+#            else:
+#                raise ValueError(f'Input datum units are unknown: {meta["from_horiz_units"]}')
+#        if 'from_vert_key' in meta:
+#            meta['from_vert_key'] = meta['from_vert_key'].lower()
+#        if 'from_vert_units' in meta:
+#            if meta['from_vert_units'].upper() == 'US SURVEY FOOT':
+#                meta['from_vert_units'] = 'us_ft'
+#            else:
+#                raise ValueError(f'Input datum units are unknown: {meta["from_vert_units"]}')
+#        # insert a few default values for datum stuff if it isn't there already
+#        if 'from_vert_direction' not in meta:
+#            meta['from_vert_direction'] = 'height'
+#        if 'from_horiz_frame' not in meta:
+#            meta['from_horiz_frame'] = 'NAD83'
+#        if 'from_horiz_type' not in meta:
+#            meta['from_horiz_type'] = 'spc'
         # get the rest from the config file
         meta['to_horiz_frame'] = self._config['to_horiz_frame']
         meta['to_horiz_type'] = self._config['to_horiz_type']
@@ -425,7 +492,7 @@ class FuseProcessor:
     def post(self, infilename):
         """
         Make the data available for amalgamation.
-        
+
         TODO: need to add checks to make sure the metadata is ready.
             Perhaps this should be added to the metadata object?
         """
@@ -461,12 +528,12 @@ class FuseProcessor:
             s57_meta['dcyscr'] = dscore
             self._db.write(procfile, 'metadata', s57_meta)
             log = f'Posting new decay score of {dscore} to database.'
-            
+
         else:
             log = 'Insertion of decay score failed.'
         self.logger.log(_logging.DEBUG, log)
         self._close_log()
-            
+
 
     def _connect_to_db(self):
         """
@@ -530,7 +597,7 @@ class FuseProcessor:
         formatter = _logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         fh.setFormatter(formatter)
         self.logger.addHandler(fh)
-        
+
     def _close_log(self):
         """
         Close the object logging file.
@@ -642,7 +709,7 @@ class FuseProcessor:
             coverage_ready = False
         ready = feature_ready and vert_uncert_ready and horiz_uncert_ready and coverage_ready
         return ready
-    
+
     def _date_metadata_ready(self, metadata):
         """
         Check the metadata to see if the required fields are populated.
@@ -652,7 +719,7 @@ class FuseProcessor:
         else:
             ready = True
         return ready
-    
+
     def _score_metadata_ready(self, metadata):
         if 'catzoc' in metadata and 'supersession_score' in metadata:
             return True
