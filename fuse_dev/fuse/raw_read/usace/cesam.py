@@ -205,7 +205,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     f = filename
     basename = os.path.basename(f)
 
-    e_t = XYZHeaderReader(f)
+    e_t = XYZMetaReader(f)
     # xml pull here.
     xmlfilename = get_xml_match(f)
     if os.path.isfile(xmlfilename):
@@ -433,7 +433,7 @@ class eHydroPickleReader(object):
 
 
 ###----------------------------------------------------------------------------
-class XYZHeaderReader(object):
+class XYZMetaReader(object):
     """Extract both information from the filename as well as from the text file's header"""
     
     def __init__(self, preloadeddata, version='', filename=''):
