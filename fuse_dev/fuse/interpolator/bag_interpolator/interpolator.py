@@ -187,10 +187,10 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
         nunc = _np.where(fpoly, iuncrt, maxVal)
     print('done', _dt.now())
     polyList = [tpoly, bpoly, cpoly, dpoly, npoly, fpoly, ibag]
-    plt.figure()
-    for rast in polyList:
-        plt.imshow(rast)
-        plt.show()
+#    plt.figure()
+#    for rast in polyList:
+#        plt.imshow(rast)
+#        plt.show()
     # polyList = [fpoly, cpoly]
     return nbag, nunc, polyList if debug else cpoly.astype(_np.int)
 
@@ -340,9 +340,11 @@ def sliceFinder(size: int, shape: Tuple[int, int], res: float, var: int = 5000):
     """
 
     print('sliceFinder')
-    if res < 1:
+    if res < 4 and size <= 100000:
+        size /= res
+    elif res < 4:
         b = 25 / res
-    elif res >= 1:
+    elif res >= 4:
         b = 25
     if size <= 100000:
         tiles = 0
