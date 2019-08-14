@@ -16,13 +16,16 @@ import logging as _logging
 import os as _os
 import re as _re
 import sys as _sys
-import tables as _tb
-import datetime as _datetime
-from glob import glob as _glob
 
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
+import tables as _tb
 from xml.etree import ElementTree as _et
+
+try:
+    import dateutil.parser as _parser
+except ModuleNotFoundError as e:
+    print(f"{e}")
 
 _gdal.UseExceptions()
 
@@ -453,16 +456,16 @@ class BAGRawReader:
         try:
             ret = self.xml_tree.findall(self.bag_format['rows_cols'],
                                         namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read rows and cols")
+        except _et.Error as e:
+            _logging.warning(f"unable to read res x and y: {e}")
             return
 
         try:
             self.data['rows'] = int(ret[0].text)
             self.data['cols'] = int(ret[1].text)
 
-        except Exception as e:
-            _logging.warning("unable to read rows and cols: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read rows and cols: {e}")
             return
 
     def _read_res_x_and_y(self):
@@ -471,16 +474,16 @@ class BAGRawReader:
         try:
             ret = self.xml_tree.findall(self.bag_format['resx_resy'],
                                         namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read res x and y")
+        except _et.Error as e:
+            _logging.warning(f"unable to read res x and y: {e}")
             return
 
         try:
             self.data['res_x'] = float(ret[0].text)
-            self.data['res_y'] = float(ret[1].text)
+            self.data['res_y'] = -float(ret[1].text)
 
-        except Exception as e:
-            _logging.warning("unable to read res x and y: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read res x and y: {e}")
             return
 
     def _read_corners_sw_and_ne(self):
@@ -489,16 +492,16 @@ class BAGRawReader:
         try:
             ret = self.xml_tree.find(self.bag_format['bbox'],
                                      namespaces=self.namespace).text.split()
-        except:
-            _logging.warning("unable to read corners SW and NE")
+        except _et.Error as e:
+            _logging.warning(f"unable to read corners SW and NE: {e}")
             return
 
         try:
             self.data['soutwest_corner'] = [float(c) for c in ret[0].split(',')]
             self.data['northeast_corner'] = [float(c) for c in ret[1].split(',')]
 
-        except Exception as e:
-            _logging.warning("unable to read corners SW and NE: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read corners SW and NE: {e}")
             return
 
     def _read_wkt_prj(self):
@@ -507,15 +510,15 @@ class BAGRawReader:
         try:
             ret = self.xml_tree.find(self.bag_format['wkt_srs'],
                                      namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the WKT projection string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the WKT projection string: {e}")
             return
 
         try:
             self.data['wkt_srs'] = ret.text
 
-        except Exception as e:
-            _logging.warning("unable to read the WKT projection string: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the WKT projection string: {e}")
             return
 
     def _read_bbox(self):
@@ -526,15 +529,15 @@ class BAGRawReader:
                                            namespaces=self.namespace)
             ret_x_max = self.xml_tree.find(self.bag_format['lon_max'],
                                            namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the bbox's longitude values")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the bbox's longitude values: {e}")
             return
 
         try:
             self.data['lon_min'] = float(ret_x_min.text)
             self.data['lon_max'] = float(ret_x_max.text)
-        except Exception as e:
-            _logging.warning("unable to read the bbox's longitude values: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the bbox's longitude values: {e}")
             return
 
         try:
@@ -542,15 +545,15 @@ class BAGRawReader:
                                            namespaces=self.namespace)
             ret_y_max = self.xml_tree.find(self.bag_format['lat_max'],
                                            namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the bbox's latitude values")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the bbox's latitude values: {e}")
             return
 
         try:
             self.data['lat_min'] = float(ret_y_min.text)
             self.data['lat_max'] = float(ret_y_max.text)
-        except Exception as e:
-            _logging.warning("unable to read the bbox's latitude values: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the bbox's latitude values: {e}")
             return
 
     def _read_abstract(self):
@@ -559,14 +562,14 @@ class BAGRawReader:
         try:
             ret = self.xml_tree.find(self.bag_format['abstract'],
                                      namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the abstract string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the abstract string: {e}")
             return
 
         try:
             self.data['abstract'] = ret.text
-        except Exception as e:
-            _logging.warning("unable to read the abstract string: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the abstract string: {e}")
             return
 
     def _read_date(self):
@@ -575,19 +578,19 @@ class BAGRawReader:
         try:
             ret = self.xml_tree.find(self.bag_format['date'],
                                      namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the date string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the date string: {e}")
             return
 
         try:
             text_date = ret.text
-        except Exception as e:
-            _logging.warning("unable to read the date string: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the date string: {e}")
             return
 
         tm_date = None
         try:
-            parsed_date = parser.parse(text_date)
+            parsed_date = _parser.parse(text_date)
             tm_date = parsed_date.strftime('%Y-%m-%d')
         except Exception:
             pass
@@ -604,14 +607,14 @@ class BAGRawReader:
         try:
             ret = self.xml_tree.find(self.bag_format['unc_type'],
                                      namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the uncertainty type string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the uncertainty type string: {e}")
             return
 
         try:
             self.data['unc_type'] = ret.text
-        except Exception as e:
-            _logging.warning("unable to read the uncertainty type attribute: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the uncertainty type attribute: {e}")
             return
 
     def _read_depth_min_max(self):
@@ -627,8 +630,8 @@ class BAGRawReader:
                                            namespaces=self.namespace)
             ret_z_max = self.xml_tree.find(self.bag_format['z_max'],
                                            namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the depth min and max values")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the depth min and max values: {e}")
             return
 
         try:
@@ -636,8 +639,8 @@ class BAGRawReader:
                 self.data['z_min'] = float(ret_z_min.text)
             if ret_z_max is not None:
                 self.data['z_max'] = float(ret_z_max.text)
-        except Exception as e:
-            _logging.warning("unable to read the depth min and max values: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the depth min and max values: %s" % e)
             return
 
     def _read_source_name(self):
@@ -649,14 +652,14 @@ class BAGRawReader:
         try:
             ret = self.xml_tree.find(self.bag_format['sourcename'],
                                      namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the survey name string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the survey name string: {e}")
             return
 
         try:
             self.data['sourcename'] = ret.text
-        except Exception as e:
-            _logging.warning("unable to read the survey name attribute: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the survey name attribute: {e}")
             return
 
     def _read_SORDAT(self):
@@ -667,19 +670,19 @@ class BAGRawReader:
         try:
             ret = self.xml_tree.find(self.bag_format['SORDAT'],
                                      namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the SORDAT date string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the SORDAT date string: {e}")
             return
 
         try:
             text_date = ret.text
-        except Exception as e:
-            _logging.warning("unable to read the SORDAT date string: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the SORDAT date string: {e}")
             return
 
         tm_date = None
         try:
-            parsed_date = parser.parse(text_date)
+            parsed_date = _parser.parse(text_date)
             tm_date = parsed_date.strftime('%Y-%m-%d')
         except Exception:
             pass
@@ -699,14 +702,14 @@ class BAGRawReader:
         try:
             ret = self.xml_tree.find(self.bag_format['SURATH'],
                                      namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the survey authority name string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the survey authority name string: {e}")
             return
 
         try:
             self.data['SURATH'] = ret.text
-        except Exception as e:
-            _logging.warning("unable to read the survey authority name attribute: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the survey authority name attribute: {e}")
             return
 
     def _read_survey_start_date(self):
@@ -718,20 +721,20 @@ class BAGRawReader:
         try:
             rets = self.xml_tree.find(self.bag_format['SURSTA'],
                                       namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the survey start date string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the survey start date string: {e}")
             return
 
         if rets is not None:
             try:
                 text_start_date = rets.text
-            except Exception as e:
-                _logging.warning("unable to read the survey start date string: %s" % e)
+            except (ValueError, IndexError) as e:
+                _logging.warning(f"unable to read the survey start date string: {e}")
                 return
 
             tms_date = None
             try:
-                parsed_date = parser.parse(text_start_date)
+                parsed_date = _parser.parse(text_start_date)
                 tms_date = parsed_date.strftime('%Y-%m-%dT%H:%M:%SZ')
             except Exception:
                 pass
@@ -750,20 +753,20 @@ class BAGRawReader:
         try:
             rete = self.xml_tree.find(self.bag_format['SUREND'],
                                       namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the survey end date string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the survey end date string: {e}")
             return
 
         if rete is not None:
             try:
                 text_end_date = rete.text
-            except Exception as e:
-                _logging.warning("unable to read the survey end date string: %s" % e)
+            except (ValueError, IndexError) as e:
+                _logging.warning(f"unable to read the survey end date string: {e}")
                 return
 
             tme_date = None
             try:
-                parsed_date = parser.parse(text_end_date)
+                parsed_date = _parser.parse(text_end_date)
                 tme_date = parsed_date.strftime('%Y-%m-%dT%H:%M:%SZ')
             except Exception:
                 pass
@@ -802,14 +805,14 @@ class BAGRawReader:
                         else:
                             continue
 
-        except:
-            _logging.warning("unable to read the survey vertical datum name string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the survey vertical datum name string: {e}")
             return
 
         try:
             self.data['VERDAT'] = val
-        except Exception as e:
-            _logging.warning("unable to read the survey vertical datum name attribute: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the survey vertical datum name attribute: {e}")
             return
 
     def _read_horizontal_datum(self):
@@ -844,15 +847,15 @@ class BAGRawReader:
                                     # print (datum)
                         else:
                             continue
-        except:
-            _logging.warning("unable to read the survey horizontal datum name string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the survey horizontal datum name string: {e}")
             return
 
         try:
             if datum is not None:
                 self.data['HORDAT'] = datum
-        except Exception as e:
-            _logging.warning("unable to read the survey horizontal datum name attribute: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the survey horizontal datum name attribute: {e}")
             return
 
     def _read_platform_name(self):
@@ -864,8 +867,8 @@ class BAGRawReader:
         try:
             ret = self.xml_tree.findall(self.bag_format['planam'],
                                         namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the platform name string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the platform name string: {e}")
             return
 
         try:
@@ -873,8 +876,8 @@ class BAGRawReader:
                 self.data['planam'] = []
                 for r in ret:
                     self.data['planam'].append(r.text)
-        except Exception as e:
-            _logging.warning("unable to read the platform name attribute: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the platform name attribute: {e}")
             return
 
     def _read_sensor_types(self):
@@ -886,8 +889,8 @@ class BAGRawReader:
         try:
             ret = self.xml_tree.findall(self.bag_format['sensor'],
                                         namespaces=self.namespace)
-        except:
-            _logging.warning("unable to read the sensor name string")
+        except _et.Error as e:
+            _logging.warning(f"unable to read the sensor name string: {e}")
             return
 
         try:
@@ -895,8 +898,8 @@ class BAGRawReader:
                 self.data['sensor'] = []
                 for r in ret:
                     self.data['sensor'].append(r.text)
-        except Exception as e:
-            _logging.warning("unable to read the sensor name attribute: %s" % e)
+        except (ValueError, IndexError) as e:
+            _logging.warning(f"unable to read the sensor name attribute: {e}")
             return
 
 

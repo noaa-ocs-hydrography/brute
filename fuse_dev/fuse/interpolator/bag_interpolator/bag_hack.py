@@ -31,7 +31,7 @@ def read_res_x_and_y(xml_tree):
                                   'gmd:axisDimensionProperties/gmd:MD_Dimension/gmd:resolution/gco:Measure',
                                   namespaces=_ns)
     except _et.Error as e:
-        print("unable to read res x and y: %s" % e)
+        print(f"unable to read res x and y: {e}")
         return
 
     if len(ret) == 0:
@@ -41,7 +41,7 @@ def read_res_x_and_y(xml_tree):
                                       'smXML:Measure/smXML:value',
                                       namespaces=_ns2)
         except _et.Error as e:
-            print("unable to read res x and y: %s" % e)
+            print(f"unable to read res x and y: {e}")
             return
 
     try:
@@ -49,7 +49,7 @@ def read_res_x_and_y(xml_tree):
         res_y = -float(ret[1].text)
         return res_x, res_y
     except (ValueError, IndexError) as e:
-        print("unable to read res x and y: %s" % e)
+        print(f"unable to read res x and y: {e}")
         return
 
 def read_corners_sw_and_ne(xml_tree):
@@ -64,14 +64,14 @@ def read_corners_sw_and_ne(xml_tree):
                                       'cornerPoints/gml:Point/gml:coordinates',
                                       namespaces=_ns2)[0].text.split()
         except (_et.Error, IndexError) as e:
-            print("unable to read corners SW and NE: %s" % e)
+            print(f"unable to read corners SW and NE: {e}")
             return
     try:
         sw = [float(c) for c in ret[0].split(',')]
         ne = [float(c) for c in ret[1].split(',')]
         return sw, ne
     except (ValueError, IndexError) as e:
-        print("unable to read corners SW and NE: %s" % e)
+        print(f"unable to read corners SW and NE: {e}")
         return
 
 
@@ -82,14 +82,14 @@ def read_wkt_prj(xml_tree):
                                   'gmd:referenceSystemIdentifier/gmd:RS_Identifier/gmd:code/gco:CharacterString',
                                   namespaces=_ns)
     except _et.Error as e:
-        print("unable to read the WKT projection string: %s" % e)
+        print(f"unable to read the WKT projection string: {e}")
         return
     if len(ret) == 0:
         try:
             ret = xml_tree.xpath('//*/referenceSystemInfo/smXML:MD_CRS',
                                       namespaces=_ns2)
         except _et.Error as e:
-            print("unable to read the WKT projection string: %s" % e)
+            print(f"unable to read the WKT projection string: %s: {e}")
             return
         if len(ret) != 0:
             print("unsupported method to describe CRS")
@@ -99,5 +99,5 @@ def read_wkt_prj(xml_tree):
         wkt_srs = ret[0].text
         return wkt_srs
     except (ValueError, IndexError) as e:
-        print("unable to read the WKT projection string: %s" % e)
+        print(f"unable to read the WKT projection string: {e}")
         return
