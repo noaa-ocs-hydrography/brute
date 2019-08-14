@@ -101,17 +101,16 @@ def concatGrid(arr_1, arr_2, nodata: int):
     -------
 
     """
-
-    points_1 = tupleGrid(arr_1, nodata)
-    points_2 = tupleGrid(arr_2, nodata)
-    if len(points_1) == 0 or len(points_2) == 0:
-        xy, z = [], []
-    else:
+    if arr_1[arr_1 != nodata].size != 0 and arr_2[arr_2 != nodata].size != 0:
+        points_1 = tupleGrid(arr_1, nodata)
+        points_2 = tupleGrid(arr_2, nodata)
         comb = _np.concatenate([points_1, points_2])
         comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
         grid = _np.hsplit(comb, [2, 4])
         z = grid[1].squeeze()
         xy = grid[0]
+    else:
+        xy, z = [], []
     return xy, z
 
 
