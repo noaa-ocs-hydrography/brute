@@ -239,11 +239,14 @@ class FuseProcessor:
             elif reader_type == 'cenae':
                 self._reader = _usace.cenae.CENAERawReader()
                 self._read_type = 'ehydro'
+            elif reader_type == 'bag':
+                self._reader = _noaa.bag.BAGRawReader()
+                self._read_type = 'bag'
             else:
                 raise ValueError('reader type not implemented')
         except:
             raise ValueError("No reader type found in the configuration file.")
-    
+
     def _set_data_transform(self):
         """Set up the datum transformation engine."""
 
