@@ -31,9 +31,12 @@ import os
 from concurrent import futures
 from typing import Tuple, Union
 
+import fiona
+import fiona.crs
 import matplotlib.pyplot as plt
 import numpy
 import scipy
+import scipy.interpolate
 import scipy.spatial.distance
 from osgeo import gdal, ogr, osr
 from pykrige.ok import OrdinaryKriging
@@ -81,8 +84,11 @@ class PointInterpolator:
         if method == 'invdist_scilin' and vector_file_path is None:
             raise ValueError('Supporting shapefile required')
 
-        input_points = gdal_points_to_array(gdal_points)
-        _, _, max_spacing = _point_spacing(input_points)
+        self.input_points = gdal_points_to_array(gdal_points)
+        self.input_shape, self.input_bounds = _shape_from_cell_size(output_resolution,
+                                                                    _bounds_from_points(self.input_points))
+
+        _, _, max_spacing = _point_spacing(self.input_points)
         window_size = max_spacing * self.window_scalar
 
         if method == 'linear':
@@ -106,26 +112,46 @@ class PointInterpolator:
                                                                                   window_size)
             # shrink the coverage back on the edges
             if shrink:
-                output_dataset = _shrink_coverage(interpolated_dataset, output_resolution, window_size)
-            else:
-                output_dataset = interpolated_dataset
+                interpolated_dataset = _shrink_coverage(interpolated_dataset, output_resolution, window_size)
 
-            # mask raster to extent from vector file
-            output_dataset = _mask_raster(output_dataset,
-                                          rasterize_like(vector_file_path, interpolated_dataset, output_resolution))
+            # mask raster to extent using polygon in vector file
+            raster_mask = rasterize_like(vector_file_path, interpolated_dataset, output_resolution)
+            output_dataset = _mask_raster(interpolated_dataset, raster_mask)
         elif method == 'kriging':
             # interpolate using Ordinary Kriging
             interpolated_dataset = self.__interp_points_pykrige_kriging(gdal_points, output_resolution, window_size)
 
-            # shrink the coverage back on the edges
-            if shrink:
-                output_dataset = _shrink_coverage(interpolated_dataset, output_resolution, window_size)
-            else:
-                output_dataset = interpolated_dataset
+            # mask raster to extent using polygon in convex hull
+            convex_hull_vertices = self.input_points[:, 0:2][
+                scipy.spatial.ConvexHull(self.input_points[:, 0:2]).vertices]
+
+            convex_hull_shapefile_name = 'convex_hull_shapefile'
+
+            if not os.path.isdir(convex_hull_shapefile_name):
+                os.mkdir(convex_hull_shapefile_name)
+
+            shapefile_path = os.path.join(convex_hull_shapefile_name, f'{convex_hull_shapefile_name}.shp')
+
+            convex_hull_vertices = [tuple(point) for point in convex_hull_vertices.tolist()]
+
+            with fiona.open(shapefile_path, 'w', 'ESRI Shapefile',
+                            schema={'geometry': 'Polygon', 'properties': {'name': 'str'}},
+                            crs=fiona.crs.from_epsg(4326)) as convex_hull_shapefile:
+                convex_hull_shapefile.write(
+                    {'geometry': {'coordinates': [convex_hull_vertices + [convex_hull_vertices[0]]], 'type': 'Polygon'},
+                     'id': 1,
+                     'properties': {'name': 'mask'}})
+
+            raster_mask = rasterize_like(shapefile_path, interpolated_dataset, output_resolution)
+
+            os.remove(shapefile_path)
+            os.rmdir(convex_hull_shapefile_name)
+
+            output_dataset = _mask_raster(interpolated_dataset, raster_mask)
         else:
             raise ValueError(f'Interpolation type "{method}" not recognized.')
 
-        self.__plot(input_points, output_dataset, method, nodata=1000000.0)
+        self.__plot(output_dataset, method)
 
         return output_dataset
 
@@ -174,11 +200,9 @@ class PointInterpolator:
         if nodata is None:
             nodata = self.nodata
 
-        input_points = gdal_points_to_array(gdal_points)
-        (rows, cols), bounds = _shape_from_cell_size(resolution, _bounds_from_points(input_points))
         algorithm = f"linear:radius=0:nodata={int(nodata)}"
-        return gdal.Grid('', gdal_points, format='MEM', width=cols, height=rows, outputBounds=bounds,
-                         algorithm=algorithm)
+        return gdal.Grid('', gdal_points, format='MEM', width=self.input_shape[1], height=self.input_shape[0],
+                         outputBounds=self.input_bounds, algorithm=algorithm)
 
     def __interp_points_gdal_invdist(self, gdal_points: gdal.Dataset, resolution: float, radius: float,
                                      nodata: float = None) -> gdal.Dataset:
@@ -205,11 +229,9 @@ class PointInterpolator:
         if nodata is None:
             nodata = self.nodata
 
-        input_points = gdal_points_to_array(gdal_points)
-        (rows, cols), bounds = _shape_from_cell_size(resolution, _bounds_from_points(input_points))
         algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}:angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
-        return gdal.Grid('', gdal_points, format='MEM', width=cols, height=rows, outputBounds=bounds,
-                         algorithm=algorithm)
+        return gdal.Grid('', gdal_points, format='MEM', width=self.input_shape[1], height=self.input_shape[0],
+                         outputBounds=self.input_bounds, algorithm=algorithm)
 
     def __interp_points_gdal_invdist_scipy_linear(self, gdal_points: gdal.Dataset, resolution: float, radius: float,
                                                   nodata: float = None) -> gdal.Dataset:
@@ -281,95 +303,84 @@ class PointInterpolator:
         if nodata is None:
             nodata = self.nodata
 
-        input_points = gdal_points_to_array(gdal_points)
-        (rows, cols), bounds = _shape_from_cell_size(resolution, _bounds_from_points(input_points))
+        data_sw = numpy.array((self.input_bounds[0], self.input_bounds[1]))
 
-        output_x = numpy.arange(bounds[0], bounds[2], resolution)
-        output_y = numpy.arange(bounds[1], bounds[3], resolution)
-        interpolated_array = numpy.empty((len(output_y), len(output_x)), dtype=float)
-        variance = numpy.empty((len(output_y), len(output_x)), dtype=float)
+        interpolated_grid_x = numpy.arange(self.input_bounds[0], self.input_bounds[2], resolution)
+        interpolated_grid_y = numpy.arange(self.input_bounds[1], self.input_bounds[3], resolution)
+        interpolated_grid_shape = numpy.array((len(interpolated_grid_y), len(interpolated_grid_x)), numpy.int)
+        interpolated_grid_values = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
+        interpolated_grid_variance = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
 
-        # don't set this to be less than 4 unless you have a a beast of a machine to run it on
+        # setting this less than 4 freezes my computer
         side_length = 4
-        total_parts = side_length ** 2
+        total_chunks = side_length ** 2
 
-        row, col = 0, 0
+        min_side_length = 4
+        max_side_length = 34
 
-        min_x, min_y, max_x, max_y = bounds
+        if not min_side_length <= side_length <= max_side_length:
+            raise ValueError(f'side length should be between {min_side_length} and {max_side_length}')
 
-        x_range = max_x - min_x
-        y_range = max_y - min_y
+        chunk_shape = numpy.array(numpy.round(interpolated_grid_shape / side_length), numpy.int)
+        expand_indices = numpy.round(chunk_shape / 2).astype(numpy.int)
+
+        chunk_grid_index = numpy.array((0, 0), numpy.int)
 
         start_time = datetime.datetime.now()
-
-        chunk_cols = int(len(output_x) / side_length)
-        chunk_rows = int(len(output_y) / side_length)
-        chunk_width = chunk_cols * resolution
-        chunk_height = chunk_rows * resolution
-
         with futures.ProcessPoolExecutor() as concurrency_pool:
             running_futures = {}
 
-            for part_index in range(total_parts):
-                print(f'processing chunk {part_index + 1} of {total_parts}')
+            for chunk_index in range(total_chunks):
+                print(f'processing chunk {chunk_index + 1} of {total_chunks}')
 
-                grid_x_start = col * chunk_cols
-                grid_x_end = grid_x_start + chunk_cols
-                grid_y_start = row * chunk_rows
-                grid_y_end = grid_y_start + chunk_rows
+                # determine indices of the lower left and upper right bounds of the chunk within the output grid
+                grid_start_index = numpy.array(chunk_grid_index * chunk_shape)
+                grid_end_index = grid_start_index + chunk_shape
+                grid_slice = tuple(
+                    slice(grid_start_index[axis], grid_end_index[axis]) for axis in range(len(chunk_shape)))
 
-                chunk_x_min = min_x + (col * chunk_width)
-                chunk_x_max = chunk_x_min + chunk_width
-                chunk_y_min = min_y + (row * chunk_height)
-                chunk_y_max = chunk_y_min + chunk_height
+                # expand the interpolation area past the edges of the chunk to minimize edge formation at the boundary
+                interpolation_sw = data_sw + numpy.flip((grid_start_index - expand_indices) * resolution)
+                interpolation_ne = data_sw + numpy.flip((grid_end_index + expand_indices) * resolution)
+                interpolation_points = self.input_points[numpy.where(
+                    (self.input_points[:, 0] >= interpolation_sw[0]) & (
+                            self.input_points[:, 0] < interpolation_ne[0]) & (
+                            self.input_points[:, 1] >= interpolation_sw[1]) & (
+                            self.input_points[:, 1] < interpolation_ne[1]))[0]]
 
-                chunk_points = input_points[numpy.where(
-                    (input_points[:, 0] >= chunk_x_min) & (input_points[:, 0] < chunk_x_max) & (
-                            input_points[:, 1] >= chunk_y_min) & (input_points[:, 1] < chunk_y_max))[0]]
+                print(f'found {interpolation_points.shape[0]} points in chunk')
 
-                print(f'found {chunk_points.shape[0]} points in chunk')
+                if interpolation_points.shape[0] >= 3:
+                    current_future = concurrency_pool.submit(_krige_onto_grid, interpolation_points,
+                                                             interpolated_grid_x[grid_slice[1]],
+                                                             interpolated_grid_y[grid_slice[0]])
+                    running_futures[current_future] = grid_slice
 
-                if chunk_points.shape[0] >= 3:
-                    interpolator = OrdinaryKriging(chunk_points[:, 0], chunk_points[:, 1], chunk_points[:, 2],
-                                                   variogram_model='linear', verbose=False, enable_plotting=False)
-
-                    current_future = concurrency_pool.submit(interpolator.execute, 'grid',
-                                                             output_x[grid_x_start:grid_x_end],
-                                                             output_y[grid_y_start:grid_y_end])
-                    running_futures[current_future] = [slice(grid_y_start, grid_y_end),
-                                                       slice(grid_x_start, grid_x_end)]
+                if chunk_grid_index[1] >= side_length - 1:
+                    chunk_grid_index[1] = 0
+                    chunk_grid_index[0] += 1
                 else:
-                    interpolated_array[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = numpy.full(
-                        (grid_y_end - grid_y_start, grid_x_end - grid_x_start), numpy.nan)
-                    variance[grid_y_start:grid_y_end, grid_x_start:grid_x_end] = numpy.full(
-                        (grid_y_end - grid_y_start, grid_x_end - grid_x_start), numpy.nan)
+                    chunk_grid_index[1] += 1
 
-                if col >= side_length - 1:
-                    col = 0
-                    row += 1
-                else:
-                    col += 1
+            for _, completed_future in enumerate(futures.as_completed(running_futures)):
+                grid_slice = running_futures[completed_future]
+                chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
+                interpolated_grid_values[grid_slice] = chunk_interpolated_values
+                interpolated_grid_variance[grid_slice] = chunk_interpolated_variance
 
-            for completed_future in futures.as_completed(running_futures):
-                chunk_slices = running_futures[completed_future]
+        print(f'interpolating {total_chunks} chunks took {(datetime.datetime.now() - start_time).total_seconds()} s')
 
-                current_interpolated_data, current_variance = completed_future.result()
+        interpolated_grid_uncertainty = numpy.sqrt(interpolated_grid_variance) * 2.5
+        del interpolated_grid_variance
 
-                interpolated_array[chunk_slices] = current_interpolated_data
-                variance[chunk_slices] = current_variance
+        interpolated_grid_values = numpy.flip(interpolated_grid_values, axis=0)
+        interpolated_grid_uncertainty = numpy.flip(interpolated_grid_uncertainty, axis=0)
 
-        duration = (datetime.datetime.now() - start_time)
-        print(f'interpolating {total_parts} chunks took {duration.total_seconds()} s')
-
-        uncertainty = numpy.sqrt(variance) * 2.5
-
-        interpolated_array = numpy.flip(interpolated_array, axis=0)
-        uncertainty = numpy.flip(uncertainty, axis=0)
-
-        self.__plot(input_points, interpolated_array, 'kriging')
+        self.__plot(interpolated_grid_values, f'kriging ({side_length}x{side_length} chunks)')
 
         memory_raster_driver = gdal.GetDriverByName('MEM')
-        output_dataset = memory_raster_driver.Create('temp', cols, rows, 2, gdal.GDT_Float32)
+        output_dataset = memory_raster_driver.Create('temp', self.input_shape[1], self.input_shape[0], 2,
+                                                     gdal.GDT_Float32)
 
         input_geotransform = gdal_points.GetGeoTransform()
         output_dataset.SetGeoTransform((input_geotransform[0], resolution, 0.0, 0.0, input_geotransform[3], resolution))
@@ -377,23 +388,21 @@ class PointInterpolator:
 
         band_1 = output_dataset.GetRasterBand(1)
         band_1.SetNoDataValue(nodata)
-        band_1.WriteArray(interpolated_array)
+        band_1.WriteArray(interpolated_grid_values)
 
         band_2 = output_dataset.GetRasterBand(2)
         band_2.SetNoDataValue(nodata)
-        band_2.WriteArray(uncertainty)
+        band_2.WriteArray(interpolated_grid_uncertainty)
 
         del band_1, band_2
         return output_dataset
 
-    def __plot(self, survey_points: numpy.array, interpolated_raster: Union[numpy.array, gdal.Dataset],
-               interpolation_method: str, nodata: float = None):
+    def __plot(self, interpolated_raster: Union[numpy.array, gdal.Dataset], interpolation_method: str,
+               nodata: float = None):
         """
 
         Parameters
         ----------
-        survey_points
-            array of XYZ points from original survey
         interpolated_raster
             array of interpolated data
         interpolation_method
@@ -409,13 +418,13 @@ class PointInterpolator:
             interpolated_raster = interpolated_raster[0, :, :]
         interpolated_raster[interpolated_raster == nodata] = numpy.nan
 
-        min_x, min_y, max_x, max_y = _bounds_from_points(survey_points)
+        min_x, min_y, max_x, max_y = self.input_bounds
 
         figure = plt.figure()
 
         original_data_axis = figure.add_subplot(1, 2, 1)
         original_data_axis.set_title('survey points')
-        original_data_axis.scatter(survey_points[:, 0], survey_points[:, 1], c=survey_points[:, 2], s=1)
+        original_data_axis.scatter(self.input_points[:, 0], self.input_points[:, 1], c=self.input_points[:, 2], s=1)
         original_data_axis.set_xlim(min_x, max_x)
         original_data_axis.set_ylim(min_y, max_y)
 
@@ -570,25 +579,25 @@ def _shape_from_cell_size(resolution: float, bounds: Tuple[float, float, float, 
     return (rows, cols), (rounded_min_x, rounded_min_y, rounded_max_x, rounded_max_y)
 
 
-def _vector_file_to_gdal_dataset(vector_file_path: str, spatial_reference_wkt: str,
-                                 geotransform: Tuple[float, float, float, float, float, float], resolution: int,
-                                 shape: Tuple[int, int], nodata: float = 0) -> gdal.Dataset:
+def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialReference,
+              output_nw_corner: Tuple[float, float], output_resolution: int, output_shape: Tuple[int, int],
+              output_nodata: float = 0) -> gdal.Dataset:
     """
-    Import shapefile
+    Burn vector data to a raster with the given properties.
 
     Parameters
     ----------
     vector_file_path
         path to file containing vector data
-    spatial_reference_wkt
+    output_spatial_reference
         well-known text of a spatial reference system
-    geotransform
-        tuple of the desired GDAL geotransform of the dataset
-    resolution
+    output_nw_corner
+        desired GDAL geotransform of the dataset
+    output_resolution
         cell size of the output dataset
-    shape
+    output_shape
         shape of the the output dataset
-    nodata
+    output_nodata
         value to be substituted for no data in the output dataset
 
     Returns
@@ -598,132 +607,113 @@ def _vector_file_to_gdal_dataset(vector_file_path: str, spatial_reference_wkt: s
 
     """
 
-    print('getShpRast', vector_file_path)
-    fName = os.path.split(vector_file_path)[-1]
-    splits = os.path.splitext(fName)
-    name = splits[0]
-    # tif = f'{splits[0]}.tif'
-
     # Open the data source and read in the extent
-    source_ds = ogr.Open(vector_file_path)
-    source_layer = source_ds.GetLayer()
-    source_srs = source_layer.GetSpatialRef()
+    input_dataset = ogr.Open(vector_file_path)
+    input_layer = input_dataset.GetLayer()
+    input_spatial_reference = input_layer.GetSpatialRef()
 
-    for input_feature in source_layer:
+    output_x_min, output_y_max = output_nw_corner
+
+    input_x_min, input_x_max, input_y_min, input_y_max = None, None, None, None
+    temp_layer = None
+
+    # extract the first feature to a temporary layer
+    for input_feature in input_layer:
         if input_feature is not None:
             input_geometry = input_feature.GetGeometryRef()
-            #                print(geom.ExportToWkt())
             output_geometry = ogr.CreateGeometryFromWkt(input_geometry.ExportToWkt())
-            #                print(source_srs, to_proj, sep='\n')
-            coordTrans = osr.CoordinateTransformation(source_srs, spatial_reference_wkt)
-            output_geometry.Transform(coordTrans)
-            driver = ogr.GetDriverByName('Memory')
-            ds = driver.CreateDataSource('temp')
-            layer = ds.CreateLayer(name, spatial_reference_wkt, ogr.wkbMultiPolygon)
+            output_geometry.Transform(osr.CoordinateTransformation(input_spatial_reference, output_spatial_reference))
+            input_x_min, input_x_max, input_y_min, input_y_max = output_geometry.GetEnvelope()
 
-            # Add one attribute
-            layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
-            defn = layer.GetLayerDefn()
-
-            # Create a new feature (attribute and geometry)
-            output_feature = ogr.Feature(defn)
-            output_feature.SetField('id', 123)
-
-            # Make a geometry, from Shapely object
+            gdal_memory_driver = ogr.GetDriverByName('Memory')
+            temp_dataset = gdal_memory_driver.CreateDataSource('temp')
+            temp_layer = temp_dataset.CreateLayer('temp_layer', output_spatial_reference, ogr.wkbMultiPolygon)
+            temp_layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
+            output_feature = ogr.Feature(temp_layer.GetLayerDefn())
+            output_feature.SetField('id', 1)
             output_feature.SetGeometry(output_geometry)
-
-            layer.CreateFeature(output_feature)
-            del output_feature, input_geometry
+            temp_layer.CreateFeature(output_feature)
             break
 
-    x_min, x_max, y_min, y_max = output_geometry.GetEnvelope()
-    meta = ([x_min, y_max], [x_max, y_min])
-    print(meta)
+    del input_dataset
 
-    # Create the destination data source
-    x_dim = int((x_max - x_min) / resolution)
-    y_dim = int((y_max - y_min) / resolution)
-    print(x_dim, y_dim)
-    target_ds = gdal.GetDriverByName('MEM').Create('', x_dim, y_dim, gdal.GDT_Byte)
-    x_orig, y_orig = geotransform[0], geotransform[3]
-    target_gt = (x_orig, resolution, 0, y_orig, 0, resolution)
-    target_ds.SetGeoTransform(target_gt)
-    band = target_ds.GetRasterBand(1)
-    band.SetNoDataValue(nodata)
+    # burn the single feature to the output dataset
+    cols = int((input_x_max - input_x_min) / output_resolution)
+    rows = int((input_y_max - input_y_min) / output_resolution)
 
-    # Rasterize
-    gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[1])
-    newarr = band.ReadAsArray()
+    rasterized_dataset = gdal.GetDriverByName('MEM').Create('', cols, rows, gdal.GDT_Byte)
+    rasterized_dataset.SetGeoTransform(
+        (output_nw_corner[1], output_resolution, 0, output_nw_corner[0], 0, output_resolution))
+    band_1 = rasterized_dataset.GetRasterBand(1)
+    band_1.SetNoDataValue(output_nodata)
+    gdal.RasterizeLayer(rasterized_dataset, [1], temp_layer, burn_values=[1])
+    rasterized_array = band_1.ReadAsArray()
 
     # clip resampled coverage data to the bounds of the BAG
-    output_array = numpy.full(shape, nodata)
+    output_array = numpy.full(output_shape, output_nodata)
 
-    cov_ul, cov_lr = numpy.array(x_orig), numpy.array(y_orig)
-    bag_ul, bag_lr = numpy.array(x_min), numpy.array(y_min)
+    cov_ul, cov_lr = numpy.array(output_nw_corner), numpy.array((output_nw_corner[0]))
+    bag_ul, bag_lr = numpy.array(input_x_min), numpy.array(input_y_min)
 
     if bag_ul[0] > cov_lr[0] or bag_lr[0] < cov_ul[0] or bag_lr[1] > cov_ul[1] or bag_ul[1] < cov_lr[1]:
-        raise ValueError('bag dataset is outside the bounds of coverage dataset')
+        raise ValueError('bag dataset is outside bounds of coverage dataset')
 
-    ul_index_delta = numpy.round((bag_ul - cov_ul) / numpy.array(resolution)).astype(int)
-    lr_index_delta = numpy.round((bag_lr - cov_ul) / numpy.array(resolution)).astype(int)
+    ul_index_delta = numpy.round((bag_ul - cov_ul) / numpy.array(output_resolution)).astype(int)
+    lr_index_delta = numpy.round((bag_lr - cov_ul) / numpy.array(output_resolution)).astype(int)
 
     # indices to be written onto the output array
-    output_array_index_slices = [slice(0, None), slice(0, None)]
+    output_index_slices = [slice(0, None), slice(0, None)]
 
     # BAG leftmost X is to the left of coverage leftmost X
     if ul_index_delta[0] < 0:
-        output_array_index_slices[1] = slice(ul_index_delta[0] * -1, output_array_index_slices[1].stop)
+        output_index_slices[1] = slice(ul_index_delta[0] * -1, output_index_slices[1].stop)
         ul_index_delta[0] = 0
 
     # BAG topmost Y is above coverage topmost Y
     if ul_index_delta[1] < 0:
-        output_array_index_slices[0] = slice(ul_index_delta[1] * -1, output_array_index_slices[0].stop)
+        output_index_slices[0] = slice(ul_index_delta[1] * -1, output_index_slices[0].stop)
         ul_index_delta[1] = 0
 
     # BAG rightmost X is to the right of coverage rightmost X
-    if lr_index_delta[0] > newarr.shape[1]:
-        output_array_index_slices[1] = slice(output_array_index_slices[1].start,
-                                             newarr.shape[1] - lr_index_delta[0])
-        lr_index_delta[0] = newarr.shape[1]
+    if lr_index_delta[0] > rasterized_array.shape[1]:
+        output_index_slices[1] = slice(output_index_slices[1].start, rasterized_array.shape[1] - lr_index_delta[0])
+        lr_index_delta[0] = rasterized_array.shape[1]
 
     # BAG bottommost Y is lower than coverage bottommost Y
-    if lr_index_delta[1] > newarr.shape[0]:
-        output_array_index_slices[0] = slice(output_array_index_slices[0].start,
-                                             newarr.shape[0] - lr_index_delta[1])
-        lr_index_delta[1] = newarr.shape[0]
+    if lr_index_delta[1] > rasterized_array.shape[0]:
+        output_index_slices[0] = slice(output_index_slices[0].start, rasterized_array.shape[0] - lr_index_delta[1])
+        lr_index_delta[1] = rasterized_array.shape[0]
 
     # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
-    output_array[output_array_index_slices[0], output_array_index_slices[1]] = newarr[
-                                                                               ul_index_delta[1]:lr_index_delta[1],
-                                                                               ul_index_delta[0]:lr_index_delta[0]]
+    output_array[output_index_slices[0], output_index_slices[1]] = rasterized_array[ul_index_delta[1]:lr_index_delta[1],
+                                                                   ul_index_delta[0]:lr_index_delta[0]]
 
-    del newarr, band, source_ds, target_ds
+    del rasterized_dataset, rasterized_array
 
-    ax_y, ax_x = output_array.shape
+    output_height, output_width = output_array.shape
 
-    target_ds = gdal.GetDriverByName('MEM').Create('', ax_x, ax_y, 1, gdal.GDT_Float32)
-    x_orig, y_orig = geotransform[0], geotransform[3]
-    target_gt = (x_orig, resolution, 0, y_orig, 0, resolution)
-    target_ds.SetGeoTransform(target_gt)
-    band = target_ds.GetRasterBand(1)
-    band.SetNoDataValue(nodata)
-    band.WriteArray(output_array)
+    output_dataset = gdal.GetDriverByName('MEM').Create('', output_width, output_height, 1, gdal.GDT_Float32)
+    output_dataset.SetGeoTransform((output_y_max, output_resolution, 0, output_x_min, 0, output_resolution))
 
-    return target_ds
+    band_1 = rasterized_dataset.GetRasterBand(1)
+    band_1.SetNoDataValue(output_nodata)
+    band_1.WriteArray(output_array)
+
+    return output_dataset
 
 
-def rasterize_like(vector_file_path: str, like_raster: gdal.Dataset, resolution: int) -> gdal.Dataset:
+def rasterize_like(vector_file_path: str, like_raster: gdal.Dataset, output_resolution: int) -> gdal.Dataset:
     """
-    Burn given shapefile onto a raster with the same size and location as the given raster.
+    Burn vector data to a raster with the properties of the given raster.
 
     Parameters
     ----------
     vector_file_path
         path to file containing vector data
     like_raster
-        GDAL raster dataset
-    resolution
-        cell size of grid
+        GDAL raster dataset to emulate
+    output_resolution
+        cell size of output raster
 
     Returns
     -------
@@ -731,12 +721,19 @@ def rasterize_like(vector_file_path: str, like_raster: gdal.Dataset, resolution:
         raster with vector data burned in
     """
 
-    geotransform = like_raster.GetGeoTransform()
-    spatial_reference_wkt = osr.SpatialReference(wkt=like_raster.GetProjectionRef())
-    spatial_reference_wkt.MorphFromESRI()
+    input_geotransform = like_raster.GetGeoTransform()
+    input_spatial_reference = like_raster.GetProjectionRef()
+    input_shape = like_raster.RasterYSize, like_raster.RasterXSize
+    input_nw_corner = (input_geotransform[0], input_geotransform[3])
 
-    return _vector_file_to_gdal_dataset(vector_file_path, spatial_reference_wkt, geotransform, int(resolution),
-                                        (like_raster.RasterYSize, like_raster.RasterXSize))
+    if input_spatial_reference == '':
+        output_spatial_reference = osr.SpatialReference(
+            'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]')
+    else:
+        output_spatial_reference = osr.SpatialReference(wkt=input_spatial_reference)
+        output_spatial_reference.MorphFromESRI()
+
+    return rasterize(vector_file_path, output_spatial_reference, input_nw_corner, output_resolution, input_shape)
 
 
 def gdal_points_to_array(gdal_points: gdal.Dataset, layer_index: int = 0) -> numpy.array:
@@ -766,3 +763,29 @@ def gdal_points_to_array(gdal_points: gdal.Dataset, layer_index: int = 0) -> num
         output_points[point_index, :] = feature.geometry().GetPoint()
 
     return output_points
+
+
+def _krige_onto_grid(interpolation_points: numpy.array, output_x: numpy.array, output_y: numpy.array) -> Tuple[
+    numpy.array, numpy.array]:
+    """
+    Perform kriging interpolation from the given set of points onto a regular grid.
+
+    Parameters
+    ----------
+    interpolation_points
+        array of points (N x M)
+    output_x
+        X values of output grid
+    output_y
+        Y values of output grid
+    crop
+        list of slices to which to crop output
+
+    Returns
+    -------
+    interpolated values, variance
+    """
+
+    interpolator = OrdinaryKriging(interpolation_points[:, 0], interpolation_points[:, 1], interpolation_points[:, 2],
+                                   variogram_model='linear', verbose=False, enable_plotting=False)
+    return interpolator.execute('grid', output_x, output_y)

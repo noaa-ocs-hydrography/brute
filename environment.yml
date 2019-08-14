@@ -6,7 +6,7 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
-  - gdal
+  - gdal=2.4.2
   - fiona
   - mongoengine
   - astropy
