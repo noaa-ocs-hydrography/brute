@@ -257,7 +257,7 @@ class MetaReviewer_eHydro(mrb.MetaReviewer):
 
         """
 
-        with open(self._metafilename, 'r') as csvfile:
+        with open(self._metafilename, 'r', encoding='utf-8') as csvfile:
             metadata = []
             reader = _csv.DictReader(csvfile)
             # get the row
