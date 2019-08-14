@@ -209,7 +209,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
     
-    e_pick = eHydroPickleReader(xmlfilename)
+    e_pick = EhydroPickleReader(xmlfilename)
     meta_from_ehydro = e_pick._read_pickle()  # to handle files
     meta_from_ehydro = e_pick._when_use_pickle(meta_xml)
     meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
