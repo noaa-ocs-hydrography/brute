@@ -26,6 +26,7 @@ Sources:
 """
 
 # __version__ = 'point_interpolator 0.0.1'
+import datetime
 from concurrent import futures
 from typing import Tuple, Union
 
@@ -88,6 +89,8 @@ class PointInterpolator:
 
         _, _, max_spacing = _point_spacing(self.input_points)
         window_size = max_spacing * self.window_scalar
+
+        start_time = datetime.datetime.now()
 
         if method == 'linear':
             # linear interpolation using triangulation
@@ -153,6 +156,8 @@ class PointInterpolator:
             method = f'{method}_{chunks_per_side}x{chunks_per_side}'
         else:
             raise ValueError(f'Interpolation type "{method}" not recognized.')
+
+        print(f'{method} interpolation took {(datetime.datetime.now() - start_time).total_seconds()} s')
 
         if plot:
             self.__plot(output_dataset, method)
@@ -324,13 +329,13 @@ class PointInterpolator:
         chunk_shape = numpy.array(numpy.round(interpolated_grid_shape / chunks_per_side), numpy.int)
         expand_indices = numpy.round(chunk_shape / 2).astype(numpy.int)
 
-        # start_time = datetime.datetime.now()
         chunk_grid_index = numpy.array((0, 0), numpy.int)
         with futures.ProcessPoolExecutor() as concurrency_pool:
             running_futures = {}
 
-            for chunk_index in range(chunks_per_side ** 2):
-                # print(f'processing chunk {chunk_index + 1} of {total_chunks}')
+            chunks = chunks_per_side ** 2
+            for chunk_index in range(chunks):
+                # print(f'processing chunk {chunk_index + 1} of {chunks}')
 
                 # determine indices of the lower left and upper right bounds of the chunk within the output grid
                 grid_start_index = numpy.array(chunk_grid_index * chunk_shape)
@@ -346,8 +351,6 @@ class PointInterpolator:
                             self.input_points[:, 0] < interpolation_ne[0]) & (
                             self.input_points[:, 1] >= interpolation_sw[1]) & (
                             self.input_points[:, 1] < interpolation_ne[1]))[0]]
-
-                # print(f'found {interpolation_points.shape[0]} points in chunk')
 
                 if interpolation_points.shape[0] >= 3:
                     current_future = concurrency_pool.submit(_krige_onto_grid, interpolation_points,
@@ -366,8 +369,6 @@ class PointInterpolator:
                 chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
                 interpolated_grid_values[grid_slice] = chunk_interpolated_values
                 interpolated_grid_variance[grid_slice] = chunk_interpolated_variance
-
-        # print(f'interpolating {total_chunks} chunks took {(datetime.datetime.now() - start_time).total_seconds()} s')
 
         interpolated_grid_uncertainty = numpy.sqrt(interpolated_grid_variance) * 2.5
         del interpolated_grid_variance
@@ -410,7 +411,7 @@ class PointInterpolator:
             nodata = self.nodata
 
         if type(interpolated_raster) is gdal.Dataset:
-            interpolated_raster = numpy.flip(interpolated_raster.ReadAsArray(), axis=0)
+            interpolated_raster = numpy.flip(interpolated_raster.ReadAsArray(0), axis=0)
         if len(interpolated_raster.shape) == 3:
             interpolated_raster = interpolated_raster[0, :, :]
         interpolated_raster[interpolated_raster == nodata] = numpy.nan
