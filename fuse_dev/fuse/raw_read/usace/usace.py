@@ -37,26 +37,38 @@ class USACERawReader:
     def read_metadata(self, infilename: str):
         """
         Read all available meta data.
-        returns dictionary
+
+        The USACE metadata is retuned in order of precedence:
+            1. The survey's ``.xml``.
+            2. The file name.
+            3. The survey's ``.xyz`` header.
+            4. The metadata pickle pulled from eHydro.
 
         Parameters
         ----------
-        infilename: str
+        infilename : str
+            File path of the input ``.xyz`` data
 
         Returns
         -------
+        dict :
+            The complete metadata pulled from multiple sources
 
         """
+
+        meta_supplement = {}
         basexyzname, suffix = self.name_gen(infilename, ext='.xyz')
         meta_xml = self._parse_usace_xml(infilename)
         meta_xyz = self._parse_ehydro_xyz_header(basexyzname)
-        meta_filename = self._parse_filename(basexyzname)
+        meta_filename = self._parse_filename(infilename)
         meta_pickle = self._parse_pickle(infilename)
         meta_date = self._parse_start_date(infilename,
                                            {**meta_pickle, **meta_xyz,
                                             **meta_xml})
-        return {**meta_pickle, **meta_filename, **meta_xyz, **meta_xml,
-                **meta_date}
+        meta_determine = self._data_determination(meta_supplement, infilename)
+        meta_supplement = {**meta_determine, **meta_date, **meta_supplement}
+        return {**meta_pickle, **meta_xyz, **meta_filename, **meta_xml,
+                **meta_supplement}
 
     def read_bathymetry(self, infilename: str):
         """
@@ -64,13 +76,14 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename :
-
-        infilename: str :
-
+        infilename : str
+            Complete filepath of the input data
 
         Returns
         -------
+        numpy.array
+            A 2D array containing the complete list of points found in the
+            input file
 
         """
 
@@ -83,13 +96,13 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename :
+        infilename : str
+            Complete filepath of the input data
 
-        infilename: str :
-
-
-        Returns
-        -------
+        Yeilds
+        ------
+        numpy.array
+            A single row/point of data
 
         """
 
@@ -104,12 +117,13 @@ class USACERawReader:
 
         Parameters
         ----------
-        filename: str
-
+        infilename : str
+            Complete filepath of the input data
 
         Returns
         -------
-        metadata : dict
+        dict
+            The metadata returned via this method
 
 
         """
@@ -125,9 +139,17 @@ class USACERawReader:
         """
         Read all available meta data.
         returns dictionary
+
         Parameters
         ----------
-        infilename: str
+        infilename : str
+            Complete filepath of the input data
+
+        Returns
+        -------
+        dict
+            The metadata assigned via this method
+
         """
         xmlfilename = self.name_gen(infilename, ext='.xml', sfx=False)
         if _os.path.isfile(xmlfilename):
@@ -154,6 +176,20 @@ class USACERawReader:
         return {**meta_xml, **ext_dict}
 
     def _parse_start_date(self, infilename: str, metadata: dict) -> dict:
+        """
+        Reads the start data metadata avaiable via formatted filename.
+
+        Parameters
+        ----------
+        infilename : str
+            Complete filepath of the input data
+
+        Returns
+        -------
+        dict
+            The metadata assigned via this method
+
+        """
         start = {}
         file_date = None
         xml_date = None
@@ -183,6 +219,25 @@ class USACERawReader:
         Returns the suffix of the a survey's xyz file and the file name
         for a different extension
 
+        If the survey's xyz file name contains ``_A.xyz`` or ``_FULL.xyz`` this
+        suffix is removed from the 'base' name of the file.
+
+        Parameters
+        ----------
+        filename : str
+            Input file
+        ext : str, optional
+            New extention to be applied to the base
+        sfx : bool, optional
+            Whether or not the function passes back the suffix found in
+            `filename`
+
+        Returns
+        -------
+        type :
+            ``tuple(base, suffix)`` if ``sfx`` is ``True``;
+            ``base`` if ``sfx`` is ``False``
+
         """
         filebase, fileext = _os.path.splitext(filename)
         suffix = None
@@ -207,6 +262,44 @@ class USACERawReader:
         else:
             return base
 
+    def _data_determination(self, meta_dict: dict, infilename: str) -> dict:
+        """
+        Determines cerain metadata values based on the known quality of the
+        data.
+
+        Currently, this function checks the ``.xyz`` files for ``_A`` or
+        ``_FULL`` suffixes.  If one of these are found
+        ``metadict['interpolate']`` is set to False; True otherwise.
+
+        Parameters
+        ----------
+        meta_dict : dict
+            Dictionary to add values to
+        infilename : str
+            Complete filepath of the input data
+
+        Returns
+        -------
+        dict
+            The metadata assigned via this method
+
+        """
+        base, suffix = self.name_gen(infilename)
+        if suffix is not None and suffix.upper() == '_FULL':
+            meta_dict['interpolate'] = False
+            meta_dict['from_horiz_reolution'] = 3
+        elif suffix is not None and suffix.upper() == '_A':
+            self._check_grid(infilename)
+            meta_dict['interpolate'] = False
+        else:
+            meta_dict['interpolate'] = True
+
+        return meta_dict
+
+    def _check_grid(self, infilename):
+        data = self._parse_ehydro_xyz_bathy(infilename)
+        ...
+
     def _parse_ehydro_xyz_header(self, infilename: str, meta_source: str = 'xyz', default_meta: str = '') -> dict:
         """
         Parse an USACE eHydro file for the available meta data.
@@ -221,22 +314,22 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename :
-            param meta_source:  (Default value = 'xyz')
-        default_meta :
-            Default value = '')
-        infilename: str :
-
-        meta_source: str :
-             (Default value = 'xyz')
-        default_meta: str :
-             (Default value = '')
+        infilename : str
+            Complete filepath of the input data
+        meta_source : str, optional
+            Choice of ``xyz`` or ``xml`` (Default == 'xyz')
+        default_meta : str, optional
+            (Default == ''); Optional filepath of a default metadata ``dict``
+            stored as a ``.pkl`` file
 
         Returns
         -------
+        dict
+            The metadata found via this method
 
         """
-
+        name_sections = ('projid', 'uniqueid', 'subprojid', 'start_date',
+                          'statuscode', 'optional')
         name_meta = self._parse_filename(infilename)
         if meta_source == 'xyz':
             file_meta = self._parse_xyz_header(infilename)
@@ -253,13 +346,12 @@ class USACERawReader:
                 val = self.ussft2m * float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
-        sorind = f"{name_meta['projid']}_{name_meta['uniqueid']}_{name_meta['subprojid']}_{name_meta['start_date']}_" + \
-                 f"{name_meta['statuscode']}"
+        sorind = '_'.join([name_meta[key] for key in name_sections if key in name_meta])
         merged_meta['source_indicator'] = f'US,US,graph,{sorind}'
         # merged_meta['script_version'] = __version__
         return merged_meta
 
-    def _parse_filename(self, infilename):
+    def _parse_filename(self, infilename: str) -> dict:
         """
         Parse the provided infilename for the channel project code, unique id,
         subproject code, survey acquistion start date, the survey code, and
@@ -277,16 +369,21 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename :
-
+        infilename : str
+            Complete filepath of the input data
 
         Returns
         -------
+        dict
+            The metadata found via this method
 
         """
         base = _os.path.basename(infilename)
         name, ext = _os.path.splitext(base)
         splitname = name.split('_')
+
+        split_sections = ('projid', 'uniqueid', 'subprojid', 'start_date',
+                          'statuscode', 'optional')
 
         if len(splitname) >= 5:
             meta = {
@@ -304,26 +401,35 @@ class USACERawReader:
                     for n in range(6, len(splitname)):
                         option += f'_{splitname[n]}'
                 meta['optional'] = option
+        elif len(splitname) >= 2 and len(splitname) < 5:
+            meta = {
+                    'from_path': infilename,
+                    'from_filename': base,
+                    }
+            for index in range(len(splitname)):
+                meta[split_sections[index]] = splitname[index]
         else:
             print(f'{name} appears to have a nonstandard naming convention.')
         return meta
 
-    def _parse_xyz_header(self, infilename):
+    def parse_xyz_header(self, infilename: str) -> dict:
         """
         Parse the xyz file header for meta data and return a dictionary.  The
         key words used to search are
-            NOTES
-            PROJECT_NAME
-            SURVEY_NAME
-            DATES_OF_SURVEY
+            - NOTES.
+            - PROJECT_NAME.
+            - SURVEY_NAME.
+            - DATES_OF_SURVEY.
 
         Parameters
         ----------
-        infilename :
-
+        infilename : str
+            Complete filepath of the input data
 
         Returns
         -------
+        dict
+            The metadata found via this method
 
         """
         header = []
@@ -353,17 +459,21 @@ class USACERawReader:
             meta = {**meta, **m}
         return meta
 
-    def _is_header(self, line):
+    def _is_header(self, line: str) -> bool:
         """
-        Test if a line contains anything other than numbers it is a meta data line.
+        Test if a line contains anything other than numbers it is a meta data
+        line.
+
+        ``line`` used is determined by :func:`_parse_ehydro_xyz_bathy`
 
         Parameters
         ----------
-        line :
-
+        line : str
 
         Returns
         -------
+        bool
+            True, if no characters match; False otherwise
 
         """
         pattern = '[a-zA-Z]'
@@ -372,17 +482,21 @@ class USACERawReader:
         else:
             return True
 
-    def _parse_note(self, line):
+    def _parse_note(self, line: str) -> dict:
         """
         Parse the notes line.
 
+        ``line`` used is determined by :func:`_parse_xyz_header`
+
         Parameters
         ----------
-        line :
-
+        line : str
+            A string identified to contain metadata
 
         Returns
         -------
+        dict
+            The metadata found via this method
 
         """
         metadata = {}
@@ -423,17 +537,21 @@ class USACERawReader:
             metadata['from_vert_units'] = 'US Survey Foot'
         return metadata
 
-    def _parse_projectname(self, line):
+    def _parse_projectname(self, line: str) -> dict:
         """
         Parse the project name line.
 
+        ``line`` used is determined by :func:`_parse_xyz_header`
+
         Parameters
         ----------
-        line :
-
+        line : str
+            A string identified to contain metadata
 
         Returns
         -------
+        dict
+            The metadata found via this method
 
         """
         name = line.split('=')[-1]
@@ -441,17 +559,21 @@ class USACERawReader:
         metadata = {'projectname': name}
         return metadata
 
-    def _parse_surveyname(self, line):
+    def _parse_surveyname(self, line: str) -> dict:
         """
         Parse the survey name line.
 
+        ``line`` used is determined by :func:`_parse_xyz_header`
+
         Parameters
         ----------
-        line :
-
+        line : str
+            A string identified to contain metadata
 
         Returns
         -------
+        dict
+            The metadata found via this method
 
         """
         name = line.split('=')[-1]
@@ -459,17 +581,21 @@ class USACERawReader:
         metadata = {'surveyname': name}
         return metadata
 
-    def _parse_surveydates(self, line):
+    def _parse_surveydates(self, line: str) -> dict:
         """
         Parse the project dates line.
 
+        ``line`` used is determined by :func:`_parse_xyz_header`
+
         Parameters
         ----------
-        line :
-
+        line : str
+            A string identified to contain metadata
 
         Returns
         -------
+        dict
+            The metadata found via this method
 
         """
         metadata = {}
@@ -491,18 +617,20 @@ class USACERawReader:
             print('ambiguous date found!')
         return metadata
 
-    def _xyztext2date(self, textdate):
+    def _xyztext2date(self, textdate: str) -> str:
         """
         Take the date as provided in a text string as "day month year" as in
         "20 March 2017" and return the format "YearMonthDay" as in "20170320".
 
         Parameters
         ----------
-        textdate :
-
+        textdate : str
+            Date string as "DD Month YYYY"
 
         Returns
         -------
+        str
+            Date String as "YYYYMMDD"
 
         """
         try:
@@ -521,13 +649,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename :
-            param default_meta:
-        default_meta :
-
+        infilename : str
+            Complete filepath of the input data
+        default_meta : str
+            Complete filepath of the input default values
 
         Returns
         -------
+        dict
+            The metadata found via this method
 
         """
         if len(default_meta) == 0:
@@ -540,18 +670,20 @@ class USACERawReader:
             meta = {}
         return meta
 
-    def _parse_ehydro_xml(self, infilename):
+    def _parse_ehydro_xml(self, infilename: str) -> dict:
         """
         Parse the eHydro XML file as provided by Wilmington, Charleston, and
         Norfolk Districts.
 
         Parameters
         ----------
-        infilename :
-
+        infilename : str
+            Complete filepath of the input data
 
         Returns
         -------
+        dict
+            The metadata found via this method
 
         """
         xml_meta = self._parse_xml(infilename)
@@ -559,17 +691,19 @@ class USACERawReader:
         meta_out = {**xml_meta, **text_meta}
         return meta_out
 
-    def _parse_xml(self, infilename):
+    def _parse_xml(self, infilename: str) -> dict:
         """
         Parse the xml portion of the xml file
 
         Parameters
         ----------
-        infilename :
-
+        infilename : str
+            Complete filepath of the input data
 
         Returns
         -------
+        dict
+            The metadata found via this method
 
         """
         xml_meta = {}
@@ -593,17 +727,19 @@ class USACERawReader:
             xml_meta['end_date'] = end.replace('-', '')
         return xml_meta
 
-    def _parse_xml_text(self, infilename):
+    def _parse_xml_text(self, infilename: str) -> dict:
         """
         Pase the text portion of the xml file
 
         Parameters
         ----------
-        infilename :
-
+        infilename : str
+            Complete filepath of the input data
 
         Returns
         -------
+        dict
+            The metadata found via this method
 
         """
         txt_meta = {}
@@ -640,7 +776,7 @@ class USACERawReader:
             txt_meta['fips'] = int(fips.group())
         return txt_meta
 
-    def _parse_ehydro_xyz_bathy(self, infilename):
+    def _parse_ehydro_xyz_bathy(self, infilename: str) -> _np.array:
         """
         Read the best available point bathymetry for the district.
 
@@ -648,11 +784,13 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename :
-
+        infilename : str
+            Complete filepath of the input data
 
         Returns
         -------
+        numpy.array
+            The xyz values as a 2d array
 
         """
         bathy = []
@@ -665,12 +803,16 @@ class USACERawReader:
                     continue
                 elif self._is_header(line):
                     pass
+                elif line == '':
+                    pass
                 else:
                     if ',' in line:
                         output = f'Comma delimited file found: {infilename}'
                         self._logger.log(_logging.DEBUG, output)
                         raise ValueError(output)
                     else:
-                        bathy.append([float(x) for x in line.split(' ')])
+                        row = [float(x) for x in line.split()]
+                        if len(row) == 3:
+                            bathy.append(row)
         bathy = _np.asarray(bathy)
         return bathy
