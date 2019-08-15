@@ -275,6 +275,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     # in merging sources from the text file and xml it will show any values that do not match as a list.
     merged_meta = {**meta, **meta_from_ehydro, **meta_xml}  # this method overwrites
     merged_meta = check_date_order(merged_meta, merged_meta)
+    merged_meta = use_best_spcs(merged_meta)
     return merged_meta
 
 
@@ -347,8 +348,8 @@ class EhydroPickleReader(object):
         
         no_SPCS_conflict = ''
         no_SPCS_conflict_withpickle = ''
-        if 'SPCS_conflict_XML' in meta_from_ehydro:
-            if meta_from_ehydro['SPCS_conflict_XML'] != '':
+        if 'SPCS_conflict_XML' in meta_xml:
+            if meta_xml['SPCS_conflict_XML'] != '':
                 no_SPCS_conflict = 'False'
             else:
                 no_SPCS_conflict = 'True'
@@ -395,15 +396,18 @@ class EhydroPickleReader(object):
         meta_from_ehydro = self.meta_from_ehydro
         if 'SOURCEPROJECTION' in meta_from_ehydro:
             if 'from_FIPS' in meta_xml:
-                # run check for conflict
+                # run check for conflict               
+                meta_xml['xml_from_fips'] = meta_xml['from_FIPS']#record xml
                 no_SPCS_conflict, no_SPCS_conflict_withpickle = self._Check_for_SPCSconflicts(meta_xml,
                                                                                               meta_from_ehydro)
                 if no_SPCS_conflict_withpickle == 'False':
                     meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
                                                                                meta_from_ehydro['SOURCEPROJECTION'])
+                    meta_from_ehydro['ehdyro_from_fips'] = meta_from_ehydro['from_fips']
             else:
                 meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
                                                                            meta_from_ehydro['SOURCEPROJECTION'])
+                meta_from_ehydro['ehdyro_from_fips'] = meta_from_ehydro['from_fips']
         self.meta_from_ehydro = meta_from_ehydro
         return meta_from_ehydro
 
@@ -1307,7 +1311,36 @@ def _parse_ReviewedBy(line):
 
 
 ##-----------------------------------------------------------------------------
-def check_date_order(m, mm):
+    
+def use_best_spcs(merged_meta:dict) ->dict:
+    """
+    use_best_spcs()
+    
+    take merged_meta dictionary and use 'ehydro_from_fips' as
+    the from_fips value. if it was produced by the pickle SPCS checker:
+    e_pick._when_use_pickle_() it is the winner if it was calculated.
+    
+    Otherwise if there is a conflict between ehydro and the xml derived spcs,
+    both SPCS codes will output to the from_fips attribute
+    
+    *A conflict in the SPCS codes within the xml alone will not make
+    this occur its only if the final value disagrees 
+    
+    Parameters
+    ----------
+    merged_meta: dict
+        
+    Returns
+    -------   
+    merged_meta: dict
+    
+    """
+    if 'ehdyro_from_fips' in merged_meta:   
+        merged_meta['from_fips'] = merged_meta['ehdyro_from_fips']
+    return merged_meta
+##-----------------------------------------------------------------------------
+
+def check_date_order(m:dict, mm:dict):
     """
     ingest dates from e-hydro file name, and xml if available
     do a date check.

@@ -2179,6 +2179,6 @@ def xml_SPCSconflict_otherspcs(meta_xml, other_spcs):
     list_spcs_source = 'FIPS', 'spcszone', 'SPCS', 'mapprojn'
     for source in list_spcs_source:
         if source in meta_xml:
-            if meta_xml[source] != meta_xml[other_spcs]:
+            if meta_xml[source] != other_spcs:
                 meta_xml['SPCS_conflict_XML_other'] = f"{meta_xml['SPCS_conflict_XML']} , {source}_disagrees_other_spcs"
     return meta_xml
