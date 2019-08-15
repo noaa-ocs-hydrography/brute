@@ -579,9 +579,8 @@ def _shape_from_cell_size(resolution: float, bounds: Tuple[float, float, float, 
     return (rows, cols), (rounded_min_x, rounded_min_y, rounded_max_x, rounded_max_y)
 
 
-def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialReference,
-              output_nw_corner: Tuple[float, float], output_resolution: int, output_shape: Tuple[int, int],
-              output_nodata: float = 0) -> gdal.Dataset:
+def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialReference, output_nw: Tuple[float, float],
+              output_resolution: int, output_shape: Tuple[int, int], output_nodata: float = 0) -> gdal.Dataset:
     """
     Burn vector data to a raster with the given properties.
 
@@ -590,29 +589,29 @@ def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialRefere
     vector_file_path
         path to file containing vector data
     output_spatial_reference
-        well-known text of a spatial reference system
-    output_nw_corner
-        desired GDAL geotransform of the dataset
+        output spatial reference system as well-known text
+    output_nw
+        output northwest corner
     output_resolution
-        cell size of the output dataset
+        output cell size
     output_shape
-        shape of the the output dataset
+        output shape
     output_nodata
-        value to be substituted for no data in the output dataset
+        value to be substituted for no data
 
     Returns
     -------
     gdal.Dataset
         raster dataset
-
     """
+
+    if type(output_nw) is not numpy.array:
+        output_nw = numpy.array(output_nw)
 
     # Open the data source and read in the extent
     input_dataset = ogr.Open(vector_file_path)
     input_layer = input_dataset.GetLayer()
     input_spatial_reference = input_layer.GetSpatialRef()
-
-    output_x_min, output_y_max = output_nw_corner
 
     input_x_min, input_x_max, input_y_min, input_y_max = None, None, None, None
     temp_layer = None
@@ -643,57 +642,58 @@ def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialRefere
 
     rasterized_dataset = gdal.GetDriverByName('MEM').Create('', cols, rows, gdal.GDT_Byte)
     rasterized_dataset.SetGeoTransform(
-        (output_nw_corner[1], output_resolution, 0, output_nw_corner[0], 0, output_resolution))
+        (output_nw[1], output_resolution, 0, output_nw[0], 0, output_resolution))
     band_1 = rasterized_dataset.GetRasterBand(1)
     band_1.SetNoDataValue(output_nodata)
     gdal.RasterizeLayer(rasterized_dataset, [1], temp_layer, burn_values=[1])
     rasterized_array = band_1.ReadAsArray()
 
-    # clip resampled coverage data to the bounds of the BAG
+    # clip resampled output data to the bounds of input
     output_array = numpy.full(output_shape, output_nodata)
+    output_se = numpy.array((output_nw[0] + (output_resolution * output_shape[1]),
+                             output_nw[1] - (output_resolution * output_shape[0])))
+    input_nw = numpy.array((input_x_min, input_y_max))
+    input_se = numpy.array((input_x_max, input_y_min))
 
-    cov_ul, cov_lr = numpy.array(output_nw_corner), numpy.array((output_nw_corner[0]))
-    bag_ul, bag_lr = numpy.array(input_x_min), numpy.array(input_y_min)
-
-    if bag_ul[0] > cov_lr[0] or bag_lr[0] < cov_ul[0] or bag_lr[1] > cov_ul[1] or bag_ul[1] < cov_lr[1]:
+    if input_nw[0] > output_se[0] or input_se[0] < output_nw[0] or \
+            input_se[1] > output_nw[1] or input_nw[1] < output_se[1]:
         raise ValueError('bag dataset is outside bounds of coverage dataset')
 
-    ul_index_delta = numpy.round((bag_ul - cov_ul) / numpy.array(output_resolution)).astype(int)
-    lr_index_delta = numpy.round((bag_lr - cov_ul) / numpy.array(output_resolution)).astype(int)
+    index_delta_nw = numpy.round((input_nw - output_nw) / numpy.array(output_resolution)).astype(int)
+    index_delta_se = numpy.round((input_se - output_nw) / numpy.array(output_resolution)).astype(int)
 
     # indices to be written onto the output array
     output_index_slices = [slice(0, None), slice(0, None)]
 
-    # BAG leftmost X is to the left of coverage leftmost X
-    if ul_index_delta[0] < 0:
-        output_index_slices[1] = slice(ul_index_delta[0] * -1, output_index_slices[1].stop)
-        ul_index_delta[0] = 0
+    # check if western bound of input is further west than that of output
+    if index_delta_nw[0] < 0:
+        output_index_slices[1] = slice(index_delta_nw[0] * -1, output_index_slices[1].stop)
+        index_delta_nw[0] = 0
 
-    # BAG topmost Y is above coverage topmost Y
-    if ul_index_delta[1] < 0:
-        output_index_slices[0] = slice(ul_index_delta[1] * -1, output_index_slices[0].stop)
-        ul_index_delta[1] = 0
+    # check if northern bound of input is further north than that of output
+    if index_delta_nw[1] < 0:
+        output_index_slices[0] = slice(index_delta_nw[1] * -1, output_index_slices[0].stop)
+        index_delta_nw[1] = 0
 
-    # BAG rightmost X is to the right of coverage rightmost X
-    if lr_index_delta[0] > rasterized_array.shape[1]:
-        output_index_slices[1] = slice(output_index_slices[1].start, rasterized_array.shape[1] - lr_index_delta[0])
-        lr_index_delta[0] = rasterized_array.shape[1]
+    # check if eastern bound of input is further east than that of output
+    if index_delta_se[0] > rasterized_array.shape[1]:
+        output_index_slices[1] = slice(output_index_slices[1].start, rasterized_array.shape[1] - index_delta_se[0])
+        index_delta_se[0] = rasterized_array.shape[1]
 
-    # BAG bottommost Y is lower than coverage bottommost Y
-    if lr_index_delta[1] > rasterized_array.shape[0]:
-        output_index_slices[0] = slice(output_index_slices[0].start, rasterized_array.shape[0] - lr_index_delta[1])
-        lr_index_delta[1] = rasterized_array.shape[0]
+    # check if southern bound of input is further south than that of output
+    if index_delta_se[1] > rasterized_array.shape[0]:
+        output_index_slices[0] = slice(output_index_slices[0].start, rasterized_array.shape[0] - index_delta_se[1])
+        index_delta_se[1] = rasterized_array.shape[0]
 
-    # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
-    output_array[output_index_slices[0], output_index_slices[1]] = rasterized_array[ul_index_delta[1]:lr_index_delta[1],
-                                                                   ul_index_delta[0]:lr_index_delta[0]]
+    # write relevant input data to a slice of the output array corresponding to the input extent
+    output_array[output_index_slices[0], output_index_slices[1]] = rasterized_array[index_delta_nw[1]:index_delta_se[1],
+                                                                   index_delta_nw[0]:index_delta_se[0]]
 
     del rasterized_dataset, rasterized_array
 
-    output_height, output_width = output_array.shape
-
-    output_dataset = gdal.GetDriverByName('MEM').Create('', output_width, output_height, 1, gdal.GDT_Float32)
-    output_dataset.SetGeoTransform((output_y_max, output_resolution, 0, output_x_min, 0, output_resolution))
+    output_dataset = gdal.GetDriverByName('MEM').Create('', output_array.shape[1], output_array.shape[0], 1,
+                                                        gdal.GDT_Float32)
+    output_dataset.SetGeoTransform((output_nw[1], output_resolution, 0, output_nw[0], 0, output_resolution))
 
     band_1 = rasterized_dataset.GetRasterBand(1)
     band_1.SetNoDataValue(output_nodata)
