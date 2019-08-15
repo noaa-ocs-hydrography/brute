@@ -26,7 +26,7 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
         'complete_coverage': False,
         'bathymetry': True,
         'vert_uncert_fixed': 0.5,
-        'vert_uncert_vari': 0.1,
+        'vert_uncert_vari': 0.01,
         'horiz_uncert_fixed': 5.0,
         'horiz_uncert_vari': 0.05,
         'feat_detect': False,

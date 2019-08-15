@@ -290,10 +290,6 @@ class CENANRawReader:
             else:
                 metadata['from_horiz_units'] = horiz_units.lstrip(' ')
             metadata['from_horiz_datum'] = horiz_datum
-        else:
-            metadata['from_wkt'] = 'unknown'
-            metadata['from_horiz_units'] = 'unknown'
-            metadata['from_horiz_datum'] = 'unknown'
         # find the vertical datum information
         if line.find('MEAN LOWER LOW WATER') > 0:
             metadata['from_vert_key'] = 'MLLW'
@@ -301,8 +297,6 @@ class CENANRawReader:
             metadata['from_vert_key'] = 'MLLW'
         elif line.find('MEAN LOW WATER') > 0:
             metadata['from_vert_key'] = 'MLW'
-        else:
-            metadata['vert_key'] = 'Unknown'
         vert_units_tags = ['NAVD88', 'NAVD1988', 'NAVD 1988']
         for tag in vert_units_tags:
             vert_units_end = line.find(tag)
@@ -316,8 +310,6 @@ class CENANRawReader:
         metadata['from_vert_datum'] = vert_units
         if vert_units.find('FEET') > 0:
             metadata['from_vert_units'] = 'US Survey Foot'
-        else:
-            metadata['from_vert_units'] = 'unknown'
         return metadata
 
     def _parse_projectname(self, line):
@@ -377,9 +369,11 @@ class CENANRawReader:
         else:
             delim = ' to '
         dateout = datestr.split(delim)
-        metadata['start_date'] = self._xyztext2date(dateout[0])
+        start_date = self._xyztext2date(dateout[0])
+        if start_date is not None:
+            metadata['start_date'] = start_date
         if len(dateout) == 1:
-            metadata['end_date'] = 'unknown'
+            pass
         elif len(dateout) == 2:
             metadata['end_date'] = self._xyztext2date(dateout[1])
         else:
@@ -405,7 +399,7 @@ class CENANRawReader:
             numdate = date.strftime('%Y%m%d')
             return numdate
         except:
-            return 'unknown'
+            return None
 
     def _load_default_metadata(self, infilename, default_meta):
         """
