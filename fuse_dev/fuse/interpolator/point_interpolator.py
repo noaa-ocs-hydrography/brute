@@ -26,12 +26,9 @@ Sources:
 """
 
 # __version__ = 'point_interpolator 0.0.1'
-import os
 from concurrent import futures
 from typing import Tuple, Union
 
-import fiona
-import fiona.crs
 import matplotlib.pyplot as plt
 import numpy
 import scipy
@@ -125,33 +122,33 @@ class PointInterpolator:
             interpolated_dataset = self.__interp_points_pykrige_kriging(gdal_points, output_resolution, window_size,
                                                                         chunks_per_side=chunks_per_side)
 
-            # mask raster to extent using polygon in convex hull
-            convex_hull_vertices = self.input_points[:, 0:2][
-                scipy.spatial.ConvexHull(self.input_points[:, 0:2]).vertices]
+            # # mask raster to extent using polygon in convex hull
+            # convex_hull_vertices = self.input_points[:, 0:2][
+            #     scipy.spatial.ConvexHull(self.input_points[:, 0:2]).vertices]
+            #
+            # convex_hull_shapefile_name = 'convex_hull_shapefile'
+            #
+            # if not os.path.isdir(convex_hull_shapefile_name):
+            #     os.mkdir(convex_hull_shapefile_name)
+            #
+            # shapefile_path = os.path.join(convex_hull_shapefile_name, f'{convex_hull_shapefile_name}.shp')
+            #
+            # convex_hull_vertices = [tuple(point) for point in convex_hull_vertices.tolist()]
+            #
+            # with fiona.open(shapefile_path, 'w', 'ESRI Shapefile',
+            #                 schema={'geometry': 'Polygon', 'properties': {'name': 'str'}},
+            #                 crs=fiona.crs.from_epsg(4326)) as convex_hull_shapefile:
+            #     convex_hull_shapefile.write({'id': 1, 'geometry': {'type': 'Polygon', 'coordinates': [
+            #         convex_hull_vertices + [convex_hull_vertices[0]]]}, 'properties': {'name': 'mask'}})
+            #
+            # raster_mask = rasterize_like(shapefile_path, interpolated_dataset, output_resolution)
+            #
+            # os.remove(shapefile_path)
+            # os.rmdir(convex_hull_shapefile_name)
+            #
+            # output_dataset = _mask_raster(interpolated_dataset, raster_mask)
 
-            convex_hull_shapefile_name = 'convex_hull_shapefile'
-
-            if not os.path.isdir(convex_hull_shapefile_name):
-                os.mkdir(convex_hull_shapefile_name)
-
-            shapefile_path = os.path.join(convex_hull_shapefile_name, f'{convex_hull_shapefile_name}.shp')
-
-            convex_hull_vertices = [tuple(point) for point in convex_hull_vertices.tolist()]
-
-            with fiona.open(shapefile_path, 'w', 'ESRI Shapefile',
-                            schema={'geometry': 'Polygon', 'properties': {'name': 'str'}},
-                            crs=fiona.crs.from_epsg(4326)) as convex_hull_shapefile:
-                convex_hull_shapefile.write({'id': 1, 'geometry': {'type': 'Polygon', 'coordinates': [
-                    convex_hull_vertices + [convex_hull_vertices[0]]]}, 'properties': {'name': 'mask'}})
-
-            raster_mask = rasterize_like(shapefile_path, interpolated_dataset, output_resolution)
-
-            os.remove(shapefile_path)
-            os.rmdir(convex_hull_shapefile_name)
-
-            output_dataset = _mask_raster(interpolated_dataset, raster_mask)
-
-            # output_dataset = interpolated_dataset
+            output_dataset = interpolated_dataset
 
             method = f'{method}_{chunks_per_side}x{chunks_per_side}'
         else:
@@ -579,8 +576,41 @@ def _shape_from_cell_size(resolution: float, bounds: Tuple[float, float, float, 
     return (rows, cols), (rounded_min_x, rounded_min_y, rounded_max_x, rounded_max_y)
 
 
+def rasterize_like(vector_file_path: str, like_raster: gdal.Dataset, output_resolution: int) -> gdal.Dataset:
+    """
+    Burn vector data to a raster with the properties of the given raster.
+
+    Parameters
+    ----------
+    vector_file_path
+        path to file containing vector data
+    like_raster
+        GDAL raster dataset to emulate
+    output_resolution
+        cell size of output raster
+
+    Returns
+    -------
+    gdal.Dataset
+        raster with vector data burned in
+    """
+
+    input_geotransform = like_raster.GetGeoTransform()
+    input_spatial_reference = like_raster.GetProjectionRef()
+
+    if input_spatial_reference == '':
+        output_spatial_reference = osr.SpatialReference(
+            'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]')
+    else:
+        output_spatial_reference = osr.SpatialReference(wkt=input_spatial_reference)
+        output_spatial_reference.MorphFromESRI()
+
+    return rasterize(vector_file_path, output_spatial_reference, (input_geotransform[0], input_geotransform[3]),
+                     output_resolution)
+
+
 def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialReference, output_nw: Tuple[float, float],
-              output_resolution: int, output_shape: Tuple[int, int], output_nodata: float = 0) -> gdal.Dataset:
+              output_resolution: int, output_nodata: float = 0) -> gdal.Dataset:
     """
     Burn vector data to a raster with the given properties.
 
@@ -636,13 +666,14 @@ def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialRefere
 
     del input_dataset
 
-    # burn the single feature to the output dataset
-    cols = int((input_x_max - input_x_min) / output_resolution)
-    rows = int((input_y_max - input_y_min) / output_resolution)
+    input_sw = numpy.array((input_x_min, input_y_min))
+    input_ne = numpy.array((input_x_max, input_y_max))
+    output_shape = tuple(numpy.round((input_ne - input_sw) / output_resolution).astype(numpy.int))
 
-    rasterized_dataset = gdal.GetDriverByName('MEM').Create('', cols, rows, gdal.GDT_Byte)
-    rasterized_dataset.SetGeoTransform(
-        (output_nw[1], output_resolution, 0, output_nw[0], 0, output_resolution))
+    # burn the single feature to the output dataset
+    rasterized_dataset = gdal.GetDriverByName('MEM').Create('', int(output_shape[0]), int(output_shape[1]),
+                                                            gdal.GDT_Byte)
+    rasterized_dataset.SetGeoTransform((output_nw[1], output_resolution, 0, output_nw[0], 0, output_resolution))
     band_1 = rasterized_dataset.GetRasterBand(1)
     band_1.SetNoDataValue(output_nodata)
     gdal.RasterizeLayer(rasterized_dataset, [1], temp_layer, burn_values=[1])
@@ -657,7 +688,7 @@ def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialRefere
 
     if input_nw[0] > output_se[0] or input_se[0] < output_nw[0] or \
             input_se[1] > output_nw[1] or input_nw[1] < output_se[1]:
-        raise ValueError('bag dataset is outside bounds of coverage dataset')
+        raise ValueError('input data is outside output grid bounds')
 
     index_delta_nw = numpy.round((input_nw - output_nw) / numpy.array(output_resolution)).astype(int)
     index_delta_se = numpy.round((input_se - output_nw) / numpy.array(output_resolution)).astype(int)
@@ -700,40 +731,6 @@ def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialRefere
     band_1.WriteArray(output_array)
 
     return output_dataset
-
-
-def rasterize_like(vector_file_path: str, like_raster: gdal.Dataset, output_resolution: int) -> gdal.Dataset:
-    """
-    Burn vector data to a raster with the properties of the given raster.
-
-    Parameters
-    ----------
-    vector_file_path
-        path to file containing vector data
-    like_raster
-        GDAL raster dataset to emulate
-    output_resolution
-        cell size of output raster
-
-    Returns
-    -------
-    gdal.Dataset
-        raster with vector data burned in
-    """
-
-    input_geotransform = like_raster.GetGeoTransform()
-    input_spatial_reference = like_raster.GetProjectionRef()
-    input_shape = like_raster.RasterYSize, like_raster.RasterXSize
-    input_nw_corner = (input_geotransform[0], input_geotransform[3])
-
-    if input_spatial_reference == '':
-        output_spatial_reference = osr.SpatialReference(
-            'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]')
-    else:
-        output_spatial_reference = osr.SpatialReference(wkt=input_spatial_reference)
-        output_spatial_reference.MorphFromESRI()
-
-    return rasterize(vector_file_path, output_spatial_reference, input_nw_corner, output_resolution, input_shape)
 
 
 def gdal_points_to_array(gdal_points: gdal.Dataset, layer_index: int = 0) -> numpy.array:
