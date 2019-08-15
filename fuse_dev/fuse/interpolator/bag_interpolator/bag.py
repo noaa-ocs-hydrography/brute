@@ -54,7 +54,34 @@ class BagFile:
         elif method == 'hack':
             self._file_hack(filepath)
         else:
-            raise ValueError('Open method not implemented.')
+            raise NotImplementedError('Open method not implemented.')
+
+    def from_gdal(self, dataset: _gdal.Dataset):
+        """
+        Uses an already existing dataset to assign class attributes
+
+        Parameters
+        ----------
+        dataset : _gdal.Dataset
+
+        """
+
+        try:
+            self._known_data(dataset.GetFileList()[0])
+        except TypeError:
+            # TODO: Find a solution for this blasphemous hack
+            self.size = 100001
+            print('No files returned by gdal.Dataset.GetFileList()')
+        self.elevation = self._gdalreadarray(dataset, 1)
+        self.uncertainty = self._gdalreadarray(dataset, 2)
+        self.shape = self.elevation.shape
+        print(dataset.GetGeoTransform())
+        self.bounds, self.resolution = self._gt2bounds(dataset.GetGeoTransform(), self.shape)
+        self.wkt = dataset.GetProjectionRef()
+        self.version = dataset.GetMetadata()
+
+        print(self.bounds)
+
 
     def _file_gdal(self, filepath: str):
         """
@@ -191,7 +218,7 @@ class BagFile:
 
         return _np.flipud(arr)
 
-    def meta2bounds(self, meta) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    def _meta2bounds(self, meta) -> Tuple[Tuple[float, float], Tuple[float, float]]:
         """
         Breaks up and assigns the NW and SE corners from the NE and SW corners
         of a :obj:`hyo2.bag.meta` object
@@ -212,7 +239,7 @@ class BagFile:
         nx, ny = meta.ne
         return (sx, ny), (nx, sy)
 
-    def gt2bounds(self, meta, shape: Tuple[int, int]) -> Tuple[Tuple[Tuple[float, float], Tuple[float, float]], float]:
+    def _gt2bounds(self, meta, shape: Tuple[int, int]) -> Tuple[Tuple[Tuple[float, float], Tuple[float, float]], float]:
         """
         Formats and returns the bounds and resolution
 

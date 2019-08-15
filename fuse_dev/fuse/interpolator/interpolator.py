@@ -32,12 +32,13 @@ class Interpolator:
 
         if self._interp_engine == 'point':
             self._engine = pinterp.PointInterpolator()
-        elif self._interp_engine == 'bag':
+        elif self._interp_engine == 'raster':
+            self._engine = binterp.process.RasterInterpolator()
             pass
         else:
             raise ValueError('No interpolation engine type specified')
 
-    def interpolate(self, dataset: gdal.Dataset, shapefile: str = None) -> gdal.Dataset:
+    def interpolate(self, dataset: gdal.Dataset, support_files: list) -> gdal.Dataset:
         """
         Take a gdal dataset and run the interpolation, returning a gdal raster.
 
@@ -47,8 +48,8 @@ class Interpolator:
             param shapefile:  (Default value = None)
         dataset: gdal.Dataset :
 
-        shapefile: str :
-             (Default value = None)
+        supporting_files: str :
+             (Default value = [])
 
         Returns
         -------
@@ -56,7 +57,12 @@ class Interpolator:
         """
 
         if self._interp_engine == 'point':
-            if shapefile is None:
+            if not support_files:
                 return self._engine.interpolate(dataset, self._interp_type, self._resolution)
             else:
-                return self._engine.interpolate(dataset, self._interp_type, self._resolution, shapefile)
+                return self._engine.interpolate(dataset, self._interp_type, self._resolution, support_files[0])
+        if self._interp_engine == 'raster':
+            if not support_files:
+                raise ValueError("No coverage files provided; no interpolation can occur")
+            else:
+                return self.engine.interpolate(dataset, self._interp_type, support_files)

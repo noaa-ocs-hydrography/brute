@@ -127,10 +127,12 @@ class USACERawReader:
 
 
         """
-
+        root = _os.path.split(filename)[0]
         pickle_name = self.name_gen(filename, ext='.pickle', sfx=False)
         if _os.path.isfile(pickle_name):
             pickle_dict = parse_usace_pickle.read_pickle(pickle_name, pickle_ext=True)
+            if 'poly_name' in pickle_dict:
+                pickle_dict['support_files'] = [_os.path.join(root, pickle_dict['poly_name'])]
         else:
             pickle_dict = {}
         return pickle_dict

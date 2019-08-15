@@ -479,10 +479,9 @@ class FuseProcessor:
             meta_interp['interpolated'] = True
             meta_interp['from_filename'] = interpkeyfilename
             meta_interp['to_filename'] = interpfilename
-            if 'poly_name' in meta_interp:
-                shapename = meta_interp['poly_name']
-                shapepath = _os.path.join(infilepath, shapename)
-                dataset = self._interpolator.interpolate(dataset, shapepath)
+            if 'support_files' in meta_interp:
+                support_files = meta_interp['support_files']
+                dataset = self._interpolator.interpolate(dataset, support_files)
             else:
                 dataset = self._interpolator.interpolate(dataset)
             self._writer.write(dataset, interpfilename)
