@@ -26,7 +26,6 @@ Sources:
 """
 
 # __version__ = 'point_interpolator 0.0.1'
-import datetime
 import os
 from concurrent import futures
 from typing import Tuple, Union
@@ -54,7 +53,7 @@ class PointInterpolator:
         self.nodata = nodata
 
     def interpolate(self, gdal_points: gdal.Dataset, method: str, output_resolution: float,
-                    vector_file_path: str = None, shrink: bool = True) -> gdal.Dataset:
+                    vector_file_path: str = None, shrink: bool = True, plot: bool = False) -> gdal.Dataset:
         """
         Interpolate the provided dataset.
 
@@ -73,6 +72,8 @@ class PointInterpolator:
             path to file containing vector data
         shrink
             whether to skrink interpolated data back to original extent
+        plot
+            whether to plot the interpolated result next to the original survey points
 
         Returns
         -------
@@ -118,8 +119,11 @@ class PointInterpolator:
             raster_mask = rasterize_like(vector_file_path, interpolated_dataset, output_resolution)
             output_dataset = _mask_raster(interpolated_dataset, raster_mask)
         elif method == 'kriging':
+            chunks_per_side = 128
+
             # interpolate using Ordinary Kriging
-            interpolated_dataset = self.__interp_points_pykrige_kriging(gdal_points, output_resolution, window_size)
+            interpolated_dataset = self.__interp_points_pykrige_kriging(gdal_points, output_resolution, window_size,
+                                                                        chunks_per_side=chunks_per_side)
 
             # mask raster to extent using polygon in convex hull
             convex_hull_vertices = self.input_points[:, 0:2][
@@ -137,10 +141,8 @@ class PointInterpolator:
             with fiona.open(shapefile_path, 'w', 'ESRI Shapefile',
                             schema={'geometry': 'Polygon', 'properties': {'name': 'str'}},
                             crs=fiona.crs.from_epsg(4326)) as convex_hull_shapefile:
-                convex_hull_shapefile.write(
-                    {'geometry': {'coordinates': [convex_hull_vertices + [convex_hull_vertices[0]]], 'type': 'Polygon'},
-                     'id': 1,
-                     'properties': {'name': 'mask'}})
+                convex_hull_shapefile.write({'id': 1, 'geometry': {'type': 'Polygon', 'coordinates': [
+                    convex_hull_vertices + [convex_hull_vertices[0]]]}, 'properties': {'name': 'mask'}})
 
             raster_mask = rasterize_like(shapefile_path, interpolated_dataset, output_resolution)
 
@@ -148,10 +150,15 @@ class PointInterpolator:
             os.rmdir(convex_hull_shapefile_name)
 
             output_dataset = _mask_raster(interpolated_dataset, raster_mask)
+
+            # output_dataset = interpolated_dataset
+
+            method = f'{method}_{chunks_per_side}x{chunks_per_side}'
         else:
             raise ValueError(f'Interpolation type "{method}" not recognized.')
 
-        self.__plot(output_dataset, method)
+        if plot:
+            self.__plot(output_dataset, method)
 
         return output_dataset
 
@@ -281,7 +288,7 @@ class PointInterpolator:
         return interpolated_raster
 
     def __interp_points_pykrige_kriging(self, gdal_points: gdal.Dataset, resolution: float,
-                                        nodata: float = None) -> gdal.Dataset:
+                                        nodata: float = None, chunks_per_side: int = 128) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via kriging (using PyKrige).
 
@@ -293,6 +300,9 @@ class PointInterpolator:
             cell size of output grid
         nodata
             value for no data in output grid
+        chunks_per_side
+            number of chunks per side in the square with which to divide the interpolation task
+            setting this value to less than 5 has adverse consequences on memory consumption
 
         Returns
         -------
@@ -303,6 +313,9 @@ class PointInterpolator:
         if nodata is None:
             nodata = self.nodata
 
+        if chunks_per_side <= 4:
+            raise ValueError(f'number of chunks per side should be above 4')
+
         data_sw = numpy.array((self.input_bounds[0], self.input_bounds[1]))
 
         interpolated_grid_x = numpy.arange(self.input_bounds[0], self.input_bounds[2], resolution)
@@ -311,27 +324,16 @@ class PointInterpolator:
         interpolated_grid_values = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
         interpolated_grid_variance = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
 
-        # setting this less than 4 freezes my computer
-        side_length = 4
-        total_chunks = side_length ** 2
-
-        min_side_length = 4
-        max_side_length = 34
-
-        if not min_side_length <= side_length <= max_side_length:
-            raise ValueError(f'side length should be between {min_side_length} and {max_side_length}')
-
-        chunk_shape = numpy.array(numpy.round(interpolated_grid_shape / side_length), numpy.int)
+        chunk_shape = numpy.array(numpy.round(interpolated_grid_shape / chunks_per_side), numpy.int)
         expand_indices = numpy.round(chunk_shape / 2).astype(numpy.int)
 
+        # start_time = datetime.datetime.now()
         chunk_grid_index = numpy.array((0, 0), numpy.int)
-
-        start_time = datetime.datetime.now()
         with futures.ProcessPoolExecutor() as concurrency_pool:
             running_futures = {}
 
-            for chunk_index in range(total_chunks):
-                print(f'processing chunk {chunk_index + 1} of {total_chunks}')
+            for chunk_index in range(chunks_per_side ** 2):
+                # print(f'processing chunk {chunk_index + 1} of {total_chunks}')
 
                 # determine indices of the lower left and upper right bounds of the chunk within the output grid
                 grid_start_index = numpy.array(chunk_grid_index * chunk_shape)
@@ -348,7 +350,7 @@ class PointInterpolator:
                             self.input_points[:, 1] >= interpolation_sw[1]) & (
                             self.input_points[:, 1] < interpolation_ne[1]))[0]]
 
-                print(f'found {interpolation_points.shape[0]} points in chunk')
+                # print(f'found {interpolation_points.shape[0]} points in chunk')
 
                 if interpolation_points.shape[0] >= 3:
                     current_future = concurrency_pool.submit(_krige_onto_grid, interpolation_points,
@@ -356,7 +358,7 @@ class PointInterpolator:
                                                              interpolated_grid_y[grid_slice[0]])
                     running_futures[current_future] = grid_slice
 
-                if chunk_grid_index[1] >= side_length - 1:
+                if chunk_grid_index[1] >= chunks_per_side - 1:
                     chunk_grid_index[1] = 0
                     chunk_grid_index[0] += 1
                 else:
@@ -368,15 +370,13 @@ class PointInterpolator:
                 interpolated_grid_values[grid_slice] = chunk_interpolated_values
                 interpolated_grid_variance[grid_slice] = chunk_interpolated_variance
 
-        print(f'interpolating {total_chunks} chunks took {(datetime.datetime.now() - start_time).total_seconds()} s')
+        # print(f'interpolating {total_chunks} chunks took {(datetime.datetime.now() - start_time).total_seconds()} s')
 
         interpolated_grid_uncertainty = numpy.sqrt(interpolated_grid_variance) * 2.5
         del interpolated_grid_variance
 
         interpolated_grid_values = numpy.flip(interpolated_grid_values, axis=0)
         interpolated_grid_uncertainty = numpy.flip(interpolated_grid_uncertainty, axis=0)
-
-        self.__plot(interpolated_grid_values, f'kriging ({side_length}x{side_length} chunks)')
 
         memory_raster_driver = gdal.GetDriverByName('MEM')
         output_dataset = memory_raster_driver.Create('temp', self.input_shape[1], self.input_shape[0], 2,
@@ -422,15 +422,15 @@ class PointInterpolator:
 
         figure = plt.figure()
 
-        original_data_axis = figure.add_subplot(1, 2, 1)
-        original_data_axis.set_title('survey points')
-        original_data_axis.scatter(self.input_points[:, 0], self.input_points[:, 1], c=self.input_points[:, 2], s=1)
-        original_data_axis.set_xlim(min_x, max_x)
-        original_data_axis.set_ylim(min_y, max_y)
+        survey_points_axis = figure.add_subplot(1, 2, 1)
+        survey_points_axis.set_title('survey points')
+        survey_points_axis.scatter(self.input_points[:, 0], self.input_points[:, 1], c=self.input_points[:, 2], s=1)
+        survey_points_axis.set_xlim(min_x, max_x)
+        survey_points_axis.set_ylim(min_y, max_y)
 
-        interpolated_data_axis = figure.add_subplot(1, 2, 2)
-        interpolated_data_axis.set_title(f'{interpolation_method} interpolation to raster')
-        interpolated_data_axis.imshow(interpolated_raster, extent=(min_x, max_x, min_y, max_y), aspect='auto')
+        interpolated_raster_axis = figure.add_subplot(1, 2, 2, sharex=survey_points_axis)
+        interpolated_raster_axis.set_title(f'{interpolation_method} interpolation to raster')
+        interpolated_raster_axis.imshow(interpolated_raster, extent=(min_x, max_x, min_y, max_y), aspect='auto')
 
         plt.show()
 

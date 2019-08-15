@@ -56,4 +56,5 @@ class Interpolator:
         """
 
         if self._interp_engine == 'point':
-            return self._engine.interpolate(dataset, self._interp_type, self._resolution, shapefile)
+            return self._engine.interpolate(dataset, self._interp_type, self._resolution, vector_file_path=shapefile,
+                                            plot=True)
