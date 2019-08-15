@@ -289,8 +289,8 @@ class PointInterpolator:
 
         return interpolated_raster
 
-    def __interp_points_pykrige_kriging(self, gdal_points: gdal.Dataset, resolution: float,
-                                        nodata: float = None, chunks_per_side: int = 128) -> gdal.Dataset:
+    def __interp_points_pykrige_kriging(self, gdal_points: gdal.Dataset, resolution: float, nodata: float = None,
+                                        chunks_per_side: int = 128) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via kriging (using PyKrige).
 
@@ -398,6 +398,7 @@ class PointInterpolator:
     def __plot(self, interpolated_raster: Union[numpy.array, gdal.Dataset], interpolation_method: str,
                nodata: float = None):
         """
+        Plot preinterpolated points and an interpolated raster side-by-side on synchronized subplots.
 
         Parameters
         ----------
