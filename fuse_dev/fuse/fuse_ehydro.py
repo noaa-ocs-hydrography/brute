@@ -250,12 +250,8 @@ class FuseProcessor_eHydro(_fbc.FuseProcessor):
             meta_interp['interpolated'] = True
             meta_interp['from_filename'] = interpkeyfilename
             meta_interp['to_filename'] = interpfilename
-            if 'poly_name' in meta_interp:
-                shapename = meta_interp['poly_name']
-                shapepath = _os.path.join(infilepath, shapename)
-                dataset = self._interpolator.interpolate(dataset, shapepath)
-            else:
-                dataset = self._interpolator.interpolate(dataset)
+            shapepath = _os.path.join(infilepath, meta_interp['poly_name']) if 'poly_name' in meta_interp else None
+            dataset = self._interpolator.interpolate(dataset, shapepath)
             self._writer.write(dataset, interpfilename)
             self._meta_obj.write_meta_record(meta_interp)
         else:
