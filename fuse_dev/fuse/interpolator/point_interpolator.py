@@ -50,8 +50,8 @@ class PointInterpolator:
         self.window_scalar = window_scalar
         self.nodata = nodata
 
-    def interpolate(self, gdal_points: gdal.Dataset, method: str, output_resolution: float,
-                    vector_file_path: str = None, shrink: bool = True, plot: bool = False) -> gdal.Dataset:
+    def interpolate(self, points: gdal.Dataset, method: str, output_resolution: float, vector_file_path: str = None,
+                    shrink: bool = True, plot: bool = False) -> gdal.Dataset:
         """
         Interpolate the provided dataset.
 
@@ -60,7 +60,7 @@ class PointInterpolator:
 
         Parameters
         ----------
-        gdal_points
+        points
             gdal point cloud dataset
         method
             method for interpolation
@@ -77,16 +77,19 @@ class PointInterpolator:
         -------
         gdal.Dataset
             raster dataset of interpolated data
-
         """
 
         if method == 'invdist_scilin' and vector_file_path is None:
             raise ValueError('Supporting shapefile required')
 
-        self.input_points = gdal_points_to_array(gdal_points)
-        self.resolution = output_resolution
-        self.input_shape, self.input_bounds = _shape_from_cell_size(self.resolution,
+        self.input_points = gdal_points_to_array(points)
+        self.input_shape, self.input_bounds = _shape_from_cell_size(output_resolution,
                                                                     _bounds_from_points(self.input_points))
+        self.input_spatial_reference = points.GetProjection()
+
+        if self.input_spatial_reference == '':
+            self.input_spatial_reference = osr.SpatialReference()
+            self.input_spatial_reference.ImportFromEPSG(3857)
 
         _, _, max_spacing = _point_spacing(self.input_points)
         window_size = max_spacing * self.window_scalar
@@ -95,14 +98,16 @@ class PointInterpolator:
 
         if method == 'linear':
             # linear interpolation using triangulation
-            interpolated_dataset = self.__interp_points_gdal_linear(gdal_points)
+            interpolated_dataset = self.__interp_points_gdal_linear(points)
 
             # trim interpolation back using the original dataset as a mask
-            output_dataset = _mask_raster(interpolated_dataset,
-                                          self.__get_mask(gdal_points, self.resolution, window_size))
+            mask = self.__get_mask((interpolated_dataset.RasterYSize, interpolated_dataset.RasterXSize),
+                                   output_resolution, (self.input_bounds[0], self.input_bounds[3]),
+                                   self.input_spatial_reference, self.nodata)
+            output_dataset = _mask_raster(interpolated_dataset, mask)
         elif method == 'invdist':
             # inverse distance interpolation
-            interpolated_dataset = self.__interp_points_gdal_invdist(gdal_points, window_size)
+            interpolated_dataset = self.__interp_points_gdal_invdist(points, window_size)
 
             # shrink the coverage back on the edges
             if shrink:
@@ -110,7 +115,7 @@ class PointInterpolator:
             else:
                 output_dataset = interpolated_dataset
         elif method == 'invdist_scilin':
-            interpolated_dataset = self.__interp_points_gdal_invdist_scipy_linear(gdal_points, self.resolution,
+            interpolated_dataset = self.__interp_points_gdal_invdist_scipy_linear(points, output_resolution,
                                                                                   window_size)
             # shrink the coverage back on the edges
             if shrink:
@@ -123,36 +128,9 @@ class PointInterpolator:
             chunks_per_side = 128
 
             # interpolate using Ordinary Kriging
-            interpolated_dataset = self.__interp_points_pykrige_kriging(gdal_points, window_size,
+            interpolated_dataset = self.__interp_points_pykrige_kriging(points, window_size,
                                                                         chunks_per_side=chunks_per_side)
-
-            # # mask raster to extent using polygon in convex hull
-            # convex_hull_vertices = self.input_points[:, 0:2][
-            #     scipy.spatial.ConvexHull(self.input_points[:, 0:2]).vertices]
-            #
-            # convex_hull_shapefile_name = 'convex_hull_shapefile'
-            #
-            # if not os.path.isdir(convex_hull_shapefile_name):
-            #     os.mkdir(convex_hull_shapefile_name)
-            #
-            # shapefile_path = os.path.join(convex_hull_shapefile_name, f'{convex_hull_shapefile_name}.shp')
-            #
-            # convex_hull_vertices = [tuple(point) for point in convex_hull_vertices.tolist()]
-            #
-            # with fiona.open(shapefile_path, 'w', 'ESRI Shapefile',
-            #                 schema={'geometry': 'Polygon', 'properties': {'name': 'str'}},
-            #                 crs=fiona.crs.from_epsg(4326)) as convex_hull_shapefile:
-            #     convex_hull_shapefile.write({'id': 1, 'geometry': {'type': 'Polygon', 'coordinates': [
-            #         convex_hull_vertices + [convex_hull_vertices[0]]]}, 'properties': {'name': 'mask'}})
-            #
-            # raster_mask = rasterize_like(shapefile_path, interpolated_dataset, output_resolution)
-            #
-            # os.remove(shapefile_path)
-            # os.rmdir(convex_hull_shapefile_name)
-            #
-            # output_dataset = _mask_raster(interpolated_dataset, raster_mask)
-
-            output_dataset = interpolated_dataset
+            output_dataset = _mask_raster(interpolated_dataset, self.__get_mask())
 
             method = f'{method}_{chunks_per_side}x{chunks_per_side}'
         else:
@@ -165,7 +143,8 @@ class PointInterpolator:
 
         return output_dataset
 
-    def __get_mask(self, dataset: gdal.Dataset, resolution: float, window: float) -> gdal.Dataset:
+    def __get_mask(self, shape: Tuple[float, float], output_resolution: float, output_nw: Tuple[float, float],
+                   output_spatial_reference: osr.SpatialReference, output_nodata: float = None) -> gdal.Dataset:
         """
         Currently using the shrunk invdist method as a mask.
 
@@ -173,7 +152,7 @@ class PointInterpolator:
         ----------
         dataset
             TODO write description
-        resolution
+        output_resolution
             TODO write description
         window
             TODO write description
@@ -184,7 +163,41 @@ class PointInterpolator:
             mask
         """
 
-        return _shrink_coverage(self.__interp_points_gdal_invdist(dataset, resolution, window), resolution, window)
+        if output_nodata is None:
+            output_nodata = self.nodata
+
+        gdal_memory_driver = gdal.GetDriverByName('MEM')
+        ogr_memory_driver = ogr.GetDriverByName('Memory')
+
+        # mask raster to extent using polygon in convex hull
+        convex_hull_vertices = self.input_points[:, 0:2][
+            scipy.spatial.ConvexHull(self.input_points[:, 0:2]).vertices]
+        convex_hull_vertices = [tuple(point) for point in convex_hull_vertices.tolist()]
+
+        ring = ogr.Geometry(ogr.wkbLinearRing)
+        for vertex in convex_hull_vertices:
+            ring.AddPoint(*vertex)
+
+        convex_hull = ogr.Geometry(ogr.wkbPolygon)
+        convex_hull.AddGeometry(ring)
+
+        output_dataset = gdal_memory_driver.Create('', shape[0], shape[1], 1, gdal.GDT_Float32)
+        output_dataset.SetGeoTransform((output_nw[1], output_resolution, 0, output_nw[0], 0, output_resolution))
+
+        vector_dataset = ogr_memory_driver.CreateDataSource('temp')
+        vector_layer = vector_dataset.CreateLayer('temp_layer', output_spatial_reference, ogr.wkbMultiPolygon)
+        vector_layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
+        output_feature = ogr.Feature(vector_layer.GetLayerDefn())
+        output_feature.SetField('id', 1)
+        output_feature.SetGeometry(convex_hull)
+        vector_layer.CreateFeature(output_feature)
+
+        gdal.RasterizeLayer(output_dataset, [1], vector_layer, burn_values=[1])
+
+        band_1 = output_dataset.GetRasterBand(1)
+        band_1.SetNoDataValue(output_nodata)
+
+        return output_dataset
 
     def __interp_points_gdal_linear(self, gdal_points: gdal.Dataset, nodata: float = None) -> gdal.Dataset:
         """
@@ -368,6 +381,8 @@ class PointInterpolator:
         interpolated_grid_values = numpy.flip(interpolated_grid_values, axis=0)
         interpolated_grid_uncertainty = numpy.flip(interpolated_grid_uncertainty, axis=0)
 
+        self.__plot(interpolated_grid_values, f'kriging_{chunks_per_side}x{chunks_per_side}')
+
         memory_raster_driver = gdal.GetDriverByName('MEM')
         output_dataset = memory_raster_driver.Create('temp', self.input_shape[1], self.input_shape[0], 2,
                                                      gdal.GDT_Float32)
@@ -427,13 +442,13 @@ class PointInterpolator:
         plt.show()
 
 
-def _shrink_coverage(dataset: gdal.Dataset, resolution: float, radius: float) -> gdal.Dataset:
+def _shrink_coverage(raster: gdal.Dataset, resolution: float, radius: float) -> gdal.Dataset:
     """
     Shrink coverage of a dataset by the original coverage radius.
 
     Parameters
     ----------
-    dataset
+    raster
         interpolated raster
     resolution
         cell size of raster
@@ -446,8 +461,8 @@ def _shrink_coverage(dataset: gdal.Dataset, resolution: float, radius: float) ->
         shrunken dataset
     """
 
-    for band_index in range(1, dataset.RasterCount + 1):
-        band = dataset.GetRasterBand(1)
+    for band_index in range(1, raster.RasterCount + 1):
+        band = raster.GetRasterBand(1)
         nodata_value = band.GetNoDataValue()
         band_data = band.ReadAsArray()
 
@@ -465,12 +480,13 @@ def _shrink_coverage(dataset: gdal.Dataset, resolution: float, radius: float) ->
 
         # convert NaN to nodata values
         band_data[numpy.isnan(band_data)] = nodata_value
+
         band.WriteArray(band_data)
 
-    return dataset
+    return raster
 
 
-def _mask_raster(raster: gdal.Dataset, raster_mask: gdal.Dataset) -> gdal.Dataset:
+def _mask_raster(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: float = None) -> gdal.Dataset:
     """
     Mask a raster using the nodata values in the given mask.
     Both rasters are assumed to be collocated, as all operations are conducted on the pixel level.
@@ -479,8 +495,10 @@ def _mask_raster(raster: gdal.Dataset, raster_mask: gdal.Dataset) -> gdal.Datase
     ----------
     raster
         raster to apply mask to
-    raster_mask
+    mask
         mask to apply to the raster
+    mask_value
+        value to use as mask
 
     Returns
     -------
@@ -488,14 +506,18 @@ def _mask_raster(raster: gdal.Dataset, raster_mask: gdal.Dataset) -> gdal.Datase
         masked raster dataset
     """
 
-    input_data = raster.ReadAsArray()
     raster_band = raster.GetRasterBand(1)
-    mask_band = raster_mask.GetRasterBand(1)
-    raster_nodata_value = raster_band.GetNoDataValue()
-    mask_nodata_value = mask_band.GetNoDataValue()
+    mask_band = mask.GetRasterBand(1)
 
-    input_data[raster_mask.ReadAsArray() == mask_nodata_value] = raster_nodata_value
-    raster_band.WriteArray(input_data)
+    if mask_value is None:
+        mask_value = mask_band.GetNoDataValue()
+
+    raster_data = raster_band.ReadAsArray()
+    mask_data = mask_band.ReadAsArray()
+
+    raster_data[mask_data == mask_value] = raster_band.GetNoDataValue()
+
+    raster_band.WriteArray(raster_data)
     return raster
 
 
@@ -641,6 +663,8 @@ def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialRefere
     input_x_min, input_x_max, input_y_min, input_y_max = None, None, None, None
     temp_layer = None
 
+    ogr_memory_driver = ogr.GetDriverByName('Memory')
+
     # extract the first feature to a temporary layer
     for input_feature in input_layer:
         if input_feature is not None:
@@ -649,8 +673,7 @@ def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialRefere
             output_geometry.Transform(osr.CoordinateTransformation(input_spatial_reference, output_spatial_reference))
             input_x_min, input_x_max, input_y_min, input_y_max = output_geometry.GetEnvelope()
 
-            gdal_memory_driver = ogr.GetDriverByName('Memory')
-            temp_dataset = gdal_memory_driver.CreateDataSource('temp')
+            temp_dataset = ogr_memory_driver.CreateDataSource('temp')
             temp_layer = temp_dataset.CreateLayer('temp_layer', output_spatial_reference, ogr.wkbMultiPolygon)
             temp_layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
             output_feature = ogr.Feature(temp_layer.GetLayerDefn())
@@ -717,8 +740,7 @@ def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialRefere
 
     del rasterized_dataset, rasterized_array
 
-    output_dataset = gdal.GetDriverByName('MEM').Create('', output_array.shape[1], output_array.shape[0], 1,
-                                                        gdal.GDT_Float32)
+    output_dataset = ogr_memory_driver.Create('', output_array.shape[1], output_array.shape[0], 1, gdal.GDT_Float32)
     output_dataset.SetGeoTransform((output_nw[1], output_resolution, 0, output_nw[0], 0, output_resolution))
 
     band_1 = rasterized_dataset.GetRasterBand(1)
@@ -728,7 +750,7 @@ def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialRefere
     return output_dataset
 
 
-def gdal_points_to_array(gdal_points: gdal.Dataset, layer_index: int = 0) -> numpy.array:
+def gdal_points_to_array(points: gdal.Dataset, layer_index: int = 0) -> numpy.array:
     """
     Take a gdal vector xyz point cloud and return a numpy array.
 
@@ -743,10 +765,9 @@ def gdal_points_to_array(gdal_points: gdal.Dataset, layer_index: int = 0) -> num
     -------
     numpy array
         XYZ points
-
     """
 
-    point_layer = gdal_points.GetLayerByIndex(layer_index)
+    point_layer = points.GetLayerByIndex(layer_index)
     num_points = point_layer.GetFeatureCount()
     output_points = numpy.empty((num_points, 3))
 
@@ -757,14 +778,14 @@ def gdal_points_to_array(gdal_points: gdal.Dataset, layer_index: int = 0) -> num
     return output_points
 
 
-def _krige_onto_grid(interpolation_points: numpy.array, output_x: numpy.array, output_y: numpy.array) -> Tuple[
+def _krige_onto_grid(input_points: numpy.array, output_x: numpy.array, output_y: numpy.array) -> Tuple[
     numpy.array, numpy.array]:
     """
     Perform kriging interpolation from the given set of points onto a regular grid.
 
     Parameters
     ----------
-    interpolation_points
+    input_points
         array of points (N x M)
     output_x
         X values of output grid
@@ -778,6 +799,6 @@ def _krige_onto_grid(interpolation_points: numpy.array, output_x: numpy.array, o
     interpolated values, variance
     """
 
-    interpolator = OrdinaryKriging(interpolation_points[:, 0], interpolation_points[:, 1], interpolation_points[:, 2],
-                                   variogram_model='linear', verbose=False, enable_plotting=False)
+    interpolator = OrdinaryKriging(input_points[:, 0], input_points[:, 1], input_points[:, 2], variogram_model='linear',
+                                   verbose=False, enable_plotting=False)
     return interpolator.execute('grid', output_x, output_y)
