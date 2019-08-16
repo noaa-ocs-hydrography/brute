@@ -84,7 +84,8 @@ class PointInterpolator:
             raise ValueError('Supporting shapefile required')
 
         self.input_points = gdal_points_to_array(gdal_points)
-        self.input_shape, self.input_bounds = _shape_from_cell_size(output_resolution,
+        self.resolution = output_resolution
+        self.input_shape, self.input_bounds = _shape_from_cell_size(self.resolution,
                                                                     _bounds_from_points(self.input_points))
 
         _, _, max_spacing = _point_spacing(self.input_points)
@@ -94,14 +95,14 @@ class PointInterpolator:
 
         if method == 'linear':
             # linear interpolation using triangulation
-            interpolated_dataset = self.__interp_points_gdal_linear(gdal_points, output_resolution)
+            interpolated_dataset = self.__interp_points_gdal_linear(gdal_points)
 
             # trim interpolation back using the original dataset as a mask
             output_dataset = _mask_raster(interpolated_dataset,
-                                          self.__get_mask(gdal_points, output_resolution, window_size))
+                                          self.__get_mask(gdal_points, self.resolution, window_size))
         elif method == 'invdist':
             # inverse distance interpolation
-            interpolated_dataset = self.__interp_points_gdal_invdist(gdal_points, output_resolution, window_size)
+            interpolated_dataset = self.__interp_points_gdal_invdist(gdal_points, window_size)
 
             # shrink the coverage back on the edges
             if shrink:
@@ -109,7 +110,7 @@ class PointInterpolator:
             else:
                 output_dataset = interpolated_dataset
         elif method == 'invdist_scilin':
-            interpolated_dataset = self.__interp_points_gdal_invdist_scipy_linear(gdal_points, output_resolution,
+            interpolated_dataset = self.__interp_points_gdal_invdist_scipy_linear(gdal_points, self.resolution,
                                                                                   window_size)
             # shrink the coverage back on the edges
             if shrink:
@@ -122,7 +123,7 @@ class PointInterpolator:
             chunks_per_side = 128
 
             # interpolate using Ordinary Kriging
-            interpolated_dataset = self.__interp_points_pykrige_kriging(gdal_points, output_resolution, window_size,
+            interpolated_dataset = self.__interp_points_pykrige_kriging(gdal_points, window_size,
                                                                         chunks_per_side=chunks_per_side)
 
             # # mask raster to extent using polygon in convex hull
@@ -185,8 +186,7 @@ class PointInterpolator:
 
         return _shrink_coverage(self.__interp_points_gdal_invdist(dataset, resolution, window), resolution, window)
 
-    def __interp_points_gdal_linear(self, gdal_points: gdal.Dataset, resolution: float,
-                                    nodata: float = None) -> gdal.Dataset:
+    def __interp_points_gdal_linear(self, gdal_points: gdal.Dataset, nodata: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating linearly.
 
@@ -194,8 +194,6 @@ class PointInterpolator:
         ----------
         gdal_points
             GDAL point cloud dataset
-        resolution
-            cell size of output grid
         nodata
             value for no data in output grid
 
@@ -213,7 +211,7 @@ class PointInterpolator:
         return gdal.Grid('', gdal_points, format='MEM', width=self.input_shape[1], height=self.input_shape[0],
                          outputBounds=self.input_bounds, algorithm=algorithm)
 
-    def __interp_points_gdal_invdist(self, gdal_points: gdal.Dataset, resolution: float, radius: float,
+    def __interp_points_gdal_invdist(self, gdal_points: gdal.Dataset, radius: float,
                                      nodata: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via inverse distance.
@@ -222,8 +220,6 @@ class PointInterpolator:
         ----------
         gdal_points
             GDAL point cloud dataset
-        resolution
-            cell size of output grid
         radius
             size of interpolation window
         nodata
@@ -242,7 +238,7 @@ class PointInterpolator:
         return gdal.Grid('', gdal_points, format='MEM', width=self.input_shape[1], height=self.input_shape[0],
                          outputBounds=self.input_bounds, algorithm=algorithm)
 
-    def __interp_points_gdal_invdist_scipy_linear(self, gdal_points: gdal.Dataset, resolution: float, radius: float,
+    def __interp_points_gdal_invdist_scipy_linear(self, gdal_points: gdal.Dataset, radius: float,
                                                   nodata: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via inverse distance and then linearly (using SciPy).
@@ -251,8 +247,6 @@ class PointInterpolator:
         ----------
         gdal_points
             GDAL point cloud dataset
-        resolution
-            cell size of output grid
         radius
             size of interpolation window
         nodata
@@ -268,7 +262,7 @@ class PointInterpolator:
             nodata = self.nodata
 
         # interpolate using inverse distance in GDAL
-        interpolated_raster = self.__interp_points_gdal_invdist(gdal_points, resolution, radius, nodata)
+        interpolated_raster = self.__interp_points_gdal_invdist(gdal_points, radius, nodata)
         output_x, output_y = numpy.meshgrid(numpy.arange(interpolated_raster.RasterXSize),
                                             numpy.arange(interpolated_raster.RasterYSize))
 
@@ -289,7 +283,7 @@ class PointInterpolator:
 
         return interpolated_raster
 
-    def __interp_points_pykrige_kriging(self, gdal_points: gdal.Dataset, resolution: float, nodata: float = None,
+    def __interp_points_pykrige_kriging(self, gdal_points: gdal.Dataset, nodata: float = None,
                                         chunks_per_side: int = 128) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via kriging (using PyKrige).
@@ -298,8 +292,6 @@ class PointInterpolator:
         ----------
         gdal_points
             GDAL point cloud dataset
-        resolution
-            cell size of output grid
         nodata
             value for no data in output grid
         chunks_per_side
@@ -320,8 +312,8 @@ class PointInterpolator:
 
         data_sw = numpy.array((self.input_bounds[0], self.input_bounds[1]))
 
-        interpolated_grid_x = numpy.arange(self.input_bounds[0], self.input_bounds[2], resolution)
-        interpolated_grid_y = numpy.arange(self.input_bounds[1], self.input_bounds[3], resolution)
+        interpolated_grid_x = numpy.arange(self.input_bounds[0], self.input_bounds[2], self.resolution)
+        interpolated_grid_y = numpy.arange(self.input_bounds[1], self.input_bounds[3], self.resolution)
         interpolated_grid_shape = numpy.array((len(interpolated_grid_y), len(interpolated_grid_x)), numpy.int)
         interpolated_grid_values = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
         interpolated_grid_variance = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
@@ -344,8 +336,8 @@ class PointInterpolator:
                     slice(grid_start_index[axis], grid_end_index[axis]) for axis in range(len(chunk_shape)))
 
                 # expand the interpolation area past the edges of the chunk to minimize edge formation at the boundary
-                interpolation_sw = data_sw + numpy.flip((grid_start_index - expand_indices) * resolution)
-                interpolation_ne = data_sw + numpy.flip((grid_end_index + expand_indices) * resolution)
+                interpolation_sw = data_sw + numpy.flip((grid_start_index - expand_indices) * self.resolution)
+                interpolation_ne = data_sw + numpy.flip((grid_end_index + expand_indices) * self.resolution)
                 interpolation_points = self.input_points[numpy.where(
                     (self.input_points[:, 0] >= interpolation_sw[0]) & (
                             self.input_points[:, 0] < interpolation_ne[0]) & (
@@ -381,7 +373,8 @@ class PointInterpolator:
                                                      gdal.GDT_Float32)
 
         input_geotransform = gdal_points.GetGeoTransform()
-        output_dataset.SetGeoTransform((input_geotransform[0], resolution, 0.0, 0.0, input_geotransform[3], resolution))
+        output_dataset.SetGeoTransform(
+            (input_geotransform[0], self.resolution, 0.0, 0.0, input_geotransform[3], self.resolution))
         output_dataset.SetProjection(gdal_points.GetProjection())
 
         band_1 = output_dataset.GetRasterBand(1)
