@@ -90,34 +90,34 @@ class ProcIO:
             else:
                 raise ValueError('No database name or location provided')
 
-    def write(self, dataset, instruction: str, metadata: dict = None, sub: bool = False):
+    def write(self, dataset, filename: str, metadata: dict = None, sub: bool = False):
         """
         Write the provided data to the predefined data type.
 
         :param dataset:
-        :param instruction:
+        :param filename:
         :param metadata:  (Default value = None)
         :param sub:  (Default value = False)
         """
 
         self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write')
 
-        if os.path.exists(instruction) and self.overwrite:
-            self._logger.log(logging.DEBUG, f'Overwriting {instruction}')
-            os.remove(instruction)
+        if os.path.exists(filename) and self.overwrite:
+            self._logger.log(logging.DEBUG, f'Overwriting {filename}')
+            os.remove(filename)
             if self._out_data_type == 'bag':
-                caris_xml = f'{instruction}.aux.xml'
+                caris_xml = f'{filename}.aux.xml'
                 if os.path.exists(caris_xml):
                     os.remove(caris_xml)
 
         if self._out_data_type == 'csar':
-            self._write_csar(dataset, instruction, show=sub)
+            self._write_csar(dataset, filename, show=sub)
         elif self._out_data_type == 'bag':
-            self._write_bag(dataset, instruction, metadata)
+            self._write_bag(dataset, filename, metadata)
         elif self._out_data_type == 'gpkg':
-            self._write_points(dataset, instruction, show=sub)
+            self._write_points(dataset, filename, show=sub)
         elif self._out_data_type == 'carisbdb51':
-            self._bdb.upload(dataset, instruction, metadata)
+            self._bdb.upload(dataset, filename, metadata)
         else:
             raise ValueError(f'writer type unknown: {self._out_data_type}')
 
@@ -346,7 +346,7 @@ class ProcIO:
         data = dataset.ReadAsArray()
         return data, meta
 
-    def _point2array(self, dataset: gdal.Dataset) -> np.array:
+    def _point2array(self, dataset: gdal.Dataset, layer_index: int = 0) -> np.array:
         """
         Convert the gdal dataset into a numpy array and a dictionary of
         metadata of the geotransform information and return.
@@ -357,23 +357,18 @@ class ProcIO:
         :returns: array
         """
 
-        meta = {}
+        point_layer = dataset.GetLayerByIndex(layer_index)
 
-        lyr = dataset.GetLayerByIndex(0)
-        crs = lyr.GetSpatialRef().ExportToWkt()
+        meta = {'crs': point_layer.GetSpatialRef().ExportToWkt()}
 
-        # Read out of the GDAL data structure
-        lyr = dataset.GetLayerByIndex(0)
-        count = lyr.GetFeatureCount()
-        data = np.zeros((count, 3))
-        for n in np.arange(count):
-            f = lyr.GetFeature(n)
-            data[n, :] = f.geometry().GetPoint()
+        num_points = point_layer.GetFeatureCount()
+        output_points = np.empty((num_points, 3))
 
-        meta['crs'] = crs
-        # print(meta)
+        for point_index in range(num_points):
+            feature = point_layer.GetFeature(point_index)
+            output_points[point_index, :] = feature.geometry().GetPoint()
 
-        return data, meta
+        return output_points, meta
 
     def _point2wkt(self, dataset: gdal.Dataset) -> Tuple[List[dict], dict]:
         """
