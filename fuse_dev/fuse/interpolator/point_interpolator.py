@@ -30,7 +30,9 @@ import datetime
 from concurrent import futures
 from typing import Tuple, Union
 
-import matplotlib.pyplot as plt
+import matplotlib.cm
+import matplotlib.colors
+import matplotlib.pyplot
 import numpy
 import scipy
 import scipy.interpolate
@@ -51,7 +53,7 @@ class PointInterpolator:
         self.nodata = nodata
 
     def interpolate(self, points: gdal.Dataset, method: str, output_resolution: float, vector_file_path: str = None,
-                    shrink: bool = True, plot: bool = False) -> gdal.Dataset:
+                    shrink: bool = True, plot: bool = True) -> gdal.Dataset:
         """
         Interpolate the provided dataset.
 
@@ -119,8 +121,8 @@ class PointInterpolator:
                 interpolated_dataset = _shrink_coverage(interpolated_dataset, output_resolution, window_size)
 
             # mask raster to extent using polygon in vector file
-            raster_mask = rasterize_like(vector_file_path, interpolated_dataset, output_resolution)
-            output_dataset = _mask_raster(interpolated_dataset, raster_mask)
+            mask = rasterize_like(vector_file_path, interpolated_dataset, output_resolution)
+            output_dataset = _mask_raster(interpolated_dataset, mask)
         elif method == 'kriging':
             chunks_per_side = 128
 
@@ -129,8 +131,8 @@ class PointInterpolator:
                                                                         chunks_per_side=chunks_per_side)
 
             # trim interpolation back using the original dataset as a mask
-            raster_mask = self.__get_mask_like(interpolated_dataset)
-            output_dataset = _mask_raster(interpolated_dataset, raster_mask)
+            mask = self.__get_mask_like(interpolated_dataset)
+            output_dataset = _mask_raster(interpolated_dataset, mask)
 
             method = f'{method}_{chunks_per_side}x{chunks_per_side}'
         else:
@@ -146,7 +148,7 @@ class PointInterpolator:
     def __get_mask(self, shape: Tuple[float, float], resolution: float, nw_corner: Tuple[float, float],
                    spatial_reference: osr.SpatialReference, nodata: float = None) -> gdal.Dataset:
         """
-        Currently using the shrunk invdist method as a mask.
+        Get a mask of the survey area with the given raster properties.
 
         Parameters
         ----------
@@ -188,8 +190,8 @@ class PointInterpolator:
         output_dataset = gdal_memory_driver.Create('', shape[0], shape[1], 1, gdal.GDT_Float32)
         output_dataset.SetGeoTransform((nw_corner[1], resolution, 0, nw_corner[0], 0, resolution))
 
-        vector_dataset = ogr_memory_driver.CreateDataSource('temp')
-        vector_layer = vector_dataset.CreateLayer('temp_layer', spatial_reference, ogr.wkbMultiPolygon)
+        vector_dataset = ogr_memory_driver.CreateDataSource('out')
+        vector_layer = vector_dataset.CreateLayer('TEMP', spatial_reference, ogr.wkbPolygon)
         vector_layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
         output_feature = ogr.Feature(vector_layer.GetLayerDefn())
         output_feature.SetField('id', 1)
@@ -197,7 +199,6 @@ class PointInterpolator:
         vector_layer.CreateFeature(output_feature)
 
         gdal.RasterizeLayer(output_dataset, [1], vector_layer, burn_values=[1])
-
         band_1 = output_dataset.GetRasterBand(1)
         band_1.SetNoDataValue(nodata)
 
@@ -205,7 +206,7 @@ class PointInterpolator:
 
     def __get_mask_like(self, like_raster: gdal.Dataset) -> gdal.Dataset:
         """
-        Currently using the shrunk invdist method as a mask.
+        Get a mask of the survey area with the same properties as the given raster.
 
         Parameters
         ----------
@@ -435,7 +436,7 @@ class PointInterpolator:
         return output_dataset
 
     def __plot(self, interpolated_raster: Union[numpy.array, gdal.Dataset], interpolation_method: str,
-               nodata: float = None):
+               nodata: float = None, band_index: int = 1):
         """
         Plot preinterpolated points and an interpolated raster side-by-side on synchronized subplots.
 
@@ -445,32 +446,49 @@ class PointInterpolator:
             array of interpolated data
         interpolation_method
             method of interpolation
+        band_index
+            raster band (1-indexed)
         """
 
         if nodata is None:
             nodata = self.nodata
 
+        # if the input raster is a GDAL raster dataset, extract the data from the first band
         if type(interpolated_raster) is gdal.Dataset:
-            interpolated_raster = numpy.flip(interpolated_raster.ReadAsArray(0), axis=0)
-        if len(interpolated_raster.shape) == 3:
-            interpolated_raster = interpolated_raster[0, :, :]
+            interpolated_raster = interpolated_raster.GetRasterBand(band_index).ReadAsArray()
+
+        # replace `nodata` values with NaN
         interpolated_raster[interpolated_raster == nodata] = numpy.nan
 
+        # get minimum and maximum values for all three dimensions
         min_x, min_y, max_x, max_y = self.input_bounds
+        z_values = numpy.concatenate((numpy.ravel(interpolated_raster), self.input_points[:, 2]))
+        min_z = numpy.nanmin(z_values)
+        max_z = numpy.nanmax(z_values)
 
-        figure = plt.figure()
+        # create a new Matplotlib figure window
+        figure = matplotlib.pyplot.figure()
 
+        # create a subplot on the left side for displaying a `scatter` plot of the original survey points
         survey_points_axis = figure.add_subplot(1, 2, 1)
         survey_points_axis.set_title('survey points')
-        survey_points_axis.scatter(self.input_points[:, 0], self.input_points[:, 1], c=self.input_points[:, 2], s=1)
+        survey_points_axis.scatter(self.input_points[:, 0], self.input_points[:, 1], c=self.input_points[:, 2], s=1,
+                                   vmin=min_z, vmax=max_z)
         survey_points_axis.set_xlim(min_x, max_x)
         survey_points_axis.set_ylim(min_y, max_y)
 
+        # create a subplot on the right side for displaying an `imshow` plot of the interpolated raster data
         interpolated_raster_axis = figure.add_subplot(1, 2, 2, sharex=survey_points_axis)
         interpolated_raster_axis.set_title(f'{interpolation_method} interpolation to raster')
-        interpolated_raster_axis.imshow(interpolated_raster, extent=(min_x, max_x, min_y, max_y), aspect='auto')
+        interpolated_raster_axis.imshow(interpolated_raster, extent=(min_x, max_x, min_y, max_y), aspect='auto',
+                                        vmin=min_z, vmax=max_z)
 
-        plt.show()
+        # create colorbar
+        figure.colorbar(matplotlib.cm.ScalarMappable(norm=matplotlib.colors.Normalize(vmin=min_z, vmax=max_z)),
+                        ax=(interpolated_raster_axis, survey_points_axis))
+
+        # pause program execution and show the figure
+        matplotlib.pyplot.show()
 
 
 def _shrink_coverage(raster: gdal.Dataset, resolution: float, radius: float) -> gdal.Dataset:
