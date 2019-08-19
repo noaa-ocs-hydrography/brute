@@ -315,51 +315,62 @@ class ProcIO:
 
         del ds, band
 
-    def _gdal2array(self, dataset: gdal.Dataset) -> np.array:
+    def _gdal2array(self, dataset: gdal.Dataset, band_index: int = 1) -> Tuple[np.array, dict]:
         """
-        Convert the gdal dataset into a numpy array and a dictionary of
-        metadata of the geotransform information and return.
+        Extract data and metadata from the given band of a GDAL raster dataset.
+        The gdal dataset should have the `nodata` value set appropriately.
 
-        The gdal dataset should have he no data value set appropriately.
+        Parameters
+        ----------
+        dataset
+            GDAL raster array with `nodata` value set
+        band_index
+            raster band (1-indexed)
 
-        :param dataset:
-        :returns: array
+        Returns
+        ----------
+        numpy.array
+            array of raster data and a dictionary of metadata
         """
 
-        meta = {}
+        raster_band = dataset.GetRasterBand(band_index)
+        geotransform = dataset.GetGeoTransform()
 
-        # get the logisitics for converting the gdal dataset to csar
-        gt = dataset.GetGeoTransform()
-        # print(gt)
-        meta['resx'] = gt[1]
-        meta['resy'] = gt[5]
-        meta['originx'] = gt[0]
-        meta['originy'] = gt[3]
-        meta['dimx'] = dataset.RasterXSize
-        meta['dimy'] = dataset.RasterYSize
-        # print(meta)
-        meta['crs'] = dataset.GetProjection()
-        # TODO should this be hardcoded for 1?
-        meta['nodata'] = dataset.GetRasterBand(1).GetNoDataValue()
+        metadata = {
+            'resx': geotransform[1],
+            'resy': geotransform[5],
+            'originx': geotransform[0],
+            'originy': geotransform[3],
+            'dimx': dataset.RasterXSize,
+            'dimy': dataset.RasterYSize,
+            'crs': dataset.GetProjection(),
+            'nodata': raster_band.GetNoDataValue()
+        }
 
-        # get the gdal data raster
-        data = dataset.ReadAsArray()
-        return data, meta
+        # return the gdal data raster and metadata
+        return dataset.ReadAsArray(), metadata
 
-    def _point2array(self, dataset: gdal.Dataset, layer_index: int = 0) -> np.array:
+    def _point2array(self, dataset: gdal.Dataset, layer_index: int = 0) -> Tuple[np.array, dict]:
         """
-        Convert the gdal dataset into a numpy array and a dictionary of
-        metadata of the geotransform information and return.
+        Extract points and metadata from the given layer of a GDAL point cloud dataset.
+        The gdal dataset should have the `nodata` value set appropriately.
 
-        The gdal dataset should have he no data value set appropriately.
+        Parameters
+        ----------
+        dataset
+            GDAL point cloud dataset with `nodata` value set
+        layer_index
+            index of vector layer containing points
 
-        :param dataset:
-        :returns: array
+        Returns
+        ----------
+        numpy.array
+            N x M array of points and a dictioanry of metadata
         """
 
         point_layer = dataset.GetLayerByIndex(layer_index)
 
-        meta = {'crs': point_layer.GetSpatialRef().ExportToWkt()}
+        metadata = {'crs': point_layer.GetSpatialRef().ExportToWkt()}
 
         num_points = point_layer.GetFeatureCount()
         output_points = np.empty((num_points, 3))
@@ -368,7 +379,7 @@ class ProcIO:
             feature = point_layer.GetFeature(point_index)
             output_points[point_index, :] = feature.geometry().GetPoint()
 
-        return output_points, meta
+        return output_points, metadata
 
     def _point2wkt(self, dataset: gdal.Dataset) -> Tuple[List[dict], dict]:
         """
