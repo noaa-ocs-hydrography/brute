@@ -7,15 +7,16 @@ specifically to extract the metadata for building a bathymetric database,
 this collection of method attempt to both serve extraction of the meta data in
 a general sense, and also for specific S57 needs.
 
-J Kinney 
+J Kinney
 update April 3, 2019
 update June 21, 2019 Zach
 update July 12, 2019 J Kinney
 update July 18, 2019 J Kinney xml_SPCSconflict_flag and xml_SPCSconflict_otherspcs added
 """
 
-import logging as log
+import logging as _logging
 import re
+import sys as _sys
 from os import path
 from xml.etree import ElementTree as et
 
@@ -103,7 +104,7 @@ class XMLMetadata:
         Provided an xml string for parsing, a tree will be created and the
         name speace parsed from the second line.  Values are then extracted
         based on the source dictionary.
-        
+
         version within the intitial call adds the capability to specify
         versions, most scenarios are guessing the version based on information
         in the file otherwise
@@ -121,6 +122,13 @@ class XMLMetadata:
             print(version)
         self._set_format()
         self.get_fields()
+
+        self._logger = _logging.getLogger(f'fuse')
+
+        if len(self._logger.handlers) == 0:
+            ch = _logging.StreamHandler(_sys.stdout)
+            ch.setLevel(_logging.DEBUG)
+            self._logger.addHandler(ch)
 
     def _guess_version(self):
         """
@@ -217,7 +225,7 @@ class XMLMetadata:
                     'planam': './/gmi:acquisitionInformation/gmi:MI_AcquisitionInformation/gmi:platform/gmi:MI_Platform/gmi:identifier/gmd:RS_Identifier/gmd:code/gco:CharacterString',
                     'sensor': './/gmi:acquisitionInformation/gmi:MI_AcquisitionInformation/gmi:instrument/gmi:MI_Instrument/gmi:description/gco:CharacterString'}
             else:
-                log.warning("verison not compatible")
+                _logging.warning("verison not compatible")
                 self.metadataformat_check = 'fail'
 
     def convert_xml_to_dict(self):
@@ -265,7 +273,7 @@ class XMLMetadata:
         This version exports out  entries into a dictionary using the dictionary
         xml_path_to_baseattribute for USACE FGDC data (as opposed to ISO format)
         The method may be modified if needed.
-        
+
         my_etree_dict1={}
         Example:
         for key in xml_path_to_baseattribute:
@@ -331,13 +339,13 @@ class XMLMetadata:
         This version exports out entries into a dictionary using the dictionary
         'iso_xml_path_to_baseattribute' for USACE ISO FGDC data
         The method may be modified if needed.
-        
+
         my_etree_dict1={}
         Example:
         for key in xml_path_to_baseattribute:
             my_etree_dict1[iso_xml_path_to_baseattribute[key]] = self.xml_tree.findall(f'./{key[8:]}')[0].text
         self.my_etree_dict1 = my_etree_dict1
-        
+
         vertical datum is returned in my_etree_dict1['from_vert_key']
 
         Parameters
@@ -609,7 +617,7 @@ class XMLMetadata:
             else:
                 meta = parse_xml_info_text_ISO(self.xml_txt, meta_xml)
                 meta_xml = extract_from_iso_meta(meta_xml)
-                meta = {}
+                meta = {}  # TODO: Why is this object erased?
             try:
                 m = convert_meta_to_input(meta_xml)
             except:
@@ -635,12 +643,12 @@ class XMLMetadata:
             ret = self.xml_tree.find(self.source['filename'],
                                      namespaces=self.ns)
         except:
-            log.warning("unable to read the survey name string")
+            _logging.warning("unable to read the survey name string")
             return
         try:
             self.data['filename'] = ret.text
         except Exception as e:
-            log.warning(f"unable to read the survey name attribute: {e}")
+            _logging.warning(f"unable to read the survey name attribute: {e}")
             return
 
     # --------------------------------------------------------------------------
@@ -654,19 +662,19 @@ class XMLMetadata:
                 ret = self.xml_tree.find(self.source['SORDAT'],
                                          namespaces=self.ns)
             except:
-                log.warning("unable to read the SORDAT date string")
+                _logging.warning("unable to read the SORDAT date string")
                 return
             try:
                 text_date = ret.text
             except Exception as e:
-                log.warning("unable to read the SORDAT date string: {}".format(e))
+                _logging.warning("unable to read the SORDAT date string: {}".format(e))
                 return
             tm_date = None
             try:
                 parsed_date = parser.parse(text_date)
                 tm_date = parsed_date.strftime('%Y%m%d')
             except Exception:
-                log.warning(f"unable to handle the date string: {text_date}")
+                _logging.warning(f"unable to handle the date string: {text_date}")
         elif self.version == 'HSMDB':
             date1 = parser.parse(self.source['SORDAT'])
             tm_date = date1.strftime('%Y%m%d')
@@ -693,19 +701,19 @@ class XMLMetadata:
                 ret = self.xml_tree.find(self.source['SURATH'],
                                          namespaces=self.ns)
             except:
-                log.warning("unable to read the survey authority name string")
+                _logging.warning("unable to read the survey authority name string")
                 return
             try:
                 if ret is not None:
                     self.data['SURATH'] = ret.text
             except Exception as e:
-                log.warning("unable to read the survey authority name attribute: {}".format(e))
+                _logging.warning("unable to read the survey authority name attribute: {}".format(e))
                 return
         elif self.version == 'HSMDB':
             try:
                 self.data['SURATH'] = self.source['SURATH']
             except Exception as e:
-                log.warning(f"unable to read the survey authority name attribute: {e}")
+                _logging.warning(f"unable to read the survey authority name attribute: {e}")
                 return
 
     def _read_survey_start_date(self):
@@ -725,20 +733,20 @@ class XMLMetadata:
             rets = self.xml_tree.find(self.source['SURSTA'],
                                       namespaces=self.ns)
         except:
-            log.warning("unable to read the survey start date string")
+            _logging.warning("unable to read the survey start date string")
             return
         if rets is not None:
             try:
                 text_start_date = rets.text
             except Exception as e:
-                log.warning("unable to read the survey start date string: {}".format(e))
+                _logging.warning("unable to read the survey start date string: {}".format(e))
                 return
             tms_date = None
             try:
                 parsed_date = parser.parse(text_start_date)
                 tms_date = parsed_date.strftime('%Y%m%d')  # S-57/S-101 date format
             except Exception:
-                log.warning(f"unable to handle the survey start string: {text_start_date}")
+                _logging.warning(f"unable to handle the survey start string: {text_start_date}")
 
             if tms_date is None:
                 self.data['SURSTA'] = text_start_date
@@ -762,20 +770,20 @@ class XMLMetadata:
             rete = self.xml_tree.find(self.source['SUREND'],
                                       namespaces=self.ns)
         except:
-            log.warning("unable to read the survey end date string")
+            _logging.warning("unable to read the survey end date string")
             return
         if rete is not None:
             try:
                 text_end_date = rete.text
             except Exception as e:
-                log.warning("unable to read the survey end date string: {}".format(e))
+                _logging.warning("unable to read the survey end date string: {}".format(e))
                 return
             tme_date = None
             try:
                 parsed_date = parser.parse(text_end_date)
                 tme_date = parsed_date.strftime('%Y%m%d')
             except Exception:
-                log.warning(f"unable to handle the survey end string: {text_end_date}")
+                _logging.warning(f"unable to handle the survey end string: {text_end_date}")
             if tme_date is None:
                 self.data['SUREND'] = text_end_date
             else:
@@ -798,7 +806,7 @@ class XMLMetadata:
             ret = self.xml_tree.findall(self.source['TECSOU'],
                                         namespaces=self.ns)
         except:
-            log.warning("unable to read the TECSOU name string")
+            _logging.warning("unable to read the TECSOU name string")
             return
         try:
             if len(ret) > 0:
@@ -806,7 +814,7 @@ class XMLMetadata:
                 for r in ret:
                     self.data['TECSOU'].append(r.text)
         except Exception as e:
-            log.warning("unable to read the TECSOU attribute: {}".format(e))
+            _logging.warning("unable to read the TECSOU attribute: {}".format(e))
             return
 
     def _read_datum(self):
@@ -826,7 +834,7 @@ class XMLMetadata:
             ret = self.xml_tree.findall(self.source['DATUM'],
                                         namespaces=self.ns)
         except:
-            log.warning("unable to read the survey datum name string(s)")
+            _logging.warning("unable to read the survey datum name string(s)")
             return
         try:
             if len(ret) > 0:
@@ -834,7 +842,7 @@ class XMLMetadata:
                 for r in ret:
                     self.data['DATUM'].append(r.text)
         except Exception as e:
-            log.warning(f"unable to read the survey datum name attribute: {e}")
+            _logging.warning(f"unable to read the survey datum name attribute: {e}")
             return
 
     def _read_survey_name(self):
@@ -846,13 +854,13 @@ class XMLMetadata:
             ret = self.xml_tree.find(self.source['survey'],
                                      namespaces=self.ns)
         except:
-            log.warning("unable to read the survey name string")
+            _logging.warning("unable to read the survey name string")
             return
         try:
             if ret is not None:
                 self.data['survey'] = ret.text
         except Exception as e:
-            log.warning("unable to read the survey name attribute: {}".format(e))
+            _logging.warning("unable to read the survey name attribute: {}".format(e))
             return
 
     def _read_planam(self):
@@ -864,13 +872,13 @@ class XMLMetadata:
             ret = self.xml_tree.find(self.source['planam'],
                                      namespaces=self.ns)
         except:
-            log.warning("unable to read the survey platform name string")
+            _logging.warning("unable to read the survey platform name string")
             return
         try:
             if ret is not None:
                 self.data['planam'] = ret.text
         except Exception as e:
-            log.warning(f"unable to read the survey platform name attribute: {e}")
+            _logging.warning(f"unable to read the survey platform name attribute: {e}")
             return
 
     def _read_sensor_desc(self):
@@ -881,7 +889,7 @@ class XMLMetadata:
         try:
             ret = self.xml_tree.findall(self.source['sensor'], namespaces=self.ns)
         except:
-            log.warning("unable to read the sensor description name string")
+            _logging.warning("unable to read the sensor description name string")
             return
         try:
             if len(ret) > 0:
@@ -889,7 +897,7 @@ class XMLMetadata:
                 for r in ret:
                     self.data['sensor'].append(r.text)
         except Exception as e:
-            log.warning("unable to read the sensor descriptioin name attribute: {}".format(e))
+            _logging.warning("unable to read the sensor descriptioin name attribute: {}".format(e))
             return
 
 
@@ -1664,7 +1672,7 @@ def ext_xml_map_enddate(xml_meta):
     """
     retreiving attributes found in the extended list of attributes
     namely end_date
-    
+
     #xml_meta = self.my_etree_dict2
     #Location for END DATES in some files!
     # 'metadata/idinfo/timeperd/timeinfo/rngdates': 'rngdates',
@@ -1698,8 +1706,8 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
 
     Within the abstact line pull out information on TECSOU, VERDAT, Horizontal
     Coordinate System, State Plane Coordinate System, Horizonatal units
-    
-    
+
+
     abstract = meta_xml['abstract']
     if abstract.find('Survey Type: Single Beam Soundings') >= 0:
        TECSOU= 'single beam'
@@ -1711,14 +1719,14 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     -> VERTDAT |
      Horizontal
      abstract.find('State Plane Coordinate System (SPCS),
-        
+
     Horizontal Units are also found within plandu:
 
     if m['Horizontal_Units'] == '':
         if  meta_xml['plandu'] == 'Foot_US':
             #plandu = #horizontal units
             m['Horizontal_Units']='U.S. Survey Feet'
-    
+
     #QC_checks
     #if expected results found ok, if not trigger more QC:
         logic.find("Horizontal_Positional_Accuracy_Explanation: Static Test")
@@ -1731,7 +1739,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
     fipstr = spcszone #spczone was found to be the same as Oregon's in CEMVN
     copied from the template example
     #QC check against FIPS from table
-    
+
     'Survey Type' = themekey.find('Condition Survey')
 
     if horizdn == 'D_North_American_1983':
@@ -2094,28 +2102,28 @@ def _print_TECSOU_defs(myvalue=None):
 # ------------------------------------------------------------------------------
 def xml_SPCSconflict_flag(meta_xml):
     """
-    Looking to throw a value other than "" 
+    Looking to throw a value other than ""
     if there are conflicts in the SPCS code sources
     within the xml file.  There are several locations in the xml where the SPCS
     code or text description may exist.
-    
+
     FYI:
     SPCS refers to the US NSRS 'State Plane Coordinate System' as defined by
-    NOAA's NGS program. 
-    What is confusing is that 
+    NOAA's NGS program.
+    What is confusing is that
     ERSI calls this the FIPS code even though it was never implemented as FIPS,
     but the number ID code is the same.
-    
+
     xml_SPCSconflict_flag(meta_xml)
-    
+
     Parameters
     ----------
     meta_xml:
-        
+
     Returns
     -------
     meta_xml:
-        
+
     """
     meta_xml['SPCS_conflict_XML'] = ''
     list_spcs_source = []
@@ -2150,29 +2158,29 @@ def xml_SPCSconflict_flag(meta_xml):
 # ------------------------------------------------------------------------------
 def xml_SPCSconflict_otherspcs(meta_xml, other_spcs):
     """
-    Looking to throw a value other than "" 
+    Looking to throw a value other than ""
     if there are conflicts in the SPCS code sources
     within the xml file.  There are several locations in the xml where the SPCS
     code or text description may exist.
-    
+
     FYI:
     SPCS refers to the US NSRS 'State Plane Coordinate System' as defined by
-    NOAA's NGS program. 
-    What is confusing is that 
+    NOAA's NGS program.
+    What is confusing is that
     ERSI calls this the FIPS code even though it was never implemented as FIPS,
     but the number ID code is the same.
-    
+
     xml_SPCSconflict_flag(meta_xml)
-    
+
     Parameters
     ----------
     meta_xml:
     other_spcs:
-        
+
     Returns
     -------
     meta_xml:
-        
+
     """
     meta_xml['SPCS_conflict_XML_other'] = ''
     list_spcs_source = []

@@ -5,7 +5,7 @@ Created on Wed Aug 22 12:27:39 2018
 
 @author: grice
 
-Use VDatum for conversions. 
+Use VDatum for conversions.
 """
 
 from typing import Tuple, List
@@ -62,7 +62,7 @@ class VDatum:
         """
         Translate the provided filename from the provided in datums to the out
         datums and return a gdal object.
-        
+
         NSRS2007 is assumed for the out EPSG code.
 
         Parameters
@@ -72,13 +72,13 @@ class VDatum:
         in_verdat :
             param out_epsg:
         out_verdat :
-            
+
         infilename: str :
-            
+
         in_hordat :
-            
+
         out_epsg: int :
-            
+
 
         Returns
         -------
@@ -103,17 +103,17 @@ class VDatum:
         in_verdat :
             param out_epsg:
         out_verdat :
-            
+
         infilename: str :
-            
+
         in_hordat: str :
-            
+
         in_verdat: str :
-            
+
         out_epsg: int :
-            
+
         out_verdat: str :
-            
+
 
         Returns
         -------
@@ -133,24 +133,27 @@ class VDatum:
         # run vdatum
         self._convert_file(outfilename, vd_dir.name)
         # read out UTM Zone from VDatum log file
-        with open(vdlogfilename, 'r') as vd_log:
-            for line in vd_log.readlines():
-                if line.startswith('Zone:'):
-                    Output = line[54:82]
-                    Inputzone = line[27:53]
-                    out_zone = Output.rstrip(' ')
-        new_bathy = _np.loadtxt(vdfilename, delimiter=',')
-        return new_bathy, out_zone
+        try:
+            with open(vdlogfilename, 'r') as vd_log:
+                for line in vd_log.readlines():
+                    if line.startswith('Zone:'):
+                        Output = line[54:82]
+                        Inputzone = line[27:53]
+                        out_zone = Output.rstrip(' ')
+            new_bathy = _np.loadtxt(vdfilename, delimiter=',')
+            return new_bathy, out_zone
+        except FileNotFoundError:
+            raise ValueError(f'One of {in_hordat, in_verdat, out_epsg, out_verdat} may be incorrect. vdatum failed')
 
     def _setup_vdatum(self, in_fips: int, in_verdat: str, out_epsg: int, out_verdat: str):
         """
         Setup the VDatum command line arguments to convert points.
-        
+
         This method current assums US Survey Feet, and convert it into UTM
         (meters) with the otherwise the specified vertical datums.  Vertical
         assumed to be positive down for both input and output. NAD83 is assumed
         for horizontal datums.
-        
+
         The output epsg code is converted to a NSRS2007 zone using a dumb
         conversion.
 
@@ -161,13 +164,13 @@ class VDatum:
         out_epsg :
             param out_verdat:
         in_fips: int :
-            
+
         in_verdat: str :
-            
+
         out_epsg: int :
-            
+
         out_verdat: str :
-            
+
 
         Returns
         -------
@@ -194,9 +197,9 @@ class VDatum:
         vdinfilename :
             param vdoutdir:
         vdinfilename: str :
-            
+
         vdoutdir: str :
-            
+
 
         Returns
         -------
@@ -232,17 +235,17 @@ class VDatum:
         outxyz :
             param out_zone:
         out_verdat :
-            
+
         outxyz: List[Tuple[float :
-            
+
         float :
-            
+
         float]] :
-            
+
         out_zone: int :
-            
+
         out_verdat: str :
-            
+
 
         Returns
         -------
