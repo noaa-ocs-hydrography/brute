@@ -418,8 +418,9 @@ class PointInterpolator:
                                                      gdal.GDT_Float32)
 
         input_geotransform = gdal_points.GetGeoTransform()
-        output_dataset.SetGeoTransform(
-            (input_geotransform[0], output_resolution, 0.0, 0.0, input_geotransform[3], output_resolution))
+        output_geotransform = input_geotransform[0], output_resolution, 0.0, \
+                              input_geotransform[3], 0.0, output_resolution
+        output_dataset.SetGeoTransform(output_geotransform)
         output_dataset.SetProjection(gdal_points.GetProjection())
 
         band_1 = output_dataset.GetRasterBand(1)
