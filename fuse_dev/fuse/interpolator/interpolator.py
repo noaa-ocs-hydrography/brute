@@ -68,7 +68,8 @@ class Interpolator:
         else:
             file_size = None
 
-        base, ext = _os.path.splitext(metadata['from_filename'])
+        root, filename = _os.path.split(metadata['outpath'])
+        base, ext = _os.path.splitext(filename)
         metadata['from_filename'] = f"{base}.interpolated"
 
         # Point Interpolation
@@ -86,7 +87,7 @@ class Interpolator:
             elif dataset_resolution >= 1:
                 resolution = f'{int(dataset_resolution)}m'
 
-            metadata['to_filename'] = f"{base}_{resolution}_interp.{metadata['new_ext']}"
+            metadata['to_filename'] = f"{_os.path.join(root, base)}_{resolution}_interp.{metadata['new_ext']}"
 
         # Raster Interpolation
         elif self._interp_engine == 'raster':
@@ -96,7 +97,7 @@ class Interpolator:
             else:
                 interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, support_files, file_size)
 
-            metadata['to_filename'] = f"{base}_interp.{metadata['new_ext']}"
+            metadata['to_filename'] = f"{_os.path.join(root, base)}_interp.{metadata['new_ext']}"
 
         metadata['interpolated'] = True
 

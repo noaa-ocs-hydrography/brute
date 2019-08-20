@@ -470,13 +470,13 @@ class FuseProcessor:
             outpath = self._config['outpath']
             infilepath, infilebase = _os.path.split(infilename)
             infileroot, ext = _os.path.splitext(infilebase)
-            outfilebase = _os.path.join(outpath, infileroot)
+            metadata['outpath'] = _os.path.join(outpath, infileroot)
             metadata['new_ext'] = self._config['bathymetry_intermediate_file']
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
             dataset, transformed = self._transform.translate(infilename, metadata)
             if self._read_type == 'ehydro':
-                outfilename = f"{outfilebase}.{metadata['new_ext']}"
+                outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                 self._points.write(dataset, outfilename)
                 metadata['to_filename'] = outfilename
             if self._read_type == 'bag':
