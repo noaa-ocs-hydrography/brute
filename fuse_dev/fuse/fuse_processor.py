@@ -471,13 +471,12 @@ class FuseProcessor:
             infilepath, infilebase = _os.path.split(infilename)
             infileroot, ext = _os.path.splitext(infilebase)
             outfilebase = _os.path.join(outpath, infileroot)
-            new_ext = self._config['bathymetry_intermediate_file']
+            metadata['new_ext'] = self._config['bathymetry_intermediate_file']
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
             dataset, transformed = self._transform.translate(infilename, metadata)
-            resolution = self._config['to_resolution']
             if self._read_type == 'ehydro':
-                outfilename = f'{outfilebase}.{new_ext}'
+                outfilename = f"{outfilebase}.{metadata['new_ext']}"
                 self._points.write(dataset, outfilename)
                 metadata['to_filename'] = outfilename
             if self._read_type == 'bag':
@@ -486,32 +485,11 @@ class FuseProcessor:
             if 'interpolate' in metadata:
                 interpolate = metadata['interpolate']
                 if interpolate == 'True':
-                    # take a gdal dataset for interpolation and return a gdal dataset
-                    interpkeyfilename = f'{infilebase}.interpolated'
                     meta_interp = metadata.copy()
-                    meta_interp['interpolated'] = True
-                    meta_interp['from_filename'] = interpkeyfilename
-
-                    if 'support_files' in meta_interp:
-                        support_files = meta_interp['support_files']
-                    else:
-                        support_files = []
-
-                    if 'file_size' in meta_interp:
-                        file_size = meta_interp['file_size']
-                    else:
-                        file_size = None
-
-                    dataset = self._interpolator.interpolate(dataset, support_files, size=file_size)
-                    dataset_resolution = dataset.GetGeoTransform()[1]
-                    if dataset_resolution < 1:
-                        resolution = f'{int(dataset_resolution*100)}cm'
-                    elif dataset_resolution >= 1:
-                        resolution = f'{int(dataset_resolution)}m'
-                    interpfilename = f'{outfilebase}_{resolution}_interp.{new_ext}'
-                    meta_interp['to_filename'] = interpfilename
-                    self._writer.write(dataset, interpfilename)
+                    dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
+                    self._writer.write(dataset, meta_interp['to_filename'])
                     self._meta_obj.write_meta_record(meta_interp)
+
                 elif interpolate == 'False':
                     print(f'{infileroot} - No interpolation required')
             else:
