@@ -232,7 +232,14 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
         ext_dict = {}
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESAM', default_meta='')
-    meta['special_handling'] = _check_special_handling(basename)#special handling is saved with text meta as it has to do with the text file
+    meta['special_handling'] = _check_special_handling(basename)
+    #special handling is saved with text meta as it has to do with the text file
+    if meta['special_handling'] == 'FullRES':
+        meta['interpolate']= False
+    #elif meta['special_handling'] == '.ppxyz':
+    #    meta['interpolate']= False
+    else:
+        meta['interpolate']= True
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
     

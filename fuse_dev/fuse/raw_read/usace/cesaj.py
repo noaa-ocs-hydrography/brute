@@ -217,8 +217,8 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
         ext_dict = {}
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESAJ', default_meta='')
-    meta['special_handling'] = _check_special_handling(
-        basename)  # special handling is saved with text meta as it has to do with the text file
+    meta['special_handling'] = _check_special_handling(basename)  
+    # special handling is saved with text meta as it has to do with the text file
     if meta['special_handling'] == 'FullRES':
         meta['interpolate']= False
     #elif meta['special_handling'] == '.ppxyz':
