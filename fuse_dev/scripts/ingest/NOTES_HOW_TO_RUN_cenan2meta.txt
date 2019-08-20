@@ -1,0 +1,7 @@
+How to run example file:
+open pyton 3.6.7 command window from pydro (it uses several libraries for interpolation that Casiano is working on for natural neighbors interpolation)
+Nex one needs to call the script from within the path:fuse_dev\scripts\ingest
+#It needs to be within here in order to see the config file. otherwise one needs to have a relative path from whatever the starting directory is ../../.. /fuse_dev\scripts\ingest
+Ex: cd C:\NBS_GIT\fuse_dev\scripts\ingest
+python "C:\NBS_GIT\fuse_dev\scripts\ingest\cesam2meta.py"
+

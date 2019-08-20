@@ -129,11 +129,17 @@ class CESWGRawReader:
         if first_instance != '':
             if commas_present == ',':
                 xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
             else:
                 xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
-            # xyz = _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance)
-        # else:
-        # xyz = _np.loadtxt(infilename, delimiter = ',')
+        else:
+            if commas_present == ',':
+                xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+            else:
+                xyz = _np.loadtxt(infilename, delimiter=' ', usecols=(0, 1, 2))
         return xyz
 
 # ------------------------------------------------------------------------------
@@ -783,6 +789,8 @@ def _start_xyz(infilename):
                 numberofrows.append(index1)
                 if line.find(',') > 0:
                     commas_present = ','
+                elif line.find('\t') > 0:
+                    commas_present = 'tab_instead'
         first_instance = numberofrows[0]
 
     return first_instance, commas_present

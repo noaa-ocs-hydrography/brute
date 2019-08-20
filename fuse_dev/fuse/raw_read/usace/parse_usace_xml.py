@@ -611,13 +611,12 @@ class XMLMetadata:
         """
 
         if self.version == 'ISO-8859-1':
-            meta_xml = self.convert_xml_to_dict_ISO_FGDC()  #
+            meta_xml = self.convert_xml_to_dict_ISO_FGDC()
             if self.metadataformat_check == 'fail':
                 meta = {}
             else:
                 meta = parse_xml_info_text_ISO(self.xml_txt, meta_xml)
                 meta_xml = extract_from_iso_meta(meta_xml)
-                meta = {}  # TODO: Why is this object erased?
             try:
                 m = convert_meta_to_input(meta_xml)
             except:

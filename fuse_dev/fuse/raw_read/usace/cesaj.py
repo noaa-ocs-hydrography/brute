@@ -128,10 +128,20 @@ class CESAJRawReader:
         first_instance, commas_present = _start_xyz(infilename)
         print(infilename)  # remove later
         if first_instance != '':
-            xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
+            if commas_present == ',':
+                xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+            else:
+                xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
         else:
-            xyz = _np.loadtxt(infilename, delimiter=' ',
-                              usecols=(0, 1, 2))  # ignoring anything after the first 3 columns on import
+            if commas_present == ',':
+                xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+            else:
+                xyz = _np.loadtxt(infilename, delimiter=' ', usecols=(0, 1, 2)) 
+            # ignoring anything after the first 3 columns on import
             # other option from np.loadtxt(infilename, converters={4:datestr2num})
         return xyz
 
@@ -209,6 +219,12 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESAJ', default_meta='')
     meta['special_handling'] = _check_special_handling(
         basename)  # special handling is saved with text meta as it has to do with the text file
+    if meta['special_handling'] == 'FullRES':
+        meta['interpolate']= False
+    #elif meta['special_handling'] == '.ppxyz':
+    #    meta['interpolate']= False
+    else:
+        meta['interpolate']= True
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
     
@@ -762,6 +778,8 @@ def _start_xyz(infilename):
                 numberofrows.append(index1)
                 if line.find(',') > 0:
                     commas_present = ','
+                elif line.find('\t') > 0:
+                    commas_present = 'tab_instead'
         first_instance = numberofrows[0]
     return first_instance, commas_present
 

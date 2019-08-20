@@ -128,10 +128,20 @@ class CEMVNRawReader:
         first_instance, commas_present = _start_xyz(infilename)
         print(infilename)  # remove later
         if first_instance != '':
-            xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
-            # xyz = xyz = _np.genfromtxt(infilename, delimiter = ',', skip_header = first_instance, usecols=(0,1,2))
+            if commas_present == ',':
+                xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+            else:
+                xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
         else:
-            xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
+            if commas_present == ',':
+                xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+            else:
+                xyz = _np.loadtxt(infilename, delimiter=' ', usecols=(0, 1, 2))
+            # xyz = xyz = _np.genfromtxt(infilename, delimiter = ',', skip_header = first_instance, usecols=(0,1,2))
         return xyz
 
 
@@ -779,6 +789,13 @@ def _start_xyz(infilename: str):
     
     Returns
     -------
+    first_instance: int
+    
+    commas_present: str
+    
+    '' if space or other
+    ','  if commas
+    'tab_instead' if tab delimited
     
     """
     first_instance = ''
@@ -791,6 +808,8 @@ def _start_xyz(infilename: str):
                 numberofrows.append(index1)
                 if line.find(',') > 0:
                     commas_present = ','
+                elif line.find('\t') > 0:
+                    commas_present = 'tab_instead'
         first_instance = numberofrows[0]
     return first_instance, commas_present
 

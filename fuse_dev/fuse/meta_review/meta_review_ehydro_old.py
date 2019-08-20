@@ -1,0 +1,280 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jan 31 10:47:59 2019
+
+@author: grice
+"""
+
+from pathlib import Path as _Path
+from tempfile import NamedTemporaryFile as _NamedTemporaryFile
+import shutil as _shutil
+import csv as _csv
+import fuse.meta_review.meta_review_base as mrb
+
+class meta_review_ehydro(mrb.meta_review_base):
+    """
+    The ehydro metadata object.
+    """
+    # ordered dict to ensure looping through the keys always gets 'manual' last.
+    _col_root = {'manual' : 'manual: ',
+                 'script' : 'script: '}
+    
+    # this map translates the names used here to the ID used in the database
+    _field_map = {'from_filename' : 'OBJNAM',
+                  'start_date' : 'SURSTA',
+                  'end_date' : 'SUREND',
+                  'horiz_uncert' : 'POSACC',
+                  'to_horiz_datum' : 'HORDAT',
+                  'agency' : 'AGENCY',
+                  'source_indicator' : 'SORIND',
+                  'source_type' : 's_ftyp',
+                  'complete_coverage' : 'flcvrg',
+                  'complete_bathymetry' : 'flbath',
+                  'to_vert_datum' : 'VERDAT',
+                  'to_vert_units' : 'DUNITS',
+                  'vert_uncert_fixed' : 'vun_fx',
+                  'vert_uncert_vari' : 'vun_vb',
+                  'feat_size' : 'f_size',
+                  'feat_detect' : 'f_dtct',
+                  'feat_least_depth' : 'f_lstd',
+                  'interpolated' : 'interp',
+                  'reviewed' : 'r_name',
+                  'script_version' : 's_scpv',
+                  'source_indicator' : 'SORIND',
+                  }
+    
+    _vert_datum = {
+            'MLWS'  : '1',
+            'MLLWS' : '2',
+            'MSL'   : '3',
+            'LLW'   : '4',
+            'MLW'   : '5',
+            'ISLW'  : '8',
+            'MLLW'  : '12',
+            'MHW'   : '16',
+            'MHWS'  : '17',
+            'MHHW'  : '21',
+            'LAT'   : '23',
+            'LOC'   : '24',
+            'IGLD'  : '25',
+            'LLWLT' : '27',
+            'HHWLT' : '28',
+            'HAT'   : '30',
+            'Unknown': '701',
+            'Other' : '703',
+            'HRD'   : '24',  # Adding this for the Hudson River Datum
+            }
+            
+    _horz_datum = {
+            'WGS72' : '1',
+            'WGS84' : '2',
+            'WGS_1984' : '2',
+            'NAD27' : '74',
+            'NAD83' : '75',
+            'North_American_Datum_1983' : '75',
+            'Local' : '131',
+            }
+    
+    def __init__(self, metafile_path, meta_keys):
+        super().__init__(metafile_path, meta_keys)
+        self._fieldnames = self._make_col_header()
+        
+    def _make_col_header(self):
+        """
+        Return the column header names for the csv file.
+        """
+        csv_cols = []
+        for c in self._metakeys:
+            if c is 'from_filename':
+                csv_cols.append(c)
+            elif c is 'from_path':
+                csv_cols.append(c)
+            elif c is 'script_version':
+                csv_cols.append(c)
+            else:
+                csv_cols.append(meta_review_ehydro._col_root['script'] + c)
+                csv_cols.append(meta_review_ehydro._col_root['manual'] + c)
+        csv_cols.append('reviewed')
+        csv_cols.append('Last Updated')
+        csv_cols.append('Notes')
+        return csv_cols
+        
+    def write_meta_record(self, meta):
+        """
+        Open the provided file and add the list of metadata in the provided 
+        dictionaries.
+        """
+        infile = _Path(self._metafilename)
+        if infile.exists():
+            if type(meta) == dict: # just a single record
+                self._add_to_csv([meta])
+            elif type(meta) == list: # this is a list of records
+                self._add_to_csv(meta)
+            else:
+                raise ValueError('Unknown meta data container provided')
+        # just write a new file since there is not one already
+        else:
+            self._write_new_csv(meta)
+        
+    def _add_to_csv(self, meta):
+        """
+        Add the provided metadata to the provide file.
+        """
+        orig = []
+        # get the names of all the files in the new metadata
+        new_meta_files = []
+        for m in meta:
+            new_meta_files.append(m['from_filename'])
+        # update the metadata keys
+        meta = self._scriptkeys(meta)
+        # get all the metadata that is in the file already
+        with open(self._metafilename, 'r') as csvfile:
+            reader = _csv.DictReader(csvfile, fieldnames = self._fieldnames)
+            for row in reader:
+                orig.append(row)
+        # move the data into a new temp file
+        with _NamedTemporaryFile(mode = 'w', 
+                                 newline='', 
+                                 delete=False) as tempfile:
+            writer = _csv.DictWriter(tempfile, 
+                                     fieldnames = self._fieldnames,
+                                     extrasaction = 'ignore')
+            # check to see if the new metadata is the same as an existing entry
+            for row in orig:
+                fname = row['from_filename']
+                # if the file is being updated, move over the updated info
+                if fname in new_meta_files:
+                    idx = new_meta_files.index(fname)
+                    m = meta.pop(idx)
+                    new_meta_files.pop(idx)
+                    for key in m.keys():
+                        row[key] = m[key]
+                writer.writerow(row)
+            # append what remains to the file
+            for row in meta:
+                writer.writerow(row)
+        # replace the original file with the temp file
+        _shutil.move(tempfile.name, self._metafilename)
+                    
+    def _write_new_csv(self, meta):
+        """
+        Write the provided metadata to a new CSV file.
+        """
+        if type(meta) == dict: # just a single record
+            meta = self._scriptkeys([meta])
+        elif type(meta) == list: # this is a list of records
+            meta = self._scriptkeys(meta)
+        else:
+            raise ValueError('Unknown meta data container provided')
+        with open(self._metafilename, 'w', newline='') as csvfile:
+            writer = _csv.DictWriter(csvfile, 
+                                     fieldnames = self._fieldnames,
+                                     extrasaction = 'ignore')
+            writer.writeheader()
+            for row in meta:
+                writer.writerow(row)
+
+    def _scriptkeys(self, meta):
+        """
+        Prepend 'script: ' to each key in the list of dictionaries such that the
+        list goes to the right column when written to a csv.
+        """
+        new_meta = []
+        for row in meta:
+            new_row = {}
+            keys = row.keys()
+            for key in keys:
+                if key is 'from_filename' or key is 'from_path':
+                    new_row[key] = row[key]
+                elif key is 'script_version':
+                    pass
+                    #new_row[key] = row[key] + ',' + __version__
+                else:
+                    new_row['script: ' + key] = row[key]
+            new_meta.append(new_row)
+        return new_meta
+    
+    def read_meta_file(self):
+        """
+        Open the provide csv file name, extract the metadata, and combine
+        duplicative rows, giving precedence to the manually entered values.
+        """
+        with open(self._metafilename,'r') as csvfile:
+            metadata = []
+            reader = _csv.DictReader(csvfile)
+            # get the row
+            for row in reader:
+                metadata.append(self._simplify_row(row))
+        return metadata
+    
+    def read_meta_record(self, meta_value, meta_key = 'from_filename'):
+        """
+        Open the provide csv file name, extract the metadata row looking for
+        the record name that matches the provided key.  Once the record is
+        found the record is "simplified" and returned.
+        """
+        metadata = {}
+        with open(self._metafilename,'r') as csvfile:
+            reader = _csv.DictReader(csvfile)
+            # get the row
+            for row in reader:
+                if row[meta_key] == meta_value:
+                    metadata = self._simplify_row(row)
+        return metadata
+    
+    def _simplify_row(self, row):
+        """
+        Provided a dictionary representing a row from the csv file, combined
+        the manual and scripted values, giving precedence to the manual
+        entries.
+        """
+        metarow = {}
+        # make dictionaries for sorting data into
+        for name in meta_review_ehydro._col_root:
+            metarow[name] = {}
+        metarow['base'] = {}
+        # sort each key into the right dictionary
+        for key in row:
+            # only do stuff with keys that have information
+            if len(row[key]) > 0:
+                named = False
+                for name in meta_review_ehydro._col_root:
+                    if name in key:
+                        named = True
+                        val = key.replace(meta_review_ehydro._col_root[name], '')
+                        metarow[name][val] = row[key]
+                if not named:
+                    metarow['base'][key] = row[key]
+        # combine the dictionaries
+        simplerow = {}
+        names = [*metarow]
+        names.sort(reverse = True)
+        for name in names:
+            simplerow = {**simplerow, **metarow[name]}
+        return simplerow
+    
+    def row2s57(self, row):
+        """
+        Convert the expanded column names used in the csv to an S57 name and value.
+        """
+        s57row = {}
+        # remap the keys
+        for key in row:
+            if key in meta_review_ehydro._field_map:
+                s57row[meta_review_ehydro._field_map[key]] = row[key]
+                if row[key] == 'TRUE' or row[key] == 'True':
+                    s57row[meta_review_ehydro._field_map[key]] = 0
+                if row[key] == 'FALSE' or row[key] == 'False':
+                    s57row[meta_review_ehydro._field_map[key]] = 1
+        # enforce additional required formating
+        if 'VERDAT' in s57row:
+            s57row['VERDAT'] = meta_review_ehydro._vert_datum[s57row['VERDAT']]
+        if 'HORDAT' in s57row:
+            h = s57row['HORDAT']
+            for name in meta_review_ehydro._horz_datum:
+                if name in h:
+                    s57row['HORDAT'] = meta_review_ehydro._horz_datum[name]
+        if 'SUREND' in s57row:
+            s57row['SORDAT'] = s57row['SUREND']
+        return s57row
+    
