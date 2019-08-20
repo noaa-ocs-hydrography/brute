@@ -433,7 +433,7 @@ class USACERawReader:
             print(f'{name} appears to have a nonstandard naming convention.')
         return meta
 
-    def parse_xyz_header(self, infilename: str) -> dict:
+    def _parse_xyz_header(self, infilename: str) -> dict:
         """
         Parse the xyz file header for meta data and return a dictionary.  The
         key words used to search are
@@ -531,10 +531,10 @@ class USACERawReader:
             metadata['from_fips'] = fips
             metadata['from_wkt'] = _usefips.fips2wkt(fips)
             horiz_units = horiz_datum.split(',')[1]
-            if horiz_units.lstrip(' ') == 'US SURVEY FEET':
+            if horiz_units.strip(' ') == 'US SURVEY FEET':
                 metadata['from_horiz_units'] = 'US Survey Foot'
             else:
-                metadata['from_horiz_units'] = horiz_units.lstrip(' ')
+                metadata['from_horiz_units'] = horiz_units.strip(' ')
             metadata['from_horiz_datum'] = horiz_datum
         # find the vertical datum information
         if line.find('MEAN LOWER LOW WATER') > 0:
@@ -790,8 +790,7 @@ class USACERawReader:
             elif key == 'from_horiz_units':
                 line = txt_meta[key]
                 val = line.split(':')[-1]
-                val = val.lstrip(' ')
-                val = val.rstrip('\n')
+                val = val.strip(' ')
                 txt_meta[key] = val
         if fips is not None:
             txt_meta['fips'] = int(fips.group())

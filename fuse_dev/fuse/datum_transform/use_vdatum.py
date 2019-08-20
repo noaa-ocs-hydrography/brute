@@ -148,7 +148,7 @@ class VDatum:
         bathy = self._reader.read_bathymetry(infilename)
 
         if 'to_horiz_key' in instructions:
-            ohorz = instructions['to_horiz_key']
+            ohorz = instructions['from_horiz_key']
         if 'from_vert_key' in instructions:
             overt = instructions['from_vert_key']
 

@@ -399,27 +399,10 @@ class FuseProcessor:
         meta = raw_meta.copy()
         meta['read_type'] = 'bag'
         # translate from the reader to common metadata keys for datum transformations
-#        if 'from_fips' in meta:
-#            meta['from_horiz_key'] = meta['from_fips']
-#        if 'from_horiz_units' in meta:
-#            if meta['from_horiz_units'].upper() == 'US SURVEY FOOT':
-#                meta['from_horiz_units'] = 'us_ft'
-#            else:
-#                raise ValueError(f'Input datum units are unknown: {meta["from_horiz_units"]}')
-#        if 'from_vert_key' in meta:
-#            meta['from_vert_key'] = meta['from_vert_key'].lower()
-#        if 'from_vert_units' in meta:
-#            if meta['from_vert_units'].upper() == 'US SURVEY FOOT':
-#                meta['from_vert_units'] = 'us_ft'
-#            else:
-#                raise ValueError(f'Input datum units are unknown: {meta["from_vert_units"]}')
-#        # insert a few default values for datum stuff if it isn't there already
-#        if 'from_vert_direction' not in meta:
-#            meta['from_vert_direction'] = 'height'
-#        if 'from_horiz_frame' not in meta:
-#            meta['from_horiz_frame'] = 'NAD83'
-#        if 'from_horiz_type' not in meta:
-#            meta['from_horiz_type'] = 'spc'
+
+        if 'from_vert_direction' not in meta:
+            meta['from_vert_direction'] = 'height'
+
         # get the rest from the config file
         meta['to_horiz_frame'] = self._config['to_horiz_frame']
         meta['to_horiz_type'] = self._config['to_horiz_type']
