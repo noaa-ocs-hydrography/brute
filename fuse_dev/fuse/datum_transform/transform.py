@@ -49,7 +49,7 @@ class DatumTransformer:
         if 'vdatum_path' in self._config:
             self._engine = uv.VDatum(self._config, self._reader)
         else:
-            raise ValueError('No java path provided')
+            raise ValueError('No vdatum path provided')
 
     def translate(self, infilename: str, metadata: dict):
         """
@@ -61,18 +61,16 @@ class DatumTransformer:
         infilename :
             param metadata:
         infilename: str :
-            
+
         metadata: dict :
-            
+
 
         Returns
         -------
 
         """
 
-        self._meta = metadata
-        in_fips = int(self._meta['from_fips'])
-        in_verdat = self._meta['from_vert_key']
-        out_epsg = int(self._meta['to_horiz_datum'])
-        out_verdat = self._meta['to_vert_datum']
-        return self._engine.translate(infilename, in_fips, in_verdat, out_epsg, out_verdat)
+        if metadata['from_horiz_type'].lower() != metadata['to_horiz_type'].lower() or metadata['from_vert_key'].lower() != metadata['to_vert_key'].lower():
+            return self._engine.translate(infilename, metadata), True
+        else:
+            return self._engine.create(infilename, metadata), False

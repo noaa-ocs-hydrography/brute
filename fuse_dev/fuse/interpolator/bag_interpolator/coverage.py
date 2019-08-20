@@ -100,6 +100,7 @@ class GeoTIFF:
         self.array, self.shape, self.nodata = self._getArrayData(_ds)
         _fName = _os.path.split(filename)[-1]
         self.name = _os.path.splitext(_fName)[0]
+        self.wkt = _ds.GetProjectionRef()
         del _ds
 
     def _getBounds(self, gdal_obj):
@@ -377,11 +378,12 @@ class UnifiedCoverage:
             if ext in ('.tiff', '.tif'):
                 rast = GeoTIFF()
                 rast.open_file(item)
-            elif ext in ('.shp', '.gpkg'):
+                bndRasts.append(rast)
+            elif ext in ('.gpkg', ):
                 rast = Geopackage()
                 rast.open_file(item, bag_wkt)
+                bndRasts.append(rast)
 
-            bndRasts.append(rast)
             y += 1
 
         return bndRasts
@@ -871,8 +873,13 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW', flip: bool
     -------
 
     """
+    float_resolution = abs(coverage.resolution[0])
+    if float_resolution < 1:
+        resolution = f"{str(float_resolution)[2:]}cm"
+    else:
+        resolution = f"{str(int(float_resolution))}m"
 
-    name = f'{coverage.name}.gpkg'
+    name = f'{coverage.name}_{resolution}.gpkg'
     outfilename = _os.path.join(outputpath, name)
 
     proj = _osr.SpatialReference(wkt=coverage.wkt)
