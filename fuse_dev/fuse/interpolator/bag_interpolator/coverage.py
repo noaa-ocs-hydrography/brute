@@ -378,11 +378,12 @@ class UnifiedCoverage:
             if ext in ('.tiff', '.tif'):
                 rast = GeoTIFF()
                 rast.open_file(item)
+                bndRasts.append(rast)
             elif ext in ('.gpkg', ):
                 rast = Geopackage()
                 rast.open_file(item, bag_wkt)
+                bndRasts.append(rast)
 
-            bndRasts.append(rast)
             y += 1
 
         return bndRasts

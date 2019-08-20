@@ -340,12 +340,18 @@ def sliceFinder(size: int, shape: Tuple[int, int], res: float, var: int = 5000):
     """
 
     print('sliceFinder')
-    if res < 4 and size <= 100000:
+    if res <= 1 and size <= 100000:
         size /= res
-    elif res < 4:
-        b = 25 / res
+    elif res > 1 and res < 4 and size <= 100000:
+        size *= (res*2)
+
+    if res < 1:
+        b = int(25 / res)
+    elif res >= 1 and res <= 4:
+        b = int(25 * res)
     elif res >= 4:
         b = 25
+
     if size <= 100000:
         tiles = 0
         return tiles, None, None

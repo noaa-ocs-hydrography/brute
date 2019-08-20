@@ -156,6 +156,7 @@ class FuseProcessor:
                     rawpaths = []
                     raw = config_file[section][key].split(';')
                     for r in raw:
+                        r = r.strip()
                         if _os.path.isdir(r):
                             rawpaths.append(r)
                         else:
