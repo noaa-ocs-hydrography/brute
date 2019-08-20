@@ -5,7 +5,7 @@ Created on Wed Aug 22 12:27:39 2018
 
 @author: grice
 
-Use VDatum for conversions. 
+Use VDatum for conversions.
 """
 
 from typing import Tuple, List
@@ -83,19 +83,18 @@ class VDatum:
         """
         Translate the provided filename from the provided in datums to the out
         datums and return a gdal object.
-        
+
         NSRS2007 is assumed for the out EPSG code.
 
         Parameters
         ----------
-        infilename :
-            param in_hordat:
+        infilename : str
 
-        instructions : dict :
-            
+        instructions : dict
 
         Returns
         -------
+        gdal.Dataset
 
         """
 
@@ -107,6 +106,57 @@ class VDatum:
         out_gdal = self._xyz2gdal(outxyz, out_zone, out_verdat)  # passing UTM zone instead of EPSG code
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
         return out_gdal
+
+    def create(self, infilename: str, instructions: dict) -> gdal.Dataset:
+        """
+        Pass back a un-translated gdal.Dataset
+
+        Parameters
+        ----------
+        infilename : str
+
+        instructions : dict
+
+        Returns
+        -------
+        gdal.Dataset
+
+        """
+
+        if instructions['read_type'] == 'ehydro':
+            return self._read_points(infilename, instructions)
+        elif instructions['read_type'] == 'bag':
+            return self._read_bag_bathy(infilename, instructions)
+        else:
+            raise ValueError('Reader type not implemented')
+
+    def _read_points(self, infilename: str, instructions: dict) -> gdal.Dataset:
+        """
+        Pass back a un-translated gdal.Dataset
+
+        Parameters
+        ----------
+        infilename : str
+
+        instructions : dict
+
+        Returns
+        -------
+        gdal.Dataset
+
+        """
+        bathy = self._reader.read_bathymetry(infilename)
+
+        if 'to_horiz_key' in instructions:
+            ohorz = instructions['to_horiz_key']
+        if 'from_vert_key' in instructions:
+            overt = instructions['from_vert_key']
+
+        return self._xyz2gdal(bathy, ohorz, overt)
+
+    def _read_bag_bathy(self, infilename: str, instructions: dict) -> gdal.Dataset:
+
+        return self._reader.read_bathy_data(infilename, instructions['to_vert_key'])
 
     def _translatexyz(self, infilename: str, instructions: dict) -> Tuple[
         _np.array, int]:
@@ -120,17 +170,17 @@ class VDatum:
         in_verdat :
             param out_epsg:
         out_verdat :
-            
+
         infilename: str :
-            
+
         in_hordat: str :
-            
+
         in_verdat: str :
-            
+
         out_epsg: int :
-            
+
         out_verdat: str :
-            
+
 
         Returns
         -------
@@ -165,19 +215,19 @@ class VDatum:
     def _setup_vdatum(self, instructions: dict):
         """
         Setup the VDatum command line arguments to convert points.
-        
+
         This method current assums US Survey Feet, and convert it into UTM
         (meters) with the otherwise the specified vertical datums.  Vertical
         assumed to be positive down for both input and output. NAD83 is assumed
         for horizontal datums.
-        
+
         The output epsg code is converted to a NSRS2007 zone using a dumb
         conversion.
 
         Parameters
         ----------
         instructions : dict :
-            
+
 
         Returns
         -------
@@ -212,9 +262,9 @@ class VDatum:
         vdinfilename :
             param vdoutdir:
         vdinfilename: str :
-            
+
         vdoutdir: str :
-            
+
 
         Returns
         -------
@@ -250,17 +300,17 @@ class VDatum:
         outxyz :
             param out_zone:
         out_verdat :
-            
+
         outxyz: List[Tuple[float :
-            
+
         float :
-            
+
         float]] :
-            
+
         out_zone: int :
-            
+
         out_verdat: str :
-            
+
 
         Returns
         -------

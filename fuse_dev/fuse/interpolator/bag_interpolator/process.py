@@ -9,8 +9,8 @@ from datetime import datetime as _dt
 
 import numpy as _np
 from fuse.proc_io.proc_io import ProcIO
+from fuse.raw_read.noaa import bag as _bag
 
-from . import bag as _bag
 from . import coverage as _cvg
 from . import interpolator as _itp
 
@@ -27,40 +27,42 @@ class RasterInterpolator:
     def __init__(self):
         ...
 
-    def interpolate(self, dataset, interpolation_type: str, resolution: float,
-                    support_files: list, catzoc: str = 'A2/B',
+    def interpolate(self, dataset, interpolation_type: str,
+                    support_files: list, size: int, catzoc: str = 'A2/B',
                     io: bool = False):
         if interpolation_type == 'linear':
-            self._linear(dataset, support_files, catzoc, io)
+            return self._linear(dataset, support_files, catzoc, io, size)
         else:
             raise ValueError('Interpolation type not implemented:'
                              + f'{interpolation_type}')
 
-    def _linear(dataset, support_files: list, catzoc: str, io: bool):
+    def _linear(self, dataset, support_files: list, catzoc: str, io: bool, size: int):
         """
         Linear interpolation of a raster using supporting files as a mask
 
         Parameters
         ----------
-        dataset :
+        dataset : _gdal.Dataset
             A gdal Dataset
-        support_files
+        support_files : list of str
+            A list of GeoTiff and/or Geopackage files
 
         Returns
         -------
-        dataset
+        gdal.Dataset
             A gdal Dataset
 
         """
         uval = _catZones.get(catzoc)
+        bag = _bag.Open(dataset)
 
-        bag = _bag.BagFile()
-        bag.from_gdal(dataset)
+        if size != None:
+            bag.size = int(size)
 
         coverage = _cvg.UnifiedCoverage(support_files, bag.wkt)
         coverage = _cvg.align2grid(coverage, bag.bounds, bag.shape, bag.resolution, bag.nodata)
 
-        z, tiles, tile_info = _itp.sliceFinder(bag.size, bag.shape, bag.resolution)
+        z, tiles, tile_info = _itp.sliceFinder(bag.size, bag.shape, bag.resolution[0])
 
         if z > 1:
             unitedBag = _np.empty_like(bag.elevation)
@@ -107,7 +109,6 @@ class RasterInterpolator:
 
         bag.elevation, bag.uncertainty, coverage.array = _itp.rePrint(bag.elevation, bag.uncertainty,
                                                                       coverage.array, ugrids, bag.nodata, io)
-        print(coverage.array)
 
         save = _bag.BagToGDALConverter('MLLW')
         save.bag2gdal(bag)

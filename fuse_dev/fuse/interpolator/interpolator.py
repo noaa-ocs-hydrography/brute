@@ -38,7 +38,7 @@ class Interpolator:
         else:
             raise ValueError('No interpolation engine type specified')
 
-    def interpolate(self, dataset: gdal.Dataset, support_files: list) -> gdal.Dataset:
+    def interpolate(self, dataset: gdal.Dataset, support_files: list, size: int = None) -> gdal.Dataset:
         """
         Take a gdal dataset and run the interpolation, returning a gdal raster.
 
@@ -65,4 +65,4 @@ class Interpolator:
             if not support_files:
                 raise ValueError("No coverage files provided; no interpolation can occur")
             else:
-                return self.engine.interpolate(dataset, self._interp_type, support_files)
+                return self._engine.interpolate(dataset, self._interp_type, support_files, size)

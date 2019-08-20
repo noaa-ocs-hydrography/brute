@@ -465,7 +465,7 @@ def write_geopackage(out_path: str, name: str, poly: str,
     feat = ogr.Feature(defn)
     feat.SetField('Survey', name)
 
-    # Make a geometry, from Shapely object
+    # Make a geometry, from wkt object
     geom = ogr.CreateGeometryFromWkt(poly)
 
     feat.SetGeometry(geom)

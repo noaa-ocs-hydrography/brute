@@ -61,14 +61,16 @@ class DatumTransformer:
         infilename :
             param metadata:
         infilename: str :
-            
+
         metadata: dict :
-            
+
 
         Returns
         -------
 
         """
 
-        self._meta = metadata
-        return self._engine.translate(infilename, metadata)
+        if metadata['to_horiz_frame'].lower() != metadata['from_horiz_frame'].lower() or metadata['from_vert_key'].lower() != metadata['to_vert_key'].lower():
+            return self._engine.translate(infilename, metadata), True
+        else:
+            return self._engine.create(infilename, metadata), False

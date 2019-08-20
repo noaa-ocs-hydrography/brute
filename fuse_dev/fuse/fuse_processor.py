@@ -65,9 +65,10 @@ class FuseProcessor:
                         ]
 
     _paths = ['from_filename',
-             'from_path',
-             'to_filename',
-             ]
+              'from_path',
+              'to_filename',
+              'support_files',
+              ]
 
     _dates = ['start_date',
               'end_date',
@@ -83,6 +84,8 @@ class FuseProcessor:
 
     _processing_info = ['logfilename',
                         'version_reference',
+                        'interpolate',
+                        'file_size',
                         ]
 
     _scores = ['catzoc',
@@ -103,12 +106,13 @@ class FuseProcessor:
         self._config = self._read_configfile(configfilename)
         self.rawdata_path = self._config['rawpaths']
         self.procdata_path = self._config['outpath']
-        self._cols = FuseProcessor._paths \
-            + FuseProcessor._dates \
-            + FuseProcessor._datums \
-            + FuseProcessor._quality_metrics \
-            + FuseProcessor._scores \
-            + FuseProcessor._source_info
+        self._cols = self._paths \
+            + self._dates \
+            + self._datums \
+            + self._quality_metrics \
+            + self._scores \
+            + self._source_info \
+            + self._processing_info
         self._meta_obj = _mr.MetaReviewer(self._config['metapath'], self._cols)
         self._set_data_reader()
         self._set_data_transform()
@@ -327,6 +331,8 @@ class FuseProcessor:
         # get the metadata
         raw_meta = self._reader.read_metadata(infilename)
         meta = raw_meta.copy()
+        meta['read_type'] = 'ehydro'
+
         # translate from the reader to common metadata keys for datum transformations
         if 'from_fips' in meta:
             meta['from_horiz_key'] = meta['from_fips']
@@ -391,6 +397,7 @@ class FuseProcessor:
         # get the metadata
         raw_meta = self._reader.read_metadata(infilename)
         meta = raw_meta.copy()
+        meta['read_type'] = 'bag'
         # translate from the reader to common metadata keys for datum transformations
 #        if 'from_fips' in meta:
 #            meta['from_horiz_key'] = meta['from_fips']
@@ -456,39 +463,61 @@ class FuseProcessor:
         """
 
         metadata = self._get_stored_meta(infilename)
+        metadata['read_type'] = self._read_type
         self._set_log(infilename)
-        if self._datum_metadata_ready(metadata):
+        if 'from_fips' in metadata or 'from_horiz_frame' in metadata:
             # convert the bathy for the original data
             outpath = self._config['outpath']
             infilepath, infilebase = _os.path.split(infilename)
             infileroot, ext = _os.path.splitext(infilebase)
             outfilebase = _os.path.join(outpath, infileroot)
             new_ext = self._config['bathymetry_intermediate_file']
-            outfilename = f'{outfilebase}.{new_ext}'
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
-            dataset = self._transform.translate(infilename, metadata)
+            dataset, transformed = self._transform.translate(infilename, metadata)
             resolution = self._config['to_resolution']
-            self._points.write(dataset, outfilename)
-            metadata['to_filename'] = outfilename
+            if self._read_type == 'ehydro':
+                outfilename = f'{outfilebase}.{new_ext}'
+                self._points.write(dataset, outfilename)
+                metadata['to_filename'] = outfilename
+            if self._read_type == 'bag':
+                metadata['to_filename'] = infilename
             self._meta_obj.write_meta_record(metadata)
-            # take a gdal dataset for interpolation and return a gdal dataset
-            interpfilename = f'{outfilebase}_{resolution}m_interp.{new_ext}'
-            interpkeyfilename = f'{infilebase}.interpolated'
-            meta_interp = metadata.copy()
-            meta_interp['interpolated'] = True
-            meta_interp['from_filename'] = interpkeyfilename
-            meta_interp['to_filename'] = interpfilename
-            if 'support_files' in meta_interp:
-                support_files = meta_interp['support_files']
-                dataset = self._interpolator.interpolate(dataset, support_files)
+            if 'interpolate' in metadata:
+                interpolate = metadata['interpolate']
+                if interpolate == 'True':
+                    # take a gdal dataset for interpolation and return a gdal dataset
+                    interpkeyfilename = f'{infilebase}.interpolated'
+                    meta_interp = metadata.copy()
+                    meta_interp['interpolated'] = True
+                    meta_interp['from_filename'] = interpkeyfilename
+
+                    if 'support_files' in meta_interp:
+                        support_files = meta_interp['support_files']
+                    else:
+                        support_files = []
+
+                    if 'file_size' in meta_interp:
+                        file_size = meta_interp['file_size']
+                    else:
+                        file_size = None
+
+                    dataset = self._interpolator.interpolate(dataset, support_files, size=file_size)
+                    dataset_resolution = dataset.GetGeoTransform()[1]
+                    if dataset_resolution < 1:
+                        resolution = f'{int(dataset_resolution*100)}cm'
+                    elif dataset_resolution >= 1:
+                        resolution = f'{int(dataset_resolution)}m'
+                    interpfilename = f'{outfilebase}_{resolution}_interp.{new_ext}'
+                    meta_interp['to_filename'] = interpfilename
+                    self._writer.write(dataset, interpfilename)
+                    self._meta_obj.write_meta_record(meta_interp)
+                elif interpolate == 'False':
+                    print(f'{infileroot} - No interpolation required')
             else:
-                dataset = self._interpolator.interpolate(dataset)
-            self._writer.write(dataset, interpfilename)
-            self._meta_obj.write_meta_record(meta_interp)
+                raise ValueError('metadata has no >interpolate< value')
         else:
-            msg = 'All metadata for datum transformation not available.'
-            self.logger.log(_logging.DEBUG, msg)
+            self.logger.log(_logging.DEBUG, 'No fips code found')
         self._close_log()
 
     def post(self, infilename):

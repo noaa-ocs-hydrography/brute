@@ -16,11 +16,14 @@ import logging as _logging
 import os as _os
 import re as _re
 import sys as _sys
+from typing import Tuple, List
 
+import numpy as _np
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
 import tables as _tb
-from xml.etree import ElementTree as _et
+# from xml.etree import ElementTree as _et
+import lxml.etree as _et
 
 try:
     import dateutil.parser as _parser
@@ -62,6 +65,44 @@ horz_datum = {
     'North_American_Datum_1983': '75',
     'Local': '131',
 }
+
+_ns = {
+    'bag': 'http://www.opennavsurf.org/schema/bag',
+    'gco': 'http://www.isotc211.org/2005/gco',
+    'gmd': 'http://www.isotc211.org/2005/gmd',
+    'gmi': 'http://www.isotc211.org/2005/gmi',
+    'gml': 'http://www.opengis.net/gml/3.2',
+    'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+}
+
+_ns2 = {
+    'gml': 'http://www.opengis.net/gml',
+    'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+    'smXML': 'http://metadata.dgiwg.org/smXML',
+}
+
+
+def parse_namespace(meta_str):
+    """
+    Catch the xml and read the second line assuming it is the namespace
+    information.  Return a namespace dictionary for use when parsing.
+    """
+    xmlns_loc = meta_str.find("xmlns:")
+    xmlns_start = meta_str.rfind("<", 0, xmlns_loc)
+    xmlns_end = meta_str.find(">", xmlns_start)
+    ns_info = meta_str[xmlns_start: xmlns_end + 1]
+
+    namespace = {}
+    vals = ns_info.split('xmlns')
+    for v in vals:
+        # deal with case of missing '\n' by looking for the ':' following 'xmlns'.
+        if v[0] == ':':
+            tmp = v[1:]
+            tmp = tmp.split('>')[0]
+            name, info = tmp.split('=')
+            site = info.split('"')[1]
+            namespace[name] = site
+    return namespace
 
 
 class BAGRawReader:
@@ -105,10 +146,31 @@ class BAGRawReader:
             meta_gdal, version = self._parse_bag_gdal(infilename)
             meta_xml = self._parse_bag_xml(infilename, version=version)
             meta_support = self._known_meta(infilename)
-            return {**meta_support, **meta_xml, **meta_gdal}
+            return {**meta_xml, **meta_gdal, **meta_support}
         except ValueError as e:
             print(f'{e}')
 
+    def read_bathy_data(self, infilename: str, out_verdat: str) -> _gdal.Dataset:
+        """
+        Returns a BagFile data object
+
+        Parameters
+        ----------
+        infilename : str
+            BAG filepath
+
+        Returns
+        -------
+        :obj:`BagFile`
+
+        """
+        bag_file = Open(infilename)
+        dataset = BagToGDALConverter(out_verdat)
+        dataset.bag2gdal(bag_file)
+
+        del bag_file
+
+        return dataset.dataset
 
     def _parse_bag_gdal(self, infilename: str) -> dict:
         """
@@ -131,14 +193,33 @@ class BAGRawReader:
             bag_file = _gdal.Open(infilename)
             metadata = {**bag_file.GetMetadata()}
             version = float(metadata['BagVersion'][:-2])
-            metadata['rows'], metadata['cols'] = bag_file.RasterYSize, bag_file.RasterXSize
-            geotransform = bag_file.GetGeoTransform()
-            metadata['wkt_srs'] = bag_file.GetProjectionRef()
-            spacial_ref = _osr.SpatialReference(wkt=metadata['wkt_srs'])
-            if spacial_ref.IsProjected:
-                metadata['horiz_datum'] = spacial_ref.GetAttrValue('projcs')
-            metadata['horiz_frame'] = spacial_ref.GetAttrValue('geogcs')
-#            metadata['res_x'], metadata['res_y'] = geotransform[1], geotransform[5]
+            metadata['shape'] = (bag_file.RasterYSize, bag_file.RasterXSize)
+#            geotransform = bag_file.GetGeoTransform()
+#            metadata['res'] = (geotransform[1], geotransform[5])
+            metadata['from_horiz_datum'] = bag_file.GetProjectionRef()
+            spacial_ref = _osr.SpatialReference(wkt=metadata['from_horiz_datum'])
+
+            if spacial_ref.GetAttrValue('projection') == 'Transverse_Mercator':
+                metadata['from_horiz_type'] = 'UTM'
+
+            metadata['from_horiz_key'] = spacial_ref.GetUTMZone()
+            datum = spacial_ref.GetAttrValue('datum')
+
+            if datum.lower() in ('north_american_datum_1983', 'north american datum 1983', 'nad83'):
+                metadata['from_horiz_frame'] = 'NAD83'
+            elif metadata['from_horiz_datum'].lower() in ('wgs_1984', 'wgs84'):
+                metadata['from_horiz_frame'] = 'WGS84'
+
+            if spacial_ref.GetAttrValue('unit').lower() in ('meter', 'meters', 'metre', 'm'):
+                metadata['from_horiz_units'] = 'm'
+            elif spacial_ref.GetAttrValue('unit').lower() in ('feet', 'ft'):
+                metadata['from_horiz_units'] = 'f'
+
+#            metadata['elevation'] = self._read_gdal_array(bag_file, 1)
+#            metadata['uncertainty'] = self._read_gdal_array(bag_file, 2)
+#            metadata['nodata'] = 1000000.0
+
+            del bag_file
         except RuntimeError as e:
             raise ValueError(f'{e}')
         return metadata, version
@@ -189,6 +270,7 @@ class BAGRawReader:
         except _tb.HDF5ExtError as e:
             raise ValueError(f'{e}')
 
+
     def _known_meta(self, infilename: str) -> dict:
         """
         Identifies known metadata and returns them as a dict
@@ -209,8 +291,27 @@ class BAGRawReader:
         root, name = _os.path.split(infilename)
         meta['from_filename'] = name
         meta['from_path'] = infilename
+        meta['interpolate'] = True
+        meta['file_size'] = self._size_finder(infilename)
 
         return {**coverage, **meta}
+
+    def _size_finder(self, filepath: str) -> int:
+        """
+        Returns the rounded size of a file in MB as an integer
+
+        Parameters
+        ----------
+        filepath : str, os.Pathlike
+            TODO write description
+
+        Returns
+        -------
+        int
+
+        """
+
+        return int(_np.round(_os.path.getsize(filepath) / 1000))
 
     def _find_coverage(self, infilename: str) -> dict:
         """
@@ -229,10 +330,11 @@ class BAGRawReader:
         """
         meta = {}
         root, filename = _os.path.split(infilename)
-        dir_files = [name for name in _os.listdir(root) if _os.path.isfile(_os.path.join(root, name))]
+        snum = _re.compile(r'[A-Z]([0-9]{5})')
+        dir_files = [_os.path.join(root, name) for name in _os.listdir(root) if (_os.path.isfile(_os.path.join(root, name)) and snum.search(name) is not None)]
         meta['support_files'] = [support_file for support_file in dir_files if _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.tfw', '.gpkg')]
-        if len(meta['support_files']) > 0:
-            meta['interpolate'] = True
+        exts = [_os.path.splitext(support_file)[1].lower() for support_file in dir_files if _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
+        meta['interpolate'] = len(exts) > 0
         return meta
 
     def _assign_namspace(self, version=None, xml=None):
@@ -406,7 +508,7 @@ class BAGRawReader:
                         s57['TECSOU'] = '1'
             elif key == 'abstract':
                 s57['uniqid'] = self.data['abstract']
-            elif key == 'SORDAT':
+            elif key == 'source_date':
                 datestring = self.data[key]
                 newds = datestring.replace('-', '')
                 no_time_ds = newds.split('T')[0]
@@ -450,6 +552,29 @@ class BAGRawReader:
                 s57['SORIND'] = 'US,US,graph,' + s[0]
         return s57
 
+    def _read_gdal_array(self, bag_obj, band: int) -> _np.array:
+        """
+        Returns a numpy.array of a GDAL object
+
+        This function uses a :obj:`gdal.Dataset` object and band number to pull
+        and read the appropriate array from the object
+
+        Parameters
+        ----------
+        bag_obj : gdal.Dataset
+            TODO write description
+        band : int
+            raster band number
+
+        Returns
+        -------
+        type
+            numpy.array
+
+        """
+
+        return bag_obj.GetRasterBand(band).ReadAsArray()
+
     def _read_rows_and_cols(self):
         """ attempts to read rows and cols info """
 
@@ -461,8 +586,7 @@ class BAGRawReader:
             return
 
         try:
-            self.data['rows'] = int(ret[0].text)
-            self.data['cols'] = int(ret[1].text)
+            self.data['shape'] = (int(ret[1].text), int(ret[0].text))
 
         except (ValueError, IndexError) as e:
             _logging.warning(f"unable to read rows and cols: {e}")
@@ -479,8 +603,7 @@ class BAGRawReader:
             return
 
         try:
-            self.data['res_x'] = float(ret[0].text)
-            self.data['res_y'] = -float(ret[1].text)
+            self.data['res'] = (float(ret[0].text), -float(ret[1].text))
 
         except (ValueError, IndexError) as e:
             _logging.warning(f"unable to read res x and y: {e}")
@@ -497,8 +620,7 @@ class BAGRawReader:
             return
 
         try:
-            self.data['soutwest_corner'] = [float(c) for c in ret[0].split(',')]
-            self.data['northeast_corner'] = [float(c) for c in ret[1].split(',')]
+            self.data['bounds'] = ([float(c) for c in ret[0].split(',')], [float(c) for c in ret[1].split(',')])
 
         except (ValueError, IndexError) as e:
             _logging.warning(f"unable to read corners SW and NE: {e}")
@@ -515,7 +637,7 @@ class BAGRawReader:
             return
 
         try:
-            self.data['wkt_srs'] = ret.text
+            self.data['from_horiz_datum'] = ret.text
 
         except (ValueError, IndexError) as e:
             _logging.warning(f"unable to read the WKT projection string: {e}")
@@ -584,7 +706,7 @@ class BAGRawReader:
 
         try:
             text_date = ret.text
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the date string: {e}")
             return
 
@@ -658,7 +780,7 @@ class BAGRawReader:
 
         try:
             self.data['sourcename'] = ret.text
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the survey name attribute: {e}")
             return
 
@@ -676,22 +798,22 @@ class BAGRawReader:
 
         try:
             text_date = ret.text
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the SORDAT date string: {e}")
             return
 
         tm_date = None
         try:
             parsed_date = _parser.parse(text_date)
-            tm_date = parsed_date.strftime('%Y-%m-%d')
+            tm_date = parsed_date.strftime('%Y%m%d')
         except Exception:
+            _logging.warning("unable to handle the date string: %s" % text_date)
             pass
-            # _logging.warning("unable to handle the date string: %s" % text_date)
 
         if tm_date is None:
-            self.data['SORDAT'] = text_date
+            self.data['source_date'] = text_date
         else:
-            self.data['SORDAT'] = tm_date
+            self.data['source_date'] = tm_date
 
     def _read_survey_authority(self):
         """
@@ -707,7 +829,7 @@ class BAGRawReader:
             return
 
         try:
-            self.data['SURATH'] = ret.text
+            self.data['agency'] = ret.text
         except (ValueError, IndexError) as e:
             _logging.warning(f"unable to read the survey authority name attribute: {e}")
             return
@@ -735,15 +857,15 @@ class BAGRawReader:
             tms_date = None
             try:
                 parsed_date = _parser.parse(text_start_date)
-                tms_date = parsed_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+                tms_date = parsed_date.strftime('%Y%m%d')
             except Exception:
                 pass
                 # _logging.warning("unable to handle the survey start string: %s" % text_start_date)
 
             if tms_date is None:
-                self.data['SURSTA'] = text_start_date
+                self.data['start_date'] = text_start_date
             else:
-                self.data['SURSTA'] = tms_date
+                self.data['start_date'] = tms_date
 
     def _read_survey_end_date(self):
         """
@@ -767,15 +889,15 @@ class BAGRawReader:
             tme_date = None
             try:
                 parsed_date = _parser.parse(text_end_date)
-                tme_date = parsed_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+                tme_date = parsed_date.strftime('%Y%m%d')
             except Exception:
                 pass
                 # _logging.warning("unable to handle the survey end string: %s" % text_end_date)
 
             if tme_date is None:
-                self.data['SUREND'] = text_end_date
+                self.data['end_date'] = text_end_date
             else:
-                self.data['SUREND'] = tme_date
+                self.data['end_date'] = tme_date
 
     def _read_vertical_datum(self):
         """
@@ -810,7 +932,11 @@ class BAGRawReader:
             return
 
         try:
-            self.data['VERDAT'] = val
+            if val.lower() == 'unknown':
+                val = ''
+            elif val.lower() in ('mean_lower_low_water','mean lower low water', 'mllw'):
+                self.data['from_vert_key'] = 'MLLW'
+            self.data['from_vert_datum'] = val
         except (ValueError, IndexError) as e:
             _logging.warning(f"unable to read the survey vertical datum name attribute: {e}")
             return
@@ -853,7 +979,10 @@ class BAGRawReader:
 
         try:
             if datum is not None:
-                self.data['HORDAT'] = datum
+                if datum.lower() in ('north_american_datum_1983', 'north american datum 1983', 'nad83'):
+                    self.data['from_horiz_frame'] = 'NAD83'
+                elif datum.lower()in ('wgs_1984', 'wgs84'):
+                    self.data['from_horiz_frame'] = 'WGS84'
         except (ValueError, IndexError) as e:
             _logging.warning(f"unable to read the survey horizontal datum name attribute: {e}")
             return
@@ -903,24 +1032,533 @@ class BAGRawReader:
             return
 
 
-def parse_namespace(meta_str):
-    """
-    Catch the xml and read the second line assuming it is the namespace
-    information.  Return a namespace dictionary for use when parsing.
-    """
-    xmlns_loc = meta_str.find("xmlns:")
-    xmlns_start = meta_str.rfind("<", 0, xmlns_loc)
-    xmlns_end = meta_str.find(">", xmlns_start)
-    ns_info = meta_str[xmlns_start: xmlns_end + 1]
+class BagFile:
+    """This class serves as the main container for BAG data."""
 
-    namespace = {}
-    vals = ns_info.split('xmlns')
-    for v in vals:
-        # deal with case of missing '\n' by looking for the ':' following 'xmlns'.
-        if v[0] == ':':
-            tmp = v[1:]
-            tmp = tmp.split('>')[0]
-            name, info = tmp.split('=')
-            site = info.split('"')[1]
-            namespace[name] = site
-    return namespace
+    def __init__(self):
+        self.name = None
+        self.nodata = 1000000.0
+        self.elevation = None
+        self.uncertainty = None
+        self.shape = None
+        self.bounds = None
+        self.resolution = None
+        self.wkt = None
+        self.size = None
+        self.outfilename = None
+        self.version = None
+
+    def open_file(self, filepath: str, method: str):
+        """
+        Used to read a BAG file using the method determined by input.
+
+        The current methods available are 'gdal' and 'hyo'
+
+        Parameters
+        ----------
+        filepath : str
+            The complete file path of the input BAG file
+        method : str
+            The method used to open the file
+
+        """
+
+        if method == 'gdal':
+            self._file_gdal(filepath)
+        elif method == 'hack':
+            self._file_hack(filepath)
+        else:
+            raise NotImplementedError('Open method not implemented.')
+
+    def from_gdal(self, dataset: _gdal.Dataset):
+        """
+        Uses an already existing dataset to assign class attributes
+
+        Parameters
+        ----------
+        dataset : _gdal.Dataset
+
+        """
+
+        try:
+            self._known_data(dataset.GetFileList()[0])
+        except TypeError:
+            # TODO: Find a solution for this blasphemous hack
+            pass
+#            self.size = 100001
+#            print('No files returned by gdal.Dataset.GetFileList()')
+        self.elevation = self._gdalreadarray(dataset, 1)
+        self.uncertainty = self._gdalreadarray(dataset, 2)
+        self.shape = self.elevation.shape
+        print(dataset.GetGeoTransform())
+        self.bounds, self.resolution = self._gt2bounds(dataset.GetGeoTransform(), self.shape)
+        self.wkt = dataset.GetProjectionRef()
+        self.version = dataset.GetMetadata()
+
+        print(self.bounds)
+
+
+    def _file_gdal(self, filepath: str):
+        """
+        Used to read a BAG file using OSGEO's GDAL module.
+
+        This function reads and populates this object's attributes
+
+        Parameters
+        ----------
+        filepath : str
+            The complete file path of the input BAG file
+
+        """
+
+        self._known_data(filepath)
+        bag_obj = _gdal.Open(filepath)
+        self.elevation = self._gdalreadarray(bag_obj, 1)
+        self.uncertainty = self._gdalreadarray(bag_obj, 2)
+        self.shape = self.elevation.shape
+        print(bag_obj.GetGeoTransform())
+        self.bounds, self.resolution = self._gt2bounds(bag_obj.GetGeoTransform(), self.shape)
+        self.wkt = bag_obj.GetProjectionRef()
+        self.version = bag_obj.GetMetadata()
+
+        print(self.bounds)
+        del bag_obj
+
+    def _file_hack(self, filepath: str):
+        """
+        Used to read a BAG file using pytables and HDF5.
+
+        This function reads and populates this object's attributes
+
+        Parameters
+        ----------
+        filepath : str
+            The complete file path of the input BAG file
+
+        """
+
+        self._known_data(filepath)
+
+        with _tb.open_file(filepath, mode='r') as bagfile:
+            self.elevation = _np.flipud(bagfile.root.BAG_root.elevation.read())
+            self.uncertainty = _np.flipud(bagfile.root.BAG_root.uncertainty.read())
+            self.shape = self.elevation.shape
+            meta_read = [str(x, 'utf-8', 'ignore') for x in bagfile.root.BAG_root.metadata.read()]
+            # print (meta_read)
+            meta_xml = ''.join(meta_read)
+            # print (meta_xml)
+            encodeVal = 0
+
+            for x in meta_xml:
+                if meta_xml[encodeVal] == '>':
+                    meta_xml = meta_xml[encodeVal:]
+                    break
+                else:
+                    encodeVal += 1
+            startVal = 0
+
+            for x in meta_xml:
+                if meta_xml[startVal] == '<':
+                    meta_xml = meta_xml[startVal:]
+                    break
+                else:
+                    startVal += 1
+
+            xml_tree = _et.XML(meta_xml)
+            self.wkt = self._read_wkt_prj(xml_tree)
+            self.resolution = self._read_res_x_and_y(xml_tree)
+            sw, ne = self._read_corners_sw_and_ne(xml_tree)
+            sx, sy = sw
+            nx = (sx + (self.resolution[0] * self.shape[1]))
+            ny = (sy + (self.resolution[0] * self.shape[0]))
+            print(ne, (nx, ny))
+            self.bounds = ([sx, ny], [nx, sy])
+
+    def _known_data(self, filepath: str):
+        """
+        Assigns class attributes that are extension agnostic
+
+        :attr:`name`, :attr:`nodata`, and :attr:`size` can be determined
+        without using a specific library or method to open file contents, so
+        they are assigned by using this function
+
+        Parameters
+        ----------
+        filepath : str
+            The complete file path of the input BAG file
+
+        """
+
+        _fName = _os.path.split(filepath)[-1]
+        self.name = _os.path.splitext(_fName)[0]
+        self.nodata = 1000000.0
+        self.size = self._size_finder(filepath)
+
+    def _nan2ndv(self, arr: _np.array, nodata: float) -> _np.array:
+        """
+        Reassigns numpy.nan values with a replacement no data value.
+
+        Parameters
+        ----------
+        arr : numpy.array
+            TODO write description
+        nodata : float
+            The no data value to be assigned to the numpy.array
+
+        Returns
+        -------
+        type
+            numpy.array
+
+        """
+
+        arr[_np.isnan(arr)] = nodata
+        return _np.flipud(arr)
+
+    def _npflip(self, arr: _np.array) -> _np.array:
+        """
+        Performs :func:`numpy.flipud` on the input numpy.array
+
+        Parameters
+        ----------
+        arr : numpy.array
+            TODO write description
+
+        Returns
+        -------
+        type
+            numpy.array
+
+        """
+
+        return _np.flipud(arr)
+
+    def _meta2bounds(self, meta) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+        """
+        Breaks up and assigns the NW and SE corners from the NE and SW corners
+        of a :obj:`hyo2.bag.meta` object
+
+        Parameters
+        ----------
+        meta : hyo2.bag.meta
+            TODO write description
+
+        Returns
+        -------
+        type
+            tuple of bounds
+
+        """
+
+        sx, sy = meta.sw
+        nx, ny = meta.ne
+        return (sx, ny), (nx, sy)
+
+    def _gt2bounds(self, meta, shape: Tuple[int, int]) -> Tuple[Tuple[Tuple[float, float], Tuple[float, float]], float]:
+        """
+        Formats and returns the bounds and resolution
+
+        This function takes a GeoTransform object and array shape and
+        calculates the NW and SE corners.
+
+        Parameters
+        ----------
+        meta : gdal.GetGeoTransform
+            TODO write description
+        shape : tuple of int
+            (y, x) shape of the bag object
+
+        Returns
+        -------
+        type
+            tuple of bounds, resolution
+
+        """
+
+        y, x = shape
+        res = (meta[1], meta[5])
+        # ulx, uly = _np.round(meta[0]), _np.round(meta[3])
+        ulx, uly = meta[0], meta[3]
+        lrx = ulx + (x * res[0])
+        lry = uly + (y * res[1])
+        print([ulx, uly], [lrx, lry])
+        # res = (_np.round(meta[1], 2), _np.round(meta[5], 2))
+        return ([ulx, uly], [lrx, lry]), res
+
+    def _gdalreadarray(self, bag_obj, band: int) -> _np.array:
+        """
+        Returns a numpy.array of a GDAL object
+
+        This function uses a :obj:`gdal.Dataset` object and band number to pull
+        and read the appropriate array from the object
+
+        Parameters
+        ----------
+        bag_obj : gdal.Dataset
+            TODO write description
+        band : int
+            raster band number
+
+        Returns
+        -------
+        type
+            numpy.array
+
+        """
+
+        return bag_obj.GetRasterBand(band).ReadAsArray()
+
+    def _size_finder(self, filepath: str) -> int:
+        """
+        Returns the rounded size of a file in MB as an integer
+
+        Parameters
+        ----------
+        filepath : str, os.Pathlike
+            TODO write description
+
+        Returns
+        -------
+        int
+
+        """
+
+        return int(_np.round(_os.path.getsize(filepath) / 1000))
+
+    def generate_name(self, outlocation: str, io: bool):
+        """
+        Assigns the :attr:`outfilename` of the bag object.
+
+        This function uses the input bool ``io`` to determine the naming
+        convention of the output file name. This requires an assigned
+        :attr:`name` for this object that is not ``None``
+
+        Parameters
+        ----------
+        outlocation : str, os.Pathlike
+            Folder path of the output file
+        io : bool
+            Boolean determination of interpolated only or full bag data
+
+        """
+
+        if self.name is not None:
+            name = f'{self.name}_INTERP_{"ONLY" if io else "FULL"}.bag'
+            self.outfilename = _os.path.join(outlocation, name)
+
+    def _read_res_x_and_y(self, xml_tree):
+        """ attempts to read resolution along x- and y- axes """
+
+        try:
+            ret = xml_tree.xpath('//*/gmd:spatialRepresentationInfo/gmd:MD_Georectified/'
+                                      'gmd:axisDimensionProperties/gmd:MD_Dimension/gmd:resolution/gco:Measure',
+                                      namespaces=_ns)
+        except _et.Error as e:
+            print(f"unable to read res x and y: {e}")
+            return
+
+        if len(ret) == 0:
+            try:
+                ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
+                                          'axisDimensionProperties/smXML:MD_Dimension/resolution/'
+                                          'smXML:Measure/smXML:value',
+                                          namespaces=_ns2)
+            except _et.Error as e:
+                print(f"unable to read res x and y: {e}")
+                return
+
+        try:
+            res_x = float(ret[0].text)
+            res_y = -float(ret[1].text)
+            return res_x, res_y
+        except (ValueError, IndexError) as e:
+            print(f"unable to read res x and y: {e}")
+            return
+
+    def _read_corners_sw_and_ne(self, xml_tree):
+        """ attempts to read corners SW and NE """
+        try:
+            ret = xml_tree.xpath('//*/gmd:spatialRepresentationInfo/gmd:MD_Georectified/'
+                                      'gmd:cornerPoints/gml:Point/gml:coordinates',
+                                      namespaces=_ns)[0].text.split()
+        except (_et.Error, IndexError) as e:
+            try:
+                ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
+                                          'cornerPoints/gml:Point/gml:coordinates',
+                                          namespaces=_ns2)[0].text.split()
+            except (_et.Error, IndexError) as e:
+                print(f"unable to read corners SW and NE: {e}")
+                return
+        try:
+            sw = [float(c) for c in ret[0].split(',')]
+            ne = [float(c) for c in ret[1].split(',')]
+            return sw, ne
+        except (ValueError, IndexError) as e:
+            print(f"unable to read corners SW and NE: {e}")
+            return
+
+
+    def _read_wkt_prj(self, xml_tree):
+        """ attempts to read the WKT projection string """
+        try:
+            ret = xml_tree.xpath('//*/gmd:referenceSystemInfo/gmd:MD_ReferenceSystem/'
+                                      'gmd:referenceSystemIdentifier/gmd:RS_Identifier/gmd:code/gco:CharacterString',
+                                      namespaces=_ns)
+        except _et.Error as e:
+            print(f"unable to read the WKT projection string: {e}")
+            return
+        if len(ret) == 0:
+            try:
+                ret = xml_tree.xpath('//*/referenceSystemInfo/smXML:MD_CRS',
+                                          namespaces=_ns2)
+            except _et.Error as e:
+                print(f"unable to read the WKT projection string: %s: {e}")
+                return
+            if len(ret) != 0:
+                print("unsupported method to describe CRS")
+                return
+
+        try:
+            wkt_srs = ret[0].text
+            return wkt_srs
+        except (ValueError, IndexError) as e:
+            print(f"unable to read the WKT projection string: {e}")
+            return
+
+
+class Open(BagFile):
+    """
+    Opens a BAG file using :obj:`BagFile`'s :func:`BagFile.open_file` or
+    :func:`BagFile.from_gdal` method
+    """
+
+    def __init__(self, dataset):
+        BagFile.__init__(self)
+        if type(dataset) == str:
+            self.open_file(dataset, 'hack')
+        elif type(dataset) == _gdal.Dataset:
+            self.from_gdal(dataset)
+
+
+class BagToGDALConverter:
+    """This class serves as the main container for converting processed bag
+    data into a :obj:`gdal.Dataset` object.
+
+    """
+    _descriptions = ['Elevation', 'Uncertainty', 'Interpolated']
+
+    def __init__(self, out_verdat: str = None, flip: bool = False):
+        """
+
+        Parameters
+        ----------
+        out_verdat : str
+            Output Vertical Coordinate System (ie. 'MLLW')
+        """
+
+        self.dataset = None
+        self.out_verdat = out_verdat
+        self.flip = flip
+
+    def bag2gdal(self, bag):
+        """
+        Converts a :obj:`bag` object into a :obj:`gdal.Dataset`
+
+        Parameters
+        ----------
+        bag : :obj:`bag`
+            TODO write description
+        """
+
+        arrays = [bag.elevation, bag.uncertainty]
+        bands = len(arrays)
+        nw, se = bag.bounds
+        nwx, nwy = nw
+        scx, scy = se
+        y_cols, x_cols = bag.shape
+        res_x, res_y = bag.resolution[0], bag.resolution[1]
+        target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
+        target_gt = (nwx, res_x, 0, nwy, 0, res_y)
+        target_gt = self.translate_bag2gdal_extents(target_gt)
+        target_ds.SetGeoTransform(target_gt)
+        srs = _osr.SpatialReference(wkt=bag.wkt)
+        srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
+        wkt = srs.ExportToWkt()
+        target_ds.SetProjection(wkt)
+        x = 1
+
+        for item in arrays:
+            band = target_ds.GetRasterBand(x)
+            band.SetDescription(self._descriptions[x - 1])
+            band.SetNoDataValue(bag.nodata)
+
+            if self.flip:
+                item = _np.flipud(item)
+
+            band.WriteArray(item)
+            del band
+            x += 1
+
+        self.dataset = target_ds
+        del target_ds
+
+    def components2gdal(self, arrays: List[_np.array], shape: Tuple[int, int],
+                        bounds: Tuple[Tuple[float, float], Tuple[float, float]], resolution: Tuple[float, float],
+                        prj: str, nodata: float = 1000000.0):
+        """
+        Converts raw dataset components into a :obj:`gdal.Dataset` object
+
+        Parameters
+        ----------
+        arrays : list of numpy.array
+            Arrays [elevation, uncertainty]
+        shape : tuple of int
+            (y, x) shape of the arrays
+        bounds : tuple of tuple of float
+            (NW, SE) corners of the data
+        resolution : tuple of float
+            (x_res, y_res) of the data
+        prj : str
+            WKT string of the projection of the data
+        nodata : float, optional
+            no data value of the arrays, default is 1000000.0
+
+
+        """
+
+        bands = len(arrays)
+        nw, se = bounds
+        nwx, nwy = nw
+        scx, scy = se
+        y_cols, x_cols = shape
+        res_x, res_y = resolution[0], resolution[1]
+        target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
+        target_gt = (nwx, res_x, 0, nwy, 0, res_y)
+        target_gt = self.translate_bag2gdal_extents(target_gt)
+        target_ds.SetGeoTransform(target_gt)
+        srs = _osr.SpatialReference(wkt=prj)
+        srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
+        wkt = srs.ExportToWkt()
+        target_ds.SetProjection(wkt)
+        x = 1
+
+        for item in arrays:
+            band = target_ds.GetRasterBand(x)
+            band.SetDescription(self._descriptions[x - 1])
+            band.SetNoDataValue(nodata)
+
+            if self.flip:
+                item = _np.flipud(item)
+
+            band.WriteArray(item)
+            del band
+            x += 1
+
+        self.dataset = target_ds
+        del target_ds
+
+    def translate_bag2gdal_extents(self, geotransform: Tuple[float, float, float, float, float, float]):
+        orig_x, res_x, skew_x, orig_y, skew_y, res_y = geotransform
+        new_x = orig_x - (res_x / 2)
+        new_y = orig_y + (res_y / 2)
+        return new_x, res_x, skew_x, new_y, skew_y, res_y

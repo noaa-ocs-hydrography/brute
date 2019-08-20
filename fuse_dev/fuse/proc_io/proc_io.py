@@ -50,7 +50,7 @@ class ProcIO:
             Default is ``1000000.0``. The no data value for the input data.
             This is the value used by CSAR and BAG files for no data
         caris_env_name : str, optional
-            Default is ``NBS35``.  Determines which caris environment is used
+            Default is ``CARIS35``.  Determines which caris environment is used
         overwrite : bool, optional
             Default is ``True``. If a file with an existing name is input, this
             will determine whether the file is overwritten or kept
@@ -314,6 +314,28 @@ class ProcIO:
         gdal.Polygonize(band, None, layer, 0, [], callback=None)
 
         del ds, band
+
+    def _write_raster(self, dataset: gdal.Dataset, outfilename: str):
+        """
+        Saves a gdal.Dataset raster in a GeoTiff format
+
+        Parameters
+        ----------
+        dataset : gdal.Dataset
+            A gdal.Dataset for a raster
+        outfilename : str
+            The name of the output file
+
+        """
+
+        # Prepare destination file
+        driver = gdal.GetDriverByName("GTiff")
+
+        # write and close output raster dataset
+        dest = driver.CreateCopy(outfilename, dataset)
+
+        del dest
+
 
     def _gdal2array(self, dataset: gdal.Dataset) -> np.array:
         """

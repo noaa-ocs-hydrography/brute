@@ -286,7 +286,9 @@ class USACERawReader:
             The metadata assigned via this method
 
         """
+
         base, suffix = self.name_gen(infilename)
+        meta_dict['file_size'] = self._size_finder(infilename)
         if suffix is not None and suffix.upper() == '_FULL':
             meta_dict['interpolate'] = False
             meta_dict['from_horiz_reolution'] = 3
@@ -297,6 +299,23 @@ class USACERawReader:
             meta_dict['interpolate'] = True
 
         return meta_dict
+
+    def _size_finder(self, filepath: str) -> int:
+        """
+        Returns the rounded size of a file in MB as an integer
+
+        Parameters
+        ----------
+        filepath : str, os.Pathlike
+            TODO write description
+
+        Returns
+        -------
+        int
+
+        """
+
+        return int(_np.round(_os.path.getsize(filepath) / 1000))
 
     def _check_grid(self, infilename):
         data = self._parse_ehydro_xyz_bathy(infilename)

@@ -378,7 +378,7 @@ class UnifiedCoverage:
             if ext in ('.tiff', '.tif'):
                 rast = GeoTIFF()
                 rast.open_file(item)
-            elif ext in ('.shp', '.gpkg'):
+            elif ext in ('.gpkg', ):
                 rast = Geopackage()
                 rast.open_file(item, bag_wkt)
 

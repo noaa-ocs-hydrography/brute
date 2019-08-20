@@ -5,6 +5,7 @@ Created on Thu Jan 31 10:47:59 2019
 @author: grice
 """
 
+import ast as _ast
 import csv as _csv
 import shutil as _shutil
 from pathlib import Path as _Path
@@ -320,7 +321,10 @@ class MetaReviewer:
                     if name in key:
                         named = True
                         val = key.replace(MetaReviewer._col_root[name], '')
-                        metarow[name][val] = row[key]
+                        if val == 'support_files':
+                            metarow[name][val] = _ast.literal_eval(row[key])
+                        else:
+                            metarow[name][val] = row[key]
                 if not named:
                     metarow['base'][key] = row[key]
         # combine the dictionaries
