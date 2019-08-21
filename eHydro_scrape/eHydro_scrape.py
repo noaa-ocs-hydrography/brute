@@ -52,11 +52,16 @@ logLocation = os.path.join(progLoc, logName)
 # logLocation = os.path.join(progLoc, logName)
 """Default location for :attr:`logName`"""
 # """Default location for """
-holding = os.path.join(progLoc, 'downloads')
-"""Default location for all downloaded data, regardless of the type of query
-performed. Data is broken up into folders representing each district (ex.
-``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)
-"""
+
+if config['Downloads']['Downloads'] != '':
+    holding = config['Downloads']['Downloads']
+else:
+    holding = os.path.join(progLoc, 'downloads')
+    """Default location for all downloaded data, regardless of the type of query
+    performed. Data is broken up into folders representing each district (ex.
+    ``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)
+    """
+
 logging = os.path.join(progLoc, 'logs')
 """Default location for individual query logs. These are named like
 ``YYYYMMDD_0_eHydro_log.txt``
