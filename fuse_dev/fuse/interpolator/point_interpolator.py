@@ -99,9 +99,9 @@ class PointInterpolator:
         self.input_points = gdal_points_to_array(points)
         self.input_bounds = _bounds_from_points(self.input_points)
         self.output_shape, self.output_bounds = _shape_from_cell_size(output_resolution, self.input_bounds)
-        self.input_epsg = points.GetProjection()
-        if self.input_epsg != '':
-            self.input_epsg = self.input_epsg[-4:]
+        self.input_spatial_reference = points.GetProjectionRef()
+        if self.input_spatial_reference != '':
+            self.input_epsg = int(osr.SpatialReference(wkt=self.input_spatial_reference).GetAttrValue('AUTHORITY', 1))
         else:
             self.input_epsg = 4326
 
@@ -182,9 +182,6 @@ class PointInterpolator:
             mask
         """
 
-        if spatial_reference is None:
-            spatial_reference = osr.SpatialReference(epsg=self.input_epsg)
-
         if nodata is None:
             nodata = self.nodata
 
@@ -235,7 +232,7 @@ class PointInterpolator:
         geotransform = like_raster.GetGeoTransform()
         resolution = geotransform[1]
         nw_corner = geotransform[0], geotransform[3]
-        spatial_reference = osr.SpatialReference(wkt=like_raster.GetProjection())
+        spatial_reference = osr.SpatialReference(wkt=like_raster.GetProjectionRef())
         nodata = like_raster.GetRasterBand(band_index).GetNoDataValue()
 
         return self.__get_mask(shape, resolution, nw_corner, spatial_reference, nodata)
