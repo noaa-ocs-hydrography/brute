@@ -470,6 +470,8 @@ class FuseProcessor:
             metadata['new_ext'] = self._config['bathymetry_intermediate_file']
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
+            for entry in FuseProcessor._datums:
+                assert entry in metadata, f'entry "{entry}" not in metadata'
             dataset, transformed = self._transform.translate(infilename, metadata)
             if self._read_type == 'ehydro':
                 outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
