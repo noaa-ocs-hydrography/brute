@@ -14,6 +14,7 @@ from datetime import datetime as _datetime
 from xml.etree.ElementTree import parse as _parse
 
 import numpy as _np
+from osgeo import osr as _osr
 from fuse.datum_transform import usefips as _usefips
 
 from . import parse_usace_pickle
@@ -528,13 +529,13 @@ class USACERawReader:
         if len(horiz_datum) > 0:
             fips = horiz_datum.split()[1]
             fips = fips.rstrip(',')
-            metadata['from_fips'] = fips
+            metadata['from_horiz_key'] = fips
             metadata['from_wkt'] = _usefips.fips2wkt(fips)
             horiz_units = horiz_datum.split(',')[1]
-            if horiz_units.strip(' ') == 'US SURVEY FEET':
+            if horiz_units.strip().upper() == 'US SURVEY FEET':
                 metadata['from_horiz_units'] = 'US Survey Foot'
             else:
-                metadata['from_horiz_units'] = horiz_units.strip(' ')
+                metadata['from_horiz_units'] = horiz_units.strip()
             metadata['from_horiz_datum'] = horiz_datum
         # find the vertical datum information
         if line.find('MEAN LOWER LOW WATER') > 0:
