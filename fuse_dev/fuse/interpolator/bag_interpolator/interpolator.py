@@ -101,17 +101,16 @@ def concatGrid(arr_1, arr_2, nodata: int):
     -------
 
     """
-
-    points_1 = tupleGrid(arr_1, nodata)
-    points_2 = tupleGrid(arr_2, nodata)
-    if len(points_1) == 0 or len(points_2) == 0:
-        xy, z = [], []
-    else:
+    if arr_1[arr_1 != nodata].size != 0 and arr_2[arr_2 != nodata].size != 0:
+        points_1 = tupleGrid(arr_1, nodata)
+        points_2 = tupleGrid(arr_2, nodata)
         comb = _np.concatenate([points_1, points_2])
         comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
         grid = _np.hsplit(comb, [2, 4])
         z = grid[1].squeeze()
         xy = grid[0]
+    else:
+        xy, z = [], []
     return xy, z
 
 
@@ -188,10 +187,10 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
         nunc = _np.where(fpoly, iuncrt, maxVal)
     print('done', _dt.now())
     polyList = [tpoly, bpoly, cpoly, dpoly, npoly, fpoly, ibag]
-    plt.figure()
-    for rast in polyList:
-        plt.imshow(rast)
-        plt.show()
+#    plt.figure()
+#    for rast in polyList:
+#        plt.imshow(rast)
+#        plt.show()
     # polyList = [fpoly, cpoly]
     return nbag, nunc, polyList if debug else cpoly.astype(_np.int)
 
@@ -341,10 +340,18 @@ def sliceFinder(size: int, shape: Tuple[int, int], res: float, var: int = 5000):
     """
 
     print('sliceFinder')
+    if res <= 1 and size <= 100000:
+        size /= res
+    elif res > 1 and res < 4 and size <= 100000:
+        size *= (res*2)
+
     if res < 1:
-        b = 25 / res
-    elif res >= 1:
+        b = int(25 / res)
+    elif res >= 1 and res <= 4:
+        b = int(25 * res)
+    elif res >= 4:
         b = 25
+
     if size <= 100000:
         tiles = 0
         return tiles, None, None

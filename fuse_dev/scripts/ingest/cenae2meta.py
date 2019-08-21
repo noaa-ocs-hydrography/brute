@@ -8,10 +8,10 @@ Created on Tue Jul 16 14:32:03 2019
 import os
 from glob import glob
 
-import fuse.fuse_ehydro as ffe
+import fuse.fuse_processor as ffp
 
 if __name__ == '__main__':
-    cenae = ffe.FuseProcessor_eHydro('cenae.config')  # this config is local for testing
+    cenae = ffp.FuseProcessor('cenae.config')  # this config is local for testing
     for path in cenae.rawdata_path:
         flist = glob(os.path.join(path, '*.xyz'))
         for f in flist:
