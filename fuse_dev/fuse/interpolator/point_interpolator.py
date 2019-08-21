@@ -36,9 +36,14 @@ import matplotlib.pyplot
 import numpy
 import scipy
 import scipy.interpolate
+import scipy.spatial
 import scipy.spatial.distance
+import shapely.geometry
 from osgeo import gdal, ogr, osr
 from pykrige.ok import OrdinaryKriging
+from shapely.ops import unary_union, polygonize
+
+gdal.UseExceptions()
 
 
 class PointInterpolator:
@@ -47,6 +52,13 @@ class PointInterpolator:
     def __init__(self, window_scalar: float = 1.1, nodata: float = 1000000.0):
         """
         Set some of the precondition, but make them over writable.
+
+        Parameters
+        ----------
+        window_scalar
+            multiplier to use to expand interpolation radius from minimum point spacing
+        nodata
+            value to use to represent no data
         """
 
         self.window_scalar = window_scalar
@@ -85,15 +97,16 @@ class PointInterpolator:
             raise ValueError('Supporting shapefile required')
 
         self.input_points = gdal_points_to_array(points)
-        self.input_shape, self.input_bounds = _shape_from_cell_size(output_resolution,
-                                                                    _bounds_from_points(self.input_points))
-        self.input_spatial_reference = points.GetProjection()
-        if self.input_spatial_reference == '':
-            self.input_spatial_reference = osr.SpatialReference()
-            self.input_spatial_reference.ImportFromEPSG(3857)
+        self.input_bounds = _bounds_from_points(self.input_points)
+        self.output_shape, self.output_bounds = _shape_from_cell_size(output_resolution, self.input_bounds)
+        self.input_epsg = points.GetProjection()
+        if self.input_epsg != '':
+            self.input_epsg = self.input_epsg[-4:]
+        else:
+            self.input_epsg = 4326
 
-        _, _, max_spacing = _point_spacing(self.input_points)
-        window_size = max_spacing * self.window_scalar
+        min_point_spacing = numpy.min(scipy.spatial.distance.pdist(self.input_points[:, 0:2], 'euclidean'))
+        self.window_size = self.window_scalar * min_point_spacing
 
         start_time = datetime.datetime.now()
 
@@ -106,35 +119,35 @@ class PointInterpolator:
             output_dataset = _mask_raster(interpolated_dataset, mask)
         elif method == 'invdist':
             # inverse distance interpolation
-            interpolated_dataset = self.__interp_points_gdal_invdist(points, window_size)
+            interpolated_dataset = self.__interp_points_gdal_invdist(points, self.window_size)
 
             # shrink the coverage back on the edges
             if shrink:
-                output_dataset = _shrink_coverage(interpolated_dataset, output_resolution, window_size)
+                output_dataset = _shrink_coverage(interpolated_dataset, output_resolution, self.window_size)
             else:
                 output_dataset = interpolated_dataset
         elif method == 'invdist_scilin':
-            interpolated_dataset = self.__interp_points_gdal_invdist_scipy_linear(points, output_resolution,
-                                                                                  window_size)
+            interpolated_dataset = self.__interp_points_gdal_invdist_scipy_linear(points, output_resolution)
             # shrink the coverage back on the edges
             if shrink:
-                interpolated_dataset = _shrink_coverage(interpolated_dataset, output_resolution, window_size)
+                interpolated_dataset = _shrink_coverage(interpolated_dataset, output_resolution, self.window_size)
 
             # mask raster to extent using polygon in vector file
             mask = rasterize_like(vector_file_path, interpolated_dataset, output_resolution)
             output_dataset = _mask_raster(interpolated_dataset, mask)
         elif method == 'kriging':
             chunks_per_side = 128
+            method = f'{method}_{chunks_per_side}x{chunks_per_side}'
 
             # interpolate using Ordinary Kriging
-            interpolated_dataset = self.__interp_points_pykrige_kriging(points, output_resolution, window_size,
+            interpolated_dataset = self.__interp_points_pykrige_kriging(points, output_resolution, self.window_size,
                                                                         chunks_per_side=chunks_per_side)
 
             # trim interpolation back using the original dataset as a mask
-            mask = self.__get_mask_like(interpolated_dataset)
-            output_dataset = _mask_raster(interpolated_dataset, mask)
+            # mask = self.__get_mask_like(interpolated_dataset)
+            # output_dataset = _mask_raster(interpolated_dataset, mask)
 
-            method = f'{method}_{chunks_per_side}x{chunks_per_side}'
+            output_dataset = interpolated_dataset
         else:
             raise ValueError(f'Interpolation type "{method}" not recognized.')
 
@@ -146,7 +159,7 @@ class PointInterpolator:
         return output_dataset
 
     def __get_mask(self, shape: Tuple[float, float], resolution: float, nw_corner: Tuple[float, float],
-                   spatial_reference: osr.SpatialReference, nodata: float = None) -> gdal.Dataset:
+                   spatial_reference: osr.SpatialReference = None, nodata: float = None) -> gdal.Dataset:
         """
         Get a mask of the survey area with the given raster properties.
 
@@ -169,42 +182,39 @@ class PointInterpolator:
             mask
         """
 
+        if spatial_reference is None:
+            spatial_reference = osr.SpatialReference(epsg=self.input_epsg)
+
         if nodata is None:
             nodata = self.nodata
 
         gdal_memory_driver = gdal.GetDriverByName('MEM')
         ogr_memory_driver = ogr.GetDriverByName('Memory')
 
-        # mask raster to extent using polygon in convex hull
-        convex_hull_vertices = self.input_points[:, 0:2][
-            scipy.spatial.ConvexHull(self.input_points[:, 0:2]).vertices]
-        convex_hull_vertices = [tuple(point) for point in convex_hull_vertices.tolist()]
-
-        ring = ogr.Geometry(ogr.wkbLinearRing)
-        for vertex in convex_hull_vertices:
-            ring.AddPoint(*vertex)
-
-        convex_hull = ogr.Geometry(ogr.wkbPolygon)
-        convex_hull.AddGeometry(ring)
+        concave_hull = alpha_shape(self.input_points[:, 0:2], self.window_size * 3)
+        mask_geometry = ogr.CreateGeometryFromWkb(concave_hull.wkb)
 
         output_dataset = gdal_memory_driver.Create('', shape[0], shape[1], 1, gdal.GDT_Float32)
+        output_dataset.SetProjection(f'EPSG:{self.input_epsg}')
         output_dataset.SetGeoTransform((nw_corner[1], resolution, 0, nw_corner[0], 0, resolution))
+        output_band = output_dataset.GetRasterBand(1)
+        output_band.Fill(nodata)
+        output_band.SetNoDataValue(nodata)
 
         vector_dataset = ogr_memory_driver.CreateDataSource('out')
         vector_layer = vector_dataset.CreateLayer('TEMP', spatial_reference, ogr.wkbPolygon)
         vector_layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
         output_feature = ogr.Feature(vector_layer.GetLayerDefn())
         output_feature.SetField('id', 1)
-        output_feature.SetGeometry(convex_hull)
+        output_feature.SetGeometry(mask_geometry)
         vector_layer.CreateFeature(output_feature)
 
-        gdal.RasterizeLayer(output_dataset, [1], vector_layer, burn_values=[1])
-        band_1 = output_dataset.GetRasterBand(1)
-        band_1.SetNoDataValue(nodata)
+        gdal_error = gdal.RasterizeLayer(output_dataset, [1], vector_layer, burn_values=[1])
+        assert gdal_error == gdal.CE_None
 
         return output_dataset
 
-    def __get_mask_like(self, like_raster: gdal.Dataset) -> gdal.Dataset:
+    def __get_mask_like(self, like_raster: gdal.Dataset, band_index: int = 1) -> gdal.Dataset:
         """
         Get a mask of the survey area with the same properties as the given raster.
 
@@ -212,6 +222,8 @@ class PointInterpolator:
         ----------
         like_raster
             raster to copy
+        band_index
+            raster band (1-indexed)
 
         Returns
         -------
@@ -223,20 +235,18 @@ class PointInterpolator:
         geotransform = like_raster.GetGeoTransform()
         resolution = geotransform[1]
         nw_corner = geotransform[0], geotransform[3]
-        spatial_reference = osr.SpatialReference()
-        spatial_reference.ImportFromWkt(like_raster.GetProjectionRef())
-        band_1 = like_raster.GetRasterBand(1)
-        nodata = band_1.GetNoDataValue()
+        spatial_reference = osr.SpatialReference(wkt=like_raster.GetProjection())
+        nodata = like_raster.GetRasterBand(band_index).GetNoDataValue()
 
         return self.__get_mask(shape, resolution, nw_corner, spatial_reference, nodata)
 
-    def __interp_points_gdal_linear(self, gdal_points: gdal.Dataset, nodata: float = None) -> gdal.Dataset:
+    def __interp_points_gdal_linear(self, points: gdal.Dataset, nodata: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating linearly.
 
         Parameters
         ----------
-        gdal_points
+        points
             GDAL point cloud dataset
         nodata
             value for no data in output grid
@@ -251,18 +261,18 @@ class PointInterpolator:
         if nodata is None:
             nodata = self.nodata
 
-        algorithm = f"linear:radius=0:nodata={int(nodata)}"
-        return gdal.Grid('', gdal_points, format='MEM', width=self.input_shape[1], height=self.input_shape[0],
-                         outputBounds=self.input_bounds, algorithm=algorithm)
+        algorithm = f'linear:radius=0:nodata={int(nodata)}'
+        return gdal.Grid('', points, format='MEM', width=self.output_shape[1], height=self.output_shape[0],
+                         outputBounds=self.output_bounds, algorithm=algorithm)
 
-    def __interp_points_gdal_invdist(self, gdal_points: gdal.Dataset, radius: float,
+    def __interp_points_gdal_invdist(self, points: gdal.Dataset, radius: float = None,
                                      nodata: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via inverse distance.
 
         Parameters
         ----------
-        gdal_points
+        points
             GDAL point cloud dataset
         radius
             size of interpolation window
@@ -275,21 +285,24 @@ class PointInterpolator:
             interpolated grid
         """
 
+        if radius is None:
+            radius = self.window_size
+
         if nodata is None:
             nodata = self.nodata
 
-        algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}:angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
-        return gdal.Grid('', gdal_points, format='MEM', width=self.input_shape[1], height=self.input_shape[0],
-                         outputBounds=self.input_bounds, algorithm=algorithm)
+        algorithm = f'invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}:nodata={int(nodata)}'
+        return gdal.Grid('', points, format='MEM', width=self.output_shape[1], height=self.output_shape[0],
+                         outputBounds=self.output_bounds, algorithm=algorithm)
 
-    def __interp_points_gdal_invdist_scipy_linear(self, gdal_points: gdal.Dataset, radius: float,
+    def __interp_points_gdal_invdist_scipy_linear(self, points: gdal.Dataset, radius: float = None,
                                                   nodata: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via inverse distance and then linearly (using SciPy).
 
         Parameters
         ----------
-        gdal_points
+        points
             GDAL point cloud dataset
         radius
             size of interpolation window
@@ -302,11 +315,14 @@ class PointInterpolator:
             interpolated grid
         """
 
+        if radius is None:
+            radius = self.window_size
+
         if nodata is None:
             nodata = self.nodata
 
         # interpolate using inverse distance in GDAL
-        interpolated_raster = self.__interp_points_gdal_invdist(gdal_points, radius, nodata)
+        interpolated_raster = self.__interp_points_gdal_invdist(points, radius, nodata)
         output_x, output_y = numpy.meshgrid(numpy.arange(interpolated_raster.RasterXSize),
                                             numpy.arange(interpolated_raster.RasterYSize))
 
@@ -356,10 +372,10 @@ class PointInterpolator:
         if chunks_per_side <= 4:
             raise ValueError(f'number of chunks per side should be above 4')
 
-        data_sw = numpy.array((self.input_bounds[0], self.input_bounds[1]))
+        input_points_sw = numpy.array((self.input_bounds[0], self.input_bounds[1]))
 
-        interpolated_grid_x = numpy.arange(self.input_bounds[0], self.input_bounds[2], output_resolution)
-        interpolated_grid_y = numpy.arange(self.input_bounds[1], self.input_bounds[3], output_resolution)
+        interpolated_grid_x = numpy.linspace(self.output_bounds[0], self.output_bounds[2], self.output_shape[1])
+        interpolated_grid_y = numpy.linspace(self.output_bounds[1], self.output_bounds[3], self.output_shape[0])
         interpolated_grid_shape = numpy.array((len(interpolated_grid_y), len(interpolated_grid_x)), numpy.int)
         interpolated_grid_values = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
         interpolated_grid_variance = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
@@ -373,17 +389,15 @@ class PointInterpolator:
 
             chunks = chunks_per_side ** 2
             for chunk_index in range(chunks):
-                # print(f'processing chunk {chunk_index + 1} of {chunks}')
-
                 # determine indices of the lower left and upper right bounds of the chunk within the output grid
                 grid_start_index = numpy.array(chunk_grid_index * chunk_shape)
                 grid_end_index = grid_start_index + chunk_shape
-                grid_slice = tuple(
-                    slice(grid_start_index[axis], grid_end_index[axis]) for axis in range(len(chunk_shape)))
+                grid_slice = tuple(slice(grid_start_index[axis], grid_end_index[axis])
+                                   for axis in range(len(chunk_shape)))
 
                 # expand the interpolation area past the edges of the chunk to minimize edge formation at the boundary
-                interpolation_sw = data_sw + numpy.flip((grid_start_index - expand_indices) * output_resolution)
-                interpolation_ne = data_sw + numpy.flip((grid_end_index + expand_indices) * output_resolution)
+                interpolation_sw = input_points_sw + numpy.flip((grid_start_index - expand_indices) * output_resolution)
+                interpolation_ne = input_points_sw + numpy.flip((grid_end_index + expand_indices) * output_resolution)
                 interpolation_points = self.input_points[numpy.where(
                     (self.input_points[:, 0] >= interpolation_sw[0]) & (
                             self.input_points[:, 0] < interpolation_ne[0]) & (
@@ -411,11 +425,8 @@ class PointInterpolator:
         interpolated_grid_uncertainty = numpy.sqrt(interpolated_grid_variance) * 2.5
         del interpolated_grid_variance
 
-        interpolated_grid_values = numpy.flip(interpolated_grid_values, axis=0)
-        interpolated_grid_uncertainty = numpy.flip(interpolated_grid_uncertainty, axis=0)
-
         memory_raster_driver = gdal.GetDriverByName('MEM')
-        output_dataset = memory_raster_driver.Create('temp', self.input_shape[1], self.input_shape[0], 2,
+        output_dataset = memory_raster_driver.Create('temp', self.output_shape[1], self.output_shape[0], 2,
                                                      gdal.GDT_Float32)
 
         input_geotransform = gdal_points.GetGeoTransform()
@@ -455,7 +466,7 @@ class PointInterpolator:
 
         # if the input raster is a GDAL raster dataset, extract the data from the first band
         if type(interpolated_raster) is gdal.Dataset:
-            interpolated_raster = interpolated_raster.GetRasterBand(band_index).ReadAsArray()
+            interpolated_raster = numpy.flip(interpolated_raster.GetRasterBand(band_index).ReadAsArray(), axis=0)
 
         # replace `nodata` values with NaN
         interpolated_raster[interpolated_raster == nodata] = numpy.nan
@@ -469,17 +480,18 @@ class PointInterpolator:
         # create a new Matplotlib figure window
         figure = matplotlib.pyplot.figure()
 
-        # create a subplot on the left side for displaying a `scatter` plot of the original survey points
+        # create subplots
         survey_points_axis = figure.add_subplot(1, 2, 1)
         survey_points_axis.set_title('survey points')
-        survey_points_axis.scatter(self.input_points[:, 0], self.input_points[:, 1], c=self.input_points[:, 2], s=1,
-                                   vmin=min_z, vmax=max_z)
         survey_points_axis.set_xlim(min_x, max_x)
         survey_points_axis.set_ylim(min_y, max_y)
-
-        # create a subplot on the right side for displaying an `imshow` plot of the interpolated raster data
-        interpolated_raster_axis = figure.add_subplot(1, 2, 2, sharex=survey_points_axis)
+        interpolated_raster_axis = figure.add_subplot(1, 2, 2, sharex=survey_points_axis, sharey=survey_points_axis)
         interpolated_raster_axis.set_title(f'{interpolation_method} interpolation to raster')
+
+        # plot data
+        survey_points_axis.scatter(self.input_points[:, 0], self.input_points[:, 1], c=self.input_points[:, 2], s=1,
+                                   vmin=min_z, vmax=max_z)
+
         interpolated_raster_axis.imshow(interpolated_raster, extent=(min_x, max_x, min_y, max_y), aspect='auto',
                                         vmin=min_z, vmax=max_z)
 
@@ -488,6 +500,15 @@ class PointInterpolator:
                         ax=(interpolated_raster_axis, survey_points_axis))
 
         # pause program execution and show the figure
+        matplotlib.pyplot.show()
+
+    def __plot_concave_hull(self):
+        concave_hull = alpha_shape(self.input_points[:, 0:2], self.window_size * 3)
+        triangles = scipy.spatial.Delaunay(self.input_points[:, 0:2])
+        matplotlib.pyplot.plot(*concave_hull.exterior.xy, c='r')
+        matplotlib.pyplot.triplot(self.input_points[:, 0], self.input_points[:, 1], triangles=triangles.simplices,
+                                  c='g')
+        matplotlib.pyplot.scatter(self.input_points[:, 0], self.input_points[:, 1], c='b')
         matplotlib.pyplot.show()
 
 
@@ -568,28 +589,6 @@ def _mask_raster(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: float = N
 
     raster_band.WriteArray(raster_data)
     return raster
-
-
-def _point_spacing(points: numpy.array) -> Tuple[float, float, float]:
-    """
-    Take a numpy xyz array and return the min, mean, and max spacing
-    between different points in the XY direction for interpolation without
-    holes. The returned units will be the same as the provided horizontal
-    coordinate system.
-
-    Parameters
-    ----------
-    points
-        array of XY or XYZ points
-
-    Returns
-    -------
-    Tuple[float, float, float]
-        min, mean, and max distances between neighboring points
-    """
-
-    pairwise_distances = scipy.spatial.distance.pdist(points, 'euclidean')
-    return numpy.min(pairwise_distances), numpy.mean(pairwise_distances), numpy.max(pairwise_distances)
 
 
 def _bounds_from_points(points: numpy.array) -> Tuple[float, float, float, float]:
@@ -851,3 +850,94 @@ def _krige_onto_grid(input_points: numpy.array, output_x: numpy.array, output_y:
     interpolator = OrdinaryKriging(input_points[:, 0], input_points[:, 1], input_points[:, 2], variogram_model='linear',
                                    verbose=False, enable_plotting=False)
     return interpolator.execute('grid', output_x, output_y)
+
+
+def _boundary_edges(points: numpy.array, radius: float = 1.0):
+    """
+    Get the edges of the Delaunay triangulation that exist on the boundary.
+
+    Parameters
+    ----------
+    points
+        N x M array of points
+    radius
+        radius of triangulation
+    """
+
+    if points.shape[0] < 4:
+        raise ValueError('need at least 4 points to perform triangulation')
+
+    def add_edge(edges, indices):
+        """ add an edge between the indices, if it is not already in the edge list """
+        if indices not in edges and reversed(indices) not in edges:
+            edges.add(indices)
+        else:
+            # remove the edge if it already exists
+            edges.remove(indices)
+
+    triangles = scipy.spatial.Delaunay(points)
+    edges = set()
+    for index_a, index_b, index_c in triangles.vertices:
+        point_a = points[index_a]
+        point_b = points[index_b]
+        point_c = points[index_c]
+
+        length_a = numpy.hypot(*(point_a - point_b))
+        length_b = numpy.hypot(*(point_b - point_c))
+        length_c = numpy.hypot(*(point_c - point_a))
+
+        semiperimeter = (length_a + length_b + length_c) / 2.0
+        area = numpy.sqrt(
+            semiperimeter * (semiperimeter - length_a) * (semiperimeter - length_b) * (semiperimeter - length_c))
+        circumcircle_radius = length_a * length_b * length_c / (4.0 * area)
+
+        if circumcircle_radius < radius:
+            add_edge(edges, (index_a, index_b))
+            add_edge(edges, (index_b, index_c))
+            add_edge(edges, (index_c, index_a))
+
+    return points[numpy.array(tuple(edges))].tolist()
+
+
+def alpha_shape(points: numpy.array, radius: float = 1.0):
+    """
+    Calculate the alpha shape (concave hull) of the given points.
+    inspired by https://sgillies.net/2012/10/13/the-fading-shape-of-alpha.html
+
+    Parameters
+    ----------
+    points
+        N x M array of points
+    radius
+        radius of triangulation
+    """
+
+    if points.shape[0] < 4:
+        raise ValueError('need at least 4 points to perform triangulation')
+
+    triangles = scipy.spatial.Delaunay(points)
+    boundary_edges = set()
+    for index_a, index_b, index_c in triangles.vertices:
+        point_a = points[index_a]
+        point_b = points[index_b]
+        point_c = points[index_c]
+
+        length_a = numpy.hypot(*(point_a - point_b))
+        length_b = numpy.hypot(*(point_b - point_c))
+        length_c = numpy.hypot(*(point_c - point_a))
+
+        semiperimeter = (length_a + length_b + length_c) / 2.0
+        area = numpy.sqrt(
+            semiperimeter * (semiperimeter - length_a) * (semiperimeter - length_b) * (semiperimeter - length_c))
+        circumcircle_radius = length_a * length_b * length_c / (4.0 * area)
+
+        if circumcircle_radius < radius:
+            for indices in ((index_a, index_b), (index_b, index_c), (index_c, index_a)):
+                if indices not in boundary_edges and reversed(indices) not in boundary_edges:
+                    boundary_edges.add(indices)
+                else:
+                    # remove the edge if it already exists (that is, if it is shared by another triangle)
+                    boundary_edges.remove(indices)
+
+    boundary_edges = points[numpy.array(tuple(boundary_edges))].tolist()
+    return unary_union(list(polygonize(shapely.geometry.MultiLineString(boundary_edges))))
