@@ -469,6 +469,8 @@ class USACERawReader:
         for line in header:
             if line.startswith('NOTES'):
                 metalist.append(self._parse_note(line))
+            elif line.startswith('PROJECT SPECIFIC NOTES'):
+                metalist.append(self._parse_note(line))
             elif line.startswith('PROJECT_NAME'):
                 metalist.append(self._parse_projectname(line))
             elif line.startswith('SURVEY_NAME'):

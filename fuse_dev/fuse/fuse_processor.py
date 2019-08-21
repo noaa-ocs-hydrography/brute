@@ -449,7 +449,7 @@ class FuseProcessor:
         metadata = self._get_stored_meta(infilename)
         metadata['read_type'] = self._read_type
         self._set_log(infilename)
-        if self._date_metadata_ready(metadata):
+        if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
             outpath = self._config['outpath']
             infilepath, infilebase = _os.path.split(infilename)
