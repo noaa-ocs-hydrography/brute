@@ -12,6 +12,7 @@ from pathlib import Path as _Path
 from tempfile import NamedTemporaryFile as _NamedTemporaryFile
 from typing import List
 
+
 class MetaReviewer:
     """The ehydro metadata object."""
 
@@ -329,9 +330,7 @@ class MetaReviewer:
                     metarow['base'][key] = row[key]
         # combine the dictionaries
         simplerow = {}
-        names = [*metarow]
-        names.sort(reverse=True)
-        for name in names:
+        for name in sorted(list(metarow.keys()), reverse=True):
             simplerow = {**simplerow, **metarow[name]}
         return simplerow
 
