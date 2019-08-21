@@ -65,7 +65,7 @@ class PointInterpolator:
         self.nodata = nodata
 
     def interpolate(self, points: gdal.Dataset, method: str, output_resolution: float, vector_file_path: str = None,
-                    shrink: bool = True, plot: bool = True) -> gdal.Dataset:
+                    shrink: bool = True, plot: bool = True, layer_index: int = 0) -> gdal.Dataset:
         """
         Interpolate the provided dataset.
 
@@ -86,6 +86,8 @@ class PointInterpolator:
             whether to skrink interpolated data back to original extent
         plot
             whether to plot the interpolated result next to the original survey points
+        layer_index
+            index of layer to read
 
         Returns
         -------
@@ -99,7 +101,7 @@ class PointInterpolator:
         self.input_points = gdal_points_to_array(points)
         self.input_bounds = _bounds_from_points(self.input_points)
         self.output_shape, self.output_bounds = _shape_from_cell_size(output_resolution, self.input_bounds)
-        self.input_spatial_reference = points.GetProjectionRef()
+        self.input_spatial_reference = points.GetLayerByIndex(layer_index).GetSpatialRef().ExportToWkt()
         if self.input_spatial_reference != '':
             self.input_epsg = int(osr.SpatialReference(wkt=self.input_spatial_reference).GetAttrValue('AUTHORITY', 1))
         else:
@@ -185,6 +187,13 @@ class PointInterpolator:
         if nodata is None:
             nodata = self.nodata
 
+        if spatial_reference is None:
+            epsg = self.input_epsg
+            spatial_reference = osr.SpatialReference()
+            spatial_reference.ImportFromEPSG(epsg)
+        else:
+            epsg = spatial_reference.GetAttrValue('AUTHORITY', 1)
+
         gdal_memory_driver = gdal.GetDriverByName('MEM')
         ogr_memory_driver = ogr.GetDriverByName('Memory')
 
@@ -192,7 +201,7 @@ class PointInterpolator:
         mask_geometry = ogr.CreateGeometryFromWkb(concave_hull.wkb)
 
         output_dataset = gdal_memory_driver.Create('', shape[0], shape[1], 1, gdal.GDT_Float32)
-        output_dataset.SetProjection(f'EPSG:{self.input_epsg}')
+        output_dataset.SetProjection(f'EPSG:{epsg}')
         output_dataset.SetGeoTransform((nw_corner[1], resolution, 0, nw_corner[0], 0, resolution))
         output_band = output_dataset.GetRasterBand(1)
         output_band.Fill(nodata)
@@ -206,8 +215,7 @@ class PointInterpolator:
         output_feature.SetGeometry(mask_geometry)
         vector_layer.CreateFeature(output_feature)
 
-        gdal_error = gdal.RasterizeLayer(output_dataset, [1], vector_layer, burn_values=[1])
-        assert gdal_error == gdal.CE_None
+        gdal.RasterizeLayer(output_dataset, [1], vector_layer, burn_values=[1])
 
         return output_dataset
 
