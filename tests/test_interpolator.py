@@ -2,8 +2,9 @@ import os
 import pathlib
 import unittest
 
-from fuse.fuse_ehydro import FuseProcessor_eHydro
-from fuse.interpolator.bag_interpolator import bag, coverage
+from fuse.fuse_processor import FuseProcessor
+from fuse.interpolator.bag_interpolator import coverage
+from fuse.raw_read.noaa import bag
 
 DATA_PATH = r"C:\Data\NBS"
 
@@ -51,7 +52,7 @@ class TestPointInterpolator(unittest.TestCase):
         processed_path = os.path.join(processed_directory, f'{survey_name}.csar')
         output_path = os.path.join(processed_directory, f'{survey_name}_5m_interp.csar')
 
-        cenan_fuse_processor = FuseProcessor_eHydro(config_path)
+        cenan_fuse_processor = FuseProcessor(config_path)
         cenan_fuse_processor.read(input_path)
         cenan_fuse_processor.process(input_path)
 
