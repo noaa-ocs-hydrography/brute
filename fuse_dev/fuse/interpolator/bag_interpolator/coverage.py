@@ -7,7 +7,6 @@ Created on Thu Jun  6 15:29:51 2019
 
 import os as _os
 from datetime import datetime as _dt
-from typing import List, Tuple
 
 import numpy as _np
 from osgeo import gdal as _gdal, gdal
@@ -351,13 +350,13 @@ class UnifiedCoverage:
         self._align_and_combine(_rasters, bag_name)
         del _rasters
 
-    def _open_data(self, files: List[str], bag_wkt: str):
+    def _open_data(self, files: [str], bag_wkt: str):
         """
         TODO write description
 
         Parameters
         ----------
-        files: List[str] :
+        files: [str] :
             TODO write description
         bag_wkt: str :
             TODO write description
@@ -379,7 +378,7 @@ class UnifiedCoverage:
                 rast = GeoTIFF()
                 rast.open_file(item)
                 bndRasts.append(rast)
-            elif ext in ('.gpkg', ):
+            elif ext in ('.gpkg',):
                 rast = Geopackage()
                 rast.open_file(item, bag_wkt)
                 bndRasts.append(rast)
@@ -643,8 +642,8 @@ class UnifiedCoverage:
             return rasters, bounds
 
 
-def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]], shape: Tuple[int, int],
-               resolution: Tuple[float, float], nodata: float):
+def align2grid(coverage, bounds: ((float, float), (float, float)), shape: (int, int), resolution: (float, float),
+               nodata: float):
     """
     Takes an input of two arrays representing bag and tif data. These arrays
     hold information like extent, data, and more. The goal of this function is
@@ -664,15 +663,15 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
 
     Parameters
     ----------
-    coverage :
+    coverage
         Input coverage data object
-    bounds: Tuple[Tuple[float, float], Tuple[float, float]] :
+    bounds
         The ([nx, ny], [sx, sy]) extents to be applied to the input data
-    shape: Tuple[int, int] :
+    shape
         The (y, x) shape to to be applied to the input data
-    resolution: Tuple[float, float] :
+    resolution
         The (x, y) resolution to be applied to the input data
-    nodata: float :
+    nodata
         The nodata value to be applied to the input array object
 
     Returns

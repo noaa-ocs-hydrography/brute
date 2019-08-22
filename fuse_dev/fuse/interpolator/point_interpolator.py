@@ -28,7 +28,7 @@ Sources:
 # __version__ = 'point_interpolator 0.0.1'
 import datetime
 from concurrent import futures
-from typing import Tuple, Union
+from typing import Union
 
 import matplotlib.cm
 import matplotlib.colors
@@ -160,7 +160,7 @@ class PointInterpolator:
 
         return output_dataset
 
-    def __get_mask(self, shape: Tuple[float, float], resolution: float, nw_corner: Tuple[float, float],
+    def __get_mask(self, shape: (float, float), resolution: float, nw_corner: (float, float),
                    spatial_reference: osr.SpatialReference = None, nodata: float = None) -> gdal.Dataset:
         """
         Get a mask of the survey area with the given raster properties.
@@ -595,7 +595,7 @@ def _mask_raster(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: float = N
     return raster
 
 
-def _bounds_from_points(points: numpy.array) -> Tuple[float, float, float, float]:
+def _bounds_from_points(points: numpy.array) -> (float, float, float, float):
     """
     Calculate the X and Y bounds of
 
@@ -613,8 +613,8 @@ def _bounds_from_points(points: numpy.array) -> Tuple[float, float, float, float
     return numpy.min(points[:, 0]), numpy.min(points[:, 1]), numpy.max(points[:, 0]), numpy.max(points[:, 1])
 
 
-def _shape_from_cell_size(resolution: float, bounds: Tuple[float, float, float, float]) -> Tuple[
-    Tuple[int, int], Tuple[float, float, float, float]]:
+def _shape_from_cell_size(resolution: float, bounds: (float, float, float, float)) -> (
+        (int, int), (float, float, float, float)):
     """
     Given the cell size and bounds of a raster, calculate the shape and bounds.
     This algorithm uses the minimum X and Y point as the anchor for rows and columns.
@@ -678,7 +678,7 @@ def rasterize_like(vector_file_path: str, like_raster: gdal.Dataset, output_reso
                      output_resolution)
 
 
-def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialReference, output_nw: Tuple[float, float],
+def rasterize(vector_file_path: str, output_spatial_reference: osr.SpatialReference, output_nw: (float, float),
               output_resolution: int, output_nodata: float = 0) -> gdal.Dataset:
     """
     Burn vector data to a raster with the given properties.
@@ -830,8 +830,8 @@ def gdal_points_to_array(points: gdal.Dataset, layer_index: int = 0) -> numpy.ar
     return output_points
 
 
-def _krige_onto_grid(input_points: numpy.array, output_x: numpy.array, output_y: numpy.array) -> Tuple[
-    numpy.array, numpy.array]:
+def _krige_onto_grid(input_points: numpy.array, output_x: numpy.array, output_y: numpy.array) -> (
+        numpy.array, numpy.array):
     """
     Perform kriging interpolation from the given set of points onto a regular grid.
 

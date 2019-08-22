@@ -78,7 +78,7 @@ if not os.path.exists(running):
     os.mkdir(running)
 
 
-def query() -> Tuple[List[str], int, str]:
+def query() -> (List[str], int, str):
     """
     Holds the Queries for the eHydro REST API, asks for responses, and uses
     the json library to make it readable by the program. Returns the json
@@ -203,7 +203,7 @@ def query() -> Tuple[List[str], int, str]:
     return surveyIDs, newSurveysNum, paramString
 
 
-def create_polygon(coords: List[Tuple[float, float]]) -> ogr.Geometry:
+def create_polygon(coords: [Tuple[float, float]]) -> ogr.Geometry:
     """
     Creates an ogr.Geometry/wkbLinearRing object from a list of coordinates.
 
@@ -233,7 +233,7 @@ def create_polygon(coords: List[Tuple[float, float]]) -> ogr.Geometry:
     return poly
 
 
-def create_multipolygon(polys: List[ogr.Geometry]) -> str:
+def create_multipolygon(polys: [ogr.Geometry]) -> str:
     """
     Creates an ogr.Geometry/wkbMultiPolygon object from a list of
     ogr.Geometry/wkbLinearRing objects.  The ogr.Geometry/wkbMultiPolygon is
@@ -248,7 +248,7 @@ def create_multipolygon(polys: List[ogr.Geometry]) -> str:
     ----------
     polys :
         A list of ogr.Geometry/wkbLinearRing objects
-    polys: List[ogr.Geometry] :
+    polys: [ogr.Geometry] :
 
 
     Returns
@@ -318,7 +318,7 @@ def geometryToShape(coordinates: list):
     return multipoly
 
 
-def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> Tuple[list, list]:
+def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> (list, list):
     """
     Uses the json object return of the each queried survey id and the total
     number of surveys included to compile a list of complete returned survey
@@ -483,7 +483,7 @@ def write_geopackage(out_path: str, name: str, poly: str,
     return geojson
 
 
-def contentSearch(contents: List[str]) -> int:
+def contentSearch(contents: [str]) -> int:
     """
     This funtion takes a list of zipfile contents.
 
@@ -513,7 +513,7 @@ def contentSearch(contents: List[str]) -> int:
             x = 0
 
 
-def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
+def downloadAndCheck(rows: list, pb=None, to=None) -> (list, int):
     """
     This function takes a list of complete survey data as provided by the
     query response `rows`.
@@ -713,7 +713,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
     return rows, hr
 
 
-def csvCompare(rows: list, csvFile: List[str], newSurveysNum: int, pb=None) -> Tuple[Union[list, str], str]:
+def csvCompare(rows: list, csvFile: [str], newSurveysNum: int, pb=None) -> (Union[list, str], str):
     """
     Takes list 'rows' and list 'csvFile'.  It proceeds to compare each list
     item's contents against each other.  If they match, the relevant list item
@@ -775,7 +775,7 @@ def csvCompare(rows: list, csvFile: List[str], newSurveysNum: int, pb=None) -> T
         return 'No Changes', numstring
 
 
-def csvOpen() -> List[str]:
+def csvOpen() -> [str]:
     """
     Uses global variable csvLocation to open eHydro_csv.txt for use.
     Populates a list 'csvFile' with it's contents. Returns list and
@@ -803,7 +803,7 @@ def csvOpen() -> List[str]:
     return csvFile[1:]
 
 
-def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
+def csvWriter(csvFile: [str], csvLocation: str, pb=None):
     """
     Uses global variable csvLocation. Opens file at csvLocation for
     writing. Iterates line by line through csvFile and imediatly writes
@@ -841,7 +841,7 @@ def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
                 pb.SetValue(x)
 
 
-def versionFind() -> Tuple[dict, list]:
+def versionFind() -> (dict, list):
     """
     Returns the highest version number of files included the the ``versions``
     folder and returns its contents
@@ -874,7 +874,7 @@ def versionFind() -> Tuple[dict, list]:
     return version, attributes
 
 
-def versionComp(page) -> Tuple[dict, list]:
+def versionComp(page) -> (dict, list):
     """
     Compares the attribute field names of the query against the current list of
     known attribute fields.
@@ -950,7 +950,7 @@ def versionSave(version: float, attributes: list):
         json.dump(ver_info, outfile)
 
 
-def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str]:
+def logOpen(logType: Union[str, bool], to=None) -> ((TextIO, Any), str):
     """
     Uses global variable logLocation. Opens file at logLocation
     for appending. Writes text stating when the function was called.
@@ -1002,7 +1002,7 @@ def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str
     return fileLog, nameLog
 
 
-def logWriter(fileLog: Tuple[TextIO, Any], message: str):
+def logWriter(fileLog: (TextIO, Any), message: str):
     """
     Takes a file object 'fileLog' and a string 'message'. Writes
     'messege' to 'fileLog'
@@ -1024,7 +1024,7 @@ def logWriter(fileLog: Tuple[TextIO, Any], message: str):
         to.write(f'{message}\n')
 
 
-def logClose(fileLog: Tuple[TextIO, Any]):
+def logClose(fileLog: (TextIO, Any)):
     """
     Takes a file object 'fileLog'. Writes text stating when the
     function was called. Closes the file object upon completion

@@ -6,10 +6,9 @@ Created on Thu Jun  6 15:31:40 2019
 """
 
 from datetime import datetime as _dt
-from typing import Union, Tuple
+from typing import Union
 
 import astropy.convolution as _apc
-import matplotlib.pyplot as plt
 import numpy as _np
 import scipy as _scipy
 
@@ -187,10 +186,10 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
         nunc = _np.where(fpoly, iuncrt, maxVal)
     print('done', _dt.now())
     polyList = [tpoly, bpoly, cpoly, dpoly, npoly, fpoly, ibag]
-#    plt.figure()
-#    for rast in polyList:
-#        plt.imshow(rast)
-#        plt.show()
+    #    plt.figure()
+    #    for rast in polyList:
+    #        plt.imshow(rast)
+    #        plt.show()
     # polyList = [fpoly, cpoly]
     return nbag, nunc, polyList if debug else cpoly.astype(_np.int)
 
@@ -286,7 +285,7 @@ class LinearInterpolator:
         return grid, uncr, grid_pre
 
 
-def sliceFinder(size: int, shape: Tuple[int, int], res: float, var: int = 5000):
+def sliceFinder(size: int, shape: (int, int), res: float, var: int = 5000):
     """
     Uses the file size of the bag to determine if the grid should be tiled.
     If the file is less than 100Mb, the file will not be tiled.  If the file is
@@ -314,16 +313,6 @@ def sliceFinder(size: int, shape: Tuple[int, int], res: float, var: int = 5000):
         Resolution of the input BAG data
     var :
         Arbitrary value for determining chunk size (Default value = 5000)
-    size: int :
-
-    shape: Tuple[int :
-
-    int] :
-
-    res: float :
-
-    var: int :
-         (Default value = 5000)
 
     Returns
     -------
@@ -343,7 +332,7 @@ def sliceFinder(size: int, shape: Tuple[int, int], res: float, var: int = 5000):
     if res <= 1 and size <= 100000:
         size /= res
     elif res > 1 and res < 4 and size <= 100000:
-        size *= (res*2)
+        size *= (res * 2)
 
     if res < 1:
         b = int(25 / res)

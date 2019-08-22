@@ -20,7 +20,7 @@ import re as _re
 import shutil as _shutil
 from datetime import datetime as _dt
 from string import ascii_lowercase as _al
-from typing import List, Tuple, Union
+from typing import Union
 
 import astropy.convolution as _apc
 import lxml.etree as _et
@@ -189,7 +189,7 @@ def getShpRast(file: str, y, pixel_size=1, nodata=255):
     return shpRast, name
 
 
-def getBndRast(files: List[str]):
+def getBndRast(files: [str]):
     """
     Passes individual file paths to the appropriate data reader(s)
     :func:`getTifElev` or :func:`getShpRast`
@@ -198,7 +198,7 @@ def getBndRast(files: List[str]):
     ----------
     files :
         File paths of the input GeoTiff and/or Shapefile files
-    files: List[str] :
+    files: [str] :
 
 
     Returns
@@ -466,7 +466,7 @@ def tupleGrid(grid: _np.array, maxVal: int):
     return _np.array(points)
 
 
-def concatGrid(grids: list, maxVal: int, shape: Tuple[int, int]):
+def concatGrid(grids: list, maxVal: int, shape: (int, int)):
     """
     Takes an input of an array of grid objects and the assumed nodata value
     Passes the assumed nodata value and the arrays held within each of the
@@ -482,20 +482,12 @@ def concatGrid(grids: list, maxVal: int, shape: Tuple[int, int]):
 
     Parameters
     ----------
-    grids :
+    grids
         The BAG and GeoTiff objects
-    maxVal :
+    maxVal
         The BAG data's nodata value
-    shape :
+    shape
         Dimensions of the input BAG data (y, x)
-    grids: list :
-
-    maxVal: int :
-
-    shape: Tuple[int :
-
-    int] :
-
 
     Returns
     -------
@@ -669,7 +661,7 @@ def alignTifs(tifs: list):
         return tifs, ext
 
 
-def polyTifVals(tifs: list, path: str, names: List[str], extent: list):
+def polyTifVals(tifs: list, path: str, names: [str], extent: list):
     """
     Heavy Influence From:
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
@@ -706,7 +698,7 @@ def polyTifVals(tifs: list, path: str, names: List[str], extent: list):
 
     path: str :
 
-    names: List[str] :
+    names: [str] :
 
     extent: list :
 
@@ -1303,7 +1295,7 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
     print('done')
 
 
-def sliceFinder(size: int, res: float, shape: Tuple[int, int], var: int = 5000):
+def sliceFinder(size: int, res: float, shape: (int, int), var: int = 5000):
     """
     Uses the file size of the bag to determine if the grid should be tiled.
     If the file is less than 100Mb, the file will not be tiled.  If the file is
@@ -1331,18 +1323,6 @@ def sliceFinder(size: int, res: float, shape: Tuple[int, int], var: int = 5000):
         Dimensions of the input BAG data (y, x)
     var :
         Arbitrary value for determining chunk size (Default value = 5000)
-    size :
-
-    size: int :
-
-    res: float :
-
-    shape: Tuple[int :
-
-    int] :
-
-    var: int :
-         (Default value = 5000)
 
     Returns
     -------
@@ -1379,7 +1359,7 @@ def sliceFinder(size: int, res: float, shape: Tuple[int, int], var: int = 5000):
         return tiles, chunckGrid, sliceInfo
 
 
-def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tuple, ioVal: Union[int, bool]):
+def interp(grids: list, size: int, res: float, shape: (int, int), uval: tuple, ioVal: Union[int, bool]):
     """
     Summary of function
 
@@ -1399,22 +1379,6 @@ def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tup
         Values for uncertainty calculation
     ioVal :
         User input. Determines whether origninal and interpolated or only interpolated data is output
-    grids: list :
-
-    size: int :
-
-    res: float :
-
-    shape: Tuple[int :
-
-    int] :
-
-    uval: tuple :
-
-    ioVal: Union[int :
-
-    bool] :
-
 
     Returns
     -------
@@ -1483,7 +1447,7 @@ def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tup
     return ugrids
 
 
-def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioVal: Union[int, bool]):
+def main(bagPath: str, bndPaths: [str], desPath: [str], catzoc: str, ioVal: Union[int, bool]):
     """
     main function of the interpolation process.  This function handles the flow of data in input, tiling, interpolation, and reintigration of the final grid.
 
@@ -1501,9 +1465,9 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
         User input. Determines whether origninal and interpolated or only interpolated data is output
     bagPath: str :
 
-    bndPaths: List[str] :
+    bndPaths: [str] :
 
-    desPath: List[str] :
+    desPath: [str] :
 
     catzoc: str :
 

@@ -8,7 +8,7 @@ Created on Wed Aug 22 12:27:39 2018
 Use VDatum for conversions.
 """
 
-from typing import Tuple, List
+from typing import Tuple
 
 __version__ = 'use_vdatum 0.0.1'
 
@@ -176,7 +176,7 @@ class VDatum:
 
         return self._reader.read_bathy_data(filename, instructions['to_vert_key'])
 
-    def __translate_xyz(self, xyz_filename: str, instructions: dict) -> Tuple[_np.array, int]:
+    def __translate_xyz(self, xyz_filename: str, instructions: dict) -> (_np.array, int):
         """
         Reproject XYZ from the given filename.
 
@@ -286,7 +286,7 @@ class VDatum:
             print(output)
             print(outerr)
 
-    def __xyz2gdal(self, points: List[Tuple[float, float, float]], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
+    def __xyz2gdal(self, points: [Tuple[float, float, float]], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
         """
         Get a GDAL point cloud dataset from XYZ points.
 

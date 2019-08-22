@@ -45,12 +45,10 @@ class Interpolator:
 
         Parameters
         ----------
-        dataset :
-            param shapefile:  (Default value = None)
-        dataset: gdal.Dataset :
-
-        supporting_files: str :
-             (Default value = [])
+        dataset
+            GDAL point cloud dataset
+        metadata
+            dictionary of metadata
 
         Returns
         -------

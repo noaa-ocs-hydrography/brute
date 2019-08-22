@@ -10,7 +10,6 @@ import csv as _csv
 import shutil as _shutil
 from pathlib import Path as _Path
 from tempfile import NamedTemporaryFile as _NamedTemporaryFile
-from typing import List
 
 
 class MetaReviewer:
@@ -80,7 +79,7 @@ class MetaReviewer:
         'Local': '131',
     }
 
-    def __init__(self, metafile_path: str, meta_keys: List[str]):
+    def __init__(self, metafile_path: str, meta_keys: [str]):
         """
         TODO write description
 
@@ -94,7 +93,7 @@ class MetaReviewer:
         self._metakeys = meta_keys
         self._fieldnames = self._make_col_header()
 
-    def _make_col_header(self) -> List[str]:
+    def _make_col_header(self) -> [str]:
         """TODO write description"""
         csv_cols = []
         for c in self._metakeys:
@@ -108,7 +107,7 @@ class MetaReviewer:
         csv_cols.append('Notes')
         return csv_cols
 
-    def write_meta_record(self, meta: List[dict]):
+    def write_meta_record(self, meta: [dict]):
         """
         Open the provided file and add the list of metadata in the provided
         dictionaries.
@@ -135,13 +134,13 @@ class MetaReviewer:
         else:
             self._write_new_csv(meta)
 
-    def _add_to_csv(self, meta: List[dict]):
+    def _add_to_csv(self, meta: [dict]):
         """
         Add the provided metadata to the provide file.
 
         Parameters
         ----------
-        meta: List[dict] :
+        meta: [dict] :
             TODO write description
 
         Returns
@@ -186,13 +185,13 @@ class MetaReviewer:
         # replace the original file with the temp file
         _shutil.move(tempfile.name, self._metafilename)
 
-    def _write_new_csv(self, meta: List[dict]):
+    def _write_new_csv(self, meta: [dict]):
         """
         Write the provided metadata to a new CSV file.
 
         Parameters
         ----------
-        meta: List[dict] :
+        meta: [dict] :
             TODO write description
 
         Returns
@@ -214,14 +213,14 @@ class MetaReviewer:
             for row in meta:
                 writer.writerow(row)
 
-    def _scriptkeys(self, meta: List[dict]) -> List[dict]:
+    def _scriptkeys(self, meta: [dict]) -> [dict]:
         """
         Prepend 'script: ' to each key in the list of dictionaries such that the
         list goes to the right column when written to a csv.
 
         Parameters
         ----------
-        meta: List[dict] :
+        meta: [dict] :
             TODO write description
 
         Returns
@@ -244,7 +243,7 @@ class MetaReviewer:
             new_meta.append(new_row)
         return new_meta
 
-    def read_meta_file(self) -> List[dict]:
+    def read_meta_file(self) -> [dict]:
         """
         Open the provide csv file name, extract the metadata, and combine
         duplicative rows, giving precedence to the manually entered values.

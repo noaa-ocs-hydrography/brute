@@ -13,7 +13,6 @@ import pickle
 import subprocess
 import sys
 from tempfile import TemporaryDirectory as tempdir
-from typing import Tuple, List
 
 import numpy as np
 from osgeo import gdal, ogr, osr
@@ -321,7 +320,7 @@ class ProcIO:
         del band
         del vector_dataset
 
-    def _gdal2array(self, raster: gdal.Dataset, band_index: int = 1) -> Tuple[np.array, dict]:
+    def _gdal2array(self, raster: gdal.Dataset, band_index: int = 1) -> (np.array, dict):
         """
         Extract data and metadata from the given band of a GDAL raster dataset.
         The dataset should have the `nodata` value set appropriately.
@@ -356,7 +355,7 @@ class ProcIO:
         # return the gdal data raster and metadata
         return raster.ReadAsArray(), metadata
 
-    def _point2array(self, points: gdal.Dataset, layer_index: int = 0) -> Tuple[np.array, dict]:
+    def _point2array(self, points: gdal.Dataset, layer_index: int = 0) -> (np.array, dict):
         """
         Extract points and metadata from the given layer of a GDAL point cloud dataset.
         The dataset should have the `nodata` value set appropriately.
@@ -386,7 +385,7 @@ class ProcIO:
 
         return output_points, metadata
 
-    def _point2wkt(self, points: gdal.Dataset, layer_index: int = 0) -> Tuple[List[dict], dict]:
+    def _point2wkt(self, points: gdal.Dataset, layer_index: int = 0) -> ([dict], dict):
         """
         Extract WKT and metadata from the given layer of a GDAL point cloud dataset.
         The dataset should have the `nodata` value set appropriately.
@@ -400,7 +399,7 @@ class ProcIO:
 
         Returns
         ----------
-        List[dict], dict
+        [dict], dict
             list of dictionaries of point information and a dictionary of metadata
         """
 
