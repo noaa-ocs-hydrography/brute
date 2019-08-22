@@ -72,7 +72,7 @@ def tupleGrid(grid: _np.array, nodata: int):
     return _np.array(points)
 
 
-def concatGrid(arr_1, arr_2, nodata: int):
+def concatGrid(arr_1, arr_2, nodata: int, no_nan: bool = False, split: bool = True):
     """
     Takes an input of an array of grid objects and the assumed nodata value
     Passes the assumed nodata value and the arrays held within each of the
@@ -102,16 +102,26 @@ def concatGrid(arr_1, arr_2, nodata: int):
 
     """
     if arr_1[arr_1 != nodata].size != 0 and arr_2[arr_2 != nodata].size != 0:
-        points_1 = tupleGrid(arr_1, nodata)
-        points_2 = tupleGrid(arr_2, nodata)
-        comb = _np.concatenate([points_1, points_2])
+        if not no_nan:
+            points_1 = tupleGrid(arr_1, nodata)
+            points_2 = tupleGrid(arr_2, nodata)
+            comb = _np.concatenate([points_1, points_2])
+        else:
+            comb = tupleGrid(arr_1, nodata)
         comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
         grid = _np.hsplit(comb, [2, 4])
-        z = grid[1].squeeze()
-        xy = grid[0]
+        if split:
+            z = grid[1].squeeze()
+            xy = grid[0]
+            return xy, z
+        else:
+            return grid
     else:
-        xy, z = [], []
-    return xy, z
+        if split:
+            return [], []
+        else:
+            return []
+
 
 
 def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugrids: list, maxVal: _np.array,
@@ -195,20 +205,14 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
     return nbag, nunc, polyList if debug else cpoly.astype(_np.int)
 
 
-class LinearInterpolator:
+class Interpolate:
     """
     Interpolates input data and convolves the ouput of the interpolation, if
     applicable.
 
-    Parameters
-    ----------
-
-    Returns
-    -------
-
     """
 
-    def __init__(self, bathy: _np.array, uncrt: _np.array, covrg: _np.array, catzoc: tuple, nodata: float = 1000000.0):
+    def __init__(self, method: str, bathy: _np.array, uncrt: _np.array, covrg: _np.array, catzoc: tuple = None, nodata: float = 1000000.0):
         """
         Takes input bathy and coverage arrays (tile or complete data) as well as
         the uncertainty array.  This data is used to inform the shape/size of the
@@ -218,7 +222,57 @@ class LinearInterpolator:
         to gather the edges of the each of the arrays and combine them into a
         single list of combined xy and z egde values. If xy and z are empty, the
         interpolation process is skipped and the original tile or complete data is
-        passed back from the function. Otherwise, the lists xy, z, and the shape of
+        passed back from the function.
+
+        Parameters
+        ----------
+        method : str
+            The interpolation method
+        bathy : numpy.array
+            The input bathemetry data
+        uncrt : numpy.arry
+            The input uncertainty data
+        covrg : numpy.array
+            The input coverage data
+        catzoc : tuple, optional
+            The input values for uncertainty calculation
+        nodata : float, optional
+            The default value is 1000000.0, the nodata value associated with
+            the BAG format
+
+        Attributes
+        ----------
+        bathy : numpy.array
+            The resultant bathemetry data
+        uncrt : numpy.arry
+            The resultant uncertainty data
+        unint : numpy.array
+            The pre-gaussian resultant bathemetry data
+
+
+        """
+        xi, yi = _np.meshgrid(_np.arange(bathy.shape[1]), _np.arange(bathy.shape[0]))
+        if method == 'linear':
+            xy, z = concatGrid(bathy, covrg, nodata)
+            print(xy, z)
+            if len(xy) != 0:
+                self.bathy, self.uncrt, self.unint = self._linear(xy, z, xi, yi, catzoc, nodata)
+            else:
+                self.bathy, self.uncrt, self.unint = bathy, uncrt, bathy
+        elif method == 'kriging':
+            xyz = concatGrid(bathy, covrg, nodata, no_nan=True, split=False)
+            if len(xyz) != 0:
+                self.bathy, self.uncrt, self.unint = self._kriging(xyz, xi, yi, catzoc, nodata)
+            else:
+                self.bathy, self.uncrt, self.unint = bathy, uncrt, bathy
+        else:
+            raise ValueError(f'Interpolation type "{method}" not recognized.')
+
+    def _linear(self, xy, z, xi, yi, uval, nodata):
+        """
+        Linear interpolation of input points
+
+        The lists xy, z, and the shape of
         the BAG data input are passed to :func:`scipy.interpolate.griddata` an
         output to the variable "grid_pre". The output of this function is also
         saved to a seperate variable "grid" while the original output is left
@@ -228,43 +282,6 @@ class LinearInterpolator:
         The uncertainty layer is calculated using catzoc and grid:
         >>> m, b = catzoc
         >>> uncrt = (grid*m)+b
-
-        :param bathy: The input bathemetry data
-        :param uncrt: The input uncertainty data
-        :param covrg: The input coverage data
-        :param catzoc: The input values for uncertainty calculation
-        :param nodata: The default value is 1000000.0, the nodata value associated with the BAG format
-        """
-
-        x, y = _np.arange(bathy.shape[1]), _np.arange(bathy.shape[0])
-        xi, yi = _np.meshgrid(x, y)
-        xy, z = concatGrid(bathy, covrg, nodata)
-        print(xy, z)
-        if len(xy) != 0:
-            self.bathy, self.uncrt, self.unint = self._interpolate(xy, z, xi,
-                                                                   yi, catzoc,
-                                                                   nodata)
-        else:
-            self.bathy, self.uncrt, self.unint = bathy, uncrt, bathy
-
-    def _interpolate(self, xy, z, xi, yi, uval, nodata):
-        """
-        TODO write description
-
-        Parameters
-        ----------
-        xy :
-            param z:
-        xi :
-            param yi:
-        uval :
-            param nodata:
-        z :
-
-        yi :
-
-        nodata :
-
 
         Returns
         -------
@@ -284,6 +301,9 @@ class LinearInterpolator:
         grid[grid >= 0] = nodata
         uncr = (grid * m) + b
         return grid, uncr, grid_pre
+
+    def _kriging(self, xyz, xi, yi, nodata):
+        raise NotImplementedError('The kriging method has not been implemented yet!')
 
 
 def sliceFinder(size: int, shape: Tuple[int, int], res: float, var: int = 5000):

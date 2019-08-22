@@ -403,6 +403,8 @@ class FuseProcessor:
 
         if 'from_vert_direction' not in meta:
             meta['from_vert_direction'] = 'height'
+        if 'from_vert_units' not in meta:
+            meta['from_vert_units'] = 'm'
 
         # get the rest from the config file
         meta['to_horiz_frame'] = self._config['to_horiz_frame']
