@@ -27,21 +27,15 @@ def tupleGrid(grid: _np.array, nodata: int):
 
     Parameters
     ----------
-    grid :
+    grid
         An input array
-    nodata : float
+    nodata
         The array's nodata value
-    grid: _np.array :
-
-    nodata: int :
-
 
     Returns
     -------
     numpy.array
-        Array of indecies where nodata values meet data values
-        in order x, y, z
-
+        Array of indecies where nodata values meet data values in order x, y, z
     """
 
     points = []
@@ -87,14 +81,10 @@ def concatGrid(arr_1, arr_2, nodata: int):
 
     Parameters
     ----------
-    arr_1 :
+    arr_1
         param arr_2:
-    nodata :
+    nodata
         The BAG data's nodata value
-    arr_2 :
-
-    nodata: int :
-
 
     Returns
     -------

@@ -8,8 +8,6 @@ Created on Wed Aug 22 12:27:39 2018
 Use VDatum for conversions.
 """
 
-from typing import Tuple
-
 __version__ = 'use_vdatum 0.0.1'
 
 import logging as _logging
@@ -286,7 +284,7 @@ class VDatum:
             print(output)
             print(outerr)
 
-    def __xyz2gdal(self, points: [Tuple[float, float, float]], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
+    def __xyz2gdal(self, points: [(float, float, float)], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
         """
         Get a GDAL point cloud dataset from XYZ points.
 

@@ -17,7 +17,7 @@ import re
 import socket
 import urllib
 import zipfile
-from typing import Tuple, List, Union, TextIO, Any
+from typing import List, Union, TextIO, Any
 
 import numpy as np
 import requests
@@ -203,7 +203,7 @@ def query() -> (List[str], int, str):
     return surveyIDs, newSurveysNum, paramString
 
 
-def create_polygon(coords: [Tuple[float, float]]) -> ogr.Geometry:
+def create_polygon(coords: [(float, float)]) -> ogr.Geometry:
     """
     Creates an ogr.Geometry/wkbLinearRing object from a list of coordinates.
 
