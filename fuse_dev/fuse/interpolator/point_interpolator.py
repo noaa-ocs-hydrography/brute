@@ -242,7 +242,6 @@ class PointInterpolator:
         nw_corner = geotransform[0], geotransform[3]
         spatial_reference = osr.SpatialReference(wkt=like_raster.GetProjectionRef())
         nodata = like_raster.GetRasterBand(band_index).GetNoDataValue()
-
         return self.__get_mask(shape, resolution, nw_corner, spatial_reference, nodata)
 
     def __interp_points_gdal_linear(self, points: gdal.Dataset, nodata: float = None) -> gdal.Dataset:

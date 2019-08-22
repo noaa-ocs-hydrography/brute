@@ -20,64 +20,67 @@ from tempfile import TemporaryDirectory as tempdir
 import numpy as _np
 from osgeo import gdal, ogr, osr
 
+from_hdatum = [
+    'from_horiz_frame',
+    'from_horiz_type',
+    'from_horiz_units',
+    'from_horiz_key'
+]
 
-from_hdatum = ['from_horiz_frame',
-                'from_horiz_type',
-                'from_horiz_units',
-                'from_horiz_key',
-                ]
+from_vdatum = [
+    'from_vert_key',
+    'from_vert_units',
+    'from_vert_direction'
+]
 
-from_vdatum = ['from_vert_key',
-               'from_vert_units',
-               'from_vert_direction',
-               ]
+to_hdatum = [
+    'to_horiz_frame',
+    'to_horiz_type',
+    'to_horiz_units'
+]
 
-to_hdatum = ['to_horiz_frame',
-             'to_horiz_type',
-             'to_horiz_units',
-             ]
+to_vdatum = [
+    'to_vert_key',
+    'to_vert_units',
+    'to_vert_direction'
+]
 
-to_vdatum = ['to_vert_key',
-             'to_vert_units',
-             'to_vert_direction',
-             ]
 
 class VDatum:
     """An object for working with VDatum."""
 
     def __init__(self, config: dict, reader):
         """
+        Create a new object for using VDatum.
 
         Parameters
         ----------
         config
+            dictionary of configuration
         reader
+            reader object
         """
 
-        self._config = config
         self._reader = reader
-        self._setup()
-        self._logger = _logging.getLogger('fuse')
 
-    def _setup(self):
-        """Set up the object based on the provided configuration."""
-
-        if 'vdatum_path' in self._config:
-            pth = self._config['vdatum_path']
-            if _os.path.isdir(pth):
-                self._vdatum_path = pth
+        if 'vdatum_path' in config:
+            vdatum_path = config['vdatum_path']
+            if _os.path.isdir(vdatum_path):
+                self._vdatum_path = vdatum_path
             else:
-                raise ValueError(f'Invalid vdatum folder: {pth}')
+                raise ValueError(f'Invalid vdatum folder: {vdatum_path}')
         else:
             raise ValueError('No VDatum path provided')
-        if 'java_path' in self._config:
-            pth = self._config['java_path']
-            if _os.path.isdir(pth):
-                self._java_path = pth
+        if 'java_path' in config:
+            vdatum_path = config['java_path']
+            if _os.path.isdir(vdatum_path):
+                self._java_path = vdatum_path
             else:
-                raise ValueError(f'Invalid java path: {pth}')
+                raise ValueError(f'Invalid java path: {vdatum_path}')
         else:
             raise ValueError('No java path provided')
+
+        self._logger = _logging.getLogger('fuse')
 
     def translate(self, infilename: str, instructions: dict) -> gdal.Dataset:
         """
@@ -88,131 +91,132 @@ class VDatum:
 
         Parameters
         ----------
-        infilename : str
-
-        instructions : dict
+        infilename
+            filename of data file
+        instructions
+            dictionary of metadata
 
         Returns
         -------
-        gdal.Dataset
-
+            GDAL point cloud dataset
         """
 
         self._logger.log(_logging.DEBUG, 'Begin datum transformation')
-        if not self._have_instructions(instructions):
+        if not _has_required_instructions(instructions):
             raise ValueError('The required fields for transforming datums are not available')
-        outxyz, out_zone = self._translatexyz(infilename, instructions)
+        out_xyz, out_zone = self.__translate_xyz(infilename, instructions)
         out_verdat = instructions['to_vert_key'].upper()
-        out_gdal = self._xyz2gdal(outxyz, out_zone, out_verdat)  # passing UTM zone instead of EPSG code
+        out_gdal = self.__xyz2gdal(out_xyz, out_zone, out_verdat)  # passing UTM zone instead of EPSG code
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
         return out_gdal
 
-    def create(self, infilename: str, instructions: dict) -> gdal.Dataset:
+    def create(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
-        Pass back a un-translated gdal.Dataset
+        Get a GDAL point cloud dataset from the given file.
 
         Parameters
         ----------
-        infilename : str
-
-        instructions : dict
+        filename
+            filename of data file
+        instructions
+            dictionary of metadata
 
         Returns
         -------
-        gdal.Dataset
-
+            GDAL point cloud dataset
         """
 
         if instructions['read_type'] == 'ehydro':
-            return self._read_points(infilename, instructions)
+            return self.__read_points(filename, instructions)
         elif instructions['read_type'] == 'bag':
-            return self._read_bag_bathy(infilename, instructions)
+            return self.__read_bag_bathy(filename, instructions)
         else:
             raise ValueError('Reader type not implemented')
 
-    def _read_points(self, infilename: str, instructions: dict) -> gdal.Dataset:
+    def __read_points(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
-        Pass back a un-translated gdal.Dataset
+        Pass back a un-translated GDAL point cloud dataset
 
         Parameters
         ----------
-        infilename : str
-
-        instructions : dict
+        filename
+            filename of data file
+        instructions
+            dictionary of metadata
 
         Returns
         -------
-        gdal.Dataset
-
+            GDAL point cloud dataset
         """
-        bathy = self._reader.read_bathymetry(infilename)
+
+        points = self._reader.read_bathymetry(filename)
 
         if 'to_horiz_key' in instructions:
-            ohorz = instructions['from_horiz_key']
+            utm_zone = instructions['from_horiz_key']
         if 'from_vert_key' in instructions:
-            overt = instructions['from_vert_key']
+            vertical_datum = instructions['from_vert_key']
 
-        return self._xyz2gdal(bathy, ohorz, overt)
+        return self.__xyz2gdal(points, utm_zone, vertical_datum)
 
-    def _read_bag_bathy(self, infilename: str, instructions: dict) -> gdal.Dataset:
-
-        return self._reader.read_bathy_data(infilename, instructions['to_vert_key'])
-
-    def _translatexyz(self, infilename: str, instructions: dict) -> Tuple[
-        _np.array, int]:
+    def __read_bag_bathy(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
-        TODO write description
+        Create a GDAL point cloud dataset from the given BAG file.
 
         Parameters
         ----------
-        infilename :
-            param in_hordat:
-        in_verdat :
-            param out_epsg:
-        out_verdat :
-
-        infilename: str :
-
-        in_hordat: str :
-
-        in_verdat: str :
-
-        out_epsg: int :
-
-        out_verdat: str :
-
+        filename
+            filename of BAG
+        instructions
+            dictionary of metadata
 
         Returns
         -------
-
+            GDAL point cloud dataset
         """
 
-        # read the bathy and put it in a temp file for vdatum to read
-        bathy = self._reader.read_bathymetry(infilename)
-        d = tempdir()
-        outfilename = _os.path.join(d.name, 'outfile.txt')
-        vd_dir = tempdir()
-        vdfilename = _os.path.join(vd_dir.name, 'outfile.txt')
-        vdlogfilename = _os.path.join(vd_dir.name, 'outfile.txt.log')
-        _np.savetxt(outfilename, bathy, delimiter=',')
+        return self._reader.read_bathy_data(filename, instructions['to_vert_key'])
+
+    def __translate_xyz(self, xyz_filename: str, instructions: dict) -> Tuple[_np.array, int]:
+        """
+        Reproject XYZ from the given filename.
+
+        Parameters
+        ----------
+        xyz_filename
+            filename of XYZ points
+        instructions
+            dictionary of metadata
+
+        Returns
+        -------
+            array of XYZ points and UTM zone
+        """
+
+        # read the points and put it in a temp file for VDatum to read
+        points = self._reader.read_bathymetry(xyz_filename)
+        original_directory = tempdir()
+        output_filename = _os.path.join(original_directory.name, 'outfile.txt')
+        reprojected_directory = tempdir()
+        reprojected_filename = _os.path.join(reprojected_directory.name, 'outfile.txt')
+        log_filename = _os.path.join(reprojected_directory.name, 'outfile.txt.log')
+        _np.savetxt(output_filename, points, delimiter=',')
         # set up vdatum
-        self._setup_vdatum(instructions)
+        self.__setup_vdatum(instructions)
         # run vdatum
-        self._convert_file(outfilename, vd_dir.name)
+        self.__convert_file(output_filename, reprojected_directory.name)
         if 'to_horiz_key' in instructions:
-            out_zone = instructions['to_horiz_key']
+            utm_zone = instructions['to_horiz_key']
         else:
             # read out UTM Zone from VDatum log file
-            with open(vdlogfilename, 'r') as vd_log:
-                for line in vd_log.readlines():
+            with open(log_filename, 'r') as logfile:
+                for line in logfile.readlines():
                     if line.startswith('Zone:'):
-                        Output = line[54:82]
-                        Inputzone = line[27:53]
-                        out_zone = Output.rstrip(' ')
-        new_bathy = _np.loadtxt(vdfilename, delimiter=',')
-        return new_bathy, out_zone
+                        # input_zone = line[27:53].strip()
+                        utm_zone = line[54:82].strip()
+        new_bathy = _np.loadtxt(reprojected_filename, delimiter=',')
+        return new_bathy, int(utm_zone)
 
-    def _setup_vdatum(self, instructions: dict):
+    def __setup_vdatum(self, instructions: dict):
         """
         Setup the VDatum command line arguments to convert points.
 
@@ -226,17 +230,14 @@ class VDatum:
 
         Parameters
         ----------
-        instructions : dict :
-
-
-        Returns
-        -------
-
+        instructions
+            dictionary of metadata
         """
+
         ihorz_vals = [instructions[v] for v in from_hdatum]
         ihorz = 'ihorz:' + ':'.join(ihorz_vals)
         ivert_vals = [instructions[v] for v in from_vdatum]
-        ivert = 'ivert:'  + ':'.join(ivert_vals)
+        ivert = 'ivert:' + ':'.join(ivert_vals)
         ohorz_vals = [instructions[v] for v in to_hdatum]
         ohorz = 'ohorz:' + ':'.join(ohorz_vals)
         # having the output zone is optional
@@ -251,7 +252,7 @@ class VDatum:
         file_str = ' -file:txt:comma,0,1,2,skip0:'
         self._shell = f'{java_str} -jar vdatum.jar {georef}{file_str}'
 
-    def _convert_file(self, vdinfilename: str, vdoutdir: str):
+    def __convert_file(self, filename: str, output_directory: str):
         """
         The provided file of xyz points will be converted and returned
         according to the from and to the datums provided through the
@@ -259,19 +260,13 @@ class VDatum:
 
         Parameters
         ----------
-        vdinfilename :
-            param vdoutdir:
-        vdinfilename: str :
-
-        vdoutdir: str :
-
-
-        Returns
-        -------
-
+        filename
+            filename of XYZ points file
+        output_directory
+            output directory
         """
 
-        command = f'{self._shell}{vdinfilename};{vdoutdir}'
+        command = f'{self._shell}{filename};{output_directory}'
         self._logger.log(_logging.DEBUG, command)
         try:
             proc = _subprocess.Popen(command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, cwd=self._vdatum_path)
@@ -291,57 +286,53 @@ class VDatum:
             print(output)
             print(outerr)
 
-    def _xyz2gdal(self, outxyz: List[Tuple[float, float, float]], out_zone: int, out_verdat: str) -> gdal.Dataset:
+    def __xyz2gdal(self, points: List[Tuple[float, float, float]], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
         """
-        Convert from numpy xyz array to a gdal dataset.
+        Get a GDAL point cloud dataset from XYZ points.
 
         Parameters
         ----------
-        outxyz :
-            param out_zone:
-        out_verdat :
-
-        outxyz: List[Tuple[float :
-
-        float :
-
-        float]] :
-
-        out_zone: int :
-
-        out_verdat: str :
-
+        points
+            XYZ points
+        utm_zone
+            desired UTM zone
+        vertical_datum
+            name of desired vertical datum
 
         Returns
         -------
-
+            GDAL point cloud dataset
         """
 
         # setup the gdal bucket
-        dest = osr.SpatialReference()
-        dest.SetWellKnownGeogCS('NAD83')
-        if int(out_zone) < 0:  # if out_zone is positive it is in the northern hemisphere
-            hemisphere = '0'  # 0 = South
-        else:  # if out_zone is negative it is in the southern hemisphere
-            hemisphere = '1'  # 1 =North#boolean test being passed to SetUTM
-        dest.SetUTM(int(out_zone), int(hemisphere))
-        dest.SetVertCS(out_verdat, out_verdat, 2000)
+        spatial_reference = osr.SpatialReference()
+        spatial_reference.SetWellKnownGeogCS('NAD83')
+        # positive UTM zone is in the northern hemisphere
+        spatial_reference.SetUTM(utm_zone, 1 if utm_zone > 0 else 0)
+        spatial_reference.SetVertCS(vertical_datum, vertical_datum, 2000)
         dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
-        layer = dataset.CreateLayer('pts', dest, geom_type=ogr.wkbPoint)
-        for p in outxyz:
-            newp = ogr.Geometry(ogr.wkbPoint)
-            newp.AddPoint(p[0], p[1], p[2])
+        layer = dataset.CreateLayer('pts', spatial_reference, geom_type=ogr.wkbPoint)
+        for point in points:
+            geometry = ogr.Geometry(ogr.wkbPoint)
+            geometry.AddPoint(point[0], point[1], point[2])
             feature = ogr.Feature(layer.GetLayerDefn())
-            feature.SetGeometry(newp)
+            feature.SetGeometry(geometry)
             layer.CreateFeature(feature)
         return dataset
 
-    def _have_instructions(self, instructions):
-        """Confirm the existance of required information for datum transformations."""
-        ready = True
-        req = from_hdatum + from_vdatum + to_hdatum + to_vdatum
-        for key in req:
-            if key not in instructions:
-                ready = False
-                break
-        return ready
+
+def _has_required_instructions(instructions: dict) -> bool:
+    """
+    Confirm the existance of required information for datum transformations.
+
+    Parameters
+    ----------
+    instructions
+        dictionary of metadata
+    """
+
+    for key in from_hdatum + from_vdatum + to_hdatum + to_vdatum:
+        if key not in instructions:
+            return False
+    else:
+        return True
