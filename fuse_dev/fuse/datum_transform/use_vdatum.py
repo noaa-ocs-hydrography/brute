@@ -102,9 +102,10 @@ class VDatum:
         self._logger.log(_logging.DEBUG, 'Begin datum transformation')
         if not _has_required_instructions(instructions):
             raise ValueError('The required fields for transforming datums are not available')
-        out_xyz, utm_zone = self.__translate_xyz(filename, instructions)
+        points, utm_zone = self.__translate_xyz(filename, instructions)
         vertical_datum = instructions['to_vert_key'].upper()
-        dataset = self.__xyz2gdal(out_xyz, utm_zone, vertical_datum)  # passing UTM zone instead of EPSG code
+        # passing UTM zone instead of EPSG code
+        dataset = self.__xyz2gdal(points, utm_zone, vertical_datum)
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
         return dataset
 
@@ -174,13 +175,13 @@ class VDatum:
 
         return self._reader.read_bathy_data(filename, instructions['to_vert_key'])
 
-    def __translate_xyz(self, xyz_filename: str, instructions: dict) -> (_np.array, int):
+    def __translate_xyz(self, filename: str, instructions: dict) -> (_np.array, int):
         """
         Reproject XYZ from the given filename.
 
         Parameters
         ----------
-        xyz_filename
+        filename
             filename of XYZ points
         instructions
             dictionary of metadata
@@ -191,28 +192,30 @@ class VDatum:
         """
 
         # read the points and put it in a temp file for VDatum to read
-        points = self._reader.read_bathymetry(xyz_filename)
+        points = self._reader.read_bathymetry(filename)
         original_directory = tempdir()
         output_filename = _os.path.join(original_directory.name, 'outfile.txt')
         reprojected_directory = tempdir()
         reprojected_filename = _os.path.join(reprojected_directory.name, 'outfile.txt')
         log_filename = _os.path.join(reprojected_directory.name, 'outfile.txt.log')
+        # save point array to file
         _np.savetxt(output_filename, points, delimiter=',')
-        # set up vdatum
+        # translate points with VDatum
         self.__setup_vdatum(instructions)
-        # run vdatum
         self.__convert_file(output_filename, reprojected_directory.name)
         if 'to_horiz_key' in instructions:
-            utm_zone = instructions['to_horiz_key']
+            utm_zone = int(instructions['to_horiz_key'])
         else:
             # read out UTM Zone from VDatum log file
             with open(log_filename, 'r') as logfile:
                 for line in logfile.readlines():
                     if line.startswith('Zone:'):
                         # input_zone = line[27:53].strip()
-                        utm_zone = line[54:82].strip()
-        new_bathy = _np.loadtxt(reprojected_filename, delimiter=',')
-        return new_bathy, int(utm_zone)
+                        utm_zone = int(line[54:82].strip())
+                        break
+                else:
+                    raise ValueError(f'no UTM zone found in file "{filename}"')
+        return _np.loadtxt(reprojected_filename, delimiter=','), utm_zone
 
     def __setup_vdatum(self, instructions: dict):
         """
@@ -232,23 +235,17 @@ class VDatum:
             dictionary of metadata
         """
 
-        ihorz_vals = [instructions[v] for v in from_hdatum]
-        ihorz = 'ihorz:' + ':'.join(ihorz_vals)
-        ivert_vals = [instructions[v] for v in from_vdatum]
-        ivert = 'ivert:' + ':'.join(ivert_vals)
-        ohorz_vals = [instructions[v] for v in to_hdatum]
-        ohorz = 'ohorz:' + ':'.join(ohorz_vals)
         # having the output zone is optional
+        local_to_hdatum = to_hdatum.copy()
         if 'to_horiz_key' in instructions:
-            ohorz = ohorz + ':' + instructions['to_horiz_key']
-        else:
-            ohorz = ohorz + ':'
-        overt_vals = [instructions[v] for v in to_vdatum]
-        overt = 'overt:' + ':'.join(overt_vals)
-        georef = f'{ihorz} {ivert} {ohorz} {overt}'
-        java_str = _os.path.join(self._java_path, 'java')
-        file_str = ' -file:txt:comma,0,1,2,skip0:'
-        self._shell = f'{java_str} -jar vdatum.jar {georef}{file_str}'
+            local_to_hdatum.append('to_horiz_key')
+
+        self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
+                      f'ihorz:{":".join(instructions[key] for key in from_hdatum)} ' + \
+                      f'ivert:{":".join(instructions[key] for key in from_vdatum)} ' + \
+                      f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
+                      f'overt:{":".join(instructions[key] for key in to_vdatum)} ' + \
+                      f'-file:txt:comma,0,1,2,skip0:'
 
     def __convert_file(self, filename: str, output_directory: str):
         """
@@ -312,7 +309,7 @@ class VDatum:
         layer = dataset.CreateLayer('pts', spatial_reference, geom_type=ogr.wkbPoint)
         for point in points:
             geometry = ogr.Geometry(ogr.wkbPoint)
-            geometry.AddPoint(point[0], point[1], point[2])
+            geometry.AddPoint(*point)
             feature = ogr.Feature(layer.GetLayerDefn())
             feature.SetGeometry(geometry)
             layer.CreateFeature(feature)
