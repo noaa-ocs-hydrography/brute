@@ -78,12 +78,13 @@ class Interpolator:
             if not support_files:
                 interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution)
             else:
-                interpolated_dataset =  self._engine.interpolate(dataset, self._interp_type, self._resolution, support_files[0])
+                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution,
+                                                                support_files[0])
 
             dataset_resolution = interpolated_dataset.GetGeoTransform()[1]
 
             if dataset_resolution < 1:
-                resolution = f'{int(dataset_resolution*100)}cm'
+                resolution = f'{int(dataset_resolution * 100)}cm'
             elif dataset_resolution >= 1:
                 resolution = f'{int(dataset_resolution)}m'
 

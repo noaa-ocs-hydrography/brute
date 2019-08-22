@@ -83,7 +83,7 @@ class ProcIO:
             else:
                 raise ValueError('No database name or location provided')
 
-    def write(self, dataset, filename: str, metadata: dict = None, show_console: bool = False):
+    def write(self, dataset: gdal.Dataset, filename: str, metadata: dict = None, show_console: bool = False):
         """
         Write the provided data to the predefined data type.
 
