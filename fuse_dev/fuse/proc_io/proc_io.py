@@ -14,6 +14,8 @@ import subprocess
 import sys
 from tempfile import TemporaryDirectory as tempdir
 
+import fiona
+import fiona.crs
 import numpy as np
 from osgeo import gdal, ogr, osr
 
@@ -233,7 +235,7 @@ class ProcIO:
         del output_raster
         self._logger.log(logging.DEBUG, 'BAG file created')
 
-    def _write_points(self, points: gdal.Dataset, filename: str, layer_index: int = 0):
+    def _write_points(self, points: gdal.Dataset, filename: str, layer_index: int = 0, output_layer: str = 'Elevation'):
         """
         Write provided GDAL point cloud dataset to a geopackage file.
 
@@ -245,43 +247,45 @@ class ProcIO:
             filename to write geopackage
         layer_index
             index of vector layer containing points
+        output_layer
+            name of layer to create
         """
 
         filename = f'{os.path.splitext(filename)[0]}_Points.gpkg'
         if os.path.exists(filename):
             os.remove(filename)
 
-        points, meta = self._point2wkt(points, layer_index=layer_index)
-        projection = osr.SpatialReference(wkt=meta['crs'])
+        points, meta = self._point2array(points, layer_index=layer_index)
+        projection = fiona.crs.from_string(meta['crs'])
 
-        geopackage_driver = ogr.GetDriverByName('GPKG')
-        vector_dataset = geopackage_driver.CreateDataSource(filename)
-        layer = vector_dataset.CreateLayer('Point', projection, ogr.wkbMultiPoint)
+        layer_schema = {
+            'geometry': 'Point',
+            'properties': {
+                'X': 'float',
+                'Y': 'float',
+                'Z': 'float',
+                'Elevation': 'float',
+                'Feature Type': 'str'
+            }
+        }
 
-        # set attribute fields of layers
-        layer.CreateField(ogr.FieldDefn('X', ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn('Y', ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn('Z', ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn('Elevation', ogr.OFTReal))
-        layer.CreateField(ogr.FieldDefn('Feature Type', ogr.OFTString))
-        layer_definition = layer.GetLayerDefn()
+        # in fiona features are input as dictionary "records"
+        point_records = [{
+            'geometry': {
+                'type': 'Point',
+                'coordinates': tuple(point)
+            },
+            'properties': {
+                'X': point[0],
+                'Y': point[1],
+                'Z': point[2],
+                'Elevation': point[2],
+                'Feature Type': 'Point'
+            }
+        } for point in points]
 
-        for point in points:
-            # create a new feature with attribute and geometry
-            feature = ogr.Feature(layer_definition)
-            feature.SetField('X', point['x'])
-            feature.SetField('Y', point['y'])
-            feature.SetField('Z', point['z'])
-            feature.SetField('Elevation', point['z'])
-            feature.SetField('Feature Type', 'Point')
-
-            # set the geometry from the well-known text string
-            feature.SetGeometry(ogr.CreateGeometryFromWkt(point['wkt']))
-
-            layer.CreateFeature(feature)
-
-        # Save and close everything
-        del vector_dataset, layer
+        with fiona.open(filename, 'w', 'GPKG', schema=layer_schema, crs=projection, layer=output_layer) as output_file:
+            output_file.writerecords(point_records)
 
     def _write_vectorized_raster(self, raster: gdal.Dataset, filename: str, band_index: int = 1):
         """

@@ -138,12 +138,11 @@ class PointInterpolator:
             mask = rasterize_like(vector_file_path, interpolated_dataset, output_resolution)
             output_dataset = _mask_raster(interpolated_dataset, mask)
         elif method == 'kriging':
-            chunks_per_side = 128
-            method = f'{method}_{chunks_per_side}x{chunks_per_side}'
+            chunk_size = (40, 40)
+            method = f'{method}_{chunk_size[0]}x{chunk_size[1]}'
 
             # interpolate using Ordinary Kriging
-            interpolated_dataset = self.__interp_points_pykrige_kriging(points, output_resolution, self.window_size,
-                                                                        chunks_per_side=chunks_per_side)
+            interpolated_dataset = self.__interp_points_pykrige_kriging(points, output_resolution, chunk_size)
 
             # trim interpolation back using the original dataset as a mask
             # mask = self.__get_mask_like(interpolated_dataset)
@@ -347,8 +346,8 @@ class PointInterpolator:
 
         return interpolated_raster
 
-    def __interp_points_pykrige_kriging(self, gdal_points: gdal.Dataset, output_resolution: float, nodata: float = None,
-                                        chunks_per_side: int = 128) -> gdal.Dataset:
+    def __interp_points_pykrige_kriging(self, gdal_points: gdal.Dataset, output_resolution: float,
+                                        chunk_size: (float, float), nodata: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via kriging (using PyKrige).
 
@@ -358,11 +357,11 @@ class PointInterpolator:
             GDAL point cloud dataset
         output_resolution
             resolution of output grid
+        chunk_size
+            size of each chunk with which to divide the interpolation task, in units
+            setting this value to less than 40x20 has adverse consequences on memory consumption
         nodata
             value for no data in output grid
-        chunks_per_side
-            number of chunks per side in the square with which to divide the interpolation task
-            setting this value to less than 5 has adverse consequences on memory consumption
 
         Returns
         -------
@@ -370,11 +369,16 @@ class PointInterpolator:
             interpolated grid
         """
 
+        if type(chunk_size) is not numpy.array:
+            chunk_size = numpy.array(chunk_size)
+
         if nodata is None:
             nodata = self.nodata
 
-        if chunks_per_side <= 4:
-            raise ValueError(f'number of chunks per side should be above 4')
+        assert not numpy.any(chunk_size < numpy.array((40, 20))), 'a small chunk size may freeze your computer'
+
+        chunk_shape = numpy.array(numpy.round(numpy.flip(chunk_size / output_resolution)), numpy.int)
+        expand_indices = numpy.round(chunk_shape / 2).astype(numpy.int)
 
         input_points_sw = numpy.array((self.input_bounds[0], self.input_bounds[1]))
 
@@ -384,15 +388,13 @@ class PointInterpolator:
         interpolated_grid_values = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
         interpolated_grid_variance = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
 
-        chunk_shape = numpy.array(numpy.round(interpolated_grid_shape / chunks_per_side), numpy.int)
-        expand_indices = numpy.round(chunk_shape / 2).astype(numpy.int)
+        chunks = numpy.array(numpy.floor(interpolated_grid_shape / chunk_shape), numpy.int)
 
         chunk_grid_index = numpy.array((0, 0), numpy.int)
         with futures.ProcessPoolExecutor() as concurrency_pool:
             running_futures = {}
 
-            chunks = chunks_per_side ** 2
-            for chunk_index in range(chunks):
+            for chunk_index in range(int(numpy.product(chunks))):
                 # determine indices of the lower left and upper right bounds of the chunk within the output grid
                 grid_start_index = numpy.array(chunk_grid_index * chunk_shape)
                 grid_end_index = grid_start_index + chunk_shape
@@ -414,15 +416,20 @@ class PointInterpolator:
                                                              interpolated_grid_y[grid_slice[0]])
                     running_futures[current_future] = grid_slice
 
-                if chunk_grid_index[1] >= chunks_per_side - 1:
-                    chunk_grid_index[1] = 0
-                    chunk_grid_index[0] += 1
-                else:
+                if chunk_grid_index[0] >= chunks[0]:
+                    chunk_grid_index[0] = 0
                     chunk_grid_index[1] += 1
+                else:
+                    chunk_grid_index[0] += 1
 
             for _, completed_future in enumerate(futures.as_completed(running_futures)):
                 grid_slice = running_futures[completed_future]
-                chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
+
+                try:
+                    chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
+                except Exception as error:
+                    # I have absolutely no idea why this error happens, but wrapping it in `try ... except` seems to work without negative consequences
+                    pass
                 interpolated_grid_values[grid_slice] = chunk_interpolated_values
                 interpolated_grid_variance[grid_slice] = chunk_interpolated_variance
 
@@ -668,8 +675,8 @@ def rasterize_like(vector_file_path: str, like_raster: gdal.Dataset, output_reso
     input_spatial_reference = like_raster.GetProjectionRef()
 
     if input_spatial_reference == '':
-        output_spatial_reference = osr.SpatialReference(
-            'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]')
+        output_spatial_reference = osr.SpatialReference()
+        output_spatial_reference.ImportFromEPSG(4326)
     else:
         output_spatial_reference = osr.SpatialReference(wkt=input_spatial_reference)
         output_spatial_reference.MorphFromESRI()

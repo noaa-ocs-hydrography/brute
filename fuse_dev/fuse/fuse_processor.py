@@ -278,47 +278,30 @@ class FuseProcessor:
         self._interpolator = _interp.Interpolator(engine, method, res)
 
     def _set_data_writer(self):
-        """
-        Set up the location and method to write tranformed and interpolated
-        data.
+        """Set up the location and method to write tranformed and interpolated data."""
 
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        """
-
-        ext = self._config['bathymetry_intermediate_file']
-        if ext == 'bag':
-            ext2 = 'gpkg'
+        raster_extension = self._config['bathymetry_intermediate_file']
+        if raster_extension == 'bag':
+            point_extension = 'gpkg'
         else:
-            ext2 = ext
-        self._writer = ProcIO('gdal', ext)
-        self._points = ProcIO('point', ext2)
+            point_extension = raster_extension
+        self._raster_writer = ProcIO('gdal', raster_extension)
+        self._point_writer = ProcIO('point', point_extension)
 
-    def read(self, infilename: str):
+    def read(self, filename: str):
         """
-        The file name to use to read the bathymetry and metadata into useable
-        forms.
+        Read survey bathymetry and metadata into useable forms.
 
         Parameters
         ----------
-        infilename :
-
-        infilename: str :
-
-
-        Returns
-        -------
-
+        filename
+            Filename of survey bathymetry.
         """
 
         if self._read_type == 'ehydro':
-            self._read_ehydro(infilename)
+            self._read_ehydro(filename)
         elif self._read_type == 'bag':
-            self._read_noaa_bag(infilename)
+            self._read_noaa_bag(filename)
         else:
             raise ValueError('Reader type not implemented')
 
@@ -473,7 +456,7 @@ class FuseProcessor:
             dataset, transformed = self._transform.translate(infilename, metadata)
             if self._read_type == 'ehydro':
                 outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
-                self._points.write(dataset, outfilename)
+                self._point_writer.write(dataset, outfilename)
                 metadata['to_filename'] = outfilename
             if self._read_type == 'bag':
                 metadata['to_filename'] = infilename
@@ -483,7 +466,7 @@ class FuseProcessor:
                 if interpolate == 'True':
                     meta_interp = metadata.copy()
                     dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
-                    self._writer.write(dataset, meta_interp['to_filename'])
+                    self._raster_writer.write(dataset, meta_interp['to_filename'])
                     self._meta_obj.write_meta_record(meta_interp)
 
                 elif interpolate == 'False':
