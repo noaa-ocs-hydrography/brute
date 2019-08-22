@@ -763,11 +763,11 @@ def _check_special_handling(basename):
     -------
     """
     special_handling = ''
-    if basename.find('.ppxyz')>0:
+    if basename.find('.ppxyz') > 0:
         special_handling = 'ppxyz'
-    full_res = ['_A.xyz', '_A.XYZ', '_FULL.xyz', '_FULL.XYZ']
+    full_res = [ '_A.XYZ', '_FULL.XYZ']#_A.xyz, _FULL.xyz
     for ext_full in full_res:
-        if basename.find(ext_full)>0:
+        if basename.upper().find(ext_full) > 0:
             special_handling = 'FullRES'
     return special_handling
     
