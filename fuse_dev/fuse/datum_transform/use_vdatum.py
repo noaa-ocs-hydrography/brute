@@ -80,7 +80,7 @@ class VDatum:
 
         self._logger = _logging.getLogger('fuse')
 
-    def translate(self, infilename: str, instructions: dict) -> gdal.Dataset:
+    def translate(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
         Translate the provided filename from the provided in datums to the out
         datums and return a gdal object.
@@ -89,7 +89,7 @@ class VDatum:
 
         Parameters
         ----------
-        infilename
+        filename
             filename of data file
         instructions
             dictionary of metadata
@@ -102,11 +102,11 @@ class VDatum:
         self._logger.log(_logging.DEBUG, 'Begin datum transformation')
         if not _has_required_instructions(instructions):
             raise ValueError('The required fields for transforming datums are not available')
-        out_xyz, out_zone = self.__translate_xyz(infilename, instructions)
-        out_verdat = instructions['to_vert_key'].upper()
-        out_gdal = self.__xyz2gdal(out_xyz, out_zone, out_verdat)  # passing UTM zone instead of EPSG code
+        out_xyz, utm_zone = self.__translate_xyz(filename, instructions)
+        vertical_datum = instructions['to_vert_key'].upper()
+        dataset = self.__xyz2gdal(out_xyz, utm_zone, vertical_datum)  # passing UTM zone instead of EPSG code
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
-        return out_gdal
+        return dataset
 
     def create(self, filename: str, instructions: dict) -> gdal.Dataset:
         """

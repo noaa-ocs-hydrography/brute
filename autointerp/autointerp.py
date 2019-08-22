@@ -1204,7 +1204,7 @@ def triangulateSurfaces(grids: list, combo: _np.array, vals: _np.array, uval: tu
     return grid, uncr, grid_pre
 
 
-def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
+def bagSave(bag, new, tifs, res, ext, path, newu, poly_list, ioVal):
     """
     Primary function for saving final products of the tool.
 
@@ -1228,7 +1228,7 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
 
     path :
 
-    polyList :
+    poly_list :
 
 
     Returns
@@ -1270,13 +1270,13 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
         elif not _os.path.exists(outputpath2):
             break
 
-    for num in range(len(polyList)):
+    for num in range(len(poly_list)):
         outputpath = _os.path.join(path, f'{bagName}_{num}.tif')
         print(outputpath)
-        write_raster(polyList[num], gtran, gd_obj, outputpath, dtype=_gdal.GDT_Float64, nodata=0,
+        write_raster(poly_list[num], gtran, gd_obj, outputpath, dtype=_gdal.GDT_Float64, nodata=0,
                      options=['COMPRESS=LZW'])
 
-    del polyList
+    del poly_list
     _shutil.copy2(bag[1], outputpath2)
 
     with _tb.open_file(outputpath2, mode='a') as bagfile:

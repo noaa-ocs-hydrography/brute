@@ -114,7 +114,7 @@ class MetaReviewer:
 
         Parameters
         ----------
-        meta: Union[List[dict], dict] :
+        meta
             TODO write description
 
         Returns

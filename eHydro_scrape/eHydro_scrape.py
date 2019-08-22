@@ -17,7 +17,7 @@ import re
 import socket
 import urllib
 import zipfile
-from typing import List, Union, TextIO, Any
+from typing import Union, TextIO, Any
 
 import numpy as np
 import requests
@@ -78,7 +78,7 @@ if not os.path.exists(running):
     os.mkdir(running)
 
 
-def query() -> (List[str], int, str):
+def query() -> ([str], int, str):
     """
     Holds the Queries for the eHydro REST API, asks for responses, and uses
     the json library to make it readable by the program. Returns the json
@@ -95,7 +95,6 @@ def query() -> (List[str], int, str):
 
     Returns
     -------
-    type
         List of survey ids from query, total number of surveys returned by the
         query, and a string containing the parameters gathered from the config
         file
@@ -195,10 +194,12 @@ def query() -> (List[str], int, str):
     else:
         dist = config['Agencies']['Agencies']
 
-    paramString = f'\tParameters:\n\t\tStart Date: {start}' + \
-                  f'\n\t\tEnd Date: {end}\n\t\tDistricts: {dist}' + \
-                  f'\n\t\tQuery Only Districts: {config["Agencies"]["Only Listed"]}' + \
-                  f'\n\t\tKeep All Data: {config["Resolutions"]["Override"]}'
+    paramString = f'\tParameters:\n' + \
+                  f'\t\tStart Date: {start}\n' + \
+                  f'\t\tEnd Date: {end}\n' + \
+                  f'\t\tDistricts: {dist}\n' + \
+                  f'\t\tQuery Only Districts: {config["Agencies"]["Only Listed"]}\n' + \
+                  f'\t\tKeep All Data: {config["Resolutions"]["Override"]}'
 
     return surveyIDs, newSurveysNum, paramString
 
