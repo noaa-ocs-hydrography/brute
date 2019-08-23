@@ -30,13 +30,12 @@ class RasterInterpolator:
     def interpolate(self, dataset, interpolation_type: str,
                     support_files: list, size: int, catzoc: str = 'A2/B',
                     io: bool = False):
-        if interpolation_type == 'linear':
-            return self._linear(dataset, support_files, catzoc, io, size)
-        else:
-            raise ValueError('Interpolation type not implemented:'
-                             + f'{interpolation_type}')
+        if interpolation_type not in ('linear', 'kriging'):
+            raise ValueError(f'Interpolation type "{interpolation_type}" not recognized.')
+        return self._process(interpolation_type, dataset, support_files, catzoc, io, size)
 
-    def _linear(self, dataset, support_files: list, catzoc: str, io: bool, size: int):
+
+    def _process(self, method, dataset, support_files: list, catzoc: str, io: bool, size: int):
         """
         Linear interpolation of a raster using supporting files as a mask
 
@@ -80,7 +79,7 @@ class RasterInterpolator:
                     bathTile = _itp.chunk(bag.elevation, tile, mode='a')
                     uncrTile = _itp.chunk(bag.uncertainty, tile, mode='a')
                     print('interp is next')
-                    interp = _itp.LinearInterpolator(bathTile, uncrTile, covgTile, uval)
+                    interp = _itp.Interpolate(method, bathTile, uncrTile, covgTile, catzoc=uval)
                     del covgTile, bathTile, uncrTile
                     unitedBag = _itp.chunk(interp.bathy, tile, mode='c',
                                            copy=unitedBag)
@@ -99,7 +98,7 @@ class RasterInterpolator:
             ts = _dt.now()
             print('\nTile 1 of 1 -', ts)
             print('interp is next')
-            interp = _itp.LinearInterpolator(bag.elevation, bag.uncertainty,
+            interp = _itp.Interpolate(method, bag.elevation, bag.uncertainty,
                                              coverage.array, uval)
             ugrids = [interp.bathy, interp.uncrt, interp.unint]
             del interp
