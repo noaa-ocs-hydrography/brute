@@ -116,13 +116,13 @@ class FuseProcessor:
         self._config = self._read_configfile(configfilename)
         self.rawdata_path = self._config['rawpaths']
         self.procdata_path = self._config['outpath']
-        self._cols = self._paths + \
-                     self._dates + \
-                     self._datums + \
-                     self._quality_metrics + \
-                     self._scores + \
-                     self._source_info + \
-                     self._processing_info
+        self._cols = FuseProcessor._paths + \
+                     FuseProcessor._dates + \
+                     FuseProcessor._datums + \
+                     FuseProcessor._quality_metrics + \
+                     FuseProcessor._scores + \
+                     FuseProcessor._source_info + \
+                     FuseProcessor._processing_info
         self._meta_obj = _mr.MetaReviewer(self._config['metapath'], self._cols)
         self._set_data_reader()
         self._set_data_transform()
@@ -398,6 +398,8 @@ class FuseProcessor:
 
         if 'from_vert_direction' not in meta:
             meta['from_vert_direction'] = 'height'
+        if 'from_vert_units' not in meta:
+            meta['from_vert_units'] = 'm'
 
         # get the rest from the config file
         meta['to_horiz_frame'] = self._config['to_horiz_frame']
@@ -444,7 +446,7 @@ class FuseProcessor:
         metadata = self._get_stored_meta(infilename)
         metadata['read_type'] = self._read_type
         self._set_log(infilename)
-        if 'from_fips' in metadata or 'from_horiz_frame' in metadata:
+        if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
             outpath = self._config['outpath']
             infilepath, infilebase = _os.path.split(infilename)
@@ -474,7 +476,8 @@ class FuseProcessor:
             else:
                 raise ValueError('metadata has no >interpolate< value')
         else:
-            self.logger.log(_logging.DEBUG, 'No fips code found')
+            msg = 'All metadata for datum transformation not avaiable.'
+            self.logger.log(_logging.DEBUG, msg)
         self._close_log()
 
     def post(self, infilename):
