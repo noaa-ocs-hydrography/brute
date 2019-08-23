@@ -107,11 +107,11 @@ class PointInterpolator:
 
         self.input_bounds = _bounds_from_points(points_2d)
         self.output_shape, self.output_bounds = _shape_from_cell_size(output_resolution, self.input_bounds)
-        self.input_spatial_reference = points.GetLayerByIndex(layer_index).GetSpatialRef().ExportToWkt()
-        if self.input_spatial_reference != '':
-            self.input_epsg = int(osr.SpatialReference(wkt=self.input_spatial_reference).GetAttrValue('AUTHORITY', 1))
-        else:
-            self.input_epsg = 4326
+        self.crs_wkt = points.GetLayerByIndex(layer_index).GetSpatialRef().ExportToWkt()
+        if self.crs_wkt == '':
+            srs = osr.SpatialReference()
+            srs.ImportFromEPSG(4326)
+            self.crs_wkt = srs.ExportToWkt()
 
         # get minimum distance to all nearest neighbors
         min_point_spacing = numpy.min(cKDTree(points_2d).query(points_2d, k=2)[0][:, 1])
@@ -132,7 +132,8 @@ class PointInterpolator:
             # interpolate using Ordinary Kriging (`pykrige`) by dividing data into smaller chunks
             chunk_size = (40, 40)
             method = f'{method}_{chunk_size[0]}x{chunk_size[1]}'
-            interpolated_dataset = self.__interp_points_pykrige_kriging(points, output_resolution, chunk_size)
+            interpolated_dataset = self.__interp_points_pykrige_kriging(self.input_points, output_resolution,
+                                                                        chunk_size)
         else:
             raise ValueError(f'Interpolation type "{method}" not recognized.')
 
@@ -148,7 +149,7 @@ class PointInterpolator:
         return output_dataset
 
     def __get_mask(self, shape: (float, float), resolution: float, nw_corner: (float, float),
-                   spatial_reference: osr.SpatialReference = None, nodata: float = None) -> gdal.Dataset:
+                   crs_wkt: str = None, nodata: float = None) -> gdal.Dataset:
         """
         Get a mask of the survey area with the given raster properties.
 
@@ -160,7 +161,7 @@ class PointInterpolator:
             cell size of mask
         nw_corner
             northwest corner
-        spatial_reference
+        crs_wkt
             spatial reference of mask
         nodata
             value for no data in mask
@@ -174,12 +175,8 @@ class PointInterpolator:
         if type(nw_corner) is not numpy.array:
             nw_corner = numpy.array(nw_corner)
 
-        if spatial_reference is None or spatial_reference.ExportToWkt() == '':
-            epsg = self.input_epsg
-            spatial_reference = osr.SpatialReference()
-            spatial_reference.ImportFromEPSG(epsg)
-        else:
-            epsg = spatial_reference.GetAttrValue('AUTHORITY', 1)
+        if crs_wkt is None or crs_wkt == '':
+            crs_wkt = self.crs_wkt
 
         if nodata is None:
             nodata = self.nodata
@@ -188,7 +185,7 @@ class PointInterpolator:
 
         with rasterio.io.MemoryFile() as rasterio_memory_file:
             with rasterio_memory_file.open(driver='GTiff', width=shape[1], height=shape[0], count=1,
-                                           crs=rasterio.crs.CRS.from_epsg(epsg),
+                                           crs=rasterio.crs.CRS.from_wkt(crs_wkt),
                                            transform=rasterio.transform.Affine.translation(*nw_corner) *
                                                      rasterio.transform.Affine.scale(resolution, resolution),
                                            dtype=rasterio.float64, nodata=numpy.array([nodata]).astype(
@@ -199,7 +196,7 @@ class PointInterpolator:
                 masked_data, masked_transform = rasterio.mask.mask(memory_raster, [concave_hull])
 
         output_dataset = gdal.GetDriverByName('MEM').Create('', shape[1], shape[0], 1, gdal.GDT_Float32)
-        output_dataset.SetProjection(f'EPSG:{epsg}')
+        output_dataset.SetProjection(crs_wkt)
         output_dataset.SetGeoTransform((masked_transform.c, masked_transform.a, masked_transform.b,
                                         masked_transform.f, masked_transform.d, masked_transform.e))
         output_band = output_dataset.GetRasterBand(1)
@@ -229,14 +226,13 @@ class PointInterpolator:
         geotransform = like_raster.GetGeoTransform()
         resolution = geotransform[1]
         nw_corner = geotransform[0], geotransform[3]
-        input_projection = like_raster.GetProjectionRef()
-        spatial_reference = osr.SpatialReference()
-        if re.match('^EPSG:[0-9]+$', input_projection):
-            spatial_reference.ImportFromEPSG(int(input_projection[-4:]))
-        else:
-            spatial_reference.ImportFromWkt(input_projection)
+        crs_wkt = like_raster.GetProjectionRef()
+        if re.match('^EPSG:[0-9]+$', crs_wkt):
+            srs = osr.SpatialReference()
+            srs.ImportFromEPSG(int(crs_wkt[-4:]))
+            crs_wkt = srs.ExportToWkt()
         nodata = like_raster.GetRasterBand(band_index).GetNoDataValue()
-        return self.__get_mask(shape, resolution, nw_corner, spatial_reference, nodata)
+        return self.__get_mask(shape, resolution, nw_corner, crs_wkt, nodata)
 
     def __interp_points_gdal_linear(self, points: gdal.Dataset, nodata: float = None) -> gdal.Dataset:
         """
@@ -341,15 +337,15 @@ class PointInterpolator:
 
         return interpolated_raster
 
-    def __interp_points_pykrige_kriging(self, gdal_points: gdal.Dataset, output_resolution: float,
+    def __interp_points_pykrige_kriging(self, points: numpy.array, output_resolution: float,
                                         chunk_size: (float, float), nodata: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via kriging (using PyKrige).
 
         Parameters
         ----------
-        gdal_points
-            GDAL point cloud dataset
+        points
+            N x 3 array of XYZ points
         output_resolution
             resolution of output grid
         chunk_size
@@ -419,26 +415,23 @@ class PointInterpolator:
 
             for _, completed_future in enumerate(futures.as_completed(running_futures)):
                 grid_slice = running_futures[completed_future]
-
                 try:
                     chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
                 except Exception as error:
                     # I have absolutely no idea why this error happens, but wrapping it in `try ... except` seems to work without negative consequences
-                    pass
+                    print(error)
                 interpolated_grid_values[grid_slice] = chunk_interpolated_values
                 interpolated_grid_variance[grid_slice] = chunk_interpolated_variance
 
         interpolated_grid_uncertainty = numpy.sqrt(interpolated_grid_variance) * 2.5
         del interpolated_grid_variance
 
-        memory_raster_driver = gdal.GetDriverByName('MEM')
-        output_dataset = memory_raster_driver.Create('temp', self.output_shape[1], self.output_shape[0], 2,
-                                                     gdal.GDT_Float32)
+        output_dataset = gdal.GetDriverByName('MEM').Create('temp', self.output_shape[1], self.output_shape[0], 2,
+                                                            gdal.GDT_Float32)
 
-        output_geotransform = self.output_bounds[0], output_resolution, 0.0, \
-                              self.output_bounds[1], 0.0, output_resolution
-        output_dataset.SetGeoTransform(output_geotransform)
-        output_dataset.SetProjection(f'EPSG:{self.input_epsg}')
+        output_dataset.SetGeoTransform((self.output_bounds[0], output_resolution, 0.0,
+                                        self.output_bounds[1], 0.0, output_resolution))
+        output_dataset.SetProjection(self.crs_wkt)
 
         band_1 = output_dataset.GetRasterBand(1)
         band_1.SetNoDataValue(nodata)
@@ -641,7 +634,7 @@ def _krige_onto_grid(input_points: numpy.array, output_x: numpy.array, output_y:
     Parameters
     ----------
     input_points
-        array of points (N x M)
+        N x 3 array of XYZ points
     output_x
         X values of output grid
     output_y
@@ -666,7 +659,7 @@ def _boundary_edges(points: numpy.array, radius: float = 1.0):
     Parameters
     ----------
     points
-        N x M array of points
+        N x 3 array of XYZ points
     radius
         radius of triangulation
     """
@@ -714,7 +707,7 @@ def _alpha_hull(points: numpy.array, radius: float = 1.0):
     Parameters
     ----------
     points
-        N x M array of points
+        N x 3 array of XYZ points
     radius
         radius of triangulation
     """

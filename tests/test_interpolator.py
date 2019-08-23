@@ -46,17 +46,16 @@ class TestPointInterpolator(unittest.TestCase):
             pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
 
         survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
+        file_type = 'csar'
 
         input_path = os.path.join(input_directory, survey_name, f'{survey_name}.XYZ')
         config_path = os.path.join('data', 'cenan_kriging.config')
-        processed_path = os.path.join(processed_directory, f'{survey_name}.csar')
-        output_path = os.path.join(processed_directory, f'{survey_name}_5m_interp.csar')
+        output_path = os.path.join(processed_directory, f'{survey_name}_5m_interp.{file_type}')
 
         cenan_fuse_processor = FuseProcessor(config_path)
         cenan_fuse_processor.read(input_path)
         cenan_fuse_processor.process(input_path)
 
-        assert os.path.exists(processed_path)
         assert os.path.exists(output_path)
 
 
