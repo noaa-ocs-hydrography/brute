@@ -7,6 +7,7 @@ transform.py
 Abstract datum transformation.
 """
 
+import gdal
 from fuse.datum_transform import use_vdatum as uv
 
 
@@ -14,63 +15,39 @@ class DatumTransformer:
     """
     An object for abstracting the datum transformation API.  This should allow
     for different transformation machines and versions.
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-
     """
 
     def __init__(self, config: dict, reader):
         """
-        Provided a key and a config file, get the method to use for datum
-        conversion.
+        Set up and configure the transformation tools based on the information provided in the configruation file.
         """
 
-        self._config = config
         self._reader = reader
-        self._setup()
 
-    def _setup(self):
-        """
-        Set up and configure the transformation tools based on the information
-        provided in the configruation file.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        """
-
-        if 'vdatum_path' in self._config:
-            self._engine = uv.VDatum(self._config, self._reader)
+        if 'vdatum_path' in config:
+            self._engine = uv.VDatum(config, self._reader)
         else:
-            raise ValueError('No vdatum path provided')
+            raise ValueError('no vdatum path provided')
 
-    def translate(self, infilename: str, metadata: dict):
+    def translate(self, filename: str, metadata: dict) -> (gdal.Dataset, bool):
         """
         Run the specified transformation engine to translate the provided
         dataset.
 
         Parameters
         ----------
-        infilename :
-            param metadata:
-        infilename: str :
-
-        metadata: dict :
-
+        filename
+            filename of data file
+        metadata
+            dictionary of metadata
 
         Returns
         -------
-
+            GDAL point cloud and whether data was reprojected (`True`) or projected (`False`)
         """
 
-        if metadata['from_horiz_type'].lower() != metadata['to_horiz_type'].lower() or metadata['from_vert_key'].lower() != metadata['to_vert_key'].lower():
-            return self._engine.translate(infilename, metadata), True
+        if metadata['from_horiz_type'].lower() != metadata['to_horiz_type'].lower() or \
+                metadata['from_vert_key'].lower() != metadata['to_vert_key'].lower():
+            return self._engine.translate(filename, metadata), True
         else:
-            return self._engine.create(infilename, metadata), False
+            return self._engine.create(filename, metadata), False

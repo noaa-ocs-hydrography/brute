@@ -22,7 +22,7 @@ from . import parse_usace_xml
 
 
 class USACERawReader:
-    def __init__(self, version=None):
+    def __init__(self, version: str = None):
         self.version = version
         self.ussft2m = 0.30480060960121924  # US survey feet to meters
         self.xyz_suffixes = ('_A', '_FULL')
@@ -35,7 +35,7 @@ class USACERawReader:
             ch.setLevel(_logging.DEBUG)
             self._logger.addHandler(ch)
 
-    def read_metadata(self, infilename: str):
+    def read_metadata(self, filename: str) -> dict:
         """
         Read all available meta data.
 
@@ -47,69 +47,61 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename : str
+        filename
             File path of the input ``.xyz`` data
 
         Returns
         -------
-        dict :
+        dict
             The complete metadata pulled from multiple sources
-
         """
 
         meta_supplement = {}
-        basexyzname, suffix = self.name_gen(infilename, ext='.xyz')
-        meta_xml = self._parse_usace_xml(infilename)
+        basexyzname, suffix = self.name_gen(filename, ext='.xyz')
+        meta_xml = self._parse_usace_xml(filename)
         meta_xyz = self._parse_ehydro_xyz_header(basexyzname)
-        meta_filename = self._parse_filename(infilename)
-        meta_pickle = self._parse_pickle(infilename)
-        meta_date = self._parse_start_date(infilename,
-                                           {**meta_pickle, **meta_xyz,
-                                            **meta_xml})
-        meta_determine = self._data_determination(meta_supplement, infilename)
+        meta_filename = self._parse_filename(filename)
+        meta_pickle = self._parse_pickle(filename)
+        meta_date = self._parse_start_date(filename, {**meta_pickle, **meta_xyz, **meta_xml})
+        meta_determine = self._data_determination(meta_supplement, filename)
         meta_supplement = {**meta_determine, **meta_date, **meta_supplement}
-        return {**meta_pickle, **meta_xyz, **meta_filename, **meta_xml,
-                **meta_supplement}
+        return {**meta_pickle, **meta_xyz, **meta_filename, **meta_xml, **meta_supplement}
 
-    def read_bathymetry(self, infilename: str):
+    def read_bathymetry(self, filename: str) -> _np.array:
         """
         Read the bathymetry and return an array of the xyz points.
 
         Parameters
         ----------
-        infilename : str
-            Complete filepath of the input data
+        filename
+            filename of XYZ file
 
         Returns
         -------
         numpy.array
             A 2D array containing the complete list of points found in the
             input file
-
         """
 
-        xyz = self._parse_ehydro_xyz_bathy(infilename)
-        return xyz
+        return self._parse_ehydro_xyz_bathy(filename)
 
-    def read_bathymetry_by_point(self, infilename: str):
+    def read_bathymetry_by_point(self, filename: str) -> _np.array:
         """
-        Read the bathymetry and return point by point.
+        Get the next point in the given bathymetry.
 
         Parameters
         ----------
-        infilename : str
+        filename
             Complete filepath of the input data
 
-        Yeilds
+        Yields
         ------
         numpy.array
-            A single row/point of data
-
+            XYZ point
         """
 
-        xyz = self.read_bathymetry(infilename)
-        for n in xyz:
-            yield n
+        for point in self.read_bathymetry(filename):
+            yield point
 
     def _parse_pickle(self, filename: str) -> dict:
         """
@@ -118,16 +110,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename : str
+        filename
             Complete filepath of the input data
 
         Returns
         -------
         dict
             The metadata returned via this method
-
-
         """
+
         root = _os.path.split(filename)[0]
         pickle_name = self.name_gen(filename, ext='.pickle', sfx=False)
         if _os.path.isfile(pickle_name):
@@ -138,23 +129,23 @@ class USACERawReader:
             pickle_dict = {}
         return pickle_dict
 
-    def _parse_usace_xml(self, infilename):
+    def _parse_usace_xml(self, filename: str):
         """
         Read all available meta data.
         returns dictionary
 
         Parameters
         ----------
-        infilename : str
+        filename
             Complete filepath of the input data
 
         Returns
         -------
         dict
             The metadata assigned via this method
-
         """
-        xmlfilename = self.name_gen(infilename, ext='.xml', sfx=False)
+
+        xmlfilename = self.name_gen(filename, ext='.xml', sfx=False)
         if _os.path.isfile(xmlfilename):
             with open(xmlfilename, 'r') as xml_file:
                 xml_txt = xml_file.read()
@@ -174,8 +165,8 @@ class USACERawReader:
         else:
             ext_dict = {}
             meta_xml = {}
-        meta_xml['from_path'] = infilename
-        meta_xml['from_filename'] = _os.path.basename(infilename)
+        meta_xml['from_path'] = filename
+        meta_xml['from_filename'] = _os.path.basename(filename)
         return {**meta_xml, **ext_dict}
 
     def _parse_start_date(self, infilename: str, metadata: dict) -> dict:
@@ -351,7 +342,7 @@ class USACERawReader:
 
         """
         name_sections = ('projid', 'uniqueid', 'subprojid', 'start_date',
-                          'statuscode', 'optional')
+                         'statuscode', 'optional')
         name_meta = self._parse_filename(infilename)
         if meta_source == 'xyz':
             file_meta = self._parse_xyz_header(infilename)
@@ -425,9 +416,9 @@ class USACERawReader:
                 meta['optional'] = option
         elif len(splitname) >= 2 and len(splitname) < 5:
             meta = {
-                    'from_path': infilename,
-                    'from_filename': base,
-                    }
+                'from_path': infilename,
+                'from_filename': base,
+            }
             for index in range(len(splitname)):
                 meta[split_sections[index]] = splitname[index]
         else:
@@ -799,7 +790,7 @@ class USACERawReader:
             txt_meta['fips'] = int(fips.group())
         return txt_meta
 
-    def _parse_ehydro_xyz_bathy(self, infilename: str) -> _np.array:
+    def _parse_ehydro_xyz_bathy(self, filename: str) -> _np.array:
         """
         Read the best available point bathymetry for the district.
 
@@ -807,35 +798,29 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename : str
+        filename : str
             Complete filepath of the input data
 
         Returns
         -------
         numpy.array
             The xyz values as a 2d array
-
         """
-        bathy = []
+
+        points = []
+
         # get the header
-        with open(infilename, 'r') as infile:
-            for line in infile.readlines():
-                if line == '\n':
-                    continue
-                elif line == '\x1a':
-                    continue
-                elif self._is_header(line):
-                    pass
-                elif line == '':
-                    pass
-                else:
+        with open(filename, 'r') as input_file:
+            for line in input_file.readlines():
+                if line not in ('\n', '\x1a', '') and not self._is_header(line):
                     if ',' in line:
-                        output = f'Comma delimited file found: {infilename}'
-                        self._logger.log(_logging.DEBUG, output)
-                        raise ValueError(output)
+                        message = f'found comma-delimited file "{filename}"'
+                        self._logger.log(_logging.DEBUG, message)
+                        raise ValueError(message)
                     else:
-                        row = [float(x) for x in line.split()]
+                        row = [float(entry) for entry in line.split()]
                         if len(row) == 3:
-                            bathy.append(row)
-        bathy = _np.asarray(bathy)
-        return bathy
+                            points.append(row)
+
+        points = _np.asarray(points)
+        return points

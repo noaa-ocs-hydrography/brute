@@ -16,14 +16,13 @@ import logging as _logging
 import os as _os
 import re as _re
 import sys as _sys
-from typing import Tuple, List
 
-import numpy as _np
-from osgeo import gdal as _gdal
-from osgeo import osr as _osr
-import tables as _tb
 # from xml.etree import ElementTree as _et
 import lxml.etree as _et
+import numpy as _np
+import tables as _tb
+from osgeo import gdal as _gdal
+from osgeo import osr as _osr
 
 try:
     import dateutil.parser as _parser
@@ -194,8 +193,8 @@ class BAGRawReader:
             metadata = {**bag_file.GetMetadata()}
             version = float(metadata['BagVersion'][:-2])
             metadata['shape'] = (bag_file.RasterYSize, bag_file.RasterXSize)
-#            geotransform = bag_file.GetGeoTransform()
-#            metadata['res'] = (geotransform[1], geotransform[5])
+            #            geotransform = bag_file.GetGeoTransform()
+            #            metadata['res'] = (geotransform[1], geotransform[5])
             metadata['from_horiz_datum'] = bag_file.GetProjectionRef()
             spacial_ref = _osr.SpatialReference(wkt=metadata['from_horiz_datum'])
 
@@ -215,9 +214,9 @@ class BAGRawReader:
             elif spacial_ref.GetAttrValue('unit').lower() in ('feet', 'ft'):
                 metadata['from_horiz_units'] = 'f'
 
-#            metadata['elevation'] = self._read_gdal_array(bag_file, 1)
-#            metadata['uncertainty'] = self._read_gdal_array(bag_file, 2)
-#            metadata['nodata'] = 1000000.0
+            #            metadata['elevation'] = self._read_gdal_array(bag_file, 1)
+            #            metadata['uncertainty'] = self._read_gdal_array(bag_file, 2)
+            #            metadata['nodata'] = 1000000.0
 
             del bag_file
         except RuntimeError as e:
@@ -269,7 +268,6 @@ class BAGRawReader:
             return self.data
         except _tb.HDF5ExtError as e:
             raise ValueError(f'{e}')
-
 
     def _known_meta(self, infilename: str) -> dict:
         """
@@ -331,9 +329,12 @@ class BAGRawReader:
         meta = {}
         root, filename = _os.path.split(infilename)
         snum = _re.compile(r'[A-Z]([0-9]{5})')
-        dir_files = [_os.path.join(root, name) for name in _os.listdir(root) if (_os.path.isfile(_os.path.join(root, name)) and snum.search(name) is not None)]
-        meta['support_files'] = [support_file for support_file in dir_files if _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.tfw', '.gpkg')]
-        exts = [_os.path.splitext(support_file)[1].lower() for support_file in dir_files if _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
+        dir_files = [_os.path.join(root, name) for name in _os.listdir(root) if
+                     (_os.path.isfile(_os.path.join(root, name)) and snum.search(name) is not None)]
+        meta['support_files'] = [support_file for support_file in dir_files if
+                                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.tfw', '.gpkg')]
+        exts = [_os.path.splitext(support_file)[1].lower() for support_file in dir_files if
+                _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
         meta['interpolate'] = len(exts) > 0
         return meta
 
@@ -366,8 +367,6 @@ class BAGRawReader:
             return namespace
         elif version is None and xml != None:
             return parse_namespace(xml)
-
-
 
     def _set_format(self, infilename: str, version: float) -> object:
         """
@@ -934,7 +933,7 @@ class BAGRawReader:
         try:
             if val.lower() == 'unknown':
                 val = ''
-            elif val.lower() in ('mean_lower_low_water','mean lower low water', 'mllw'):
+            elif val.lower() in ('mean_lower_low_water', 'mean lower low water', 'mllw'):
                 self.data['from_vert_key'] = 'MLLW'
             self.data['from_vert_datum'] = val
         except (ValueError, IndexError) as e:
@@ -981,7 +980,7 @@ class BAGRawReader:
             if datum is not None:
                 if datum.lower() in ('north_american_datum_1983', 'north american datum 1983', 'nad83'):
                     self.data['from_horiz_frame'] = 'NAD83'
-                elif datum.lower()in ('wgs_1984', 'wgs84'):
+                elif datum.lower() in ('wgs_1984', 'wgs84'):
                     self.data['from_horiz_frame'] = 'WGS84'
         except (ValueError, IndexError) as e:
             _logging.warning(f"unable to read the survey horizontal datum name attribute: {e}")
@@ -1085,8 +1084,8 @@ class BagFile:
         except TypeError:
             # TODO: Find a solution for this blasphemous hack
             pass
-#            self.size = 100001
-#            print('No files returned by gdal.Dataset.GetFileList()')
+        #            self.size = 100001
+        #            print('No files returned by gdal.Dataset.GetFileList()')
         self.elevation = self._gdalreadarray(dataset, 1)
         self.uncertainty = self._gdalreadarray(dataset, 2)
         self.shape = self.elevation.shape
@@ -1096,7 +1095,6 @@ class BagFile:
         self.version = dataset.GetMetadata()
 
         print(self.bounds)
-
 
     def _file_gdal(self, filepath: str):
         """
@@ -1233,7 +1231,7 @@ class BagFile:
 
         return _np.flipud(arr)
 
-    def _meta2bounds(self, meta) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    def _meta2bounds(self, meta) -> ((float, float), (float, float)):
         """
         Breaks up and assigns the NW and SE corners from the NE and SW corners
         of a :obj:`hyo2.bag.meta` object
@@ -1254,7 +1252,7 @@ class BagFile:
         nx, ny = meta.ne
         return (sx, ny), (nx, sy)
 
-    def _gt2bounds(self, meta, shape: Tuple[int, int]) -> Tuple[Tuple[Tuple[float, float], Tuple[float, float]], float]:
+    def _gt2bounds(self, meta, shape: (int, int)) -> (((float, float), (float, float)), float):
         """
         Formats and returns the bounds and resolution
 
@@ -1351,8 +1349,8 @@ class BagFile:
 
         try:
             ret = xml_tree.xpath('//*/gmd:spatialRepresentationInfo/gmd:MD_Georectified/'
-                                      'gmd:axisDimensionProperties/gmd:MD_Dimension/gmd:resolution/gco:Measure',
-                                      namespaces=_ns)
+                                 'gmd:axisDimensionProperties/gmd:MD_Dimension/gmd:resolution/gco:Measure',
+                                 namespaces=_ns)
         except _et.Error as e:
             print(f"unable to read res x and y: {e}")
             return
@@ -1360,9 +1358,9 @@ class BagFile:
         if len(ret) == 0:
             try:
                 ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
-                                          'axisDimensionProperties/smXML:MD_Dimension/resolution/'
-                                          'smXML:Measure/smXML:value',
-                                          namespaces=_ns2)
+                                     'axisDimensionProperties/smXML:MD_Dimension/resolution/'
+                                     'smXML:Measure/smXML:value',
+                                     namespaces=_ns2)
             except _et.Error as e:
                 print(f"unable to read res x and y: {e}")
                 return
@@ -1379,13 +1377,13 @@ class BagFile:
         """ attempts to read corners SW and NE """
         try:
             ret = xml_tree.xpath('//*/gmd:spatialRepresentationInfo/gmd:MD_Georectified/'
-                                      'gmd:cornerPoints/gml:Point/gml:coordinates',
-                                      namespaces=_ns)[0].text.split()
+                                 'gmd:cornerPoints/gml:Point/gml:coordinates',
+                                 namespaces=_ns)[0].text.split()
         except (_et.Error, IndexError) as e:
             try:
                 ret = xml_tree.xpath('//*/spatialRepresentationInfo/smXML:MD_Georectified/'
-                                          'cornerPoints/gml:Point/gml:coordinates',
-                                          namespaces=_ns2)[0].text.split()
+                                     'cornerPoints/gml:Point/gml:coordinates',
+                                     namespaces=_ns2)[0].text.split()
             except (_et.Error, IndexError) as e:
                 print(f"unable to read corners SW and NE: {e}")
                 return
@@ -1397,20 +1395,19 @@ class BagFile:
             print(f"unable to read corners SW and NE: {e}")
             return
 
-
     def _read_wkt_prj(self, xml_tree):
         """ attempts to read the WKT projection string """
         try:
             ret = xml_tree.xpath('//*/gmd:referenceSystemInfo/gmd:MD_ReferenceSystem/'
-                                      'gmd:referenceSystemIdentifier/gmd:RS_Identifier/gmd:code/gco:CharacterString',
-                                      namespaces=_ns)
+                                 'gmd:referenceSystemIdentifier/gmd:RS_Identifier/gmd:code/gco:CharacterString',
+                                 namespaces=_ns)
         except _et.Error as e:
             print(f"unable to read the WKT projection string: {e}")
             return
         if len(ret) == 0:
             try:
                 ret = xml_tree.xpath('//*/referenceSystemInfo/smXML:MD_CRS',
-                                          namespaces=_ns2)
+                                     namespaces=_ns2)
             except _et.Error as e:
                 print(f"unable to read the WKT projection string: %s: {e}")
                 return
@@ -1502,9 +1499,8 @@ class BagToGDALConverter:
         self.dataset = target_ds
         del target_ds
 
-    def components2gdal(self, arrays: List[_np.array], shape: Tuple[int, int],
-                        bounds: Tuple[Tuple[float, float], Tuple[float, float]], resolution: Tuple[float, float],
-                        prj: str, nodata: float = 1000000.0):
+    def components2gdal(self, arrays: [_np.array], shape: (int, int), bounds: ((float, float), (float, float)),
+                        resolution: (float, float), prj: str, nodata: float = 1000000.0):
         """
         Converts raw dataset components into a :obj:`gdal.Dataset` object
 
@@ -1557,7 +1553,7 @@ class BagToGDALConverter:
         self.dataset = target_ds
         del target_ds
 
-    def translate_bag2gdal_extents(self, geotransform: Tuple[float, float, float, float, float, float]):
+    def translate_bag2gdal_extents(self, geotransform: (float, float, float, float, float, float)):
         orig_x, res_x, skew_x, orig_y, skew_y, res_y = geotransform
         new_x = orig_x - (res_x / 2)
         new_y = orig_y + (res_y / 2)

@@ -15,7 +15,7 @@ import requests
 # progLoc is the program's own file location / current working directory (cwd)
 progLoc = os.getcwd()
 
-zList = ['xmin', 'ymin', 'xmax', 'ymax']
+z_values = ['xmin', 'ymin', 'xmax', 'ymax']
 attributes = {3: ['Name', 'SURVEY_ID', 'CELL_SIZE', 'DOWNLOAD_URL'],
               0: ['*']}
 date_fields = ['DATE_SURVEY_BEGIN', 'DATE_SURVEY_END', 'DATE_MODIFY_DATA',
@@ -53,7 +53,7 @@ def coordQuery(nx, ny, sx, sy):
     z = 0
     for i in range(len(coordsRequestJSON['geometries'])):
         for k, j in coordsRequestJSON['geometries'][i].items():
-            bounds.append((zList[z], j))
+            bounds.append((z_values[z], j))
             z += 1
     bounds = dict(bounds)
     #    print (bounds)

@@ -8,89 +8,99 @@ Created on Thu Jan 31 10:03:30 2019
 """
 
 import configparser as _cp
-import os as _os
 import logging as _logging
-import fuse.raw_read.usace as _usace
-import fuse.raw_read.noaa as _noaa
+import os as _os
+
 import fuse.datum_transform.transform as _trans
 import fuse.interpolator.interpolator as _interp
 import fuse.meta_review as _mr
-from fuse.proc_io.proc_io import ProcIO
+import fuse.raw_read.noaa as _noaa
+import fuse.raw_read.usace as _usace
 from fuse import score
+from fuse.proc_io.proc_io import ProcIO
 
-_ehydro_quality_metrics = {'complete_coverage': False,
-                            'bathymetry': True,
-                            'vert_uncert_fixed': 0.5,
-                            'vert_uncert_vari': 0.1,
-                            'horiz_uncert_fixed': 5.0,
-                            'horiz_uncert_vari': 0.05,
-                            'feat_detect': False,
-                            }
+_ehydro_quality_metrics = {
+    'complete_coverage': False,
+    'bathymetry': True,
+    'vert_uncert_fixed': 0.5,
+    'vert_uncert_vari': 0.1,
+    'horiz_uncert_fixed': 5.0,
+    'horiz_uncert_vari': 0.05,
+    'feat_detect': False,
+}
+
 
 class FuseProcessor:
     """The fuse object."""
 
-    _datums = ['from_horiz_datum',
-              'from_horiz_frame',
-              'from_horiz_type',
-              'from_horiz_units',
-              'from_horiz_key',
-              'from_vert_datum',
-              'from_vert_key',
-              'from_vert_units',
-              'from_vert_direction',
-              'to_horiz_frame',
-              'to_horiz_type',
-              'to_horiz_units',
-              'to_horiz_key',
-              'to_vert_datum',
-              'to_vert_key',
-              'to_vert_units',
-              'to_vert_direction',
-              ]
+    _datums = [
+        'from_horiz_datum',
+        'from_horiz_frame',
+        'from_horiz_type',
+        'from_horiz_units',
+        'from_horiz_key',
+        'from_vert_datum',
+        'from_vert_key',
+        'from_vert_units',
+        'from_vert_direction',
+        'to_horiz_frame',
+        'to_horiz_type',
+        'to_horiz_units',
+        'to_horiz_key',
+        'to_vert_datum',
+        'to_vert_key',
+        'to_vert_units',
+        'to_vert_direction',
+    ]
 
-    _quality_metrics = ['from_horiz_unc',
-                        'from_horiz_resolution',
-                        'from_vert_unc',
-                        'complete_coverage',
-                        'bathymetry',
-                        'vert_uncert_fixed',
-                        'vert_uncert_vari',
-                        'horiz_uncert_fixed',
-                        'horiz_uncert_vari',
-                        'to_horiz_resolution',
-                        'feat_size',
-                        'feat_detect',
-                        'feat_least_depth',
-                        ]
+    _quality_metrics = [
+        'from_horiz_unc',
+        'from_horiz_resolution',
+        'from_vert_unc',
+        'complete_coverage',
+        'bathymetry',
+        'vert_uncert_fixed',
+        'vert_uncert_vari',
+        'horiz_uncert_fixed',
+        'horiz_uncert_vari',
+        'to_horiz_resolution',
+        'feat_size',
+        'feat_detect',
+        'feat_least_depth',
+    ]
 
-    _paths = ['from_filename',
-              'from_path',
-              'to_filename',
-              'support_files',
-              ]
+    _paths = [
+        'from_filename',
+        'from_path',
+        'to_filename',
+        'support_files',
+    ]
 
-    _dates = ['start_date',
-              'end_date',
-              ]
+    _dates = [
+        'start_date',
+        'end_date',
+    ]
 
-    _source_info = ['agency',
-                    'source_indicator',
-                    'source_type',
-                    'interpolated',
-                    'posted',
-                    'license',
-                    ]
+    _source_info = [
+        'agency',
+        'source_indicator',
+        'source_type',
+        'interpolated',
+        'posted',
+        'license',
+    ]
 
-    _processing_info = ['logfilename',
-                        'version_reference',
-                        'interpolate',
-                        'file_size',
-                        ]
+    _processing_info = [
+        'logfilename',
+        'version_reference',
+        'interpolate',
+        'file_size',
+    ]
 
-    _scores = ['catzoc',
-               'supersession_score',
-               ]
+    _scores = [
+        'catzoc',
+        'supersession_score',
+    ]
 
     def __init__(self, configfilename: str = 'generic.config'):
         """
@@ -106,13 +116,13 @@ class FuseProcessor:
         self._config = self._read_configfile(configfilename)
         self.rawdata_path = self._config['rawpaths']
         self.procdata_path = self._config['outpath']
-        self._cols = FuseProcessor._paths \
-            + FuseProcessor._dates \
-            + FuseProcessor._datums \
-            + FuseProcessor._quality_metrics \
-            + FuseProcessor._scores \
-            + FuseProcessor._source_info \
-            + FuseProcessor._processing_info
+        self._cols = FuseProcessor._paths + \
+                     FuseProcessor._dates + \
+                     FuseProcessor._datums + \
+                     FuseProcessor._quality_metrics + \
+                     FuseProcessor._scores + \
+                     FuseProcessor._source_info + \
+                     FuseProcessor._processing_info
         self._meta_obj = _mr.MetaReviewer(self._config['metapath'], self._cols)
         self._set_data_reader()
         self._set_data_transform()
@@ -192,18 +202,20 @@ class FuseProcessor:
         -------
 
         """
-        options = {'rawpaths': 'path to raw data',
-                   'outpath': 'path to output data',
-                   'to_horiz_datum' : 'output horizontal datum description',
-                   'to_horiz_frame' : 'output horizontal datum frame',
-                   'to_horiz_type' : 'output horizontal datum type',
-                   'to_horiz_units' : 'output horizontal datum units',
-                   'to_vert_key' : 'output vertical datum key',
-                   'to_vert_units' : 'output vertical datum units',
-                   'to_vert_direction' : 'output vertical datum direction',
-                   'to_vert_datum': 'output vertical datum description',
-                   'metapath': 'metadata output',
-                   }
+
+        options = {
+            'rawpaths': 'path to raw data',
+            'outpath': 'path to output data',
+            'to_horiz_datum': 'output horizontal datum description',
+            'to_horiz_frame': 'output horizontal datum frame',
+            'to_horiz_type': 'output horizontal datum type',
+            'to_horiz_units': 'output horizontal datum units',
+            'to_vert_key': 'output vertical datum key',
+            'to_vert_units': 'output vertical datum units',
+            'to_vert_direction': 'output vertical datum direction',
+            'to_vert_datum': 'output vertical datum description',
+            'metapath': 'metadata output',
+        }
         for key in options.keys():
             if key not in config_dict:
                 raise ValueError(f'No {options[key]} found in configuration file.')
@@ -266,47 +278,30 @@ class FuseProcessor:
         self._interpolator = _interp.Interpolator(engine, method, res)
 
     def _set_data_writer(self):
-        """
-        Set up the location and method to write tranformed and interpolated
-        data.
+        """Set up the location and method to write tranformed and interpolated data."""
 
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        """
-
-        ext = self._config['bathymetry_intermediate_file']
-        if ext == 'bag':
-            ext2 = 'gpkg'
+        raster_extension = self._config['bathymetry_intermediate_file']
+        if raster_extension == 'bag':
+            point_extension = 'gpkg'
         else:
-            ext2 = ext
-        self._writer = ProcIO('gdal', ext)
-        self._points = ProcIO('point', ext2)
+            point_extension = raster_extension
+        self._raster_writer = ProcIO('gdal', raster_extension)
+        self._point_writer = ProcIO('point', point_extension)
 
-    def read(self, infilename: str):
+    def read(self, filename: str):
         """
-        The file name to use to read the bathymetry and metadata into useable
-        forms.
+        Read survey bathymetry and metadata into useable forms.
 
         Parameters
         ----------
-        infilename :
-
-        infilename: str :
-
-
-        Returns
-        -------
-
+        filename
+            Filename of survey bathymetry.
         """
 
         if self._read_type == 'ehydro':
-            self._read_ehydro(infilename)
+            self._read_ehydro(filename)
         elif self._read_type == 'bag':
-            self._read_noaa_bag(infilename)
+            self._read_noaa_bag(filename)
         else:
             raise ValueError('Reader type not implemented')
 
@@ -463,7 +458,7 @@ class FuseProcessor:
             dataset, transformed = self._transform.translate(infilename, metadata)
             if self._read_type == 'ehydro':
                 outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
-                self._points.write(dataset, outfilename)
+                self._point_writer.write(dataset, outfilename)
                 metadata['to_filename'] = outfilename
             if self._read_type == 'bag':
                 metadata['to_filename'] = infilename
@@ -473,7 +468,7 @@ class FuseProcessor:
                 if interpolate == 'True':
                     meta_interp = metadata.copy()
                     dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
-                    self._writer.write(dataset, meta_interp['to_filename'])
+                    self._raster_writer.write(dataset, meta_interp['to_filename'])
                     self._meta_obj.write_meta_record(meta_interp)
 
                 elif interpolate == 'False':
@@ -529,7 +524,6 @@ class FuseProcessor:
             log = 'Insertion of decay score failed.'
         self.logger.log(_logging.DEBUG, log)
         self._close_log()
-
 
     def _connect_to_db(self):
         """

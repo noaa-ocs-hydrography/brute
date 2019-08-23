@@ -36,15 +36,16 @@ def write_csar(dataset, m: dict):
 
     print('write_csar')
     dataset = np.array(dataset)
-    print(m, dataset, dataset.shape)
-    dataset[dataset==m['nodata']] = np.nan
+    # print('{}\n{}\n{}'.format(m, dataset, dataset.shape))
+    dataset[dataset == m['nodata']] = np.nan
     d_min = np.nanmax(dataset)
-    dataset[dataset==np.nan] = m['nodata']
+    dataset[dataset == np.nan] = m['nodata']
     d_max = np.nanmin(dataset)
     z_dir = cc.Direction.HEIGHT
     layerName = "Elevation"
     band_info = cc.BandInfo(name=layerName, type=cc.DataType.FLOAT32, tuple_length=1, direction=z_dir, units='m',
-                            category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.BICUBIC, minimum=d_min, maximum=d_max)
+                            category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.BICUBIC, minimum=d_min,
+                            maximum=d_max)
     resolution = [m['resy'], m['resx']]
     origin = [m['originx'], m['originy']]
     #    origin = [0,0]

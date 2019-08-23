@@ -11,7 +11,7 @@ import os as _os
 import re as _re
 import shutil as _shutil
 import zipfile as _zf
-from typing import Union, Dict, List
+from typing import Union, Dict
 
 from osgeo import ogr as _ogr
 from osgeo import osr as _osr
@@ -261,7 +261,7 @@ def fileCollect(path: str, bounds: str) -> list:
         return zips
 
 
-def eHydroZIPs(regions: Dict[str, List[str]]) -> Dict[str, List[str]]:
+def eHydroZIPs(regions: Dict[str, [str]]) -> Dict[str, [str]]:
     """
     Creates a dictionary with keys of region names and values of a list of all
     files downloaded from districts within the respective regions
@@ -301,7 +301,7 @@ def eHydroZIPs(regions: Dict[str, List[str]]) -> Dict[str, List[str]]:
     return hold
 
 
-def contentSearch(filenames: List[str], extensions: List[str]) -> List[str]:
+def contentSearch(filenames: [str], extensions: [str]) -> [str]:
     """
     This funtion takes a list of zipfile contents.
 
@@ -311,9 +311,9 @@ def contentSearch(filenames: List[str], extensions: List[str]) -> List[str]:
 
     Parameters
     ----------
-    filenames: List[str] :
+    filenames: [str] :
         A list of file names
-    extensions: List[str] :
+    extensions: [str] :
         list of extensions to filter by
 
     Returns
@@ -360,7 +360,7 @@ def zipManipulate(path: str, name: str):
     _os.chdir(progLoc)
 
 
-def fileMove(regionFiles: Dict[str, List[str]], destination: str, method,
+def fileMove(regionFiles: Dict[str, [str]], destination: str, method,
              text_region=None, progressBar=None, text_output=None):
     """
     Takes a dictionary of keys representing regions and values representing

@@ -8,10 +8,9 @@ Created on Mon Mar 25 11:55:07 2019
 import os
 from datetime import datetime as _dt
 
+import autointerp
 import autointerp_ui
 import wx
-
-import autointerp
 
 
 class Form(autointerp_ui.Form):
