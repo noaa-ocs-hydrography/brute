@@ -31,10 +31,10 @@ config = configparser.ConfigParser()
 config.read('config.ini')
 
 
-if config['Downloads']['Folder'] == '':
+if config['Destination']['Folder'] == '':
     downloads = os.path.join(progLoc, 'downloads')
 else:
-    downloads = config['Downloads']['Folder']
+    downloads = config['Destination']['Folder']
 
 if not os.path.isdir(os.path.join(downloads)):
     os.mkdir(downloads)
@@ -116,6 +116,22 @@ def bagIDQuery(bounds, qId=3):
         return objectIDs, objectNum
 
 
+def list_chunks(input_list: list, n: int = 1000):
+    """
+    Returns a list of lists given a maximum length for each list;
+
+    Parameters
+    ----------
+    input_list :
+        list
+    n : int, optional
+        maximum lengh of the subdivided lists (Default = 1000)
+
+    """
+    for i in range(0, len(input_list), n):
+        yield input_list[i:i + n]
+
+
 def surveyCompile(objectIDs, num, qId=3, pb=None):
     """
     TODO write description
@@ -136,46 +152,52 @@ def surveyCompile(objectIDs, num, qId=3, pb=None):
     opts = ','.join(attributes[qId])
     if pb is not None:
         pb.SetRange(num)
-    for objectID in objectIDs:
-        print(x, end=' ')
+
+    id_chunks = list(list_chunks([str(objectID) for objectID in objectIDs]))
+
+    for chunk in id_chunks:
+        id_string = ','.join(chunk)
         query = f'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/{qId}/query' + \
-                f'?where=&text=&objectIds={objectID}&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields={opts}&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
+                f'?where=&text=&objectIds={id_string}&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields={opts}&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
         response = requests.get(query)
         page = response.json()
-        if x == 0:
+
+        if id_chunks.index(chunk) == 0:
             fields = page['fields']
             for attr in fields:
                 if attr['name'] == 'OBJECTID':
                     pass
                 else:
                     attr_list.append(attr['name'])
-        row = {}
-        try:
-            for attribute in attr_list:
-                if page['features'][0]['attributes'][attribute] is None:
-                    row[attribute] = 'null'
-                elif attribute in date_fields:
+        object_num = 0
+        for objectID in chunk:
+            print(x, end=' ')
 
-                    if page['features'][0]['attributes'][attribute] is None:
+            row = {}
+            try:
+                for attribute in attr_list:
+                    if page['features'][object_num]['attributes'][attribute] is None:
                         row[attribute] = 'null'
-                    else:
-                        date = (page['features'][0]['attributes'][attribute])
+                    elif attribute in date_fields:
 
-                        try:
-                            row[attribute] = f'{datetime.datetime.utcfromtimestamp(date / 1000):%Y-%m-%d}'
-                        except OSError as e:
-                            print(e, date)
-                            row[attribute] = 'error'
-                else:
-                    row[attribute] = str(page['features'][0]['attributes'][attribute])
-            rows.append(row)
-        except KeyError as e:
-            print(e, page)
-        #            break
-        if pb is not None:
-            pb.SetValue(x)
-        x += 1
-#    print(len(rows))
+                        if page['features'][object_num]['attributes'][attribute] is None:
+                            row[attribute] = 'null'
+                        else:
+                            date = (page['features'][object_num]['attributes'][attribute])
+
+                            try:
+                                row[attribute] = f'{datetime.datetime.utcfromtimestamp(date / 1000):%Y-%m-%d}'
+                            except OSError as e:
+                                print(e, date)
+                                row[attribute] = 'error'
+                    else:
+                        row[attribute] = str(page['features'][object_num]['attributes'][attribute])
+                rows.append(row)
+            except KeyError as e:
+                print(e, page)
+            if pb is not None:
+                pb.SetValue(object_num + 1)
+            object_num += 1
     print('rows complete')
     return attr_list, rows
 
@@ -192,16 +214,29 @@ def linkGrab(source_url, extensions):
     file_links = []
     for extension in extensions:
         links = [link.strip('"') for link in re.findall(f'".*{extension}"', page)]
-        file_links.extend([f'{source_url}{link}' for link in links if link != ''])
+        file_links.extend([f'{source_url}/{link}' for link in links if link != ''])
     return file_links
 
 
-def fileDownloader(folder, download_links):
+def fileDownloader(folder, download_links, saved_files):
+    saved_links = []
     for link in download_links:
         saved = os.path.join(folder, os.path.split(link)[1])
         dwntime = datetime.datetime.now()
         while True:
-            if os.path.exists(saved):
+            if os.path.exists(saved) and saved not in saved_files or saved not in saved_links:
+                if os.path.splitext(saved)[1].lower() in ('.gz', '.zip'):
+                    try:
+                        unzip = zipfile.ZipFile(saved)
+                        file_list = unzip.filelist()
+                        print(file_list)
+                        unzip.extractall(folder)
+                        saved_links.extend(file_list)
+                    except zipfile.BadZipfile as e:
+                        print(e)
+                else:
+                    print(link)
+                    saved_links.append(saved)
                 break
             elif not os.path.exists(saved):
                 try:
@@ -210,37 +245,57 @@ def fileDownloader(folder, download_links):
                     urllib.request.urlretrieve(link, saved)
                 except urllib.error.HTTPError as e:
                     print(f'e \n{link} {e}')
-                    download_links.remove(link)
                     break
                 except urllib.error.URLError as e:
                     print(f'e \n{link} {e}')
-                    download_links.remove(link)
                     break
-            elif datetime.datetime.now() - dwntime > datetime.timedelta(seconds=295):
+            elif datetime.datetime.now() - dwntime > datetime.timedelta(seconds=265):
                 print(f'e \n{link} ')
-                download_links.remove(link)
                 break
             else:
                 print(f'e \n{link}')
-                download_links.remove(link)
                 break
-    return download_links
+    return saved_links
 
 
-def surveyDownload(rows):
+def surveyDownload(rows: [dict]) -> [dict]:
+    """
+    Downloads and stores file information to the input dict
+
+    Parameters
+    ----------
+    rows : list of dict
+        A list of survey metadata items
+
+    """
     for row in rows:
+        row['SURVEY_FILES'] = []
         survey = row['SURVEY_ID']
         ncei_sub = '/'.join(os.path.splitext(row['DOWNLOAD_URL'])[0].split('/')[-2:])
         download_links = []
+        print(f'Survey - {rows.index(row) + 1} of {len(rows)}: {survey}')
         for folder, extensions in {'BAG': ['.bag', '.bag.gz'],
-                                   'TIFF': ['tif', 'tiff']}:
+                                   'TIFF': ['tif', 'tiff', 'tfw']}.items():
             source_url = f'{ncei_head}/{ncei_sub}/{folder}'
             download_links = linkGrab(source_url, extensions)
             if len(download_links) > 0:
                 survey_folder = os.path.join(downloads, survey)
                 if not os.path.isdir(survey_folder):
                     os.mkdir(survey_folder)
-                row['SURVEY_FILES'] = fileDownloader(survey_folder, download_links)
+                row['SURVEY_FILES'].extend(fileDownloader(survey_folder, download_links, row['SURVEY_FILES']))
+
+        pickle_name = f'{os.path.join(survey_folder, survey)}.pickle'
+#        zipped_name = f'{survey_folder}.zip'
+
+        with open(pickle_name, 'wb') as metafile:
+            pickle.dump(row, metafile)
+            row['SURVEY_FILES'].extend([pickle_name, zipped_name])
+
+#        zipped = zipfile.ZipFile(zipped_name, mode='w')
+#        [zipped.write(saved) for saved in row['SURVEY_FILES']]
+#        zipped.close()
+#        [os.remove(saved) for saved in row['SURVEY_FILES']]
+#        os.rmdir(survey_folder)
 
     return rows
 
@@ -323,3 +378,5 @@ def main(name, nx, sy, sx, ny, qId=0, pb=None):
         cardinal_directions = {'North': ny, 'West': sx,
                                'South': sy, 'East': nx}
         return (f'No {noItems} were found within: {cardinal_directions}.')
+
+main('', -73.5, 40, -74, 40.5, qId=0)
