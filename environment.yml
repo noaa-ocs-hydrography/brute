@@ -8,6 +8,7 @@ dependencies:
   - matplotlib
   - gdal=2.4.2
   - fiona
+  - rasterio
   - mongoengine
   - astropy
   - pytables
