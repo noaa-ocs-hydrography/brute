@@ -1528,8 +1528,8 @@ def VERDAT_iso_check(xml_meta):
                 m['VERTDAT'] = 'MLLW'
             elif xml_meta['depthdn'].find('MLLW') >= 0:
                 m['VERTDAT'] = 'MLLW'
-            elif xml_meta['depthdn'].find('MLW') >= 0:
-                m['VERTDAT'] = 'Mean Low Water'
+            elif xml_meta['depthdn'].upper().find('MEAN LOW WATER') >= 0:
+                m['VERTDAT'] = 'MLW'
             elif xml_meta['depthdn'].find('MLW') >= 0:
                 m['VERTDAT'] = 'MLW'
             elif xml_meta['depthdn'].find('LWRP') >= 0:
