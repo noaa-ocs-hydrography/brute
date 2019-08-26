@@ -110,8 +110,9 @@ class FuseProcessor:
         Parameters
         ----------
         configfilename
-            test
+            path to file with configuration
         """
+
         self._configfilename = configfilename
         self._config = self._read_configfile(configfilename)
         self.rawdata_path = self._config['rawpaths']
@@ -146,14 +147,12 @@ class FuseProcessor:
 
         Parameters
         ----------
-        confile :
-
-        confile: str :
-
+        confile
+            path to file with configuration
 
         Returns
         -------
-
+            dictionary of metadata
         """
 
         config = {}
@@ -193,14 +192,8 @@ class FuseProcessor:
 
         Parameters
         ----------
-        config_dict :
-
-        config_dict: dict :
-
-
-        Returns
-        -------
-
+        config_dict
+            dictionary of metadata keys
         """
 
         options = {
@@ -224,13 +217,6 @@ class FuseProcessor:
         """
         Use information from the config file to set the reader to use for
         converting the raw data to usable metadata and bathymetry.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
         """
 
         try:
@@ -313,14 +299,8 @@ class FuseProcessor:
 
         Parameters
         ----------
-        infilename :
-
-        infilename: str :
-
-
-        Returns
-        -------
-
+        infilename
+            path to eHydro XYZ file
         """
 
         self._set_log(infilename)
@@ -379,14 +359,8 @@ class FuseProcessor:
 
         Parameters
         ----------
-        infilename :
-
-        infilename: str :
-
-
-        Returns
-        -------
-
+        infilename
+            path to NOAA BAG file
         """
 
         self._set_log(infilename)

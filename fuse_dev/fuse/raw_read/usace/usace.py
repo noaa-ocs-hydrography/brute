@@ -11,10 +11,10 @@ import pickle as _pickle
 import re as _re
 import sys as _sys
 from datetime import datetime as _datetime
+from typing import Union
 from xml.etree.ElementTree import parse as _parse
 
 import numpy as _np
-from osgeo import osr as _osr
 from fuse.datum_transform import usefips as _usefips
 
 from . import parse_usace_pickle
@@ -175,15 +175,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename : str
+        infilename
             Complete filepath of the input data
 
         Returns
         -------
         dict
             The metadata assigned via this method
-
         """
+
         start = {}
         file_date = None
         xml_date = None
@@ -218,11 +218,11 @@ class USACERawReader:
 
         Parameters
         ----------
-        filename : str
+        filename
             Input file
-        ext : str, optional
+        ext
             New extention to be applied to the base
-        sfx : bool, optional
+        sfx
             Whether or not the function passes back the suffix found in
             `filename`
 
@@ -231,8 +231,8 @@ class USACERawReader:
         type :
             ``tuple(base, suffix)`` if ``sfx`` is ``True``;
             ``base`` if ``sfx`` is ``False``
-
         """
+
         filebase, fileext = _os.path.splitext(filename)
         suffix = None
 
@@ -267,16 +267,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        meta_dict : dict
+        meta_dict
             Dictionary to add values to
-        infilename : str
+        infilename
             Complete filepath of the input data
 
         Returns
         -------
         dict
             The metadata assigned via this method
-
         """
 
         base, suffix = self.name_gen(infilename)
@@ -292,19 +291,19 @@ class USACERawReader:
 
         return meta_dict
 
-    def _size_finder(self, filepath: str) -> int:
+    def _size_finder(self, filepath: Union[str, _os.PathLike]) -> int:
         """
         Returns the rounded size of a file in MB as an integer
 
         Parameters
         ----------
-        filepath : str, os.Pathlike
-            TODO write description
+        filepath
+            path of file
 
         Returns
         -------
         int
-
+            size in MB
         """
 
         return int(_np.round(_os.path.getsize(filepath) / 1000))
@@ -327,11 +326,11 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename : str
+        infilename
             Complete filepath of the input data
-        meta_source : str, optional
+        meta_source
             Choice of ``xyz`` or ``xml`` (Default == 'xyz')
-        default_meta : str, optional
+        default_meta
             (Default == ''); Optional filepath of a default metadata ``dict``
             stored as a ``.pkl`` file
 
@@ -339,8 +338,8 @@ class USACERawReader:
         -------
         dict
             The metadata found via this method
-
         """
+
         name_sections = ('projid', 'uniqueid', 'subprojid', 'start_date',
                          'statuscode', 'optional')
         name_meta = self._parse_filename(infilename)
@@ -382,15 +381,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename : str
+        infilename
             Complete filepath of the input data
 
         Returns
         -------
         dict
             The metadata found via this method
-
         """
+
         base = _os.path.basename(infilename)
         name, ext = _os.path.splitext(base)
         splitname = name.split('_')
@@ -436,15 +435,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename : str
+        infilename
             Complete filepath of the input data
 
         Returns
         -------
         dict
             The metadata found via this method
-
         """
+
         header = []
         metalist = []
         # get the header
@@ -483,14 +482,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        line : str
+        line
+            string of text row
 
         Returns
         -------
         bool
             True, if no characters match; False otherwise
-
         """
+
         pattern = '[a-zA-Z]'
         if _re.search(pattern, line) is None:
             return False
@@ -505,15 +505,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        line : str
+        line
             A string identified to contain metadata
 
         Returns
         -------
         dict
             The metadata found via this method
-
         """
+
         metadata = {}
         # find the horizontal datum information.
         zone_idx = line.find('ZONE')
@@ -560,15 +560,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        line : str
+        line
             A string identified to contain metadata
 
         Returns
         -------
         dict
             The metadata found via this method
-
         """
+
         name = line.split('=')[-1]
         name = name.strip('\n')
         metadata = {'projectname': name}
@@ -582,15 +582,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        line : str
+        line
             A string identified to contain metadata
 
         Returns
         -------
         dict
             The metadata found via this method
-
         """
+
         name = line.split('=')[-1]
         name = name.strip('\n')
         metadata = {'surveyname': name}
@@ -604,15 +604,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        line : str
+        line
             A string identified to contain metadata
 
         Returns
         -------
         dict
             The metadata found via this method
-
         """
+
         metadata = {}
         datestr = line.split('=')[-1]
         datestr = datestr.strip('\n')
@@ -639,15 +639,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        textdate : str
+        textdate
             Date string as "DD Month YYYY"
 
         Returns
         -------
         str
             Date String as "YYYYMMDD"
-
         """
+
         try:
             date = _datetime.strptime(textdate, '%d %B %Y')
             numdate = date.strftime('%Y%m%d')
@@ -655,7 +655,7 @@ class USACERawReader:
         except:
             return None
 
-    def _load_default_metadata(self, infilename, default_meta):
+    def _load_default_metadata(self, infilename: str, default_meta: str):
         """
         Given the file name for data and a default metadata file (containing a
         picked dictionary), look for the default file.  If that files does not
@@ -664,17 +664,17 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename : str
+        infilename
             Complete filepath of the input data
-        default_meta : str
+        default_meta
             Complete filepath of the input default values
 
         Returns
         -------
         dict
             The metadata found via this method
-
         """
+
         if len(default_meta) == 0:
             path, infile = _os.path.split(infilename)
             default_meta = _os.path.join(path, 'default.pkl')
@@ -712,15 +712,15 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename : str
+        infilename
             Complete filepath of the input data
 
         Returns
         -------
         dict
             The metadata found via this method
-
         """
+
         xml_meta = {}
         tree = _parse(infilename)
         root = tree.getroot()
@@ -748,20 +748,22 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename : str
+        infilename
             Complete filepath of the input data
 
         Returns
         -------
         dict
             The metadata found via this method
-
         """
+
         txt_meta = {}
-        txt_keys = {'Implied_Vertical_Accuracy': 'from_vert_unc',
-                    'Implied_Horizontal_Accuracy': 'from_horiz_unc',
-                    'Horizontal_Zone': 'from_horiz_datum',
-                    'Units': 'from_horiz_units'}
+        txt_keys = {
+            'Implied_Vertical_Accuracy': 'from_vert_unc',
+            'Implied_Horizontal_Accuracy': 'from_horiz_unc',
+            'Horizontal_Zone': 'from_horiz_datum',
+            'Units': 'from_horiz_units'
+        }
         keys = txt_keys.keys()
         with open(infilename, 'r') as metafile:
             for line in metafile:
@@ -798,7 +800,7 @@ class USACERawReader:
 
         Parameters
         ----------
-        filename : str
+        filename
             Complete filepath of the input data
 
         Returns

@@ -39,20 +39,20 @@ class Interpolator:
         else:
             raise ValueError('No interpolation engine type specified')
 
-    def interpolate(self, dataset: gdal.Dataset, metadata: dict) -> (gdal.Dataset, dict):
+    def interpolate(self, points: gdal.Dataset, metadata: dict) -> (gdal.Dataset, dict):
         """
         Take a gdal dataset and run the interpolation, returning a gdal raster.
 
         Parameters
         ----------
-        dataset
+        points
             GDAL point cloud dataset
         metadata
             dictionary of metadata
 
         Returns
         -------
-
+            interpolated GDAL dataset and dictionary of metadata
         """
 
         if 'support_files' in metadata:
@@ -72,9 +72,9 @@ class Interpolator:
         # Point Interpolation
         if self._interp_engine == 'point':
             if not support_files:
-                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution)
+                interpolated_dataset = self._engine.interpolate(points, self._interp_type, self._resolution)
             else:
-                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution,
+                interpolated_dataset = self._engine.interpolate(points, self._interp_type, self._resolution,
                                                                 support_files[0])
 
             dataset_resolution = interpolated_dataset.GetGeoTransform()[1]
@@ -90,7 +90,7 @@ class Interpolator:
             if not support_files:
                 raise ValueError("No coverage files provided; no interpolation can occur")
             else:
-                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, support_files, file_size)
+                interpolated_dataset = self._engine.interpolate(points, self._interp_type, support_files, file_size)
 
             metadata['to_filename'] = f"{_os.path.join(root, base)}_interp.{metadata['new_ext']}"
 
