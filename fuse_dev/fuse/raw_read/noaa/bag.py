@@ -328,14 +328,16 @@ class BAGRawReader:
         """
         meta = {}
         root, filename = _os.path.split(infilename)
-        snum = _re.compile(r'[A-Z]([0-9]{5})')
+        snum_reg = _re.compile(r'[A-Z]([0-9]{5})')
+        snum = snum_reg.search(filename).group()
         dir_files = [_os.path.join(root, name) for name in _os.listdir(root) if
-                     (_os.path.isfile(_os.path.join(root, name)) and snum.search(name) is not None)]
+                     (_os.path.isfile(_os.path.join(root, name)) and snum in name)]
         meta['support_files'] = [support_file for support_file in dir_files if
                                  _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.tfw', '.gpkg')]
         exts = [_os.path.splitext(support_file)[1].lower() for support_file in dir_files if
                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
         meta['interpolate'] = len(exts) > 0
+        print(meta['support_files'])
         return meta
 
     def _assign_namspace(self, version=None, xml=None):
@@ -587,7 +589,7 @@ class BAGRawReader:
         try:
             self.data['shape'] = (int(ret[1].text), int(ret[0].text))
 
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read rows and cols: {e}")
             return
 
@@ -604,7 +606,7 @@ class BAGRawReader:
         try:
             self.data['res'] = (float(ret[0].text), -float(ret[1].text))
 
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read res x and y: {e}")
             return
 
@@ -621,7 +623,7 @@ class BAGRawReader:
         try:
             self.data['bounds'] = ([float(c) for c in ret[0].split(',')], [float(c) for c in ret[1].split(',')])
 
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read corners SW and NE: {e}")
             return
 
@@ -638,7 +640,7 @@ class BAGRawReader:
         try:
             self.data['from_horiz_datum'] = ret.text
 
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the WKT projection string: {e}")
             return
 
@@ -657,7 +659,7 @@ class BAGRawReader:
         try:
             self.data['lon_min'] = float(ret_x_min.text)
             self.data['lon_max'] = float(ret_x_max.text)
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the bbox's longitude values: {e}")
             return
 
@@ -673,7 +675,7 @@ class BAGRawReader:
         try:
             self.data['lat_min'] = float(ret_y_min.text)
             self.data['lat_max'] = float(ret_y_max.text)
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the bbox's latitude values: {e}")
             return
 
@@ -689,7 +691,7 @@ class BAGRawReader:
 
         try:
             self.data['abstract'] = ret.text
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the abstract string: {e}")
             return
 
@@ -734,7 +736,7 @@ class BAGRawReader:
 
         try:
             self.data['unc_type'] = ret.text
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the uncertainty type attribute: {e}")
             return
 
@@ -760,7 +762,7 @@ class BAGRawReader:
                 self.data['z_min'] = float(ret_z_min.text)
             if ret_z_max is not None:
                 self.data['z_max'] = float(ret_z_max.text)
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the depth min and max values: %s" % e)
             return
 
@@ -829,7 +831,7 @@ class BAGRawReader:
 
         try:
             self.data['agency'] = ret.text
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the survey authority name attribute: {e}")
             return
 
@@ -849,7 +851,7 @@ class BAGRawReader:
         if rets is not None:
             try:
                 text_start_date = rets.text
-            except (ValueError, IndexError) as e:
+            except (ValueError, IndexError, AttributeError) as e:
                 _logging.warning(f"unable to read the survey start date string: {e}")
                 return
 
@@ -881,7 +883,7 @@ class BAGRawReader:
         if rete is not None:
             try:
                 text_end_date = rete.text
-            except (ValueError, IndexError) as e:
+            except (ValueError, IndexError, AttributeError) as e:
                 _logging.warning(f"unable to read the survey end date string: {e}")
                 return
 
@@ -936,7 +938,7 @@ class BAGRawReader:
             elif val.lower() in ('mean_lower_low_water', 'mean lower low water', 'mllw'):
                 self.data['from_vert_key'] = 'MLLW'
             self.data['from_vert_datum'] = val
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the survey vertical datum name attribute: {e}")
             return
 
@@ -982,7 +984,7 @@ class BAGRawReader:
                     self.data['from_horiz_frame'] = 'NAD83'
                 elif datum.lower() in ('wgs_1984', 'wgs84'):
                     self.data['from_horiz_frame'] = 'WGS84'
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the survey horizontal datum name attribute: {e}")
             return
 
@@ -1004,7 +1006,7 @@ class BAGRawReader:
                 self.data['planam'] = []
                 for r in ret:
                     self.data['planam'].append(r.text)
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the platform name attribute: {e}")
             return
 
@@ -1026,7 +1028,7 @@ class BAGRawReader:
                 self.data['sensor'] = []
                 for r in ret:
                     self.data['sensor'].append(r.text)
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the sensor name attribute: {e}")
             return
 
