@@ -9,6 +9,7 @@ Created on Wed Aug 21 08:51:53 2019
 import configparser
 import csv
 import datetime
+import gzip
 import os
 import pickle
 import re
@@ -20,7 +21,7 @@ from typing import Union, Dict, List
 
 import requests
 
-from osgeo import gdal
+#from osgeo import gdal
 from osgeo import ogr
 from osgeo import osr
 
@@ -87,6 +88,95 @@ def coordQuery(nx, ny, sx, sy):
     return bounds
 
 
+def regionQuery(region_file: str):
+    """
+
+
+    Parameters
+    ----------
+    nx :
+
+    ny :
+
+    sx :
+
+    sy :
+
+
+    Returns
+    -------
+
+    """
+    region_vector = ogr.Open(region_file)
+    layer = region_vector.GetLayer()
+
+    bounds = {}
+
+    for feature in layer:
+        if feature is not None:
+            geom = feature.GetGeometryRef()
+            points = geom.GetBoundary()
+            if points.GetGeometryName() == 'MULTILINESTRING':
+                for i in range(0, geom.GetGeometryCount()):
+                    inner_geom = geom.GetGeometryRef(i)
+                    inner_points = inner_geom.GetBoundary()
+                    x_points, y_points = [], []
+                    for i in range(0, inner_points.GetPointCount()):
+                        # GetPoint returns a tuple not a Geometry
+                        point = inner_points.GetPoint(i)
+                        x_points.append(round(point[0], 2))
+                        y_points.append(round(point[1], 2))
+                    bounds[i] = (x_points, y_points)
+            else:
+                x_points, y_points = [], []
+                for i in range(0, points.GetPointCount()):
+                    # GetPoint returns a tuple not a Geometry
+                    point = points.GetPoint(i)
+                    x_points.append(round(point[0], 2))
+                    y_points.append(round(point[1], 2))
+                bounds[0] = (x_points, y_points)
+                break
+
+    del region_vector
+
+
+    return_bounds = []
+    if len(bounds.keys()) > 1:
+        for key in bounds.keys():
+            x_points, y_points = bounds[key]
+            coords = {'geometryType': 'esriGeometryPoint', 'geometries': [{'x': min(x_points), 'y': min(y_points)}, {'x': max(x_points), 'y': max(y_points)}]}
+            query = 'https://gis.ngdc.noaa.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/project' + \
+                    f'?inSR=4326&outSR=102100&geometries={coords}&transformation=&transformForward=true&vertical=false&f=json'
+
+            coordsRequest = requests.get(query)
+            coordsRequestJSON = coordsRequest.json()
+            box = []
+            z = 0
+            for i in range(len(coordsRequestJSON['geometries'])):
+                for k, j in coordsRequestJSON['geometries'][i].items():
+                    box.append((zList[z], j))
+                    z += 1
+            return_bounds.append(dict(box))
+    else:
+        x_points, y_points = bounds[0]
+
+        coords = {'geometryType': 'esriGeometryPoint', 'geometries': [{'x': min(x_points), 'y': min(y_points)}, {'x': max(x_points), 'y': max(y_points)}]}
+        query = 'https://gis.ngdc.noaa.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/project' + \
+                f'?inSR=4326&outSR=102100&geometries={coords}&transformation=&transformForward=true&vertical=false&f=json'
+
+        coordsRequest = requests.get(query)
+        coordsRequestJSON = coordsRequest.json()
+        box = []
+        z = 0
+        for i in range(len(coordsRequestJSON['geometries'])):
+            for k, j in coordsRequestJSON['geometries'][i].items():
+                box.append((zList[z], j))
+                z += 1
+        return_bounds.append(dict(box))
+    return return_bounds
+
+#regionQuery(r'R:\Scripts\vlab-nbs\ncei_scrape\MCD_ProcessingBranches\MCD_PBG_WGS84.gpkg')
+
 def bagIDQuery(bounds, qId=3):
     """
     TODO write description
@@ -102,18 +192,24 @@ def bagIDQuery(bounds, qId=3):
 
     """
 
-    bagList = f'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/{qId}/query' + \
-              f'?where=&text=&objectIds=&time=&geometry={bounds}&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=true&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
-    bagListRequest = requests.get(bagList)
-    bagListRequestJSON = bagListRequest.json()
-    #    print (bagListRequestJSON)
-    objectIDs = bagListRequestJSON['objectIds']
-    if objectIDs is None:
-        return [], 0
-    else:
-        objectNum = len(objectIDs) - 1
-        print(objectIDs, objectNum)
-        return objectIDs, objectNum
+    # Renamed bounds because Glen wanted it to be a que, not a queue
+    que = bounds
+
+    objectIDs = []
+    objectNum = 0
+
+    for box in que:
+        bagList = f'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/{qId}/query' + \
+                  f'?where=&text=&objectIds=&time=&geometry={box}&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=true&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
+        bagListRequest = requests.get(bagList)
+        bagListRequestJSON = bagListRequest.json()
+        #    print (bagListRequestJSON)
+        objectIDs.extend(bagListRequestJSON['objectIds'])
+        objectNum += len(objectIDs) - 1
+        print(objectNum)
+
+#    print(objectIDs, objectNum)
+    return objectIDs, objectNum
 
 
 def list_chunks(input_list: list, n: int = 1000):
@@ -225,15 +321,13 @@ def fileDownloader(folder, download_links, saved_files):
         dwntime = datetime.datetime.now()
         while True:
             if os.path.exists(saved) and saved not in saved_files or saved not in saved_links:
-                if os.path.splitext(saved)[1].lower() in ('.gz', '.zip'):
-                    try:
-                        unzip = zipfile.ZipFile(saved)
-                        file_list = unzip.filelist()
-                        print(file_list)
-                        unzip.extractall(folder)
-                        saved_links.extend(file_list)
-                    except zipfile.BadZipfile as e:
-                        print(e)
+                basename, ext = os.path.splitext(saved)
+                if ext not in ('.gz') and not os.path.exists(basename):
+                    unzip = gzip.open(saved, 'rb')
+                    saved = open(basename, 'wb')
+                    shutil.copyfileobj(unzip, saved)
+                    unzip.close(), saved.close()
+                    saved_links.extend([saved, basename])
                 else:
                     print(link)
                     saved_links.append(saved)
@@ -269,33 +363,35 @@ def surveyDownload(rows: [dict]) -> [dict]:
 
     """
     for row in rows:
+        if rows.index(row) == 0:
+            branch_path = fr"{row['PROCESSING_BRANCH']}\NOAA_NCEI_OCS\BAGs\Original"
+            branch_folder = os.path.join(downloads, branch_path)
+            if not os.path.isdir(branch_folder):
+                os.makedirs(branch_folder)
+
         row['SURVEY_FILES'] = []
         survey = row['SURVEY_ID']
         ncei_sub = '/'.join(os.path.splitext(row['DOWNLOAD_URL'])[0].split('/')[-2:])
         download_links = []
         print(f'Survey - {rows.index(row) + 1} of {len(rows)}: {survey}')
+
         for folder, extensions in {'BAG': ['.bag', '.bag.gz'],
                                    'TIFF': ['tif', 'tiff', 'tfw']}.items():
             source_url = f'{ncei_head}/{ncei_sub}/{folder}'
             download_links = linkGrab(source_url, extensions)
+
             if len(download_links) > 0:
-                survey_folder = os.path.join(downloads, survey)
+                survey_folder = os.path.join(branch_folder, survey)
                 if not os.path.isdir(survey_folder):
                     os.mkdir(survey_folder)
                 row['SURVEY_FILES'].extend(fileDownloader(survey_folder, download_links, row['SURVEY_FILES']))
 
         pickle_name = f'{os.path.join(survey_folder, survey)}.pickle'
-#        zipped_name = f'{survey_folder}.zip'
+
 
         with open(pickle_name, 'wb') as metafile:
             pickle.dump(row, metafile)
-            row['SURVEY_FILES'].extend([pickle_name, zipped_name])
-
-#        zipped = zipfile.ZipFile(zipped_name, mode='w')
-#        [zipped.write(saved) for saved in row['SURVEY_FILES']]
-#        zipped.close()
-#        [os.remove(saved) for saved in row['SURVEY_FILES']]
-#        os.rmdir(survey_folder)
+            row['SURVEY_FILES'].extend([pickle_name])
 
     return rows
 
@@ -379,4 +475,4 @@ def main(name, nx, sy, sx, ny, qId=0, pb=None):
                                'South': sy, 'East': nx}
         return (f'No {noItems} were found within: {cardinal_directions}.')
 
-main('', -73.5, 40, -74, 40.5, qId=0)
+#main('', -73.5, 40, -74, 40.5, qId=0)
