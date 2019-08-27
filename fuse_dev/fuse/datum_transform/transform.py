@@ -67,6 +67,10 @@ class DatumTransformer:
         """
 
         if False in [metadata[self._from_datum_info[key]] != metadata[self._to_datum_info[key]] for key in range(len(self._from_datum_info))]:
-            return self._engine.translate(filename, metadata), True
+            if self.reader.version == 'BAG':
+                metadata['interpolate'] == 'False'
+                return self._engine.create(filename, metadata), False
+            else:
+                return self._engine.translate(filename, metadata), True
         else:
             return self._engine.create(filename, metadata), False

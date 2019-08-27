@@ -114,13 +114,14 @@ class BAGRawReader:
     (named 'data').
     """
 
-    def __init__(self):
+    def __init__(self, version=__version__):
         """
         Provided a BAG xml string for parsing, a tree will be created and the
         name speace parsed from the second line.  Values are then extracted
         based on the source dictionary.  If this dictionary
         """
         self.data = {}
+        self.version = version
 
         self._logger = _logging.getLogger(f'fuse')
 
@@ -142,8 +143,8 @@ class BAGRawReader:
 
         """
         try:
-            meta_gdal, version = self._parse_bag_gdal(infilename)
-            meta_xml = self._parse_bag_xml(infilename, version=version)
+            meta_gdal, bag_version = self._parse_bag_gdal(infilename)
+            meta_xml = self._parse_bag_xml(infilename, bag_version=bag_version)
             meta_support = self._known_meta(infilename)
             return {**meta_xml, **meta_gdal, **meta_support}
         except ValueError as e:
@@ -191,7 +192,7 @@ class BAGRawReader:
         try:
             bag_file = _gdal.Open(infilename)
             metadata = {**bag_file.GetMetadata()}
-            version = float(metadata['BagVersion'][:-2])
+            bag_version = float(metadata['BagVersion'][:-2])
             metadata['shape'] = (bag_file.RasterYSize, bag_file.RasterXSize)
             #            geotransform = bag_file.GetGeoTransform()
             #            metadata['res'] = (geotransform[1], geotransform[5])
@@ -221,9 +222,9 @@ class BAGRawReader:
             del bag_file
         except RuntimeError as e:
             raise ValueError(f'{e}')
-        return metadata, version
+        return metadata, bag_version
 
-    def _parse_bag_xml(self, infilename: str, version=None) -> dict:
+    def _parse_bag_xml(self, infilename: str, bag_version=None) -> dict:
         """
         Parses metadata available via the file's xml and returns them as a dict
 
@@ -261,8 +262,8 @@ class BAGRawReader:
                         start_val += 1
 
             self.xml_tree = _et.XML(meta_xml)
-            self.namespace = self._assign_namspace(version=version)
-            self.bag_format = self._set_format(infilename, version)
+            self.namespace = self._assign_namspace(bag_version=bag_version)
+            self.bag_format = self._set_format(infilename, bag_version)
             self.get_fields()
 
             return self.data
@@ -340,7 +341,7 @@ class BAGRawReader:
         print(meta['support_files'])
         return meta
 
-    def _assign_namspace(self, version=None, xml=None):
+    def _assign_namspace(self, bag_version=None, xml=None):
         """
         Try to guess the version of the bag for the purpose of parsing the
         fields.  The guess is based off comparing the name spaces.
@@ -361,16 +362,16 @@ class BAGRawReader:
             'gml': "http://www.opengis.net/gml"
         }
 
-        if version is not None:
-            if version >= 1.5:
+        if bag_version is not None:
+            if bag_version >= 1.5:
                 namespace = post15
-            elif version < 1.5:
+            elif bag_version < 1.5:
                 namespace = pre15
             return namespace
-        elif version is None and xml != None:
+        elif bag_version is None and xml != None:
             return parse_namespace(xml)
 
-    def _set_format(self, infilename: str, version: float) -> object:
+    def _set_format(self, infilename: str, bag_version: float) -> object:
         """
         Set the locations of the desired data types based on the version of the
         bag.
@@ -378,12 +379,12 @@ class BAGRawReader:
         Parameters
         ----------
         infilename : str
-        version : float
+        bag_version : float
         """
 
         source = {'filename': infilename}
 
-        if version >= 1.5:
+        if bag_version >= 1.5:
             # these are the bag types
             source[
                 'rows_cols'] = './/gmd:spatialRepresentationInfo/gmd:MD_Georectified/gmd:axisDimensionProperties/gmd:MD_Dimension/gmd:dimensionSize/gco:Integer'
@@ -422,7 +423,7 @@ class BAGRawReader:
             source[
                 'sensor'] = './/gmi:instrument/gmi:MI_Instrument/gmi:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString'
 
-        elif version < 1.5 and version > 0:
+        elif bag_version < 1.5 and bag_version > 0:
             source['abstract'] = './/identificationInfo/smXML:BAG_DataIdentification/abstract'
             source[
                 'SORDAT'] = './/identificationInfo/smXML:BAG_DataIdentification/citation/smXML:CI_Citation/date/smXML:CI_Date/date'
