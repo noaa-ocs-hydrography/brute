@@ -204,8 +204,8 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
         elif xml_data.version == 'ISO-8859-1':
             meta_xml = xml_data._extract_meta_USACE_ISO()
             if 'ISO_xml' not in meta_xml:
-                meta_xml = xml_data._extract_meta_USACE_FGDC(
-                    override='Y')  # xml_data._extract_meta_ISOlabel_USACE_FGDC()
+                meta_xml2 = xml_data._extract_meta_USACE_FGDC(override='Y')
+                meta_xml = {**meta_xml, **meta_xml2}
         else:
             meta_xml = xml_data.convert_xml_to_dict2()
         ext_dict = xml_data.extended_xml_fgdc()
@@ -780,7 +780,14 @@ def _check_special_handling(basename):
             special_handling = 'FullRES'
     return special_handling
 
-
+    special_handling = ''
+    if basename.find('.ppxyz') > 0:
+        special_handling = 'ppxyz'
+    full_res = [ '_A.xyz', '_FULL.xyz', '_A.XYZ', '_FULL.XYZ']#
+    for ext_full in full_res:
+        if basename.find(ext_full) > 0:
+            special_handling = 'FullRES'
+            
 ##-----------------------------------------------------------------------------
 
 def _start_xyz(infilename: str):
