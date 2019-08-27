@@ -112,7 +112,6 @@ def concatGrid(arr_1, arr_2, nodata: int, no_nan: bool = False, split: bool = Tr
             return []
 
 
-
 def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugrids: list, maxVal: _np.array,
             ioVal: Union[int, bool], debug: Union[int, bool] = False):
     """
@@ -199,9 +198,18 @@ class Interpolate:
     Interpolates input data and convolves the ouput of the interpolation, if
     applicable.
 
+    Attributes
+    ----------
+    bathy : numpy.array
+        The resultant bathemetry data
+    uncrt : numpy.arry
+        The resultant uncertainty data
+    unint : numpy.array
+        The pre-gaussian resultant bathemetry data
     """
 
-    def __init__(self, method: str, bathy: _np.array, uncrt: _np.array, covrg: _np.array, catzoc: tuple = None, nodata: float = 1000000.0):
+    def __init__(self, method: str, bathy: _np.array, uncrt: _np.array, covrg: _np.array, catzoc: tuple = None,
+                 nodata: float = 1000000.0):
         """
         Takes input bathy and coverage arrays (tile or complete data) as well as
         the uncertainty array.  This data is used to inform the shape/size of the
@@ -228,18 +236,8 @@ class Interpolate:
         nodata : float, optional
             The default value is 1000000.0, the nodata value associated with
             the BAG format
-
-        Attributes
-        ----------
-        bathy : numpy.array
-            The resultant bathemetry data
-        uncrt : numpy.arry
-            The resultant uncertainty data
-        unint : numpy.array
-            The pre-gaussian resultant bathemetry data
-
-
         """
+
         xi, yi = _np.meshgrid(_np.arange(bathy.shape[1]), _np.arange(bathy.shape[0]))
         if method == 'linear':
             xy, z = concatGrid(bathy, covrg, nodata)
@@ -278,9 +276,7 @@ class Interpolate:
         """
 
         m, b = uval
-        grid_pre = _scipy.interpolate.griddata(xy, z, (xi, yi),
-                                               method='linear',
-                                               fill_value=nodata)
+        grid_pre = _scipy.interpolate.griddata(xy, z, (xi, yi), method='linear', fill_value=nodata)
         grid = grid_pre
         grid = _np.asarray(grid, dtype='float64')
         grid[grid > 0] = _np.nan

@@ -11,41 +11,22 @@ An abstraction for data interpolation.
 
 import os as _os
 
-import fuse.interpolator.bag_interpolator as binterp
-import fuse.interpolator.point_interpolator as pinterp
 from osgeo import gdal
 
 
-class Interpolator:
+class SurveyInterpolation:
     """An abstraction for data interpolation."""
 
-    def __init__(self, interpolation_engine: str, interp_type: str, resolution: float):
-        """
-        Set the interpolation method.
-        """
+    def __init__(self, dataset: gdal.Dataset):
+        self.dataset = dataset
 
-        self._interp_engine = interpolation_engine
-        self._interp_type = interp_type
-        self._resolution = resolution
-        self._setup()
-
-    def _setup(self):
-        """Set up and configure the interpolation tools."""
-
-        if self._interp_engine == 'point':
-            self._engine = pinterp.PointInterpolator()
-        elif self._interp_engine == 'raster':
-            self._engine = binterp.process.RasterInterpolator()
-        else:
-            raise ValueError('No interpolation engine type specified')
-
-    def interpolate(self, points: gdal.Dataset, metadata: dict) -> (gdal.Dataset, dict):
+    def interpolate(self, metadata: dict) -> (gdal.Dataset, dict):
         """
         Take a gdal dataset and run the interpolation, returning a gdal raster.
 
         Parameters
         ----------
-        points
+        dataset
             GDAL point cloud dataset
         metadata
             dictionary of metadata
@@ -72,9 +53,9 @@ class Interpolator:
         # Point Interpolation
         if self._interp_engine == 'point':
             if not support_files:
-                interpolated_dataset = self._engine.interpolate(points, self._interp_type, self._resolution)
+                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution)
             else:
-                interpolated_dataset = self._engine.interpolate(points, self._interp_type, self._resolution,
+                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution,
                                                                 support_files[0])
 
             dataset_resolution = interpolated_dataset.GetGeoTransform()[1]
@@ -90,7 +71,7 @@ class Interpolator:
             if not support_files:
                 raise ValueError("No coverage files provided; no interpolation can occur")
             else:
-                interpolated_dataset = self._engine.interpolate(points, self._interp_type, support_files, file_size)
+                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, support_files, file_size)
 
             metadata['to_filename'] = f"{_os.path.join(root, base)}_interp.{metadata['new_ext']}"
 

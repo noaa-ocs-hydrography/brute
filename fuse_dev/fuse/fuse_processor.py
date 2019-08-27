@@ -261,7 +261,7 @@ class FuseProcessor:
         engine = self._config['interpolation_engine']
         res = float(self._config['to_resolution'])
         method = self._config['interpolation_method']
-        self._interpolator = _interp.Interpolator(engine, method, res)
+        self._interpolator = _interp.SurveyInterpolation(engine, method, res)
 
     def _set_data_writer(self):
         """Set up the location and method to write tranformed and interpolated data."""
