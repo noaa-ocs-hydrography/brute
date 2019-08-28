@@ -303,7 +303,7 @@ class VDatum:
         spatial_reference = osr.SpatialReference()
         spatial_reference.SetWellKnownGeogCS('NAD83')
         # positive UTM zone is in the northern hemisphere
-        spatial_reference.SetUTM(utm_zone, 1 if utm_zone > 0 else 0)
+        spatial_reference.SetUTM(abs(utm_zone), 1 if utm_zone > 0 else 0)
         spatial_reference.SetVertCS(vertical_datum, vertical_datum, 2000)
         dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
         layer = dataset.CreateLayer('pts', spatial_reference, geom_type=ogr.wkbPoint)
