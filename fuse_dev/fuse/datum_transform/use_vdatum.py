@@ -256,13 +256,13 @@ class VDatum:
         dest = osr.SpatialReference()
         dest.SetWellKnownGeogCS('NAD83')
         if int(out_zone) < 0:  # if out_zone is positive it is in the northern hemisphere
-            hemisphere = '0'  # 0 = South
+            hemisphere = False#'0'  # 0 = South
         else:  # if out_zone is negative it is in the southern hemisphere
-            hemisphere = '1'  # 1 =North#boolean test being passed to SetUTM
+            hemisphere = True#'1'  # 1 =North#boolean test being passed to SetUTM
             #Reference from Python API instructions https://gdal.org/python/osgeo.osr.SpatialReference-class.html
             #SetUTM(self, *args)
             #SetUTM(SpatialReference self, int zone, int north=1) -> OGRErr
-        dest.SetUTM(abs(int(out_zone)), int(hemisphere))#pass absolute value of out_zone
+        dest.SetUTM(abs(int(out_zone)), hemisphere)#pass absolute value of out_zone, abs(int(out_zone)), int(hemisphere)
         dest.SetVertCS(out_verdat, out_verdat, 2000)
         dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
         layer = dataset.CreateLayer('pts', dest, geom_type=ogr.wkbPoint)
