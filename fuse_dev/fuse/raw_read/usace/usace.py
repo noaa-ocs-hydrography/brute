@@ -525,7 +525,7 @@ class USACERawReader:
             metadata['from_horiz_key'] = fips
             metadata['from_wkt'] = _usefips.fips2wkt(fips)
             horiz_units = horiz_datum.split(',')[1]
-            if horiz_units.strip().upper() == 'US SURVEY FEET':
+            if horiz_units.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
                 metadata['from_horiz_units'] = 'US Survey Foot'
             else:
                 metadata['from_horiz_units'] = horiz_units.strip()

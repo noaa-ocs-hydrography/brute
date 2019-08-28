@@ -1597,7 +1597,10 @@ def extract_from_iso_meta(xml_meta):
                 xml_meta['from_vert_datum'] = xml_meta['Vertical Datum Description']
     # horizontal units
     if 'Units' in xml_meta:
-        xml_meta['from_horiz_units'] = xml_meta['Units'].strip()
+        if xml_meta['Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+                xml_meta['from_horiz_units'] = 'US Survey Foot'
+            else:
+                xml_meta['from_horiz_units'] = xml_meta['Units'].strip()
     if 'Implied_Horizontal_Accuracy' in xml_meta:
         Hor_unc = xml_meta['Implied_Horizontal_Accuracy']
         Vert_unc = xml_meta['Implied_Vertical_Accuracy']
@@ -1874,7 +1877,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         if m['Horizontal_Units'] == '':
             if meta_xml[
                 'plandu'].upper() == 'FOOT_US':  # plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
-                m['Horizontal_Units'] = 'U.S. Survey Feet'
+                m['Horizontal_Units'] = 'US Survey Foot'
             elif meta_xml['plandu'].upper() == 'INTL FOOT':
                 m['from_horiz_units'] = 'ft'  # international feet code for vdatum
     horizpar = meta_xml['horizpar']
@@ -2011,7 +2014,10 @@ def convert_meta_to_input(m):
     elif 'horizontal_datum_i' in m:
         m['from_horiz_datum'] = m['horizontal_datum_i'].split('Vertical Datum:')[0]
     if 'Horizontal_Units' in m:
-        m['from_horiz_units'] = m['Horizontal_Units'].strip()  # may need to enforce some kind of uniform spelling etc. here
+        if m['Horizontal_Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+                m['from_horiz_units'] = 'US Survey Foot'
+            else:
+                m['from_horiz_units'] = m['Horizontal_Units'].strip() # may need to enforce some kind of uniform spelling etc. here
     if 'FIPS' in m:
         m['from_fips'] = m['FIPS']
     if 'VERTDAT' in m:
