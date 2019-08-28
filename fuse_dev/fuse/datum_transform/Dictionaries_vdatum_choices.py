@@ -5,6 +5,28 @@ Created on Fri May 17 11:36:21 2019
 @author: jkinney
 """
 
+#Vdatum Choices
+#List for now of expected possible values
+Vdatum_Choices =[
+    "3.9" ,
+    "3.8 lwrp",
+    "3.8 CRD",
+    "4.0" ,
+    ]
+
+Vdatum_Choices_VerticalDatums: {
+    "3.9" : "Supported_Vertical_Datums_v3_9",
+    "3.8 lwrp" : "Supported_Vertical_Datums_lwrp",
+    "3.8 CRD" :"Supported_Vertical_Datums_CRD",
+    "4.0" : "Supported_Vertical_Datums_v4_0",
+    }
+Vdatum_Choices_Horizontal: {
+    "3.9" : "Supported_Horizontal_Datums ",
+    "3.8 lwrp" : "Supported_Horizontal_Datums ",
+    "3.8 CRD" :"Supported_Horizontal_Datums ",
+    "4.0" : "Supported_Horizontal_Datums_4_0 ",
+    }
+
 #Supported Coordinate Systems:
 #        'Code' : 'Description',
 Supported_Coordinate_Systems = {
@@ -101,7 +123,7 @@ Supported_Vertical_Datums_lwrp = {
 
 #Supported Vertical Datums:
 #'Code' : 'Description',
-Supported_Vertica_Datums_v3_9 = {
+Supported_Vertical_Datums_v3_9 = {
         'navd88' : 'NAVD 88',
         'ngvd29' : 'NGVD 1929',
         'asvd02' : 'ASVD02',
@@ -204,6 +226,11 @@ Supported_Vertical_Datums_CRD = {
         'wgs84_transit' : 'WGS84(transit)',#'WGS84(transit) - use NAD83 (see NGS's HTDP)',
         'wgs84_g1762' : 'WGS84(G1762) - use IGS08',
         }
+#Need to add new Vdatum choices
+Supported_Vertical_Datums_v4_0 ={
+    }
+Supported_Horizontal_Datums_4_0  = {
+    }
 
 #Supported GEOID models:
 #'Code' : 'Description',
