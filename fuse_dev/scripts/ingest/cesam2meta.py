@@ -18,7 +18,7 @@ from glob import glob
 import fuse.fuse_processor as ffp
 
 if __name__ == '__main__':
-    cesam = ffe.ffp.FuseProcessor('cesam.config')  # this config is local for testing
+    cesam = ffp.FuseProcessor('cesam.config')  # this config is local for testing
     for path in cesam.rawdata_path:
         flist = glob(os.path.join(path, '*.xyz'))
         for f in flist:

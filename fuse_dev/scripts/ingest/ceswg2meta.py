@@ -17,7 +17,7 @@ from glob import glob
 import fuse.fuse_processor as ffp
 
 if __name__ == '__main__':
-    ceswg = ffe.FuseProcessor('ceswg.config')  # this config is local for testing
+    ceswg = ffp.FuseProcessor('ceswg.config')  # this config is local for testing
     for path in ceswg.rawdata_path:
         flist = glob(os.path.join(path, '*.xyz'))
         for f in flist:
