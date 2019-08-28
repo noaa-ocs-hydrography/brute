@@ -119,7 +119,7 @@ class XMLMetadata:
             self.version = float(version)
         else:
             self.version = self._guess_version()
-            print(version)
+            # print(version)
         self._set_format()
         self.get_fields()
 
@@ -160,15 +160,15 @@ class XMLMetadata:
         if self.ns == version_1:
             return 1.0
         elif self.xml_txt.startswith('<?xml version="1.0" encoding="ISO-8859-1"?>\n'):
-            print('ISO-8859-1 xml version')
+            # print('ISO-8859-1 xml version')
             # xml_version = 'ISO-8859-1'
             return 'ISO-8859-1'
         elif self.xml_tree.tag == 'metadata':
-            print(version_USACE_FGDC)
-            print('FGDC format not ISO, USACE example')
+            # print(version_USACE_FGDC)
+            # print('FGDC format not ISO, USACE example')
             return 'USACE_FGDC'
         else:
-            print('We do not have a template for this version yet!')
+            # print('We do not have a template for this version yet!')
             return -1.0
 
     def _set_format(self):
@@ -193,11 +193,11 @@ class XMLMetadata:
                 my_etree_dict = self.convert_xml_to_dict2()  # _extract_meta_USACE_FGDC()# option pull metadata now, or only pull key pieces?
                 if 'metstdv' in my_etree_dict:
                     Metadataformat = my_etree_dict['metstdv']
-                    print(Metadataformat)
+                    # print(Metadataformat)
                     self.metadataformat = Metadataformat
                     self.metadataformat_check = 'y'
             except:
-                print('unexpected issue with assumed USACE FGDC format parsing')
+                # print('unexpected issue with assumed USACE FGDC format parsing')
                 self.metadataformat_check = 'fail'
         elif version == 'ISO-8859-1':
             self.source = {}
@@ -205,11 +205,11 @@ class XMLMetadata:
                 my_etree_dict = self.convert_xml_to_dict()
                 if 'metstdv' in my_etree_dict:
                     Metadataformat = my_etree_dict['metstdv']
-                    print(Metadataformat)
+                    # print(Metadataformat)
                     self.metadataformat = Metadataformat
                     self.metadataformat_check = 'y'
             except:
-                print('unexpected issue with assumed USACE ISO 88591 FGDC format parsing')
+                # print('unexpected issue with assumed USACE ISO 88591 FGDC format parsing')
                 self.metadataformat_check = 'fail'
         else:
             version = float(self.version)
@@ -453,13 +453,13 @@ class XMLMetadata:
         my_etree = self.xml_tree
         for S_INST in my_etree.iter('SURVEY_INSTRUMENT'):
             S_INST_ch = S_INST.getchildren()
-            print(S_INST_ch)
+            # print(S_INST_ch)
             for si in S_INST_ch:
                 si_key = si.tag
                 si_value = si.text
                 if si_value is None:
                     si_value = ''
-                print(si_key, si_value)
+                # print(si_key, si_value)
                 try:
                     if Survey_Instruments:
                         # if this key is not populated for the dictionary yet, then populate it
@@ -471,7 +471,7 @@ class XMLMetadata:
                     else:  # if no dictionary exists yet populate
                         Survey_Instruments[si_key] = si_value
                 except:
-                    print('problem with loop')
+                    # print('problem with loop')
         return Survey_Instruments
 
     def get_fields(self):
@@ -551,7 +551,7 @@ class XMLMetadata:
                 if self.data[key] in horz_datum:
                     s57[key] = horz_datum[self.data[key]]
                 else:
-                    print(self.data[key])
+                    # print(self.data[key])
                     s57[key] = horz_datum['Local']
         if self.version == 'HSMDB':
             s57['OBJNAM'] = self.data['survey']
@@ -591,7 +591,7 @@ class XMLMetadata:
             try:
                 m = convert_meta_to_input(meta)
             except:
-                print('still debugging')
+                # print('still debugging')
                 m = {}
             meta_all_fields = {**meta_xml, **meta, **m}
 
@@ -620,7 +620,7 @@ class XMLMetadata:
             try:
                 m = convert_meta_to_input(meta_xml)
             except:
-                print('still debugging')
+                # print('still debugging')
                 m = {}
             meta_all_fields = {**meta_xml, **meta, **m}
         return meta_all_fields
@@ -957,7 +957,7 @@ def check_firstline(meta_xml):
 
     xml_version = ''
     if meta_xml.startswith('<?xml version="1.0" encoding="ISO-8859-1"?>\n'):
-        print('ISO-8859-1 xml version')
+        # print('ISO-8859-1 xml version')
         xml_version = 'ISO-8859-1'
     return xml_version  # returns 'ISO-8859-1'
 
@@ -1626,7 +1626,7 @@ def extract_from_iso_meta(xml_meta):
                                        f"{xml_meta['Units']}"
         if len(xml_meta['Horizontal_Zone']) > 0:
             code = xml_meta['Horizontal_Zone'].split(' ')[1]
-            print(code)
+            # print(code)
             if '-' in code:
                 code = code.split('-')[1]
                 try:
@@ -1823,7 +1823,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                     m['script: from_vert_units'] = 'US Survey Foot'
         except:
             # Other way to split abstract, in case format changed over time
-            print('issue parsing')
+            # print('issue parsing')
             if abstract.find('Survey Type: Single Beam Soundings') >= 0:
                 m['TECSOU'] = '1'  # 'single beam'
 
@@ -1942,7 +1942,7 @@ def parse_xml_info_text_ISO(xml_txt, m):
     other_lines_str = ''
     for line in lines:
         if line.find('ellips') > 0:
-            print(line)
+            # print(line)
             # if m['ellips'] == '':
             #    print(line)
         elif line != '':
@@ -2085,13 +2085,13 @@ def _print_TECSOU_defs(myvalue=None):
         "14": "computer generated: the sounding was determined from a bottom model constructed using a computer"
     }
 
-    print(TECSOU_def)
-    print(TECSOU_S57codes)
+    # print(TECSOU_def)
+    # print(TECSOU_S57codes)
     if myvalue is None:
         myvalue = 'no'
-        print('Just printing codes')
+        # print('Just printing codes')
     else:
-        print('returning dictionary')
+        # print('returning dictionary')
         return TECSOU_def, TECSOU_S57codes
     """
     _print_TECSOU_defs(myvalue = None)
