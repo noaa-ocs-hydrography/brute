@@ -2016,9 +2016,9 @@ def convert_meta_to_input(m):
         m['from_horiz_datum'] = m['horizontal_datum_i'].split('Vertical Datum:')[0]
     if 'Horizontal_Units' in m:
         if m['Horizontal_Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
-                m['from_horiz_units'] = 'US Survey Foot'
-            else:
-                m['from_horiz_units'] = m['Horizontal_Units'].strip() # may need to enforce some kind of uniform spelling etc. here
+            m['from_horiz_units'] = 'US Survey Foot'
+        else:
+            m['from_horiz_units'] = m['Horizontal_Units'].strip() # may need to enforce some kind of uniform spelling etc. here
     if 'FIPS' in m:
         m['from_fips'] = m['FIPS']
     if 'VERTDAT' in m:
