@@ -14,10 +14,10 @@ into the metadata file for qualification.
 import os
 from glob import glob
 
-import fuse.fuse_ehydro as ffe
+import fuse.fuse_processor as ffp
 
 if __name__ == '__main__':
-    cesaj = ffe.FuseProcessor_eHydro('cesaj.config')  # this config is local for testing
+    cesaj =  ffp.FuseProcessor('cesaj.config')  # this config is local for testing
     for path in cesaj.rawdata_path:
         flist = glob(os.path.join(path, '*.xyz'))
         for f in flist:
