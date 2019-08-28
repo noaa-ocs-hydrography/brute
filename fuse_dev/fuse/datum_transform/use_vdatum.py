@@ -259,7 +259,10 @@ class VDatum:
             hemisphere = '0'  # 0 = South
         else:  # if out_zone is negative it is in the southern hemisphere
             hemisphere = '1'  # 1 =North#boolean test being passed to SetUTM
-        dest.SetUTM(int(out_zone), int(hemisphere))
+            #Reference from Python API instructions https://gdal.org/python/osgeo.osr.SpatialReference-class.html
+            #SetUTM(self, *args)
+            #SetUTM(SpatialReference self, int zone, int north=1) -> OGRErr
+        dest.SetUTM(abs(int(out_zone)), int(hemisphere))#pass absolute value of out_zone
         dest.SetVertCS(out_verdat, out_verdat, 2000)
         dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
         layer = dataset.CreateLayer('pts', dest, geom_type=ogr.wkbPoint)
