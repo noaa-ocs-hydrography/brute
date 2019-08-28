@@ -63,18 +63,18 @@ class VDatum:
 
         if 'vdatum_path' in config:
             vdatum_path = config['vdatum_path']
-            if _os.path.isdir(vdatum_path):
+            if _os.path.isfile(_os.path.join(vdatum_path, 'vdatum.jar')):
                 self._vdatum_path = vdatum_path
             else:
                 raise ValueError(f'Invalid vdatum folder: {vdatum_path}')
         else:
             raise ValueError('No VDatum path provided')
         if 'java_path' in config:
-            vdatum_path = config['java_path']
-            if _os.path.isdir(vdatum_path):
-                self._java_path = vdatum_path
+            java_path = config['java_path']
+            if _os.path.isfile(_os.path.join(java_path, 'java.exe')):
+                self._java_path = java_path
             else:
-                raise ValueError(f'Invalid java path: {vdatum_path}')
+                raise ValueError(f'Invalid java path: {java_path}')
         else:
             raise ValueError('No java path provided')
 
