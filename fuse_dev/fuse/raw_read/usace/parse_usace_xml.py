@@ -1599,9 +1599,9 @@ def extract_from_iso_meta(xml_meta):
     # horizontal units
     if 'Units' in xml_meta:
         if xml_meta['Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
-                xml_meta['from_horiz_units'] = 'US Survey Foot'
-            else:
-                xml_meta['from_horiz_units'] = xml_meta['Units'].strip()
+            xml_meta['from_horiz_units'] = 'US Survey Foot'
+        else:
+            xml_meta['from_horiz_units'] = xml_meta['Units'].strip()
     if 'Implied_Horizontal_Accuracy' in xml_meta:
         Hor_unc = xml_meta['Implied_Horizontal_Accuracy']
         Vert_unc = xml_meta['Implied_Vertical_Accuracy']
