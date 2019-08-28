@@ -6,11 +6,13 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
-  - gdal
+  - gdal=2.4.2
   - fiona
+  - rasterio
   - mongoengine
   - astropy
   - pytables
   - pykrige
   - lxml
   - requests
+  - spyder

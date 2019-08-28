@@ -17,7 +17,7 @@ class CENAERawReader(usace.USACERawReader):
         """
         usace.USACERawReader.__init__(self, version='CENAE')
 
-    def read_metadata(self, infilename: str):
+    def read_metadata(self, filename: str):
         """
         Function overwite of :func:`usace.USACERawReader.read_metadata` based
         on where the best metadata is for this district
@@ -30,7 +30,7 @@ class CENAERawReader(usace.USACERawReader):
 
         Parameters
         ----------
-        infilename : str
+        filename : str
             File path of the input ``.xyz`` data
 
         Returns
@@ -41,15 +41,15 @@ class CENAERawReader(usace.USACERawReader):
         """
 
         meta_supplement = {}
-        basexyzname, suffix = self.name_gen(infilename, ext='.xyz')
-        meta_xml = self._parse_usace_xml(infilename)
+        basexyzname, suffix = self.name_gen(filename, ext='.xyz')
+        meta_xml = self._parse_usace_xml(filename)
         meta_xyz = self._parse_ehydro_xyz_header(basexyzname)
-        meta_filename = self._parse_filename(infilename)
-        meta_pickle = self._parse_pickle(infilename)
-        meta_date = self._parse_start_date(infilename,
+        meta_filename = self._parse_filename(filename)
+        meta_pickle = self._parse_pickle(filename)
+        meta_date = self._parse_start_date(filename,
                                            {**meta_pickle, **meta_xyz,
                                             **meta_xml})
-        meta_determine = self._data_determination(meta_supplement, infilename)
+        meta_determine = self._data_determination(meta_supplement, filename)
         meta_supplement = {**meta_determine, **meta_date, **meta_supplement}
         return {**meta_pickle, **meta_xml, **meta_xyz, **meta_filename,
                 **meta_supplement}

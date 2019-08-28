@@ -7,7 +7,6 @@ Created on Thu Jun  6 15:29:51 2019
 
 import os as _os
 from datetime import datetime as _dt
-from typing import List, Tuple
 
 import numpy as _np
 from osgeo import gdal as _gdal, gdal
@@ -100,6 +99,7 @@ class GeoTIFF:
         self.array, self.shape, self.nodata = self._getArrayData(_ds)
         _fName = _os.path.split(filename)[-1]
         self.name = _os.path.splitext(_fName)[0]
+        self.wkt = _ds.GetProjectionRef()
         del _ds
 
     def _getBounds(self, gdal_obj):
@@ -350,13 +350,13 @@ class UnifiedCoverage:
         self._align_and_combine(_rasters, bag_name)
         del _rasters
 
-    def _open_data(self, files: List[str], bag_wkt: str):
+    def _open_data(self, files: [str], bag_wkt: str):
         """
         TODO write description
 
         Parameters
         ----------
-        files: List[str] :
+        files: [str] :
             TODO write description
         bag_wkt: str :
             TODO write description
@@ -377,12 +377,16 @@ class UnifiedCoverage:
             if ext in ('.tiff', '.tif'):
                 rast = GeoTIFF()
                 rast.open_file(item)
-            elif ext in ('.shp', '.gpkg'):
+                bndRasts.append(rast)
+            elif ext in ('.gpkg',):
                 rast = Geopackage()
                 rast.open_file(item, bag_wkt)
+                bndRasts.append(rast)
 
-            bndRasts.append(rast)
             y += 1
+
+        if len(bndRasts) == 0:
+            raise RuntimeError(f'No valid coverage in {files}')
 
         return bndRasts
 
@@ -641,8 +645,8 @@ class UnifiedCoverage:
             return rasters, bounds
 
 
-def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]], shape: Tuple[int, int],
-               resolution: Tuple[float, float], nodata: float):
+def align2grid(coverage, bounds: ((float, float), (float, float)), shape: (int, int), resolution: (float, float),
+               nodata: float):
     """
     Takes an input of two arrays representing bag and tif data. These arrays
     hold information like extent, data, and more. The goal of this function is
@@ -662,15 +666,15 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
 
     Parameters
     ----------
-    coverage :
+    coverage
         Input coverage data object
-    bounds: Tuple[Tuple[float, float], Tuple[float, float]] :
+    bounds
         The ([nx, ny], [sx, sy]) extents to be applied to the input data
-    shape: Tuple[int, int] :
+    shape
         The (y, x) shape to to be applied to the input data
-    resolution: Tuple[float, float] :
+    resolution
         The (x, y) resolution to be applied to the input data
-    nodata: float :
+    nodata
         The nodata value to be applied to the input array object
 
     Returns
@@ -871,8 +875,13 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW', flip: bool
     -------
 
     """
+    float_resolution = abs(coverage.resolution[0])
+    if float_resolution < 1:
+        resolution = f"{str(float_resolution)[2:]}cm"
+    else:
+        resolution = f"{str(int(float_resolution))}m"
 
-    name = f'{coverage.name}.gpkg'
+    name = f'{coverage.name}_{resolution}.gpkg'
     outfilename = _os.path.join(outputpath, name)
 
     proj = _osr.SpatialReference(wkt=coverage.wkt)

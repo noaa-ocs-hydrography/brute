@@ -12,10 +12,10 @@ into the metadata file for qualification.
 import os
 from glob import glob
 
-import fuse.fuse_ehydro as ffe
+import fuse.fuse_processor as ffp
 
 if __name__ == '__main__':
-    cenan = ffe.FuseProcessor_eHydro('cenan.config')  # this config is local for testing
+    cenan = ffp.FuseProcessor('cenan.config')  # this config is local for testing
     for path in cenan.rawdata_path:
         print(f'Begin working in {path}:')
         c = 1
