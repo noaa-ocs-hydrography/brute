@@ -127,7 +127,6 @@ class FuseProcessor:
         self._meta_obj = _mr.MetaReviewer(self._config['metapath'], self._cols)
         self._set_data_reader()
         self._set_data_transform()
-        self._set_data_interpolator()
         self._set_data_writer()
         self._db = None
         self._meta = {}  # initialize the metadata holder
@@ -412,6 +411,7 @@ class FuseProcessor:
         metadata = self._get_stored_meta(infilename)
         metadata['read_type'] = self._read_type
         self._set_log(infilename)
+
         if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
             outpath = self._config['outpath']
@@ -419,16 +419,21 @@ class FuseProcessor:
             infileroot, ext = _os.path.splitext(infilebase)
             metadata['outpath'] = _os.path.join(outpath, infileroot)
             metadata['new_ext'] = self._config['bathymetry_intermediate_file']
+
             # oddly _transform becomes the bathymetry reader here...
-            # return a gdal dataset in the right datums for combine
+            # return a GDAL dataset in the right datums to combine
             dataset, transformed = self._transform.translate(infilename, metadata)
+
             if self._read_type == 'ehydro':
                 outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                 self._point_writer.write(dataset, outfilename)
                 metadata['to_filename'] = outfilename
+
             if self._read_type == 'bag':
                 metadata['to_filename'] = infilename
+
             self._meta_obj.write_meta_record(metadata)
+
             if 'interpolate' in metadata:
                 interpolate = metadata['interpolate']
                 if interpolate == 'True':
@@ -438,17 +443,14 @@ class FuseProcessor:
                     base = _os.path.splitext(filename)[0]
                     metadata['from_filename'] = f'{base}.interpolated'
 
-                    if self._config['interpolation_engine'] == 'point':
-                        dataset_resolution = float(self._config['to_resolution'])
-                        if dataset_resolution < 1:
-                            resolution = f'{int(dataset_resolution * 100)}cm'
-                        else:
-                            resolution = f'{int(dataset_resolution)}m'
-                        metadata[
-                            'to_filename'] = f"{_os.path.join(root, base)}_{resolution}_interp.{metadata['new_ext']}"
-                    elif self._config['interpolation_engine'] == 'raster':
-                        metadata['to_filename'] = f"{_os.path.join(root, base)}_interp.{metadata['new_ext']}"
+                    if self._config['interpolation_engine'] == 'raster':
+                        output_filename = f"{_os.path.join(root, base)}_interp.{metadata['new_ext']}"
+                    else:
+                        resolution = float(self._config['to_resolution'])
+                        resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
+                        output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{metadata["new_ext"]}'
 
+                    metadata['to_filename'] = output_filename
                     method = self._config['interpolation_method']
                     if self._config['interpolation_engine'] == 'raster':
                         interpolator = _interp.RasterInterpolator(dataset, metadata['support_files'],
@@ -466,10 +468,10 @@ class FuseProcessor:
                 elif interpolate == 'False':
                     print(f'{infileroot} - No interpolation required')
             else:
-                raise ValueError('metadata has no >interpolate< value')
+                raise ValueError('metadata has no "interpolate" value')
         else:
-            msg = 'All metadata for datum transformation not avaiable.'
-            self.logger.log(_logging.DEBUG, msg)
+            self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
+
         self._close_log()
 
     def post(self, infilename):
@@ -625,7 +627,7 @@ class FuseProcessor:
         # need to catch if this file is not in the metadata record yet here.
         return self._meta
 
-    def _get_meta_as_s57(self, metadata):
+    def _get_meta_as_s57(self, metadata) -> dict:
         """
         The metadata is converted to an s57 version of the metadata.
 
@@ -638,26 +640,21 @@ class FuseProcessor:
         -------
 
         """
-        s57_meta = self._meta_obj.row2s57(metadata)
+        s57_meta = self._meta_obj.csv_to_s57(metadata)
         return s57_meta
 
-    def _datum_metadata_ready(self, metadata):
-        """
-        Check the metadata to see if the required fields are populated.
-        """
-        tmp = FuseProcessor._datums.copy()
-        tmp.remove('to_horiz_key')
-        ready = True
-        for key in tmp:
+    def _datum_metadata_ready(self, metadata) -> bool:
+        """Check the metadata to see if the required fields are populated."""
+
+        for key in [entry for entry in FuseProcessor._datums if entry != 'to_horiz_key']:
             if key not in metadata:
-                ready = False
-                break
-        return ready
+                return False
+        else:
+            return True
 
     def _quality_metadata_ready(self, metadata):
-        """
-        Check the metadata to see if the required fields are populated.
-        """
+        """ Check the metadata to see if the required fields are populated. """
+
         # check the feature metadata
         if 'feat_detect' in metadata:
             if metadata['feat_detect'] == True:

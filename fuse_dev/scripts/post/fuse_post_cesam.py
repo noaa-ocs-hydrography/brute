@@ -15,7 +15,7 @@ import fuse.fuse_ehydro as ffe
 
 if __name__ == '__main__':
     poster = ffe.FuseProcessor_eHydro('cesam.config')  # this config is local for testing
-    flist = poster._meta_obj.read_meta_file()
+    flist = poster._meta_obj.read_metadata()
     for f in flist:
         if 'to_filename' in f:
             infilename = f['from_filename']
