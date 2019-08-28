@@ -255,14 +255,6 @@ class FuseProcessor:
 
         self._transform = _trans.DatumTransformer(self._config, self._reader)
 
-    def _set_data_interpolator(self):
-        """Set up the interpolator engine."""
-
-        engine = self._config['interpolation_engine']
-        res = float(self._config['to_resolution'])
-        method = self._config['interpolation_method']
-        self._interpolator = _interp.SurveyInterpolation(engine, method, res)
-
     def _set_data_writer(self):
         """Set up the location and method to write tranformed and interpolated data."""
 
@@ -441,7 +433,33 @@ class FuseProcessor:
                 interpolate = metadata['interpolate']
                 if interpolate == 'True':
                     meta_interp = metadata.copy()
-                    dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
+
+                    root, filename = _os.path.split(metadata['outpath'])
+                    base = _os.path.splitext(filename)[0]
+                    metadata['from_filename'] = f'{base}.interpolated'
+
+                    if self._config['interpolation_engine'] == 'point':
+                        dataset_resolution = float(self._config['to_resolution'])
+                        if dataset_resolution < 1:
+                            resolution = f'{int(dataset_resolution * 100)}cm'
+                        else:
+                            resolution = f'{int(dataset_resolution)}m'
+                        metadata[
+                            'to_filename'] = f"{_os.path.join(root, base)}_{resolution}_interp.{metadata['new_ext']}"
+                    elif self._config['interpolation_engine'] == 'raster':
+                        metadata['to_filename'] = f"{_os.path.join(root, base)}_interp.{metadata['new_ext']}"
+
+                    method = self._config['interpolation_method']
+                    if self._config['interpolation_engine'] == 'raster':
+                        interpolator = _interp.RasterInterpolator(dataset, metadata['support_files'],
+                                                                  metadata['file_size'])
+                    else:
+                        interpolator = _interp.PointInterpolator(dataset)
+
+                    dataset = interpolator.interpolate(method, float(self._config['to_resolution']))
+
+                    metadata['interpolated'] = True
+
                     self._raster_writer.write(dataset, meta_interp['to_filename'])
                     self._meta_obj.write_meta_record(meta_interp)
 
