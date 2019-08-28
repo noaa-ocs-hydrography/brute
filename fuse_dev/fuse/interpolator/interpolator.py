@@ -27,7 +27,7 @@ import scipy.interpolate
 import scipy.spatial
 import scipy.spatial.distance
 import shapely.geometry
-from osgeo import gdal, osr
+from osgeo import gdal, osr, ogr
 from pykrige.ok import OrdinaryKriging
 from scipy.spatial import cKDTree
 from shapely.ops import unary_union, polygonize
@@ -70,11 +70,7 @@ class PointInterpolator:
             points_2d[:, 0]), numpy.max(points_2d[:, 1])
 
         # get the well-known text of the CRS
-        self.crs_wkt = self.dataset.GetLayerByIndex(layer_index).GetSpatialRef().ExportToWkt()
-        if self.crs_wkt == '':
-            srs = osr.SpatialReference()
-            srs.ImportFromEPSG(4326)
-            self.crs_wkt = srs.ExportToWkt()
+        self.crs_wkt = _get_gdal_crs_wkt(self.dataset, layer_index)
 
     def interpolate(self, method: str, output_resolution: float, output_nodata: float = None,
                     plot: bool = True) -> gdal.Dataset:
@@ -283,7 +279,6 @@ class PointInterpolator:
         band_1.SetNoDataValue(output_nodata)
         band_1.WriteArray(interpolated_data)
         del band_1
-
         return output_dataset
 
     def __invdist_gdal(self, output_shape: (int, int), output_bounds: (float, float), output_nodata: float = None,
@@ -554,26 +549,56 @@ class PointInterpolator:
 
 
 class RasterInterpolator(PointInterpolator):
-    def __init__(self, dataset: gdal.Dataset, coverage_raster_files: [str], file_size: int,
-                 default_nodata: float = 1000000.0, window_scalar: float = 1):
+    def __init__(self, raster: gdal.Dataset, coverage_raster_files: [str], file_size: int, band_index: int = 1,
+                 default_nodata: float = None, window_scalar: float = 1):
         """
         Create a new raster interpolator object for the given GDAL raster dataset.
 
         Parameters
         ----------
-        dataset
+        raster
             GDAL raster dataset
         coverage_raster_files
             paths to coverage rasters
         file_size
             size of the file in megabytes
+        band_index
+            raster band (1-indexed)
         default_nodata
             value to set for no data in the output interpolation
         window_scalar
             multiplier to use to expand interpolation radius from the default (minimum nearest-neighbor distance)
         """
 
-        super().__init__(dataset, default_nodata, window_scalar, layer_index=0)
+        raster_nodata = raster.GetNoDataValue()
+
+        if default_nodata is None:
+            default_nodata = raster_nodata
+
+        raster_shape = raster.RasterYSize, raster.RasterXSize
+
+        geotransform = raster.GetGeotransform()
+        raster_x, raster_y = numpy.meshgrid(
+            numpy.linspace(geotransform[0], geotransform[0] + geotransform[1] * raster_shape[1], raster_shape[1]),
+            numpy.linspace(geotransform[3], geotransform[3] + geotransform[5] * raster_shape[0], raster_shape[0]))
+        raster_data = raster.GetRasterBand(band_index).ReadAsArray()
+
+        raster_x[raster_data == raster_nodata] = numpy.nan
+        raster_y[raster_data == raster_nodata] = numpy.nan
+        raster_data[raster_data == raster_nodata] = numpy.nan
+
+        spatial_reference = osr.SpatialReference(wkt=_get_gdal_crs_wkt(raster))
+        point_dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
+        layer = point_dataset.CreateLayer('pts', spatial_reference, geom_type=ogr.wkbPoint)
+
+        for point_index, point in enumerate(raster_data):
+            geometry = ogr.Geometry(ogr.wkbPoint)
+            geometry.AddPoint(raster_x[point_index], raster_y[point_index], point)
+            feature = ogr.Feature(layer.GetLayerDefn())
+            feature.SetGeometry(geometry)
+            layer.CreateFeature(feature)
+
+        super().__init__(point_dataset, default_nodata, window_scalar, layer_index=0)
         self.coverage_raster_files = coverage_raster_files
         self.file_size = file_size
 
@@ -718,3 +743,52 @@ def _shape_from_cell_size(resolution: float, bounds: (float, float, float, float
     rounded_min_y = min_y - cell_remainder_y
     rounded_max_y = rounded_min_y + float(rows * resolution)
     return (rows, cols), (rounded_min_x, rounded_min_y, rounded_max_x, rounded_max_y)
+
+
+def _epsg_to_wkt(epsg: int) -> str:
+    """
+    Use OSR to get the well-known text of a CRS from its EPSG code.
+
+    Parameters
+    ----------
+    epsg
+        EPSG code of CRS
+
+    Returns
+    -------
+        well-known text of CRS
+    """
+
+    spatial_reference = osr.SpatialReference()
+    spatial_reference.ImportFromEPSG(epsg)
+    return spatial_reference.ExportToWkt()
+
+
+def _get_gdal_crs_wkt(dataset: gdal.Dataset, layer_index: int = 0) -> str:
+    """
+    extract the well-known text of the CRS from the given GDAL dataset
+
+    Parameters
+    ----------
+    dataset
+        GDAL dataset (either raster or vector)
+    layer_index
+        index of vector layer
+
+    Returns
+    -------
+        well-known text of CRS
+    """
+
+    crs_wkt = dataset.GetProjectionRef()
+
+    if crs_wkt == '':
+        vector_layer = dataset.GetLayerByIndex(layer_index)
+        if vector_layer is not None:
+            crs_wkt = vector_layer.GetSpatialRef().ExportToWKT()
+        else:
+            crs_wkt = _epsg_to_wkt(4326)
+    elif re.match('^EPSG:[0-9]+$', crs_wkt):
+        crs_wkt = _epsg_to_wkt(int(crs_wkt[5:]))
+
+    return crs_wkt

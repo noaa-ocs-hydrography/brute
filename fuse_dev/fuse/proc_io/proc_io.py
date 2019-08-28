@@ -145,9 +145,9 @@ class ProcIO:
         # put the provided data into the right form for the CSAR conversion
         if self._in_data_type == 'gdal':
             raster = self._set_raster_nodata(raster)
-            data, metadata = self._gdal2array(raster)
+            data, metadata = self._gdal_raster_to_array(raster)
         elif self._in_data_type == 'point':
-            data, metadata = self._point2array(raster)
+            data, metadata = self._gdal_points_to_array(raster)
         else:
             raise ValueError(f'input data type unknown: {self._in_data_type}')
         metadata['outfilename'] = filename
@@ -255,7 +255,7 @@ class ProcIO:
         if os.path.exists(filename):
             os.remove(filename)
 
-        points, meta = self._point2array(points, layer_index=layer_index)
+        points, meta = self._gdal_points_to_array(points, layer_index=layer_index)
         projection = fiona.crs.from_string(meta['crs'])
 
         layer_schema = {
@@ -324,7 +324,7 @@ class ProcIO:
         del band
         del vector_dataset
 
-    def _gdal2array(self, raster: gdal.Dataset, band_index: int = 1) -> (np.array, dict):
+    def _gdal_raster_to_array(self, raster: gdal.Dataset, band_index: int = 1) -> (np.array, dict):
         """
         Extract data and metadata from the given band of a GDAL raster dataset.
         The dataset should have the `nodata` value set appropriately.
@@ -359,7 +359,7 @@ class ProcIO:
         # return the gdal data raster and metadata
         return raster.ReadAsArray(), metadata
 
-    def _point2array(self, points: gdal.Dataset, layer_index: int = 0) -> (np.array, dict):
+    def _gdal_points_to_array(self, points: gdal.Dataset, layer_index: int = 0) -> (np.array, dict):
         """
         Extract points and metadata from the given layer of a GDAL point cloud dataset.
         The dataset should have the `nodata` value set appropriately.
@@ -389,7 +389,7 @@ class ProcIO:
 
         return output_points, metadata
 
-    def _point2wkt(self, points: gdal.Dataset, layer_index: int = 0) -> ([dict], dict):
+    def _gdal_points_to_wkt(self, points: gdal.Dataset, layer_index: int = 0) -> ([dict], dict):
         """
         Extract WKT and metadata from the given layer of a GDAL point cloud dataset.
         The dataset should have the `nodata` value set appropriately.
