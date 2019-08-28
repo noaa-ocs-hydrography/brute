@@ -1875,7 +1875,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         if m['Horizontal_Units'] == '':
             if meta_xml[
                 'plandu'].upper() == 'FOOT_US':  # plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
-                m['Horizontal_Units'] = 'U.S. Survey Feet'
+                m['Horizontal_Units'] = 'US Survey Foot'
             elif meta_xml['plandu'].upper() == 'INTL FOOT':
                 m['from_horiz_units'] = 'ft'  # international feet code for vdatum
     horizpar = meta_xml['horizpar']
