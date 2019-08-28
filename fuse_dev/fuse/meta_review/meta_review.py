@@ -256,7 +256,7 @@ class MetaReviewer:
 
         """
 
-        with open(self._metafilename, 'r') as csvfile:
+        with open(self._metafilename, 'r', encoding='utf-8') as csvfile:
             metadata = []
             reader = _csv.DictReader(csvfile)
             # get the row
@@ -283,7 +283,7 @@ class MetaReviewer:
         """
 
         metadata = {}
-        with open(self._metafilename, 'r') as csvfile:
+        with open(self._metafilename, 'r', encoding='utf-8') as csvfile:
             reader = _csv.DictReader(csvfile)
             # get the row
             for row in reader:

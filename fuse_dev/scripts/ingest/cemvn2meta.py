@@ -14,10 +14,10 @@ into the metadata file for qualification.
 import os
 from glob import glob
 
-import fuse.fuse_ehydro as ffe
+import fuse.fuse_processor as ffp
 
 if __name__ == '__main__':
-    cemvn = ffe.FuseProcessor_eHydro('cemvn.config')  # this config is local for testing
+    cemvn = ffp.FuseProcessor('cemvn.config')  # this config is local for testing
     for path in cemvn.rawdata_path:
         flist = glob(os.path.join(path, '*.xyz'))
         for f in flist:
