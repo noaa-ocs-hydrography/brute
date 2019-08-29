@@ -100,7 +100,7 @@ class ProcIO:
             whether to show the console of the CARIS subprocess (if writing to a CSAR file)
         """
 
-        self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write')
+        self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write to {filename}')
 
         if os.path.exists(filename) and self.overwrite:
             self._logger.log(logging.DEBUG, f'Overwriting {filename}')
