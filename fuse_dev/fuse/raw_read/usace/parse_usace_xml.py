@@ -54,7 +54,8 @@ horz_datum = {
     'Local': '131'
 }
 
-#_ussft2m = 0.30480060960121924  # US survey feet to meters
+
+# _ussft2m = 0.30480060960121924  # US survey feet to meters
 
 
 def extract_s57_dict(xmlfilename):
@@ -470,8 +471,8 @@ class XMLMetadata:
                             Survey_Instruments[si_key] = f'{SI},{si_value}'
                     else:  # if no dictionary exists yet populate
                         Survey_Instruments[si_key] = si_value
-                except:
-                    # print('problem with loop')
+                except Exception as error:
+                    print(f'error finding instruments: {error}')
         return Survey_Instruments
 
     def get_fields(self):
@@ -1606,7 +1607,7 @@ def extract_from_iso_meta(xml_meta):
         Vert_unc = xml_meta['Implied_Vertical_Accuracy']
         Hor_unc = Hor_unc.strip('+/- ')
         Vert_unc = Vert_unc.strip('+/- ')
-        if 'Feet' in Hor_unc:#keeping uncertainty in feet
+        if 'Feet' in Hor_unc:  # keeping uncertainty in feet
             Hor_unc = Hor_unc.rstrip('Feet').strip().rstrip('.')
             Hor_unc = float(Hor_unc)
             xml_meta['from_horiz_unc'] = str(Hor_unc)
@@ -1889,11 +1890,11 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         m['from_horiz_units'] = 'ft'  # international feet code for vdatum
     vertaccr = meta_xml['vertaccr']
     if vertaccr.find('Expected values 0.5 -1.0 Foot') >= 0:
-        m['vert_acc'] =  '1.0' # 1 ft =   0.30480060960121924 m#'0.3'm
+        m['vert_acc'] = '1.0'  # 1 ft =   0.30480060960121924 m#'0.3'm
     elif vertaccr.find('Bar Test, 0.5 Foot') >= 0:
-        m['vert_acc'] = '0.5'#'0.15'm  #
+        m['vert_acc'] = '0.5'  # '0.15'm  #
     elif vertaccr.find('+/- 0.03 meter (0.1 foot)') >= 0:
-        m['vert_acc'] = '0.1'#'0.03'm #
+        m['vert_acc'] = '0.1'  # '0.03'm #
     return m
 
 
@@ -1941,25 +1942,20 @@ def parse_xml_info_text_ISO(xml_txt, m):
     other_lines = []
     other_lines_str = ''
     for line in lines:
-        if line.find('ellips') > 0:
-            # print(line)
-            # if m['ellips'] == '':
-            #    print(line)
-        elif line != '':
-            if line.find(':') > 0:
-                names = line.split(':')
-                if len(names) == 2:
-                    m[names[0]] = names[1]
-                elif len(names) > 2:
-                    m[names[0]] = names[1: len(names)]  # makes a list type
-                else:
-                    m[names[0]] = ''
+        if line.find('ellips') <= 0 and line != '' and line.find(':') > 0:
+            names = line.split(':')
+            if len(names) == 2:
+                m[names[0]] = names[1]
+            elif len(names) > 2:
+                m[names[0]] = names[1:len(names)]  # makes a list type
             else:
-                other_lines.append(line)
-                if len(other_lines_str) == 0:
-                    other_lines_str = line
-                else:
-                    other_lines_str += f',{line}'
+                m[names[0]] = ''
+        else:
+            other_lines.append(line)
+            if len(other_lines_str) == 0:
+                other_lines_str = line
+            else:
+                other_lines_str += f',{line}'
     # other_lines_str=convert_list_to_str(other_lines)
     m['other_xml_metadata'] = other_lines_str
     return m
@@ -2017,7 +2013,8 @@ def convert_meta_to_input(m):
         if m['Horizontal_Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
             m['from_horiz_units'] = 'US Survey Foot'
         else:
-            m['from_horiz_units'] = m['Horizontal_Units'].strip() # may need to enforce some kind of uniform spelling etc. here
+            # may need to enforce some kind of uniform spelling etc. here
+            m['from_horiz_units'] = m['Horizontal_Units'].strip()
     if 'FIPS' in m:
         m['from_fips'] = m['FIPS']
     if 'VERTDAT' in m:
