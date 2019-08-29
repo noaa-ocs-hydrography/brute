@@ -17,7 +17,7 @@ import re
 import socket
 import urllib
 import zipfile
-from typing import Union, TextIO, Any
+from typing import Tuple, List, Union, TextIO, Any
 
 import numpy as np
 import requests
@@ -52,11 +52,16 @@ logLocation = os.path.join(progLoc, logName)
 # logLocation = os.path.join(progLoc, logName)
 """Default location for :attr:`logName`"""
 # """Default location for """
-holding = os.path.join(progLoc, 'downloads')
-"""Default location for all downloaded data, regardless of the type of query
-performed. Data is broken up into folders representing each district (ex.
-``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)
-"""
+
+if config['Downloads']['Downloads'] != '':
+    holding = config['Downloads']['Downloads']
+else:
+    holding = os.path.join(progLoc, 'downloads')
+    """Default location for all downloaded data, regardless of the type of query
+    performed. Data is broken up into folders representing each district (ex.
+    ``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)
+    """
+
 logging = os.path.join(progLoc, 'logs')
 """Default location for individual query logs. These are named like
 ``YYYYMMDD_0_eHydro_log.txt``
@@ -78,7 +83,7 @@ if not os.path.exists(running):
     os.mkdir(running)
 
 
-def query() -> ([str], int, str):
+def query() -> Tuple[List[str], int, str]:
     """
     Holds the Queries for the eHydro REST API, asks for responses, and uses
     the json library to make it readable by the program. Returns the json
@@ -95,6 +100,7 @@ def query() -> ([str], int, str):
 
     Returns
     -------
+    type
         List of survey ids from query, total number of surveys returned by the
         query, and a string containing the parameters gathered from the config
         file
@@ -194,17 +200,15 @@ def query() -> ([str], int, str):
     else:
         dist = config['Agencies']['Agencies']
 
-    paramString = f'\tParameters:\n' + \
-                  f'\t\tStart Date: {start}\n' + \
-                  f'\t\tEnd Date: {end}\n' + \
-                  f'\t\tDistricts: {dist}\n' + \
-                  f'\t\tQuery Only Districts: {config["Agencies"]["Only Listed"]}\n' + \
-                  f'\t\tKeep All Data: {config["Resolutions"]["Override"]}'
+    paramString = f'\tParameters:\n\t\tStart Date: {start}' + \
+                  f'\n\t\tEnd Date: {end}\n\t\tDistricts: {dist}' + \
+                  f'\n\t\tQuery Only Districts: {config["Agencies"]["Only Listed"]}' + \
+                  f'\n\t\tKeep All Data: {config["Resolutions"]["Override"]}'
 
     return surveyIDs, newSurveysNum, paramString
 
 
-def create_polygon(coords: [(float, float)]) -> ogr.Geometry:
+def create_polygon(coords: List[Tuple[float, float]]) -> ogr.Geometry:
     """
     Creates an ogr.Geometry/wkbLinearRing object from a list of coordinates.
 
@@ -234,7 +238,7 @@ def create_polygon(coords: [(float, float)]) -> ogr.Geometry:
     return poly
 
 
-def create_multipolygon(polys: [ogr.Geometry]) -> str:
+def create_multipolygon(polys: List[ogr.Geometry]) -> str:
     """
     Creates an ogr.Geometry/wkbMultiPolygon object from a list of
     ogr.Geometry/wkbLinearRing objects.  The ogr.Geometry/wkbMultiPolygon is
@@ -249,7 +253,7 @@ def create_multipolygon(polys: [ogr.Geometry]) -> str:
     ----------
     polys :
         A list of ogr.Geometry/wkbLinearRing objects
-    polys: [ogr.Geometry] :
+    polys: List[ogr.Geometry] :
 
 
     Returns
@@ -319,7 +323,23 @@ def geometryToShape(coordinates: list):
     return multipoly
 
 
-def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> (list, list):
+def list_chunks(input_list: list, n: int = 1000):
+    """
+    Returns a list of lists given a maximum length for each list;
+
+    Parameters
+    ----------
+    input_list :
+        list
+    n : int, optional
+        maximum lengh of the subdivided lists (Default = 1000)
+
+    """
+    for i in range(0, len(input_list), n):
+        yield input_list[i:i + n]
+
+
+def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> Tuple[list, list]:
     """
     Uses the json object return of the each queried survey id and the total
     number of surveys included to compile a list of complete returned survey
@@ -360,60 +380,61 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> (list, list):
         pb.SetRange(newSurveysNum)
         pb.SetValue(x)
 
-    while x < newSurveysNum:
+    id_chunks = list(list_chunks([str(objectID) for objectID in surveyIDs]))
+
+    for chunk in id_chunks:
+        id_string = ','.join(chunk)
         print(x, end=' ')
         query = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query' + \
-                f'?where=OBJECTID+=+{surveyIDs[x]}&outFields=*&returnGeometry=true&outSR=4326&f=json'
+                f'?where=&objectIds={id_string}&outFields=*&returnGeometry=true&outSR=4326&f=json'
         response = requests.get(query)
         page = response.json()
 
         if x == 0:
             version, attributes = versionComp(page)
 
-        row = []
-        metadata = {'version': version}
-
-        for attribute in attributes:
-            try:
-                if page['features'][0]['attributes'][attribute] is None:
-                    row.append('null')
-                    metadata[attribute] = 'null'
-                elif attribute in ("SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART"):
-                    if page['features'][0]['attributes'][attribute] is None:
+        object_num = 0
+        for objectID in chunk:
+            metadata = {'version': version}
+            row = []
+            for attribute in attributes:
+                try:
+                    if page['features'][object_num]['attributes'][attribute] is None:
                         row.append('null')
-                        metadata[attribute] = 'null'
+                    elif attribute in ("SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART"):
+                        if page['features'][object_num]['attributes'][attribute] is None:
+                            row.append('null')
+                        else:
+                            date = (page['features'][object_num]['attributes'][attribute])
+
+                            try:
+                                date = datetime.datetime.utcfromtimestamp(date / 1000)
+                                row.append(f'{date:%Y-%m-%d}')
+                                metadata[attribute] = f'{date:%Y-%m-%d}'
+                            except OSError as e:
+                                print(e, date)
+                                row.append('error')
+
                     else:
-                        date = (page['features'][0]['attributes'][attribute])
-                        # print(date)
+                        row.append(str(page['features'][object_num]['attributes'][attribute]))
+                        metadata[attribute] = str(page['features'][object_num]['attributes'][attribute])
+                except KeyError as e:
+                    print(e, attribute)
+                    row.append('error')
 
-                        try:
-                            date = datetime.datetime.utcfromtimestamp(date / 1000)
-                            row.append(f'{date:%Y-%m-%d}')
-                            metadata[attribute] = f'{date:%Y-%m-%d}'
-                        except OSError as e:
-                            print(e, date)
-                            row.append('error')
-                            metadata[attribute] = 'error'
-                else:
-                    row.append(str(page['features'][0]['attributes'][attribute]))
-                    metadata[attribute] = str(page['features'][0]['attributes'][attribute])
+            try:
+                coords = page['features'][object_num]['geometry']['rings']
+                metadata['poly'] = geometryToShape(coords)
             except KeyError as e:
-                print(e, attribute)
-                row.append('error')
-                metadata[attribute] = 'error'
-        try:
-            coords = page['features'][0]['geometry']['rings']
-            metadata['poly'] = geometryToShape(coords)
-        except KeyError as e:
-            print(e, 'geometry')
-            metadata['poly'] = 'error'
+                print(e, 'geometry')
 
-        row.append(metadata)
-        rows.append(row)
-        x += 1
+            row.append(metadata)
+            rows.append(row)
+            x += 1
+            object_num += 1
 
-        if pb is not None:
-            pb.SetValue(x)
+            if pb is not None:
+                pb.SetValue(x)
 
     print(len(rows))
     print('rows complete')
@@ -473,18 +494,18 @@ def write_geopackage(out_path: str, name: str, poly: str,
 
     layer.CreateFeature(feat)
 
-    # Save and close everything
-    del ds, layer, feat
+
 
     linear_geom = geom.GetLinearGeometry()
     geojson = linear_geom.ExportToJson()
 
-    del geom
+    # Save and close everything
+    del ds, layer, feat, geom
 
     return geojson
 
 
-def contentSearch(contents: [str]) -> int:
+def contentSearch(contents: List[str]) -> int:
     """
     This funtion takes a list of zipfile contents.
 
@@ -514,7 +535,7 @@ def contentSearch(contents: [str]) -> int:
             x = 0
 
 
-def downloadAndCheck(rows: list, pb=None, to=None) -> (list, int):
+def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
     """
     This function takes a list of complete survey data as provided by the
     query response `rows`.
@@ -587,7 +608,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> (list, int):
         if os.path.exists(saved):
             os.remove(saved)
 
-        if poly != 'error':
+        if poly in meta:
             shpfilename = os.path.join(holding, agency, f'{surname}.gpkg')
             meta['poly_name'] = f'{surname}.gpkg'
             geojson = write_geopackage(shpfilename, surname, poly, spcs)
@@ -641,7 +662,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> (list, int):
                     zipped.write(pfile)
                     os.remove(pfile)
 
-                    if poly != 'error':
+                    if poly in meta:
                         zipped.write(sfile)
                         os.remove(sfile)
 
@@ -674,7 +695,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> (list, int):
                     zipped.write(pfile)
                     os.remove(pfile)
 
-                    if poly != 'error':
+                    if poly in meta:
                         zipped.write(sfile)
                         os.remove(sfile)
 
@@ -714,7 +735,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> (list, int):
     return rows, hr
 
 
-def csvCompare(rows: list, csvFile: [str], newSurveysNum: int, pb=None) -> (Union[list, str], str):
+def csvCompare(rows: list, csvFile: List[str], newSurveysNum: int, pb=None) -> Tuple[Union[list, str], str]:
     """
     Takes list 'rows' and list 'csvFile'.  It proceeds to compare each list
     item's contents against each other.  If they match, the relevant list item
@@ -776,7 +797,7 @@ def csvCompare(rows: list, csvFile: [str], newSurveysNum: int, pb=None) -> (Unio
         return 'No Changes', numstring
 
 
-def csvOpen() -> [str]:
+def csvOpen() -> List[str]:
     """
     Uses global variable csvLocation to open eHydro_csv.txt for use.
     Populates a list 'csvFile' with it's contents. Returns list and
@@ -804,7 +825,7 @@ def csvOpen() -> [str]:
     return csvFile[1:]
 
 
-def csvWriter(csvFile: [str], csvLocation: str, pb=None):
+def csvWriter(csvFile: List[str], csvLocation: str, pb=None):
     """
     Uses global variable csvLocation. Opens file at csvLocation for
     writing. Iterates line by line through csvFile and imediatly writes
@@ -842,7 +863,7 @@ def csvWriter(csvFile: [str], csvLocation: str, pb=None):
                 pb.SetValue(x)
 
 
-def versionFind() -> (dict, list):
+def versionFind() -> Tuple[dict, list]:
     """
     Returns the highest version number of files included the the ``versions``
     folder and returns its contents
@@ -875,7 +896,7 @@ def versionFind() -> (dict, list):
     return version, attributes
 
 
-def versionComp(page) -> (dict, list):
+def versionComp(page) -> Tuple[dict, list]:
     """
     Compares the attribute field names of the query against the current list of
     known attribute fields.
@@ -951,7 +972,7 @@ def versionSave(version: float, attributes: list):
         json.dump(ver_info, outfile)
 
 
-def logOpen(logType: Union[str, bool], to=None) -> ((TextIO, Any), str):
+def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str]:
     """
     Uses global variable logLocation. Opens file at logLocation
     for appending. Writes text stating when the function was called.
@@ -1003,7 +1024,7 @@ def logOpen(logType: Union[str, bool], to=None) -> ((TextIO, Any), str):
     return fileLog, nameLog
 
 
-def logWriter(fileLog: (TextIO, Any), message: str):
+def logWriter(fileLog: Tuple[TextIO, Any], message: str):
     """
     Takes a file object 'fileLog' and a string 'message'. Writes
     'messege' to 'fileLog'
@@ -1025,7 +1046,7 @@ def logWriter(fileLog: (TextIO, Any), message: str):
         to.write(f'{message}\n')
 
 
-def logClose(fileLog: (TextIO, Any)):
+def logClose(fileLog: Tuple[TextIO, Any]):
     """
     Takes a file object 'fileLog'. Writes text stating when the
     function was called. Closes the file object upon completion
