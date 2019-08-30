@@ -55,7 +55,7 @@ gdal.UseExceptions()
 class PointInterpolator:
     """Interpolation methods for creating a raster from points."""
 
-    def __init__(self, window_scalar: float = 1.1, nodata: float = 1000000.0):
+    def __init__(self, window_scalar: float = 1.5, nodata: float = 1000000.0):
         """
         Set some of the precondition, but make them over writable.
 
@@ -113,9 +113,8 @@ class PointInterpolator:
             srs.ImportFromEPSG(4326)
             self.crs_wkt = srs.ExportToWkt()
 
-        # get minimum distance to all nearest neighbors
-        min_point_spacing = numpy.min(cKDTree(points_2d).query(points_2d, k=2)[0][:, 1])
-        self.window_size = self.window_scalar * min_point_spacing
+        # set the size of the interpolation window to be the maximum of nearest neighbor distances
+        self.window_size = self.window_scalar * numpy.max(cKDTree(points_2d).query(points_2d, k=2)[0][:, 1])
 
         start_time = datetime.datetime.now()
 
@@ -181,7 +180,7 @@ class PointInterpolator:
         if nodata is None:
             nodata = self.nodata
 
-        concave_hull = _alpha_hull(self.input_points[:, 0:2], self.window_size * 3)
+        concave_hull = _alpha_hull(self.input_points[:, 0:2], self.window_size)
 
         with rasterio.io.MemoryFile() as rasterio_memory_file:
             with rasterio_memory_file.open(driver='GTiff', width=shape[1], height=shape[0], count=1,
@@ -501,7 +500,7 @@ class PointInterpolator:
         matplotlib.pyplot.show()
 
     def __plot_concave_hull(self):
-        concave_hull = _alpha_hull(self.input_points[:, 0:2], self.window_size * 3)
+        concave_hull = _alpha_hull(self.input_points[:, 0:2], self.window_size)
         triangles = scipy.spatial.Delaunay(self.input_points[:, 0:2])
         matplotlib.pyplot.plot(*concave_hull.exterior.xy, c='r')
         matplotlib.pyplot.triplot(self.input_points[:, 0], self.input_points[:, 1], triangles=triangles.simplices,
@@ -699,7 +698,7 @@ def _boundary_edges(points: numpy.array, radius: float = 1.0):
     return points[numpy.array(tuple(edges))].tolist()
 
 
-def _alpha_hull(points: numpy.array, radius: float = 1.0):
+def _alpha_hull(points: numpy.array, max_length: float = None):
     """
     Calculate the alpha shape (concave hull) of the given points.
     inspired by https://sgillies.net/2012/10/13/the-fading-shape-of-alpha.html
@@ -708,16 +707,19 @@ def _alpha_hull(points: numpy.array, radius: float = 1.0):
     ----------
     points
         N x 3 array of XYZ points
-    radius
-        radius of triangulation
+    max_length
+        maximum edge length to include in the convex boundary
     """
 
     if points.shape[0] < 4:
         raise ValueError('need at least 4 points to perform triangulation')
 
+    if max_length is None:
+        max_length = numpy.max(cKDTree(points).query(points, k=2)[0][:, 1])
+
     triangles = scipy.spatial.Delaunay(points)
     boundary_edges = set()
-    for index_a, index_b, index_c in triangles.vertices:
+    for index_a, index_b, index_c in triangles.simplices:
         point_a = points[index_a]
         point_b = points[index_b]
         point_c = points[index_c]
@@ -726,17 +728,17 @@ def _alpha_hull(points: numpy.array, radius: float = 1.0):
         length_b = numpy.hypot(*(point_b - point_c))
         length_c = numpy.hypot(*(point_c - point_a))
 
-        semiperimeter = (length_a + length_b + length_c) / 2.0
+        semiperimeter = (length_a + length_b + length_c) / 2
         area = numpy.sqrt(
             semiperimeter * (semiperimeter - length_a) * (semiperimeter - length_b) * (semiperimeter - length_c))
-        circumcircle_radius = length_a * length_b * length_c / (4.0 * area)
+        circumcircle_diameter = length_a * length_b * length_c / (area * 2)
 
-        if circumcircle_radius < radius:
+        if circumcircle_diameter < max_length:
             for indices in ((index_a, index_b), (index_b, index_c), (index_c, index_a)):
                 if indices not in boundary_edges and reversed(indices) not in boundary_edges:
                     boundary_edges.add(indices)
                 else:
-                    # remove the edge if it already exists (that is, if it is shared by another triangle)
+                    # remove the edge if it already exists (if it is shared by another triangle)
                     boundary_edges.remove(indices)
 
     boundary_edges = points[numpy.array(tuple(boundary_edges))].tolist()
