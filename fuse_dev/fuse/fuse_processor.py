@@ -575,8 +575,8 @@ class FuseProcessor:
     def _close_log(self):
         """ Close the object logging file. """
         # remove handlers
-        for h in self.logger.handlers:
-            self.logger.removeHandler(h)
+        for handler in self.logger.handlers:
+            self.logger.removeHandler(handler)
 
     def _get_stored_meta(self, filename: str) -> dict:
         """
