@@ -73,7 +73,7 @@ class PointInterpolator:
         self.crs_wkt = _get_gdal_crs_wkt(self.dataset, layer_index)
 
     def interpolate(self, method: str, output_resolution: float, output_nodata: float = None,
-                    plot: bool = True) -> gdal.Dataset:
+                    plot: bool = False) -> gdal.Dataset:
         """
         Take a gdal dataset and run the interpolation, returning a gdal raster.
 
@@ -788,7 +788,7 @@ def _get_gdal_crs_wkt(dataset: gdal.Dataset, layer_index: int = 0) -> str:
     if crs_wkt == '':
         vector_layer = dataset.GetLayerByIndex(layer_index)
         if vector_layer is not None:
-            crs_wkt = vector_layer.GetSpatialRef().ExportToWKT()
+            crs_wkt = vector_layer.GetSpatialRef().ExportToWkt()
         else:
             crs_wkt = _epsg_to_wkt(4326)
     elif re.match('^EPSG:[0-9]+$', crs_wkt):

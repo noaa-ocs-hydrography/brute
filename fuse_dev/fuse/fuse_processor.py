@@ -547,31 +547,30 @@ class FuseProcessor:
 
     def _set_log(self, filename: str):
         """
-        Set the object logging object and file.
+        Set the global logger to the given filename.
 
         Parameters
         ----------
         filename
-
+            filename to set logger to
         """
 
-        metapath, metafile = _os.path.split(self._config['metapath'])
-        root, ext = _os.path.splitext(filename)
-        if ext == '.interpolated':
+        root, extension = _os.path.splitext(filename)
+        if extension == '.interpolated':
             filename = root
-        filepath, filename = _os.path.split(filename)
-        fname, ext = _os.path.splitext(filename)
-        logname = _os.path.join(metapath, f'{fname}.log')
-        self._meta['logfilename'] = logname
+        log_filename = _os.path.join(_os.path.split(self._config['metapath'])[0],
+                                     f'{_os.path.splitext(_os.path.split(filename)[-1])[0]}.log')
+        self._meta['logfilename'] = log_filename
+
         # remove handlers that might have existed from previous files
-        for h in self.logger.handlers:
-            self.logger.removeHandler(h)
+        for handler in self.logger.handlers:
+            self.logger.removeHandler(handler)
+
         # create file handler for this filename
-        fh = _logging.FileHandler(logname)
-        fh.setLevel(_logging.DEBUG)
-        formatter = _logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        fh.setFormatter(formatter)
-        self.logger.addHandler(fh)
+        file_handler = _logging.FileHandler(log_filename)
+        file_handler.setLevel(_logging.DEBUG)
+        file_handler.setFormatter(_logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        self.logger.addHandler(file_handler)
 
     def _close_log(self):
         """ Close the object logging file. """
@@ -586,7 +585,8 @@ class FuseProcessor:
 
         Parameters
         ----------
-        filename :
+        filename
+            filename of metadata file
 
         Returns
         -------
@@ -609,6 +609,7 @@ class FuseProcessor:
         Parameters
         ----------
         metadata
+            dictionary of metadata
 
         Returns
         -------
