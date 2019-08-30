@@ -1870,8 +1870,8 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         if 'mapprojn' in meta_xml:
             if len(meta_xml['mapprojn']) > 0:
                 m['FIPS'] = meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip()
-                m[
-                    'CHECK_FIPS'] = 'CHECK_IF_EXPECTED'  # 'CHECK_FIPS' value flag , 'CHECK_IF_EXPECTED' flag since CEMVN did not have this correct.
+                # 'CHECK_FIPS' value flag , 'CHECK_IF_EXPECTED' flag since CEMVN did not have this correct.
+                m['CHECK_FIPS'] = 'CHECK_IF_EXPECTED'
                 # it does not always specify US Survey Feet, only Feet here thus we pull horizontal units from another entry
                 # print may need qc check to see if this coming in correctly
     if 'Horizontal_Units' in m:

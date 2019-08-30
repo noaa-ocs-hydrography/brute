@@ -196,7 +196,7 @@ class FuseProcessor:
             dictionary of metadata keys
         """
 
-        options = {
+        required_config_keys = {
             'rawpaths': 'path to raw data',
             'outpath': 'path to output data',
             'to_horiz_datum': 'output horizontal datum description',
@@ -209,9 +209,10 @@ class FuseProcessor:
             'to_vert_datum': 'output vertical datum description',
             'metapath': 'metadata output',
         }
-        for key in options.keys():
-            if key not in config_dict:
-                raise ValueError(f'No {options[key]} found in configuration file.')
+        for required_config_key in required_config_keys:
+            if required_config_key not in config_dict:
+                raise ValueError(
+                    f'no {required_config_keys[required_config_key]} ("{required_config_key}") found in configuration file')
 
     def _set_data_reader(self):
         """
