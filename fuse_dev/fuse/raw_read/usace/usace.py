@@ -424,7 +424,7 @@ class USACERawReader:
             print(f'{name} appears to have a nonstandard naming convention.')
         return meta
 
-    def _parse_xyz_header(self, infilename: str) -> dict:
+    def _parse_xyz_header(self, filename: str) -> dict:
         """
         Parse the xyz file header for meta data and return a dictionary.  The
         key words used to search are
@@ -435,7 +435,7 @@ class USACERawReader:
 
         Parameters
         ----------
-        infilename
+        filename
             Complete filepath of the input data
 
         Returns
@@ -447,8 +447,8 @@ class USACERawReader:
         header = []
         metalist = []
         # get the header
-        with open(infilename, 'r') as infile:
-            for line in infile.readlines():
+        with open(filename, 'r') as xyz_file:
+            for line in xyz_file.readlines():
                 if line == '\n':
                     continue
                 elif self._is_header(line):
@@ -491,11 +491,7 @@ class USACERawReader:
             True, if no characters match; False otherwise
         """
 
-        pattern = '[a-zA-Z]'
-        if _re.search(pattern, line) is None:
-            return False
-        else:
-            return True
+        return _re.search('[a-zA-Z]', line) is not None
 
     def _parse_note(self, line: str) -> dict:
         """
@@ -525,7 +521,7 @@ class USACERawReader:
             metadata['from_horiz_key'] = fips
             metadata['from_wkt'] = _usefips.fips2wkt(fips)
             horiz_units = horiz_datum.split(',')[1]
-            if horiz_units.strip().upper() == 'US SURVEY FEET':
+            if horiz_units.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
                 metadata['from_horiz_units'] = 'US Survey Foot'
             else:
                 metadata['from_horiz_units'] = horiz_units.strip()

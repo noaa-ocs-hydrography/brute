@@ -102,7 +102,7 @@ class CEMVNRawReader:
         one can also include expressions within the quoted strings, The expressions in an f-string are evaluated in left-to-right order. This is detectable only if the expressions have side effects:
         https://www.python.org/dev/peps/pep-0498/
         """
-
+        
         xyz = _np.loadtxt(bathyfilename, delimiter=' ')
         self.xy  # remove later using still during debugging
         return xyz
@@ -128,10 +128,20 @@ class CEMVNRawReader:
         first_instance, commas_present = _start_xyz(infilename)
         print(infilename)  # remove later
         if first_instance != '':
-            xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
-            # xyz = xyz = _np.genfromtxt(infilename, delimiter = ',', skip_header = first_instance, usecols=(0,1,2))
+            if commas_present == ',':
+                xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+            else:
+                xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
         else:
-            xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
+            if commas_present == ',':
+                xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+            else:
+                xyz = _np.loadtxt(infilename, delimiter=' ', usecols=(0, 1, 2))
+            # xyz = xyz = _np.genfromtxt(infilename, delimiter = ',', skip_header = first_instance, usecols=(0,1,2))
         return xyz
 
 
@@ -194,8 +204,8 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
         elif xml_data.version == 'ISO-8859-1':
             meta_xml = xml_data._extract_meta_USACE_ISO()
             if 'ISO_xml' not in meta_xml:
-                meta_xml = xml_data._extract_meta_USACE_FGDC(
-                    override='Y')  # xml_data._extract_meta_ISOlabel_USACE_FGDC()
+                meta_xml2 = xml_data._extract_meta_USACE_FGDC(override='Y')
+                meta_xml = {**meta_xml, **meta_xml2}
         else:
             meta_xml = xml_data.convert_xml_to_dict2()
         ext_dict = xml_data.extended_xml_fgdc()
@@ -205,7 +215,14 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
         ext_dict = {}
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CEMVN', default_meta='')
-    meta['special_handling'] = _check_special_handling(basename)#special handling is saved with text meta as it has to do with the text file
+    meta['special_handling'] = _check_special_handling(basename)
+    #special handling is saved with text meta as it has to do with the text file
+    if meta['special_handling'] == 'FullRES':
+        meta['interpolate']= False
+    #elif meta['special_handling'] == '.ppxyz':
+    #    meta['interpolate']= False
+    else:
+        meta['interpolate']= True
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
     
@@ -757,13 +774,20 @@ def _check_special_handling(basename):
     special_handling = ''
     if basename.find('.ppxyz') > 0:
         special_handling = 'ppxyz'
-    full_res = ['_A.xyz', '_A.XYZ', '_FULL.xyz', '_FULL.XYZ']
+    full_res = [ '_A.XYZ', '_FULL.XYZ']#_A.xyz, _FULL.xyz
     for ext_full in full_res:
-        if basename.find(ext_full) > 0:
+        if basename.upper().find(ext_full) > 0:
             special_handling = 'FullRES'
     return special_handling
 
-
+    special_handling = ''
+    if basename.find('.ppxyz') > 0:
+        special_handling = 'ppxyz'
+    full_res = [ '_A.xyz', '_FULL.xyz', '_A.XYZ', '_FULL.XYZ']#
+    for ext_full in full_res:
+        if basename.find(ext_full) > 0:
+            special_handling = 'FullRES'
+            
 ##-----------------------------------------------------------------------------
 
 def _start_xyz(infilename: str):
@@ -779,6 +803,13 @@ def _start_xyz(infilename: str):
     
     Returns
     -------
+    first_instance: int
+    
+    commas_present: str
+    
+    '' if space or other
+    ','  if commas
+    'tab_instead' if tab delimited
     
     """
     first_instance = ''
@@ -791,6 +822,8 @@ def _start_xyz(infilename: str):
                 numberofrows.append(index1)
                 if line.find(',') > 0:
                     commas_present = ','
+                elif line.find('\t') > 0:
+                    commas_present = 'tab_instead'
         first_instance = numberofrows[0]
     return first_instance, commas_present
 

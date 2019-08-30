@@ -195,7 +195,7 @@ class FuseProcessor:
             dictionary of metadata keys
         """
 
-        options = {
+        required_config_keys = {
             'rawpaths': 'path to raw data',
             'outpath': 'path to output data',
             'to_horiz_datum': 'output horizontal datum description',
@@ -208,9 +208,10 @@ class FuseProcessor:
             'to_vert_datum': 'output vertical datum description',
             'metapath': 'metadata output',
         }
-        for key in options.keys():
-            if key not in config_dict:
-                raise ValueError(f'No {options[key]} found in configuration file.')
+        for required_config_key in required_config_keys:
+            if required_config_key not in config_dict:
+                raise ValueError(
+                    f'no {required_config_keys[required_config_key]} ("{required_config_key}") found in configuration file')
 
     def _set_data_reader(self):
         """
@@ -422,7 +423,7 @@ class FuseProcessor:
 
             # oddly _transform becomes the bathymetry reader here...
             # return a GDAL dataset in the right datums to combine
-            dataset, transformed = self._transform.translate(infilename, metadata)
+            dataset, metadata, transformed = self._transform.translate(infilename, metadata)
 
             if self._read_type == 'ehydro':
                 outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"

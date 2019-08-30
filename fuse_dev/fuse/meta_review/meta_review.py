@@ -217,11 +217,8 @@ class MetaReviewer:
             list of dictionaries of simplified metadata rows
         """
 
-        with open(self._metadata_filename, 'r') as csv_file:
-            metadata = []
-            for row in _csv.DictReader(csv_file):
-                metadata.append(self._simplify_row(row))
-        return metadata
+        with open(self._metadata_filename, 'r', encoding='utf-8') as csv_file:
+            return [self._simplify_row(row) for row in _csv.DictReader(csv_file)]
 
     def read_meta_record(self, search_value: str, meta_key: str = 'from_filename') -> dict:
         """
@@ -239,7 +236,7 @@ class MetaReviewer:
             dictionary of matching row
         """
 
-        with open(self._metadata_filename, 'r') as csv_file:
+        with open(self._metadata_filename, 'r', encoding='utf-8') as csv_file:
             for row in _csv.DictReader(csv_file):
                 if row[meta_key] == search_value:
                     return self._simplify_row(row)

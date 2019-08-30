@@ -63,18 +63,18 @@ class VDatum:
 
         if 'vdatum_path' in config:
             vdatum_path = config['vdatum_path']
-            if _os.path.isdir(vdatum_path):
+            if _os.path.isfile(_os.path.join(vdatum_path, 'vdatum.jar')):
                 self._vdatum_path = vdatum_path
             else:
                 raise ValueError(f'Invalid vdatum folder: {vdatum_path}')
         else:
             raise ValueError('No VDatum path provided')
         if 'java_path' in config:
-            vdatum_path = config['java_path']
-            if _os.path.isdir(vdatum_path):
-                self._java_path = vdatum_path
+            java_path = config['java_path']
+            if _os.path.isfile(_os.path.join(java_path, 'java.exe')):
+                self._java_path = java_path
             else:
-                raise ValueError(f'Invalid java path: {vdatum_path}')
+                raise ValueError(f'Invalid java path: {java_path}')
         else:
             raise ValueError('No java path provided')
 
@@ -303,7 +303,7 @@ class VDatum:
         spatial_reference = osr.SpatialReference()
         spatial_reference.SetWellKnownGeogCS('NAD83')
         # positive UTM zone is in the northern hemisphere
-        spatial_reference.SetUTM(utm_zone, 1 if utm_zone > 0 else 0)
+        spatial_reference.SetUTM(abs(utm_zone), 1 if utm_zone > 0 else 0)
         spatial_reference.SetVertCS(vertical_datum, vertical_datum, 2000)
         dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
         layer = dataset.CreateLayer('pts', spatial_reference, geom_type=ogr.wkbPoint)

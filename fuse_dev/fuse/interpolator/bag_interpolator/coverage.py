@@ -385,6 +385,9 @@ class UnifiedCoverage:
 
             y += 1
 
+        if len(bndRasts) == 0:
+            raise RuntimeError(f'No valid coverage in {files}')
+
         return bndRasts
 
     def _align_and_combine(self, rasters: list, name: str):

@@ -114,13 +114,14 @@ class BAGRawReader:
     (named 'data').
     """
 
-    def __init__(self):
+    def __init__(self, version=__version__):
         """
         Provided a BAG xml string for parsing, a tree will be created and the
         name speace parsed from the second line.  Values are then extracted
         based on the source dictionary.  If this dictionary
         """
         self.data = {}
+        self.version = version
 
         self._logger = _logging.getLogger(f'fuse')
 
@@ -142,8 +143,8 @@ class BAGRawReader:
 
         """
         try:
-            meta_gdal, version = self._parse_bag_gdal(infilename)
-            meta_xml = self._parse_bag_xml(infilename, version=version)
+            meta_gdal, bag_version = self._parse_bag_gdal(infilename)
+            meta_xml = self._parse_bag_xml(infilename, bag_version=bag_version)
             meta_support = self._known_meta(infilename)
             return {**meta_xml, **meta_gdal, **meta_support}
         except ValueError as e:
@@ -191,7 +192,7 @@ class BAGRawReader:
         try:
             bag_file = _gdal.Open(infilename)
             metadata = {**bag_file.GetMetadata()}
-            version = float(metadata['BagVersion'][:-2])
+            bag_version = float(metadata['BagVersion'][:-2])
             metadata['shape'] = (bag_file.RasterYSize, bag_file.RasterXSize)
             #            geotransform = bag_file.GetGeoTransform()
             #            metadata['res'] = (geotransform[1], geotransform[5])
@@ -221,9 +222,9 @@ class BAGRawReader:
             del bag_file
         except RuntimeError as e:
             raise ValueError(f'{e}')
-        return metadata, version
+        return metadata, bag_version
 
-    def _parse_bag_xml(self, infilename: str, version=None) -> dict:
+    def _parse_bag_xml(self, infilename: str, bag_version=None) -> dict:
         """
         Parses metadata available via the file's xml and returns them as a dict
 
@@ -261,8 +262,8 @@ class BAGRawReader:
                         start_val += 1
 
             self.xml_tree = _et.XML(meta_xml)
-            self.namespace = self._assign_namspace(version=version)
-            self.bag_format = self._set_format(infilename, version)
+            self.namespace = self._assign_namspace(bag_version=bag_version)
+            self.bag_format = self._set_format(infilename, bag_version)
             self.get_fields()
 
             return self.data
@@ -328,17 +329,19 @@ class BAGRawReader:
         """
         meta = {}
         root, filename = _os.path.split(infilename)
-        snum = _re.compile(r'[A-Z]([0-9]{5})')
+        snum_reg = _re.compile(r'[A-Z]([0-9]{5})')
+        snum = snum_reg.search(filename).group()
         dir_files = [_os.path.join(root, name) for name in _os.listdir(root) if
-                     (_os.path.isfile(_os.path.join(root, name)) and snum.search(name) is not None)]
+                     (_os.path.isfile(_os.path.join(root, name)) and snum in name)]
         meta['support_files'] = [support_file for support_file in dir_files if
                                  _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.tfw', '.gpkg')]
         exts = [_os.path.splitext(support_file)[1].lower() for support_file in dir_files if
                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
         meta['interpolate'] = len(exts) > 0
+        print(meta['support_files'])
         return meta
 
-    def _assign_namspace(self, version=None, xml=None):
+    def _assign_namspace(self, bag_version=None, xml=None):
         """
         Try to guess the version of the bag for the purpose of parsing the
         fields.  The guess is based off comparing the name spaces.
@@ -359,16 +362,16 @@ class BAGRawReader:
             'gml': "http://www.opengis.net/gml"
         }
 
-        if version is not None:
-            if version >= 1.5:
+        if bag_version is not None:
+            if bag_version >= 1.5:
                 namespace = post15
-            elif version < 1.5:
+            elif bag_version < 1.5:
                 namespace = pre15
             return namespace
-        elif version is None and xml != None:
+        elif bag_version is None and xml != None:
             return parse_namespace(xml)
 
-    def _set_format(self, infilename: str, version: float) -> object:
+    def _set_format(self, infilename: str, bag_version: float) -> object:
         """
         Set the locations of the desired data types based on the version of the
         bag.
@@ -376,12 +379,12 @@ class BAGRawReader:
         Parameters
         ----------
         infilename : str
-        version : float
+        bag_version : float
         """
 
         source = {'filename': infilename}
 
-        if version >= 1.5:
+        if bag_version >= 1.5:
             # these are the bag types
             source[
                 'rows_cols'] = './/gmd:spatialRepresentationInfo/gmd:MD_Georectified/gmd:axisDimensionProperties/gmd:MD_Dimension/gmd:dimensionSize/gco:Integer'
@@ -420,7 +423,7 @@ class BAGRawReader:
             source[
                 'sensor'] = './/gmi:instrument/gmi:MI_Instrument/gmi:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString'
 
-        elif version < 1.5 and version > 0:
+        elif bag_version < 1.5 and bag_version > 0:
             source['abstract'] = './/identificationInfo/smXML:BAG_DataIdentification/abstract'
             source[
                 'SORDAT'] = './/identificationInfo/smXML:BAG_DataIdentification/citation/smXML:CI_Citation/date/smXML:CI_Date/date'
@@ -587,7 +590,7 @@ class BAGRawReader:
         try:
             self.data['shape'] = (int(ret[1].text), int(ret[0].text))
 
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read rows and cols: {e}")
             return
 
@@ -604,7 +607,7 @@ class BAGRawReader:
         try:
             self.data['res'] = (float(ret[0].text), -float(ret[1].text))
 
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read res x and y: {e}")
             return
 
@@ -621,7 +624,7 @@ class BAGRawReader:
         try:
             self.data['bounds'] = ([float(c) for c in ret[0].split(',')], [float(c) for c in ret[1].split(',')])
 
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read corners SW and NE: {e}")
             return
 
@@ -638,7 +641,7 @@ class BAGRawReader:
         try:
             self.data['from_horiz_datum'] = ret.text
 
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the WKT projection string: {e}")
             return
 
@@ -657,7 +660,7 @@ class BAGRawReader:
         try:
             self.data['lon_min'] = float(ret_x_min.text)
             self.data['lon_max'] = float(ret_x_max.text)
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the bbox's longitude values: {e}")
             return
 
@@ -673,7 +676,7 @@ class BAGRawReader:
         try:
             self.data['lat_min'] = float(ret_y_min.text)
             self.data['lat_max'] = float(ret_y_max.text)
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the bbox's latitude values: {e}")
             return
 
@@ -689,7 +692,7 @@ class BAGRawReader:
 
         try:
             self.data['abstract'] = ret.text
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the abstract string: {e}")
             return
 
@@ -734,7 +737,7 @@ class BAGRawReader:
 
         try:
             self.data['unc_type'] = ret.text
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the uncertainty type attribute: {e}")
             return
 
@@ -760,7 +763,7 @@ class BAGRawReader:
                 self.data['z_min'] = float(ret_z_min.text)
             if ret_z_max is not None:
                 self.data['z_max'] = float(ret_z_max.text)
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the depth min and max values: %s" % e)
             return
 
@@ -829,7 +832,7 @@ class BAGRawReader:
 
         try:
             self.data['agency'] = ret.text
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the survey authority name attribute: {e}")
             return
 
@@ -849,7 +852,7 @@ class BAGRawReader:
         if rets is not None:
             try:
                 text_start_date = rets.text
-            except (ValueError, IndexError) as e:
+            except (ValueError, IndexError, AttributeError) as e:
                 _logging.warning(f"unable to read the survey start date string: {e}")
                 return
 
@@ -881,7 +884,7 @@ class BAGRawReader:
         if rete is not None:
             try:
                 text_end_date = rete.text
-            except (ValueError, IndexError) as e:
+            except (ValueError, IndexError, AttributeError) as e:
                 _logging.warning(f"unable to read the survey end date string: {e}")
                 return
 
@@ -936,7 +939,7 @@ class BAGRawReader:
             elif val.lower() in ('mean_lower_low_water', 'mean lower low water', 'mllw'):
                 self.data['from_vert_key'] = 'MLLW'
             self.data['from_vert_datum'] = val
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the survey vertical datum name attribute: {e}")
             return
 
@@ -982,7 +985,7 @@ class BAGRawReader:
                     self.data['from_horiz_frame'] = 'NAD83'
                 elif datum.lower() in ('wgs_1984', 'wgs84'):
                     self.data['from_horiz_frame'] = 'WGS84'
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the survey horizontal datum name attribute: {e}")
             return
 
@@ -1004,7 +1007,7 @@ class BAGRawReader:
                 self.data['planam'] = []
                 for r in ret:
                     self.data['planam'].append(r.text)
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the platform name attribute: {e}")
             return
 
@@ -1026,7 +1029,7 @@ class BAGRawReader:
                 self.data['sensor'] = []
                 for r in ret:
                     self.data['sensor'].append(r.text)
-        except (ValueError, IndexError) as e:
+        except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the sensor name attribute: {e}")
             return
 

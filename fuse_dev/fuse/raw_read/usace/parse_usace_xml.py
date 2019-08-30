@@ -54,7 +54,8 @@ horz_datum = {
     'Local': '131'
 }
 
-#_ussft2m = 0.30480060960121924  # US survey feet to meters
+
+# _ussft2m = 0.30480060960121924  # US survey feet to meters
 
 
 def extract_s57_dict(xmlfilename):
@@ -119,7 +120,7 @@ class XMLMetadata:
             self.version = float(version)
         else:
             self.version = self._guess_version()
-            print(version)
+            # print(version)
         self._set_format()
         self.get_fields()
 
@@ -160,15 +161,15 @@ class XMLMetadata:
         if self.ns == version_1:
             return 1.0
         elif self.xml_txt.startswith('<?xml version="1.0" encoding="ISO-8859-1"?>\n'):
-            print('ISO-8859-1 xml version')
+            # print('ISO-8859-1 xml version')
             # xml_version = 'ISO-8859-1'
             return 'ISO-8859-1'
         elif self.xml_tree.tag == 'metadata':
-            print(version_USACE_FGDC)
-            print('FGDC format not ISO, USACE example')
+            # print(version_USACE_FGDC)
+            # print('FGDC format not ISO, USACE example')
             return 'USACE_FGDC'
         else:
-            print('We do not have a template for this version yet!')
+            # print('We do not have a template for this version yet!')
             return -1.0
 
     def _set_format(self):
@@ -193,11 +194,11 @@ class XMLMetadata:
                 my_etree_dict = self.convert_xml_to_dict2()  # _extract_meta_USACE_FGDC()# option pull metadata now, or only pull key pieces?
                 if 'metstdv' in my_etree_dict:
                     Metadataformat = my_etree_dict['metstdv']
-                    print(Metadataformat)
+                    # print(Metadataformat)
                     self.metadataformat = Metadataformat
                     self.metadataformat_check = 'y'
             except:
-                print('unexpected issue with assumed USACE FGDC format parsing')
+                # print('unexpected issue with assumed USACE FGDC format parsing')
                 self.metadataformat_check = 'fail'
         elif version == 'ISO-8859-1':
             self.source = {}
@@ -205,11 +206,11 @@ class XMLMetadata:
                 my_etree_dict = self.convert_xml_to_dict()
                 if 'metstdv' in my_etree_dict:
                     Metadataformat = my_etree_dict['metstdv']
-                    print(Metadataformat)
+                    # print(Metadataformat)
                     self.metadataformat = Metadataformat
                     self.metadataformat_check = 'y'
             except:
-                print('unexpected issue with assumed USACE ISO 88591 FGDC format parsing')
+                # print('unexpected issue with assumed USACE ISO 88591 FGDC format parsing')
                 self.metadataformat_check = 'fail'
         else:
             version = float(self.version)
@@ -453,13 +454,13 @@ class XMLMetadata:
         my_etree = self.xml_tree
         for S_INST in my_etree.iter('SURVEY_INSTRUMENT'):
             S_INST_ch = S_INST.getchildren()
-            print(S_INST_ch)
+            # print(S_INST_ch)
             for si in S_INST_ch:
                 si_key = si.tag
                 si_value = si.text
                 if si_value is None:
                     si_value = ''
-                print(si_key, si_value)
+                # print(si_key, si_value)
                 try:
                     if Survey_Instruments:
                         # if this key is not populated for the dictionary yet, then populate it
@@ -470,8 +471,8 @@ class XMLMetadata:
                             Survey_Instruments[si_key] = f'{SI},{si_value}'
                     else:  # if no dictionary exists yet populate
                         Survey_Instruments[si_key] = si_value
-                except:
-                    print('problem with loop')
+                except Exception as error:
+                    print(f'error finding instruments: {error}')
         return Survey_Instruments
 
     def get_fields(self):
@@ -551,7 +552,7 @@ class XMLMetadata:
                 if self.data[key] in horz_datum:
                     s57[key] = horz_datum[self.data[key]]
                 else:
-                    print(self.data[key])
+                    # print(self.data[key])
                     s57[key] = horz_datum['Local']
         if self.version == 'HSMDB':
             s57['OBJNAM'] = self.data['survey']
@@ -591,7 +592,7 @@ class XMLMetadata:
             try:
                 m = convert_meta_to_input(meta)
             except:
-                print('still debugging')
+                # print('still debugging')
                 m = {}
             meta_all_fields = {**meta_xml, **meta, **m}
 
@@ -611,17 +612,16 @@ class XMLMetadata:
         """
 
         if self.version == 'ISO-8859-1':
-            meta_xml = self.convert_xml_to_dict_ISO_FGDC()  #
+            meta_xml = self.convert_xml_to_dict_ISO_FGDC()
             if self.metadataformat_check == 'fail':
                 meta = {}
             else:
                 meta = parse_xml_info_text_ISO(self.xml_txt, meta_xml)
                 meta_xml = extract_from_iso_meta(meta_xml)
-                meta = {}  # TODO: Why is this object erased?
             try:
                 m = convert_meta_to_input(meta_xml)
             except:
-                print('still debugging')
+                # print('still debugging')
                 m = {}
             meta_all_fields = {**meta_xml, **meta, **m}
         return meta_all_fields
@@ -958,7 +958,7 @@ def check_firstline(meta_xml):
 
     xml_version = ''
     if meta_xml.startswith('<?xml version="1.0" encoding="ISO-8859-1"?>\n'):
-        print('ISO-8859-1 xml version')
+        # print('ISO-8859-1 xml version')
         xml_version = 'ISO-8859-1'
     return xml_version  # returns 'ISO-8859-1'
 
@@ -1529,8 +1529,8 @@ def VERDAT_iso_check(xml_meta):
                 m['VERTDAT'] = 'MLLW'
             elif xml_meta['depthdn'].find('MLLW') >= 0:
                 m['VERTDAT'] = 'MLLW'
-            elif xml_meta['depthdn'].find('MLW') >= 0:
-                m['VERTDAT'] = 'Mean Low Water'
+            elif xml_meta['depthdn'].upper().find('MEAN LOW WATER') >= 0:
+                m['VERTDAT'] = 'MLW'
             elif xml_meta['depthdn'].find('MLW') >= 0:
                 m['VERTDAT'] = 'MLW'
             elif xml_meta['depthdn'].find('LWRP') >= 0:
@@ -1598,13 +1598,16 @@ def extract_from_iso_meta(xml_meta):
                 xml_meta['from_vert_datum'] = xml_meta['Vertical Datum Description']
     # horizontal units
     if 'Units' in xml_meta:
-        xml_meta['from_horiz_units'] = xml_meta['Units'].strip()
+        if xml_meta['Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+            xml_meta['from_horiz_units'] = 'US Survey Foot'
+        else:
+            xml_meta['from_horiz_units'] = xml_meta['Units'].strip()
     if 'Implied_Horizontal_Accuracy' in xml_meta:
         Hor_unc = xml_meta['Implied_Horizontal_Accuracy']
         Vert_unc = xml_meta['Implied_Vertical_Accuracy']
         Hor_unc = Hor_unc.strip('+/- ')
         Vert_unc = Vert_unc.strip('+/- ')
-        if 'Feet' in Hor_unc:#keeping uncertainty in feet
+        if 'Feet' in Hor_unc:  # keeping uncertainty in feet
             Hor_unc = Hor_unc.rstrip('Feet').strip().rstrip('.')
             Hor_unc = float(Hor_unc)
             xml_meta['from_horiz_unc'] = str(Hor_unc)
@@ -1624,7 +1627,7 @@ def extract_from_iso_meta(xml_meta):
                                        f"{xml_meta['Units']}"
         if len(xml_meta['Horizontal_Zone']) > 0:
             code = xml_meta['Horizontal_Zone'].split(' ')[1]
-            print(code)
+            # print(code)
             if '-' in code:
                 code = code.split('-')[1]
                 try:
@@ -1821,7 +1824,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                     m['script: from_vert_units'] = 'US Survey Foot'
         except:
             # Other way to split abstract, in case format changed over time
-            print('issue parsing')
+            # print('issue parsing')
             if abstract.find('Survey Type: Single Beam Soundings') >= 0:
                 m['TECSOU'] = '1'  # 'single beam'
 
@@ -1867,15 +1870,15 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         if 'mapprojn' in meta_xml:
             if len(meta_xml['mapprojn']) > 0:
                 m['FIPS'] = meta_xml['mapprojn'].split('FIPS')[-1].strip('Feet').strip()
-                m[
-                    'CHECK_FIPS'] = 'CHECK_IF_EXPECTED'  # 'CHECK_FIPS' value flag , 'CHECK_IF_EXPECTED' flag since CEMVN did not have this correct.
+                # 'CHECK_FIPS' value flag , 'CHECK_IF_EXPECTED' flag since CEMVN did not have this correct.
+                m['CHECK_FIPS'] = 'CHECK_IF_EXPECTED'
                 # it does not always specify US Survey Feet, only Feet here thus we pull horizontal units from another entry
                 # print may need qc check to see if this coming in correctly
     if 'Horizontal_Units' in m:
         if m['Horizontal_Units'] == '':
             if meta_xml[
                 'plandu'].upper() == 'FOOT_US':  # plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
-                m['Horizontal_Units'] = 'U.S. Survey Feet'
+                m['Horizontal_Units'] = 'US Survey Foot'
             elif meta_xml['plandu'].upper() == 'INTL FOOT':
                 m['from_horiz_units'] = 'ft'  # international feet code for vdatum
     horizpar = meta_xml['horizpar']
@@ -1887,11 +1890,11 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
         m['from_horiz_units'] = 'ft'  # international feet code for vdatum
     vertaccr = meta_xml['vertaccr']
     if vertaccr.find('Expected values 0.5 -1.0 Foot') >= 0:
-        m['vert_acc'] =  '1.0' # 1 ft =   0.30480060960121924 m#'0.3'm
+        m['vert_acc'] = '1.0'  # 1 ft =   0.30480060960121924 m#'0.3'm
     elif vertaccr.find('Bar Test, 0.5 Foot') >= 0:
-        m['vert_acc'] = '0.5'#'0.15'm  #
+        m['vert_acc'] = '0.5'  # '0.15'm  #
     elif vertaccr.find('+/- 0.03 meter (0.1 foot)') >= 0:
-        m['vert_acc'] = '0.1'#'0.03'm #
+        m['vert_acc'] = '0.1'  # '0.03'm #
     return m
 
 
@@ -1939,25 +1942,20 @@ def parse_xml_info_text_ISO(xml_txt, m):
     other_lines = []
     other_lines_str = ''
     for line in lines:
-        if line.find('ellips') > 0:
-            print(line)
-            # if m['ellips'] == '':
-            #    print(line)
-        elif line != '':
-            if line.find(':') > 0:
-                names = line.split(':')
-                if len(names) == 2:
-                    m[names[0]] = names[1]
-                elif len(names) > 2:
-                    m[names[0]] = names[1: len(names)]  # makes a list type
-                else:
-                    m[names[0]] = ''
+        if line.find('ellips') <= 0 and line != '' and line.find(':') > 0:
+            names = line.split(':')
+            if len(names) == 2:
+                m[names[0]] = names[1]
+            elif len(names) > 2:
+                m[names[0]] = names[1:len(names)]  # makes a list type
             else:
-                other_lines.append(line)
-                if len(other_lines_str) == 0:
-                    other_lines_str = line
-                else:
-                    other_lines_str += f',{line}'
+                m[names[0]] = ''
+        else:
+            other_lines.append(line)
+            if len(other_lines_str) == 0:
+                other_lines_str = line
+            else:
+                other_lines_str += f',{line}'
     # other_lines_str=convert_list_to_str(other_lines)
     m['other_xml_metadata'] = other_lines_str
     return m
@@ -2012,7 +2010,11 @@ def convert_meta_to_input(m):
     elif 'horizontal_datum_i' in m:
         m['from_horiz_datum'] = m['horizontal_datum_i'].split('Vertical Datum:')[0]
     if 'Horizontal_Units' in m:
-        m['from_horiz_units'] = m['Horizontal_Units'].strip()  # may need to enforce some kind of uniform spelling etc. here
+        if m['Horizontal_Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+            m['from_horiz_units'] = 'US Survey Foot'
+        else:
+            # may need to enforce some kind of uniform spelling etc. here
+            m['from_horiz_units'] = m['Horizontal_Units'].strip()
     if 'FIPS' in m:
         m['from_fips'] = m['FIPS']
     if 'VERTDAT' in m:
@@ -2080,13 +2082,13 @@ def _print_TECSOU_defs(myvalue=None):
         "14": "computer generated: the sounding was determined from a bottom model constructed using a computer"
     }
 
-    print(TECSOU_def)
-    print(TECSOU_S57codes)
+    # print(TECSOU_def)
+    # print(TECSOU_S57codes)
     if myvalue is None:
         myvalue = 'no'
-        print('Just printing codes')
+        # print('Just printing codes')
     else:
-        print('returning dictionary')
+        # print('returning dictionary')
         return TECSOU_def, TECSOU_S57codes
     """
     _print_TECSOU_defs(myvalue = None)
@@ -2187,6 +2189,6 @@ def xml_SPCSconflict_otherspcs(meta_xml, other_spcs):
     list_spcs_source = 'FIPS', 'spcszone', 'SPCS', 'mapprojn'
     for source in list_spcs_source:
         if source in meta_xml:
-            if meta_xml[source] != meta_xml[other_spcs]:
+            if meta_xml[source] != other_spcs:
                 meta_xml['SPCS_conflict_XML_other'] = f"{meta_xml['SPCS_conflict_XML']} , {source}_disagrees_other_spcs"
     return meta_xml
