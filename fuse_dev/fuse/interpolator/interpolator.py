@@ -36,7 +36,7 @@ from shapely.ops import unary_union, polygonize
 class PointInterpolator:
     """An abstraction for data interpolation."""
 
-    def __init__(self, dataset: gdal.Dataset, default_nodata: float = 1000000.0, window_scalar: float = 1,
+    def __init__(self, dataset: gdal.Dataset, default_nodata: float = 1000000.0, window_scalar: float = 1.5,
                  layer_index: int = 0):
         """
         Create a new point interpolator object for the given GDAL point cloud dataset.
@@ -59,11 +59,11 @@ class PointInterpolator:
         self.points = gdal_points_to_array(self.dataset)
         points_2d = self.points[:, 0:2]
 
-        # set window size as the minimum distance to all nearest neighbors
-        self.window_size = window_scalar * numpy.min(cKDTree(points_2d).query(points_2d, k=2)[0][:, 1])
+        # set the size of the interpolation window size to be the minimum of all nearest neighbor distances
+        self.window_size = window_scalar * numpy.max(cKDTree(points_2d).query(points_2d, k=2)[0][:, 1])
 
         # get the concave hull of the survey points
-        self.concave_hull = _alpha_hull(points_2d, self.window_size * 3)
+        self.concave_hull = _alpha_hull(points_2d, self.window_size)
 
         # get the bounds (min X, min Y, max X, max Y)
         self.input_bounds = numpy.min(points_2d[:, 0]), numpy.min(points_2d[:, 1]), numpy.max(
@@ -631,7 +631,7 @@ def gdal_points_to_array(points: gdal.Dataset, layer_index: int = 0) -> numpy.ar
     return output_points
 
 
-def _alpha_hull(points: numpy.array, radius: float = 1.0):
+def _alpha_hull(points: numpy.array, max_length: float = None):
     """
     Calculate the alpha shape (concave hull) of the given points.
     inspired by https://sgillies.net/2012/10/13/the-fading-shape-of-alpha.html
@@ -640,16 +640,19 @@ def _alpha_hull(points: numpy.array, radius: float = 1.0):
     ----------
     points
         N x 3 array of XYZ points
-    radius
-        radius of triangulation
+    max_length
+        maximum length to include in the convex boundary
     """
 
     if points.shape[0] < 4:
         raise ValueError('need at least 4 points to perform triangulation')
 
+    if max_length is None:
+        max_length = numpy.max(cKDTree(points).query(points, k=2)[0][:, 1])
+
     triangles = scipy.spatial.Delaunay(points)
     boundary_edges = set()
-    for index_a, index_b, index_c in triangles.vertices:
+    for index_a, index_b, index_c in triangles.simplices:
         point_a = points[index_a]
         point_b = points[index_b]
         point_c = points[index_c]
@@ -658,17 +661,17 @@ def _alpha_hull(points: numpy.array, radius: float = 1.0):
         length_b = numpy.hypot(*(point_b - point_c))
         length_c = numpy.hypot(*(point_c - point_a))
 
-        semiperimeter = (length_a + length_b + length_c) / 2.0
+        semiperimeter = (length_a + length_b + length_c) / 2
         area = numpy.sqrt(
             semiperimeter * (semiperimeter - length_a) * (semiperimeter - length_b) * (semiperimeter - length_c))
-        circumcircle_radius = length_a * length_b * length_c / (4.0 * area)
+        circumcircle_diameter = length_a * length_b * length_c / (area * 2)
 
-        if circumcircle_radius < radius:
+        if circumcircle_diameter < max_length:
             for indices in ((index_a, index_b), (index_b, index_c), (index_c, index_a)):
                 if indices not in boundary_edges and reversed(indices) not in boundary_edges:
                     boundary_edges.add(indices)
                 else:
-                    # remove the edge if it already exists (that is, if it is shared by another triangle)
+                    # remove the edge if it already exists (if it is shared by another triangle)
                     boundary_edges.remove(indices)
 
     boundary_edges = points[numpy.array(tuple(boundary_edges))].tolist()
