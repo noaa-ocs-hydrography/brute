@@ -8,11 +8,11 @@ Created on Thu Jan 31 10:03:30 2019
 """
 
 import configparser as _cp
-import logging as _logging
 import os as _os
 
 import fuse.datum_transform.transform as _trans
 import fuse.interpolator.interpolator as _interp
+import fuse.logging.logger as _logger
 import fuse.meta_review as _mr
 import fuse.raw_read.noaa as _noaa
 import fuse.raw_read.usace as _usace
@@ -131,8 +131,8 @@ class FuseProcessor:
         self._set_data_writer()
         self._db = None
         self._meta = {}  # initialize the metadata holder
-        self.logger = _logging.getLogger('fuse')
-        self.logger.setLevel(_logging.DEBUG)
+
+        self.logger = _logger.Log(self._config['metapath'], self._config['raw_reader_type'].casefold())
 
     def _read_configfile(self, confile: str):
         """
@@ -246,10 +246,12 @@ class FuseProcessor:
             elif reader_type == 'bag':
                 self._reader = _noaa.bag.BAGRawReader()
                 self._read_type = 'bag'
+            elif reader_type in ('', None):
+                raise ValueError('No reader type found in the configuration file')
             else:
-                raise ValueError('reader type not implemented')
-        except:
-            raise ValueError("No reader type found in the configuration file.")
+                raise ValueError('Reader type not implemented')
+        except ValueError as e:
+            raise ValueError(f"{e}")
 
     def _set_data_transform(self):
         """Set up the datum transformation engine."""
@@ -347,11 +349,11 @@ class FuseProcessor:
         if not self._quality_metadata_ready(meta):
             default = _ehydro_quality_metrics
             msg = f'Not all quality metadata was found.  Using default values: {default}'
-            self.logger.log(_logging.DEBUG, msg)
+            self.logger.warning(msg)
             meta = {**default, **meta}
         # write the metadata
         self._meta_obj.write_meta_record(meta)
-        self._close_log()
+#        self._close_log()
 
     def _read_noaa_bag(self, infilename: str):
         """
@@ -364,7 +366,7 @@ class FuseProcessor:
             path to NOAA BAG file
         """
 
-        self._set_log(infilename)
+#        self._set_log(infilename)
         # get the metadata
         raw_meta = self._reader.read_metadata(infilename)
         meta = raw_meta.copy()
@@ -391,11 +393,12 @@ class FuseProcessor:
         if not self._quality_metadata_ready(meta):
             default = _ehydro_quality_metrics
             msg = f'Not all quality metadata was found.  Using default values: {default}'
-            self.logger.log(_logging.DEBUG, msg)
+            self.logger.warning(msg)
             meta = {**default, **meta}
         # write the metadata
         self._meta_obj.write_meta_record(meta)
-        self._close_log()
+
+#        self._close_log()
 
     def process(self, infilename: str, interpolate=True):
         """
@@ -420,7 +423,7 @@ class FuseProcessor:
 
         metadata = self._get_stored_meta(infilename)
         metadata['read_type'] = self._read_type
-        self._set_log(infilename)
+#        self._set_log(infilename)
         if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
             outpath = self._config['outpath']
@@ -452,8 +455,9 @@ class FuseProcessor:
                 raise ValueError('metadata has no >interpolate< value')
         else:
             msg = 'All metadata for datum transformation not avaiable.'
-            self.logger.log(_logging.DEBUG, msg)
-        self._close_log()
+            self.logger.error(msg)
+
+#        self._close_log()
 
     def post(self, infilename):
         """
@@ -463,7 +467,7 @@ class FuseProcessor:
             Perhaps this should be added to the metadata object?
         """
         metadata = self._get_stored_meta(infilename)
-        self._set_log(infilename)
+#        self._set_log(infilename)
         if self._quality_metadata_ready(metadata):
             if not self._score_metadata_ready(metadata):
                 metadata['catzoc'] = score.catzoc(metadata)
@@ -476,7 +480,8 @@ class FuseProcessor:
             self._db.write(procfile, 'new', s57_meta)
             # need to check for proper insertion...
             self._meta_obj.write_meta_record(metadata)
-        self._close_log()
+
+#        self._close_log()
 
     def score(self, infilename, date):
         """
@@ -484,7 +489,7 @@ class FuseProcessor:
         database, making the information available for amalgamation.
         """
         metadata = self._get_stored_meta(infilename)
-        self._set_log(infilename)
+#        self._set_log(infilename)
         if metadata['posted'].upper() == 'TRUE':
             dscore = score.decay(metadata, date)
             if self._db == None:
@@ -494,11 +499,12 @@ class FuseProcessor:
             s57_meta['dcyscr'] = dscore
             self._db.write(procfile, 'metadata', s57_meta)
             log = f'Posting new decay score of {dscore} to database.'
-
+            self.logger.info(log)
         else:
             log = 'Insertion of decay score failed.'
-        self.logger.log(_logging.DEBUG, log)
-        self._close_log()
+            self.logger.error(log)
+
+#        self._close_log()
 
     def _connect_to_db(self):
         """
@@ -528,59 +534,6 @@ class FuseProcessor:
                 raise RuntimeError(f'No connection to {db_loc} to close')
             else:
                 raise ValueError('No database location defined in the configuration file.')
-
-    def _set_log(self, infilename: str):
-        """
-        Set the object logging object and file.
-
-        Parameters
-        ----------
-        infilename :
-
-        infilename: str :
-
-
-        Returns
-        -------
-
-        """
-
-        metapath, metafile = _os.path.split(self._config['metapath'])
-        root, ext = _os.path.splitext(infilename)
-        if ext == '.interpolated':
-            infilename = root
-        filepath, filename = _os.path.split(infilename)
-        fname, ext = _os.path.splitext(filename)
-        logname = _os.path.join(metapath, f'{fname}.log')
-        self._meta['logfilename'] = logname
-        # remove handlers that might have existed from previous files
-        for h in self.logger.handlers:
-            self.logger.removeHandler(h)
-        # create file handler for this filename
-        fh = _logging.FileHandler(logname)
-        fh.setLevel(_logging.DEBUG)
-        formatter = _logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        fh.setFormatter(formatter)
-        self.logger.addHandler(fh)
-
-    def _close_log(self):
-        """
-        Close the object logging file.
-
-        Parameters
-        ----------
-        infilename :
-
-        infilename: str :
-
-
-        Returns
-        -------
-
-        """
-        # remove handlers
-        for h in self.logger.handlers:
-            self.logger.removeHandler(h)
 
     def _get_stored_meta(self, infilename: str):
         """
@@ -654,7 +607,7 @@ class FuseProcessor:
             feature_ready = False
         if not feature_ready:
             msg = 'Quality metadata for features is not yet available.'
-            self.logger.log(_logging.DEBUG, msg)
+            self.logger.warning(msg)
         # check the uncertainty metadata
         if 'vert_uncert_fixed' in metadata and 'vert_uncert_vari' in metadata:
             vert_uncert_ready = True
@@ -666,7 +619,7 @@ class FuseProcessor:
             horiz_uncert_ready = False
         if not vert_uncert_ready or not horiz_uncert_ready:
             msg = 'Quality metadata for uncertainty is not yet available.'
-            self.logger.log(_logging.DEBUG, msg)
+            self.logger.warning(msg)
         # check the coverage
         if 'complete_coverage' in metadata and 'bathymetry' in metadata:
             coverage_ready = True

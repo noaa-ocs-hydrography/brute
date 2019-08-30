@@ -71,10 +71,6 @@ class ProcIO:
 
         self._logger = logging.getLogger('fuse')
 
-        if len(self._logger.handlers) == 0:
-            ch = logging.StreamHandler(sys.stdout)
-            ch.setLevel(logging.DEBUG)
-            self._logger.addHandler(ch)
 
         if self._out_data_type == "carisbdb51":
             if db_name is not None and db_loc is not None:
@@ -100,10 +96,10 @@ class ProcIO:
             whether to show the console of the CARIS subprocess (if writing to a CSAR file)
         """
 
-        self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write to {filename}')
+        self._logger.info(f'Begin {self._out_data_type} write to {filename}')
 
         if os.path.exists(filename) and self.overwrite:
-            self._logger.log(logging.DEBUG, f'Overwriting {filename}')
+            self._logger.warning(f'Overwriting {filename}')
             os.remove(filename)
             if self._out_data_type == 'bag':
                 caris_xml = f'{filename}.aux.xml'
@@ -181,34 +177,34 @@ class ProcIO:
                 # data type
                 f'"{self._in_data_type.replace("&", "^&")}"'
             ))
-            self._logger.log(logging.DEBUG, argument_string)
+            self._logger.info(argument_string)
 
             try:
                 caris_process = subprocess.Popen(argument_string,
                                                  creationflags=subprocess.CREATE_NEW_CONSOLE if show_console else 0)
             except Exception as error:
-                self._logger.log(logging.DEBUG, f'Error when executing "{argument_string}"\n{error}')
+                self._logger.error(f'Error when executing "{argument_string}"\n{error}')
 
             try:
                 stdout, stderr = caris_process.communicate()
                 if stdout is not None:
-                    self._logger.log(logging.DEBUG, stdout)
+                    self._logger.debug(stdout)
                 else:
-                    self._logger.log(logging.DEBUG, 'No information returned from csar write process.')
+                    self._logger.info('No information returned from csar write process.')
                 if stderr is not None:
-                    self._logger.log(logging.DEBUG, stderr)
+                    self._logger.error(stderr)
                 else:
-                    self._logger.log(logging.DEBUG, 'No errors returned from csar write process.')
+                    self._logger.info('No errors returned from csar write process.')
             except Exception as error:
-                self._logger.log(logging.DEBUG, f'Error when logging subprocess error\n{error}')
+                self._logger.error(f'Error when logging subprocess error\n{error}')
 
             if not os.path.exists(metadata['outfilename']):
                 error_string = f'Unable to create file {metadata["outfilename"]}'
-                self._logger.log(logging.DEBUG, error_string)
+                self._logger.error(error_string)
                 raise RuntimeError(error_string)
         else:
             error_string = f'Unable to overwrite file {metadata["outfilename"]}'
-            self._logger.log(logging.DEBUG, error_string)
+            self._logger.error(error_string)
             raise RuntimeError(error_string)
 
     def _write_bag(self, raster: gdal.Dataset, filename: str, metadata: dict = None):
@@ -239,7 +235,7 @@ class ProcIO:
         # write and close output raster dataset
         output_raster = bag_driver.CreateCopy(filename, raster)
         del output_raster
-        self._logger.log(logging.DEBUG, 'BAG file created')
+        self._logger.info(f'BAG file created: {filename}')
 
     def _write_points(self, points: gdal.Dataset, filename: str, layer_index: int = 0, output_layer: str = 'Elevation'):
         """
@@ -292,6 +288,7 @@ class ProcIO:
 
         with fiona.open(filename, 'w', 'GPKG', schema=layer_schema, crs=projection, layer=output_layer) as output_file:
             output_file.writerecords(point_records)
+        self._logger.info(f'GPKG Raster file created: {filename}')
 
     def _write_vectorized_raster(self, raster: gdal.Dataset, filename: str, band_index: int = 1):
         """
@@ -329,6 +326,7 @@ class ProcIO:
 
         del band
         del vector_dataset
+        self._logger.info(f'GPKG Vector file created: {filename}')
 
     def _gdal2array(self, raster: gdal.Dataset, band_index: int = 1) -> (np.array, dict):
         """
