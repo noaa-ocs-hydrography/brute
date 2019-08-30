@@ -397,6 +397,9 @@ def link_grab(source_url: str, extensions: list) -> list:
     for extension in extensions:
         links = [link.strip('"') for link in re.findall(f'".*{extension}"', page)]
         file_links.extend([f'{source_url}/{link}' for link in links if link != ''])
+    for link in file_links:
+        if 'combined' in link.lower() or 'ellipsoid' in link.lower():
+            file_links.remove(link)
     return file_links
 
 
