@@ -81,12 +81,16 @@ class PointInterpolator:
         ----------
         method
             interpolation method
-        metadata
-            dictionary of metadata
+        output_resolution
+            resolution of output grid
+        output_nodata
+            value to set for no data in interpolated output
+        plot
+            whether to plot the interpolated result
 
         Returns
         -------
-            interpolated GDAL dataset and a dictionary of metadata
+            interpolated GDAL dataset
         """
 
         output_shape, output_bounds = _shape_from_cell_size(output_resolution, self.input_bounds)
@@ -570,37 +574,75 @@ class RasterInterpolator(PointInterpolator):
             multiplier to use to expand interpolation radius from the default (minimum nearest-neighbor distance)
         """
 
-        raster_nodata = raster.GetNoDataValue()
+        self.file_size = file_size
+
+        raster_band = raster.GetRasterBand(band_index)
+        raster_nodata = raster_band.GetNoDataValue()
 
         if default_nodata is None:
             default_nodata = raster_nodata
 
         raster_shape = raster.RasterYSize, raster.RasterXSize
-
-        geotransform = raster.GetGeotransform()
-        raster_x, raster_y = numpy.meshgrid(
+        geotransform = raster.GetGeoTransform()
+        x_values, y_values = numpy.meshgrid(
             numpy.linspace(geotransform[0], geotransform[0] + geotransform[1] * raster_shape[1], raster_shape[1]),
             numpy.linspace(geotransform[3], geotransform[3] + geotransform[5] * raster_shape[0], raster_shape[0]))
-        raster_data = raster.GetRasterBand(band_index).ReadAsArray()
+        elevation_data = raster_band.ReadAsArray()
+        elevation_points = numpy.stack((x_values[elevation_data != raster_nodata],
+                                        y_values[elevation_data != raster_nodata],
+                                        elevation_data[elevation_data != raster_nodata]), axis=1)
 
-        raster_x[raster_data == raster_nodata] = numpy.nan
-        raster_y[raster_data == raster_nodata] = numpy.nan
-        raster_data[raster_data == raster_nodata] = numpy.nan
+        coverage_regions = []
+        for coverage_raster_file in coverage_raster_files:
+            if '.tif' in coverage_raster_file:
+                # TODO open TFW file
+                coverage_raster = gdal.Open(coverage_raster_file)
+                raster_shape = coverage_raster.RasterYSize, coverage_raster.RasterXSize
+                coverage_geotransform = coverage_raster.GetGeoTransform()
+                coverage_x_values, coverage_y_values = numpy.meshgrid(
+                    numpy.linspace(coverage_geotransform[0],
+                                   coverage_geotransform[0] + coverage_geotransform[1] * raster_shape[1],
+                                   raster_shape[1]),
+                    numpy.linspace(coverage_geotransform[3],
+                                   coverage_geotransform[3] + coverage_geotransform[5] * raster_shape[0],
+                                   raster_shape[0]))
+                coverage_data = coverage_raster.GetRasterBand(1).ReadAsArray()
+                coverage_points = numpy.stack((coverage_x_values[coverage_data != raster_nodata],
+                                               coverage_y_values[coverage_data != raster_nodata]), axis=1)
+                coverage_regions.append(_alpha_hull(coverage_points))
 
-        spatial_reference = osr.SpatialReference(wkt=_get_gdal_crs_wkt(raster))
+        # TODO optimize alpha hull calculation
+        self.elevation_region = _alpha_hull(elevation_points[:, 0:2])
+        self.coverage_region = unary_union(coverage_regions)
+        self.interpolation_region = self.elevation_region.intersection(self.coverage_region)
+
         point_dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
-        layer = point_dataset.CreateLayer('pts', spatial_reference, geom_type=ogr.wkbPoint)
-
-        for point_index, point in enumerate(raster_data):
-            geometry = ogr.Geometry(ogr.wkbPoint)
-            geometry.AddPoint(raster_x[point_index], raster_y[point_index], point)
-            feature = ogr.Feature(layer.GetLayerDefn())
-            feature.SetGeometry(geometry)
-            layer.CreateFeature(feature)
+        layer = point_dataset.CreateLayer('pts', osr.SpatialReference(wkt=_get_gdal_crs_wkt(raster)),
+                                          geom_type=ogr.wkbPoint)
+        for point in elevation_points:
+            if shapely.geometry.Point(*point).within(self.interpolation_region):
+                geometry = ogr.Geometry(ogr.wkbPoint)
+                geometry.AddPoint(*point)
+                feature = ogr.Feature(layer.GetLayerDefn())
+                feature.SetGeometry(geometry)
+                layer.CreateFeature(feature)
 
         super().__init__(point_dataset, default_nodata, window_scalar, layer_index=0)
-        self.coverage_raster_files = coverage_raster_files
-        self.file_size = file_size
+
+    def interpolate(self, method: str, output_resolution: float, output_nodata: float = None,
+                    plot: bool = False) -> gdal.Dataset:
+        """
+
+
+        Parameters
+        ----------
+        method
+        output_resolution
+        output_nodata
+        plot
+        """
+
+        pass
 
 
 def gdal_points_to_array(points: gdal.Dataset, layer_index: int = 0) -> numpy.array:
@@ -631,7 +673,7 @@ def gdal_points_to_array(points: gdal.Dataset, layer_index: int = 0) -> numpy.ar
     return output_points
 
 
-def _alpha_hull(points: numpy.array, max_length: float = None):
+def _alpha_hull(points: numpy.array, max_length: float = None) -> shapely.geometry.Polygon:
     """
     Calculate the alpha shape (concave hull) of the given points.
     inspired by https://sgillies.net/2012/10/13/the-fading-shape-of-alpha.html

@@ -130,25 +130,28 @@ class BAGRawReader:
             ch.setLevel(_logging.DEBUG)
             self._logger.addHandler(ch)
 
-    def read_metadata(self, infilename: str, version=None) -> dict:
+    def read_metadata(self, filename: str) -> dict:
         """
+        read metadata from file
 
         Parameters
         ----------
-        infilename : str
+        filename
+            file to read
 
         Returns
         -------
-        dict
-
+            dictionary of metadata
         """
+
         try:
-            meta_gdal, bag_version = self._parse_bag_gdal(infilename)
-            meta_xml = self._parse_bag_xml(infilename, bag_version=bag_version)
-            meta_support = self._known_meta(infilename)
+            meta_gdal, bag_version = self._parse_bag_gdal(filename)
+            meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
+            meta_support = self._known_meta(filename)
             return {**meta_xml, **meta_gdal, **meta_support}
-        except ValueError as e:
-            print(f'{e}')
+        except ValueError as error:
+            print(error)
+            return {}
 
     def read_bathy_data(self, infilename: str, out_verdat: str) -> _gdal.Dataset:
         """
@@ -161,13 +164,12 @@ class BAGRawReader:
 
         Returns
         -------
-        :obj:`BagFile`
-
+            BagFile object
         """
+
         bag_file = Open(infilename)
         dataset = BagToGDALConverter(out_verdat)
         dataset.bag2gdal(bag_file)
-
         del bag_file
 
         return dataset.dataset

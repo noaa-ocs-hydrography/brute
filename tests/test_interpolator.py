@@ -11,9 +11,8 @@ DATA_PATH = r"C:\Data\NBS"
 
 class TestPointInterpolator(unittest.TestCase):
     def test_linear(self):
-        input_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'Original')
-        processed_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'MLLW', 'Data',
-                                           'Active')
+        input_directory = os.path.join(DATA_PATH, r'PBC_Northeast\USACE\eHydro_NewYork_CENAN\Original')
+        processed_directory = os.path.join(DATA_PATH, r'PBC_Northeast\USACE\eHydro_NewYork_CENAN\MLLW\Data\Active')
 
         if not os.path.exists(input_directory):
             raise EnvironmentError(f'data directory not found: {input_directory}')

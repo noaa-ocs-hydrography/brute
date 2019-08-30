@@ -356,36 +356,38 @@ class FuseProcessor:
         """
 
         self._set_log(filename)
-        # get the metadata
-        raw_meta = self._reader.read_metadata(filename)
-        meta = raw_meta.copy()
-        meta['read_type'] = 'bag'
-        # translate from the reader to common metadata keys for datum transformations
 
-        if 'from_vert_direction' not in meta:
-            meta['from_vert_direction'] = 'height'
-        if 'from_vert_units' not in meta:
-            meta['from_vert_units'] = 'm'
+        # get the metadata
+        metadata = self._reader.read_metadata(filename).copy()
+        metadata['read_type'] = 'bag'
+
+        # translate from the reader to common metadata keys for datum transformations
+        if 'from_vert_direction' not in metadata:
+            metadata['from_vert_direction'] = 'height'
+        if 'from_vert_units' not in metadata:
+            metadata['from_vert_units'] = 'm'
 
         # get the rest from the config file
-        meta['to_horiz_frame'] = self._config['to_horiz_frame']
-        meta['to_horiz_type'] = self._config['to_horiz_type']
-        meta['to_horiz_units'] = self._config['to_horiz_units']
+        metadata['to_horiz_frame'] = self._config['to_horiz_frame']
+        metadata['to_horiz_type'] = self._config['to_horiz_type']
+        metadata['to_horiz_units'] = self._config['to_horiz_units']
         if 'to_horiz_key' in self._config:
-            meta['to_horiz_key'] = self._config['to_horiz_key']
-        meta['to_vert_key'] = self._config['to_vert_key']
-        meta['to_vert_units'] = self._config['to_vert_units']
-        meta['to_vert_direction'] = self._config['to_vert_direction']
-        meta['to_vert_datum'] = self._config['to_vert_datum']
-        meta['interpolated'] = 'False'
-        meta['posted'] = False
-        if not self._quality_metadata_ready(meta):
+            metadata['to_horiz_key'] = self._config['to_horiz_key']
+        metadata['to_vert_key'] = self._config['to_vert_key']
+        metadata['to_vert_units'] = self._config['to_vert_units']
+        metadata['to_vert_direction'] = self._config['to_vert_direction']
+        metadata['to_vert_datum'] = self._config['to_vert_datum']
+        metadata['interpolated'] = 'False'
+        metadata['posted'] = False
+
+        if not self._quality_metadata_ready(metadata):
             default = _ehydro_quality_metrics
             msg = f'Not all quality metadata was found.  Using default values: {default}'
             self.logger.log(_logging.DEBUG, msg)
-            meta = {**default, **meta}
+            metadata = {**default, **metadata}
+
         # write the metadata
-        self._meta_obj.write_meta_record(meta)
+        self._meta_obj.write_meta_record(metadata)
         self._close_log()
 
     def process(self, filename: str):
@@ -411,10 +413,8 @@ class FuseProcessor:
 
         if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
-            outpath = self._config['outpath']
-            infilepath, infilebase = _os.path.split(filename)
-            infileroot, ext = _os.path.splitext(infilebase)
-            metadata['outpath'] = _os.path.join(outpath, infileroot)
+            input_directory = _os.path.splitext(_os.path.split(filename)[-1])[0]
+            metadata['outpath'] = _os.path.join(self._config['outpath'], input_directory)
             metadata['new_ext'] = self._config['bathymetry_intermediate_file']
 
             # oddly _transform becomes the bathymetry reader here...
@@ -463,7 +463,7 @@ class FuseProcessor:
                     self._meta_obj.write_meta_record(meta_interp)
 
                 elif interpolate == 'False':
-                    print(f'{infileroot} - No interpolation required')
+                    print(f'{input_directory} - No interpolation required')
             else:
                 raise ValueError('metadata has no "interpolate" value')
         else:
