@@ -507,8 +507,8 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
         download_links = []
         print(f'Survey - {rows.index(row) + 1} of {len(rows)}: {survey}')
 
-        for folder, extensions in {'BAG': ['.bag', '.bag.gz'],
-                                   'TIFF': ['tif', 'tiff', 'tfw']}.items():
+        for folder, extensions in {'BAG': ['.bag', '.gz'],
+                                   'TIFF': ['.tif', '.tiff', '.tfw', '.gz']}.items():
             source_url = f'{ncei_head}/{ncei_sub}/{folder}'
             download_links = link_grab(source_url, extensions)
 
