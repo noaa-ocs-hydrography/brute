@@ -270,7 +270,7 @@ def fileCollect(path: str, bounds: str) -> list:
         return zips
 
 
-def eHydroZIPs(regions: Dict[str, [str]]) -> Dict[str, [str]]:
+def eHydroZIPs(regions: {str: [str]}) -> {str: [str]}:
     """
     Creates a dictionary with keys of region names and values of a list of all
     files downloaded from districts within the respective regions
@@ -369,7 +369,7 @@ def zipManipulate(path: str, name: str):
     _os.chdir(progLoc)
 
 
-def fileMove(regionFiles: Dict[str, [str]], destination: str, method,
+def fileMove(regionFiles: {str: [str]}, destination: str, method,
              text_region=None, progressBar=None, text_output=None):
     """
     Takes a dictionary of keys representing regions and values representing
