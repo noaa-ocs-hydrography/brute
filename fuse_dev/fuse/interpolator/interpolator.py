@@ -75,7 +75,7 @@ class PointInterpolator:
     def interpolate(self, method: str, output_resolution: float, output_nodata: float = None,
                     plot: bool = False) -> gdal.Dataset:
         """
-        Take a gdal dataset and run the interpolation, returning a gdal raster.
+        Generate a raster from the input data using the given interpolation method.
 
         Parameters
         ----------
@@ -103,6 +103,9 @@ class PointInterpolator:
         if method == 'linear':
             # linear interpolation (`gdal.Grid`)
             interpolated_dataset = self.__linear_gdal(output_shape, output_bounds, output_nodata)
+        elif method == 'linear_scipy':
+            # linear interpolation (`scipy.interpolate.griddata`)
+            interpolated_dataset = self.__linear_scipy(output_shape, output_bounds, output_nodata)
         elif method == 'invdist':
             # inverse distance interpolation (`gdal.Grid`)
             interpolated_dataset = self.__invdist_gdal(output_shape, output_bounds, output_nodata)
@@ -576,50 +579,45 @@ class RasterInterpolator(PointInterpolator):
 
         self.file_size = file_size
 
-        raster_band = raster.GetRasterBand(band_index)
-        raster_nodata = raster_band.GetNoDataValue()
-
-        if default_nodata is None:
-            default_nodata = raster_nodata
+        elevation_band = raster.GetRasterBand(band_index)
+        elevation_nodata = elevation_band.GetNoDataValue()
+        elevation_data = elevation_band.ReadAsArray()
 
         raster_shape = raster.RasterYSize, raster.RasterXSize
-        geotransform = raster.GetGeoTransform()
+        raster_geotransform = raster.GetGeoTransform()
+
+        if default_nodata is None:
+            default_nodata = elevation_nodata
+
+        coverage_nodata = 255
+
         x_values, y_values = numpy.meshgrid(
-            numpy.linspace(geotransform[0], geotransform[0] + geotransform[1] * raster_shape[1], raster_shape[1]),
-            numpy.linspace(geotransform[3], geotransform[3] + geotransform[5] * raster_shape[0], raster_shape[0]))
-        elevation_data = raster_band.ReadAsArray()
-        elevation_points = numpy.stack((x_values[elevation_data != raster_nodata],
-                                        y_values[elevation_data != raster_nodata],
-                                        elevation_data[elevation_data != raster_nodata]), axis=1)
+            numpy.linspace(raster_geotransform[0], raster_geotransform[0] + raster_geotransform[1] * raster_shape[1],
+                           raster_shape[1]),
+            numpy.linspace(raster_geotransform[3], raster_geotransform[3] + raster_geotransform[5] * raster_shape[0],
+                           raster_shape[0]))
+        self.elevation_points = numpy.stack((x_values[elevation_data != elevation_nodata],
+                                             y_values[elevation_data != elevation_nodata],
+                                             elevation_data[elevation_data != elevation_nodata]), axis=1)
 
-        coverage_regions = []
-        for coverage_raster_file in coverage_raster_files:
-            if '.tif' in coverage_raster_file:
-                # TODO open TFW file
-                coverage_raster = gdal.Open(coverage_raster_file)
-                raster_shape = coverage_raster.RasterYSize, coverage_raster.RasterXSize
-                coverage_geotransform = coverage_raster.GetGeoTransform()
-                coverage_x_values, coverage_y_values = numpy.meshgrid(
-                    numpy.linspace(coverage_geotransform[0],
-                                   coverage_geotransform[0] + coverage_geotransform[1] * raster_shape[1],
-                                   raster_shape[1]),
-                    numpy.linspace(coverage_geotransform[3],
-                                   coverage_geotransform[3] + coverage_geotransform[5] * raster_shape[0],
-                                   raster_shape[0]))
-                coverage_data = coverage_raster.GetRasterBand(1).ReadAsArray()
-                coverage_points = numpy.stack((coverage_x_values[coverage_data != raster_nodata],
-                                               coverage_y_values[coverage_data != raster_nodata]), axis=1)
-                coverage_regions.append(_alpha_hull(coverage_points))
+        self.elevation_region = shapely.geometry.MultiPolygon([shapely.geometry.shape(shape[0]) for shape in
+                                                               rasterio.features.shapes(numpy.where(
+                                                                   elevation_data != elevation_nodata, 1, 0),
+                                                                   transform=rasterio.transform.Affine.from_gdal(
+                                                                       *raster.GetGeoTransform()))])
+        self.coverage_regions = unary_union([_vectorize_raster_coverage(raster_filename, coverage_nodata) for
+                                             raster_filename in coverage_raster_files if '.tif' in raster_filename])
 
-        # TODO optimize alpha hull calculation
-        self.elevation_region = _alpha_hull(elevation_points[:, 0:2])
-        self.coverage_region = unary_union(coverage_regions)
-        self.interpolation_region = self.elevation_region.intersection(self.coverage_region)
+        if self.elevation_region.intersects(self.coverage_regions):
+            raise ValueError('survey data does not intersect coverage extent')
+
+        self.interpolation_region = self.elevation_region.intersection(self.coverage_regions)
 
         point_dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
         layer = point_dataset.CreateLayer('pts', osr.SpatialReference(wkt=_get_gdal_crs_wkt(raster)),
                                           geom_type=ogr.wkbPoint)
-        for point in elevation_points:
+
+        for point in self.elevation_points:
             if shapely.geometry.Point(*point).within(self.interpolation_region):
                 geometry = ogr.Geometry(ogr.wkbPoint)
                 geometry.AddPoint(*point)
@@ -631,18 +629,17 @@ class RasterInterpolator(PointInterpolator):
 
     def interpolate(self, method: str, output_resolution: float, output_nodata: float = None,
                     plot: bool = False) -> gdal.Dataset:
-        """
+        if method == 'linear':
+            method = f'{method}_scipy'
 
+        interpolated_dataset = super().interpolate(method, output_resolution, output_nodata, plot)
 
-        Parameters
-        ----------
-        method
-        output_resolution
-        output_nodata
-        plot
-        """
+        # TODO add points from original raster that are outside the interpolation region
+        for point in self.elevation_points:
+            if not shapely.geometry.Point(*point).within(self.interpolation_region):
+                pass
 
-        pass
+        return interpolated_dataset
 
 
 def gdal_points_to_array(points: gdal.Dataset, layer_index: int = 0) -> numpy.array:
@@ -837,3 +834,36 @@ def _get_gdal_crs_wkt(dataset: gdal.Dataset, layer_index: int = 0) -> str:
         crs_wkt = _epsg_to_wkt(int(crs_wkt[5:]))
 
     return crs_wkt
+
+
+def _vectorize_raster_coverage(raster_filename: str, nodata: int):
+    """
+    Shapely geometry of the coverage extent of the given RGB raster (where there is data).
+
+    Parameters
+    ----------
+    raster_filename
+        path to raster file
+    nodata
+        value where there is no data in the given raster file
+
+    Returns
+    -------
+        Shapely polygon or multipolygon of coverage extent
+    """
+
+    with rasterio.open(raster_filename) as raster:
+        raster_data = raster.read()
+
+    # TODO find reduced generalization
+    if raster_data.shape[0] == 3:
+        raster_mask = (raster_data[0, :, :] != nodata) | \
+                      (raster_data[1, :, :] != nodata) | \
+                      (raster_data[2, :, :] != nodata)
+    else:
+        raster_mask = raster_data != nodata
+
+    return shapely.geometry.MultiPolygon([polygon for polygon in [shapely.geometry.shape(shape[0]) for shape in
+                                                                  rasterio.features.shapes(
+                                                                      raster_mask.astype(rasterio.uint8),
+                                                                      transform=raster.transform)] if polygon.is_valid])
