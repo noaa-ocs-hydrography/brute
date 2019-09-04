@@ -9,8 +9,9 @@ DATA_PATH = r'\\OCS-VS-NBS01\nbs\NBS_Data'
 
 class TestFuse(unittest.TestCase):
     def test_cespl(self):
-        input_directory = os.path.join(DATA_PATH, r'PBD_Pacific\USACE\eHydro_LosAngeles_CESPL\Original')
-        processed_directory = os.path.join(DATA_PATH, r'PBD_Pacific\USACE\eHydro_LosAngeles_CESPL\MLLW\Active')
+        region_directory = os.path.join(DATA_PATH, r'PBD_Pacific\USACE\eHydro_LosAngeles_CESPL')
+        input_directory = os.path.join(region_directory, 'Original')
+        processed_directory = os.path.join(region_directory, r'MLLW\Active')
 
         if not os.path.exists(input_directory):
             raise EnvironmentError(f'data directory not found: {input_directory}')
@@ -31,15 +32,16 @@ class TestFuse(unittest.TestCase):
         assert os.path.exists(output_path)
 
     def test_bag(self):
-        input_directory = r'\\OCS-VS-NBS01\nbs\TestingResources\NOAABAG_related\F00626 - This one has seperated areas of bathy'
-        processed_directory = os.path.join(DATA_PATH, r'PBC_Northeast\NOAA_NCEI_OCS\BAGs\MLLW\Active')
+        region_directory = os.path.join(DATA_PATH, r'PBC_Northeast\NOAA_NCEI_OCS\BAGs')
+        input_directory = r'\\OCS-VS-NBS01\nbs\TestingResources\NOAABAG_related\H12525 - The first and easiest'
+        processed_directory = os.path.join(region_directory, r'MLLW\Active')
 
         if not os.path.exists(input_directory):
             raise EnvironmentError(f'data directory not found: {input_directory}')
         if not os.path.exists(processed_directory):
             pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
 
-        survey_name = 'F00626'
+        survey_name = 'H12525'
         file_type = 'bag'
 
         bag_filenames = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if '.bag' in name]

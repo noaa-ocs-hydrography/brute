@@ -14,6 +14,7 @@ import re
 from concurrent import futures
 from typing import Union
 
+import fiona
 import matplotlib.cm
 import matplotlib.colors
 import matplotlib.pyplot
@@ -583,18 +584,36 @@ class RasterInterpolator(PointInterpolator):
 
         coverage_nodata = 255
 
-        self.elevation_region = shapely.geometry.MultiPolygon([shapely.geometry.shape(shape[0]) for shape in
-                                                               rasterio.features.shapes(numpy.where(
-                                                                   elevation_data != elevation_nodata, 1, 0),
+        self.elevation_region = shapely.geometry.MultiPolygon(polygon for polygon in
+                                                              [shapely.geometry.shape(shape[0]) for shape in
+                                                               rasterio.features.shapes(
+                                                                   numpy.where(elevation_data != elevation_nodata, 1,
+                                                                               0), connectivity=8,
                                                                    transform=rasterio.transform.Affine.from_gdal(
-                                                                       *raster.GetGeoTransform()))])
-        self.coverage_regions = unary_union([_vectorize_raster_coverage(raster_filename, coverage_nodata) for
-                                             raster_filename in coverage_raster_files if '.tif' in raster_filename])
+                                                                       *raster.GetGeoTransform()))] if polygon.is_valid)
 
-        if not self.elevation_region.intersects(self.coverage_regions):
+        # _write_region(
+        #     os.path.join(r'\\OCS-VS-NBS01\nbs\TestingResources\NOAABAG_related\H12525 - The first and easiest',
+        #                  'extent.gpkg'), crs_wkt=_gdal_crs_wkt(raster))
+
+        self.coverage_region = unary_union([_vectorize_raster_coverage(raster_filename, coverage_nodata) for
+                                            raster_filename in coverage_raster_files if '.tif' in raster_filename])
+
+        # TODO implement faster alpha hull of complicated regions
+        if type(self.elevation_region) is shapely.geometry.MultiPolygon:
+            self.elevation_region = self.elevation_region.convex_hull
+            # vertices = list(zip(polygon.exterior.xy for polygon in self.elevation_region))
+            # vertices = numpy.concatenate([numpy.stack(vertices[index][0], axis=1) for index in range(len(vertices))])
+            # self.elevation_region = _alpha_hull(vertices)
+        if type(self.coverage_region) is shapely.geometry.MultiPolygon:
+            self.coverage_region = self.coverage_region.convex_hull
+
+        if not self.elevation_region.intersects(self.coverage_region):
             raise ExtentError('survey data does not intersect the provided coverage extent')
 
-        self.interpolation_region = self.elevation_region.intersection(self.coverage_regions)
+        self.interpolation_region = self.elevation_region.intersection(self.coverage_region)
+
+        # _plot_regions([self.interpolation_region, self.coverage_region])
 
         with rasterio.io.MemoryFile() as rasterio_memory_file:
             with rasterio_memory_file.open(driver='GTiff', width=raster_shape[1], height=raster_shape[0], count=1,
@@ -610,26 +629,29 @@ class RasterInterpolator(PointInterpolator):
             with rasterio_memory_file.open() as memory_raster:
                 masked_data, masked_transform = rasterio.mask.mask(memory_raster, [self.interpolation_region])
 
+        masked_geotransform = masked_transform.to_gdal()
+        masked_shape = masked_data.shape
+
         x_values, y_values = numpy.meshgrid(
-            numpy.linspace(raster_geotransform[0], raster_geotransform[0] + raster_geotransform[1] * raster_shape[1],
-                           raster_shape[1]),
-            numpy.linspace(raster_geotransform[3], raster_geotransform[3] + raster_geotransform[5] * raster_shape[0],
-                           raster_shape[0]))
-        self.elevation_points = numpy.stack((x_values[elevation_data != elevation_nodata],
-                                             y_values[elevation_data != elevation_nodata],
-                                             elevation_data[elevation_data != elevation_nodata]), axis=1)
+            numpy.linspace(masked_geotransform[0], masked_geotransform[0] + masked_geotransform[1] * masked_shape[1],
+                           masked_shape[1]),
+            numpy.linspace(masked_geotransform[3], masked_geotransform[3] + masked_geotransform[5] * masked_shape[0],
+                           masked_shape[0]))
+        self.interpolation_points = numpy.stack((x_values[masked_data != elevation_nodata],
+                                                 y_values[masked_data != elevation_nodata],
+                                                 masked_data[masked_data != elevation_nodata]), axis=1)
 
         point_dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
         layer = point_dataset.CreateLayer('pts', osr.SpatialReference(wkt=_gdal_crs_wkt(raster)),
                                           geom_type=ogr.wkbPoint)
 
-        for point in self.elevation_points:
-            if shapely.geometry.Point(*point).within(self.interpolation_region):
-                geometry = ogr.Geometry(ogr.wkbPoint)
-                geometry.AddPoint(*point)
-                feature = ogr.Feature(layer.GetLayerDefn())
-                feature.SetGeometry(geometry)
-                layer.CreateFeature(feature)
+        for point in self.interpolation_points:
+            # if shapely.geometry.Point(*point).within(self.interpolation_region):
+            geometry = ogr.Geometry(ogr.wkbPoint)
+            geometry.AddPoint(*point)
+            feature = ogr.Feature(layer.GetLayerDefn())
+            feature.SetGeometry(geometry)
+            layer.CreateFeature(feature)
 
         super().__init__(point_dataset, default_nodata, window_scalar, layer_index=0)
 
@@ -641,9 +663,9 @@ class RasterInterpolator(PointInterpolator):
         interpolated_dataset = super().interpolate(method, output_resolution, output_nodata, plot)
 
         # TODO add points from original raster that are outside the interpolation region
-        for point in self.elevation_points:
-            if not shapely.geometry.Point(*point).within(self.interpolation_region):
-                pass
+        # for point in self.elevation_points:
+        #     if not shapely.geometry.Point(*point).within(self.interpolation_region):
+        #         pass
 
         return interpolated_dataset
 
@@ -873,6 +895,37 @@ def _vectorize_raster_coverage(raster_filename: str, nodata: int):
                                                                   rasterio.features.shapes(
                                                                       raster_mask.astype(rasterio.uint8),
                                                                       transform=raster.transform)] if polygon.is_valid])
+
+
+def _plot_regions(regions: [shapely.geometry.Polygon], colors: [str] = None):
+    figure = matplotlib.pyplot.figure()
+    axis = figure.add_subplot(1, 1, 1)
+
+    if colors is None:
+        cmap = matplotlib.cm.get_cmap('gist_rainbow')
+        colors = [cmap(color_index / len(regions)) for color_index in range(len(regions))]
+
+    for color_index, geometry in enumerate(regions):
+        color = colors[color_index]
+        if type(geometry) is shapely.geometry.Polygon:
+            axis.plot(*geometry.exterior.xy, c=color)
+        else:
+            for polygon in geometry:
+                axis.plot(*polygon.exterior.xy, c=color)
+
+    matplotlib.pyplot.show()
+
+
+def _write_region(output_filename: str, region: shapely.geometry.Polygon, crs_wkt: str):
+    geometry_type = 'Polygon' if type(region) is shapely.geometry.Polygon else 'MultiPolygon'
+
+    with fiona.open(output_filename, 'w', 'GPKG', {'geometry': geometry_type, 'properties': {'name': 'str'}},
+                    crs_wkt=crs_wkt) as output_vector_file:
+        output_vector_file.write(
+            {'geometry': {'type': geometry_type,
+                          'coordinates': [[numpy.stack(polygon.exterior.xy, axis=1).tolist()] for polygon in
+                                          self.elevation_region]},
+             'properties': {'name': 'elevation data'}})
 
 
 class ExtentError(Exception):
