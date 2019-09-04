@@ -528,10 +528,13 @@ class USACERawReader:
             metadata['from_horiz_datum'] = horiz_datum
         # find the vertical datum information
         if line.find('MEAN LOWER LOW WATER') > 0:
+            metadata['from_vert_datum'] = 'MEAN LOWER LOW WATER'
             metadata['from_vert_key'] = 'MLLW'
         elif line.find('MLLW') > 0:
+            metadata['from_vert_datum'] = 'MEAN LOWER LOW WATER'
             metadata['from_vert_key'] = 'MLLW'
         elif line.find('MEAN LOW WATER') > 0:
+            metadata['from_vert_datum'] = 'MEAN LOWER WATER'
             metadata['from_vert_key'] = 'MLW'
         vert_units_tags = ['NAVD88', 'NAVD1988', 'NAVD 1988']
         for tag in vert_units_tags:
@@ -543,7 +546,6 @@ class USACERawReader:
                 vert_units_end = 0
         vert_units_start = vert_units_end - line[vert_units_end::-1].find('>krb<')
         vert_units = line[vert_units_start + 1:vert_units_end]
-        metadata['from_vert_datum'] = vert_units
         if vert_units.find('FEET') > 0:
             metadata['from_vert_units'] = 'US Survey Foot'
         return metadata

@@ -380,11 +380,10 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> Tuple[list, l
         pb.SetRange(newSurveysNum)
         pb.SetValue(x)
 
-    id_chunks = list(list_chunks([str(objectID) for objectID in surveyIDs]))
+    id_chunks = list(list_chunks([str(objectID) for objectID in surveyIDs], n=100))
 
     for chunk in id_chunks:
         id_string = ','.join(chunk)
-        print(x, end=' ')
         query = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query' + \
                 f'?where=&objectIds={id_string}&outFields=*&returnGeometry=true&outSR=4326&f=json'
         response = requests.get(query)
@@ -430,6 +429,7 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> Tuple[list, l
 
             row.append(metadata)
             rows.append(row)
+            print(x, end=' ')
             x += 1
             object_num += 1
 
