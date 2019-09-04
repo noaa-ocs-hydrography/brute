@@ -439,8 +439,8 @@ class FuseProcessor:
                 metadata['to_filename'] = infilename
             self._meta_obj.write_meta_record(metadata)
             if 'interpolate' in metadata:
-                interpolate = metadata['interpolate']
-                if interpolate == 'True':
+                interpolate = metadata['interpolate'].upper()
+                if interpolate == 'TRUE':
                     meta_interp = metadata.copy()
                     dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
                     self._raster_writer.write(dataset, meta_interp['to_filename'])
