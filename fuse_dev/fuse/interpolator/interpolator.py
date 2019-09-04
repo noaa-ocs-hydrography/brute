@@ -67,7 +67,7 @@ class Interpolator:
 
         root, filename = _os.path.split(metadata['outpath'])
         base, ext = _os.path.splitext(filename)
-        metadata['from_filename'] = f"{base}.interpolated"
+        metadata['from_filename'] = self.gettag(base)
 
         # Point Interpolation
         if self._interp_engine == 'point':
@@ -97,3 +97,9 @@ class Interpolator:
         metadata['interpolated'] = True
 
         return interpolated_dataset, metadata
+    
+    def gettag(self, from_name: str) -> str:
+        """
+        Return the tag for the interpolated dataset given the original filename.
+        """
+        return f"{from_name}.interpolated"

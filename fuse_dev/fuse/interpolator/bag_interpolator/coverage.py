@@ -94,11 +94,11 @@ class GeoTIFF:
 
         """
 
+        _fName = _os.path.split(filename)[-1]
+        self.name = _os.path.splitext(_fName)[0]
         _ds = _gdal.Open(filename)
         self.bounds, self.resolution = self._getBounds(_ds)
         self.array, self.shape, self.nodata = self._getArrayData(_ds)
-        _fName = _os.path.split(filename)[-1]
-        self.name = _os.path.splitext(_fName)[0]
         self.wkt = _ds.GetProjectionRef()
         del _ds
 
@@ -117,6 +117,7 @@ class GeoTIFF:
         """
 
         ulx, xres, xskew, uly, yskew, yres = gdal_obj.GetGeoTransform()
+        check_origin(ulx, uly, self.name)
         lrx = ulx + (gdal_obj.RasterXSize * xres)
         lry = uly + (gdal_obj.RasterYSize * yres)
 
@@ -302,6 +303,7 @@ class Geopackage:
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_dim, y_dim,
                                                         1, _gdal.GDT_Float32)
         gt = (x_min, pixel_size, 0, y_max, 0, -pixel_size)
+        check_origin(x_min, y_min, fName)
         target_ds.SetGeoTransform(gt)
         target_ds.SetProjection(to_crs)
         band = target_ds.GetRasterBand(1)
@@ -369,24 +371,29 @@ class UnifiedCoverage:
         print('_open')
         bndRasts = []
         y = 0
+        error_string = ''
 
         for item in files:
             fName = _os.path.split(item)[1]
             ext = _os.path.splitext(fName)[1].lower()
 
-            if ext in ('.tiff', '.tif'):
-                rast = GeoTIFF()
-                rast.open_file(item)
-                bndRasts.append(rast)
-            elif ext in ('.gpkg',):
-                rast = Geopackage()
-                rast.open_file(item, bag_wkt)
-                bndRasts.append(rast)
+            try:
+                if ext in ('.tiff', '.tif'):
+                    rast = GeoTIFF()
+                    rast.open_file(item)
+                    bndRasts.append(rast)
+                elif ext in ('.gpkg',):
+                    rast = Geopackage()
+                    rast.open_file(item, bag_wkt)
+                    bndRasts.append(rast)
+            except ValueError as e:
+                error_string += f'\n{e}'
+                pass
 
             y += 1
 
         if len(bndRasts) == 0:
-            raise RuntimeError(f'No valid coverage in {files}')
+            raise RuntimeError(f'No valid coverage in {files}{error_string}')
 
         return bndRasts
 
@@ -643,6 +650,11 @@ class UnifiedCoverage:
             # print('same')
             bounds = (nw, se)
             return rasters, bounds
+
+
+def check_origin(x: float, y: float, filename: str) -> ValueError:
+    if 0 in (x, y):
+        raise ValueError(f'{filename} - Origin is not correctly georeferenced')
 
 
 def align2grid(coverage, bounds: ((float, float), (float, float)), shape: (int, int), resolution: (float, float),

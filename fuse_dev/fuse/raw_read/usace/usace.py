@@ -344,7 +344,7 @@ class USACERawReader:
                          'statuscode', 'optional')
         name_meta = self._parse_filename(infilename)
         if meta_source == 'xyz':
-            file_meta = self._parse_xyz_header(infilename)
+            file_meta = self._parse_xyz_header(infilename, mode=self.version)
         elif meta_source == 'xml':
             file_meta = self._parse_ehydro_xml(infilename)
         default_meta = self._load_default_metadata(infilename, default_meta)
@@ -424,7 +424,7 @@ class USACERawReader:
             print(f'{name} appears to have a nonstandard naming convention.')
         return meta
 
-    def _parse_xyz_header(self, filename: str) -> dict:
+    def _parse_xyz_header(self, filename: str, mode: str = None) -> dict:
         """
         Parse the xyz file header for meta data and return a dictionary.  The
         key words used to search are
@@ -455,19 +455,24 @@ class USACERawReader:
                     header.append(line)
                 else:
                     break
-        # search the header for lines starting with the key words
-        for line in header:
-            if line.startswith('NOTES'):
-                metalist.append(self._parse_note(line))
-            elif line.startswith('PROJECT SPECIFIC NOTES'):
-                metalist.append(self._parse_note(line))
-            elif line.startswith('PROJECT_NAME'):
-                metalist.append(self._parse_projectname(line))
-            elif line.startswith('SURVEY_NAME'):
-                metalist.append(self._parse_surveyname(line))
-            elif line.startswith('DATES_OF_SURVEY'):
-                metalist.append(self._parse_surveydates(line))
-        # bring all the dictionaries together
+
+        if mode == 'CENAE':
+            for line in header:
+                metalist.append(self._parse_assignment(line))
+        else:
+            # search the header for lines starting with the key words
+            for line in header:
+                if line.startswith('NOTES'):
+                    metalist.append(self._parse_note(line))
+                elif line.startswith('PROJECT SPECIFIC NOTES'):
+                    metalist.append(self._parse_note(line))
+                elif line.startswith('PROJECT_NAME'):
+                    metalist.append(self._parse_projectname(line))
+                elif line.startswith('SURVEY_NAME'):
+                    metalist.append(self._parse_surveyname(line))
+                elif line.startswith('DATES_OF_SURVEY'):
+                    metalist.append(self._parse_surveydates(line))
+            # bring all the dictionaries together
         meta = {}
         for m in metalist:
             meta = {**meta, **m}
@@ -528,10 +533,13 @@ class USACERawReader:
             metadata['from_horiz_datum'] = horiz_datum
         # find the vertical datum information
         if line.find('MEAN LOWER LOW WATER') > 0:
+            metadata['from_vert_datum'] = 'MEAN LOWER LOW WATER'
             metadata['from_vert_key'] = 'MLLW'
         elif line.find('MLLW') > 0:
+            metadata['from_vert_datum'] = 'MEAN LOWER LOW WATER'
             metadata['from_vert_key'] = 'MLLW'
         elif line.find('MEAN LOW WATER') > 0:
+            metadata['from_vert_datum'] = 'MEAN LOWER WATER'
             metadata['from_vert_key'] = 'MLW'
         vert_units_tags = ['NAVD88', 'NAVD1988', 'NAVD 1988']
         for tag in vert_units_tags:
@@ -543,7 +551,6 @@ class USACERawReader:
                 vert_units_end = 0
         vert_units_start = vert_units_end - line[vert_units_end::-1].find('>krb<')
         vert_units = line[vert_units_start + 1:vert_units_end]
-        metadata['from_vert_datum'] = vert_units
         if vert_units.find('FEET') > 0:
             metadata['from_vert_units'] = 'US Survey Foot'
         return metadata
@@ -650,6 +657,41 @@ class USACERawReader:
             return numdate
         except:
             return None
+
+    def _parse_assignment(self, line: str) -> dict:
+        meta = {}
+        try:
+            key, value = line.split('==')
+        except ValueError as e:
+            _logging.debug(_logging.DEBUG, f'ValueError: {e}')
+            return meta
+        if key == 'Horizontal_Datum':
+            meta['from_horiz_datum'] = value.strip()
+            fips = value.split(',')[1]
+            fips = fips.strip().split()[0].split('-')[1]
+            meta['from_horiz_key'] = fips
+            try:
+                meta['from_wkt'] = _usefips.fips2wkt(int(fips))
+            except ValueError as e:
+                _logging.debug(_logging.DEBUG, f'ValueError: {e}')
+                return meta
+        elif key == 'Distance_Units':
+            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+                meta['from_horiz_units'] = 'US Survey Foot'
+            else:
+                meta['from_horiz_units'] = value.strip()
+        elif key == 'Vertical_Datum':
+            meta['from_vert_datum'] = value.strip()
+            upper_key = value.strip().upper()
+            if upper_key in ('MEAN LOWER LOW WATER', 'MLLW'):
+                meta['from_vert_key'] = 'MLLW'
+
+        elif key == 'Depth_Units':
+            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+                meta['from_vert_units'] = 'US Survey Foot'
+            else:
+                meta['from_vert_units'] = value.strip()
+        return meta
 
     def _load_default_metadata(self, infilename: str, default_meta: str):
         """
@@ -758,6 +800,7 @@ class USACERawReader:
             'Implied_Vertical_Accuracy': 'from_vert_unc',
             'Implied_Horizontal_Accuracy': 'from_horiz_unc',
             'Horizontal_Zone': 'from_horiz_datum',
+            'Horizontal_Datum': 'from_horiz_datum',
             'Units': 'from_horiz_units'
         }
         keys = txt_keys.keys()
