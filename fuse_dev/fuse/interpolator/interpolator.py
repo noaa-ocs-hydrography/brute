@@ -63,14 +63,14 @@ class PointInterpolator:
         self.window_size = window_scalar * numpy.max(cKDTree(points_2d).query(points_2d, k=2)[0][:, 1])
 
         # get the concave hull of the survey points
-        self.concave_hull = _alpha_hull(points_2d, self.window_size)
+        self.interpolation_region = _alpha_hull(points_2d, self.window_size)
 
         # get the bounds (min X, min Y, max X, max Y)
         self.input_bounds = numpy.min(points_2d[:, 0]), numpy.min(points_2d[:, 1]), numpy.max(
             points_2d[:, 0]), numpy.max(points_2d[:, 1])
 
         # get the well-known text of the CRS
-        self.crs_wkt = _get_gdal_crs_wkt(self.dataset, layer_index)
+        self.crs_wkt = _gdal_crs_wkt(self.dataset, layer_index)
 
     def interpolate(self, method: str, output_resolution: float, output_nodata: float = None,
                     plot: bool = False) -> gdal.Dataset:
@@ -173,7 +173,7 @@ class PointInterpolator:
                 memory_raster.write(numpy.full(shape, 1, dtype=rasterio.float64), 1)
 
             with rasterio_memory_file.open() as memory_raster:
-                masked_data, masked_transform = rasterio.mask.mask(memory_raster, [self.concave_hull])
+                masked_data, masked_transform = rasterio.mask.mask(memory_raster, [self.interpolation_region])
 
         output_dataset = gdal.GetDriverByName('MEM').Create('', shape[1], shape[0], 1, gdal.GDT_Float32)
         output_dataset.SetProjection(crs_wkt)
@@ -207,11 +207,7 @@ class PointInterpolator:
         resolution = geotransform[1]
         nw_corner = geotransform[0], geotransform[3]
         nodata = like_raster.GetRasterBand(band_index).GetNoDataValue()
-        crs_wkt = like_raster.GetProjectionRef()
-        if re.match('^EPSG:[0-9]+$', crs_wkt):
-            srs = osr.SpatialReference()
-            srs.ImportFromEPSG(int(crs_wkt[-4:]))
-            crs_wkt = srs.ExportToWkt()
+        crs_wkt = _gdal_crs_wkt(like_raster)
         return self.__get_mask(shape, resolution, nw_corner, nodata, crs_wkt)
 
     def __linear_gdal(self, output_shape: (int, int), output_bounds: (float, float, float, float),
@@ -549,14 +545,14 @@ class PointInterpolator:
 
     def __plot_concave_hull(self):
         triangles = scipy.spatial.Delaunay(self.points[:, 0:2])
-        matplotlib.pyplot.plot(*self.concave_hull.exterior.xy, c='r')
+        matplotlib.pyplot.plot(*self.interpolation_region.exterior.xy, c='r')
         matplotlib.pyplot.triplot(self.points[:, 0], self.points[:, 1], triangles=triangles.simplices, c='g')
         matplotlib.pyplot.scatter(self.points[:, 0], self.points[:, 1], c='b')
         matplotlib.pyplot.show()
 
 
 class RasterInterpolator(PointInterpolator):
-    def __init__(self, raster: gdal.Dataset, coverage_raster_files: [str], file_size: int, band_index: int = 1,
+    def __init__(self, raster: gdal.Dataset, coverage_raster_files: [str], band_index: int = 1,
                  default_nodata: float = None, window_scalar: float = 1):
         """
         Create a new raster interpolator object for the given GDAL raster dataset.
@@ -567,8 +563,6 @@ class RasterInterpolator(PointInterpolator):
             GDAL raster dataset
         coverage_raster_files
             paths to coverage rasters
-        file_size
-            size of the file in megabytes
         band_index
             raster band (1-indexed)
         default_nodata
@@ -576,8 +570,6 @@ class RasterInterpolator(PointInterpolator):
         window_scalar
             multiplier to use to expand interpolation radius from the default (minimum nearest-neighbor distance)
         """
-
-        self.file_size = file_size
 
         elevation_band = raster.GetRasterBand(band_index)
         elevation_nodata = elevation_band.GetNoDataValue()
@@ -591,6 +583,33 @@ class RasterInterpolator(PointInterpolator):
 
         coverage_nodata = 255
 
+        self.elevation_region = shapely.geometry.MultiPolygon([shapely.geometry.shape(shape[0]) for shape in
+                                                               rasterio.features.shapes(numpy.where(
+                                                                   elevation_data != elevation_nodata, 1, 0),
+                                                                   transform=rasterio.transform.Affine.from_gdal(
+                                                                       *raster.GetGeoTransform()))])
+        self.coverage_regions = unary_union([_vectorize_raster_coverage(raster_filename, coverage_nodata) for
+                                             raster_filename in coverage_raster_files if '.tif' in raster_filename])
+
+        if not self.elevation_region.intersects(self.coverage_regions):
+            raise ExtentError('survey data does not intersect the provided coverage extent')
+
+        self.interpolation_region = self.elevation_region.intersection(self.coverage_regions)
+
+        with rasterio.io.MemoryFile() as rasterio_memory_file:
+            with rasterio_memory_file.open(driver='GTiff', width=raster_shape[1], height=raster_shape[0], count=1,
+                                           crs=rasterio.crs.CRS.from_wkt(_gdal_crs_wkt(raster)),
+                                           transform=rasterio.transform.Affine.translation(raster_geotransform[0],
+                                                                                           raster_geotransform[3]) *
+                                                     rasterio.transform.Affine.scale(raster_geotransform[1],
+                                                                                     raster_geotransform[5]),
+                                           dtype=rasterio.float64, nodata=numpy.array([elevation_nodata]).astype(
+                        rasterio.float64).item()) as memory_raster:
+                memory_raster.write(numpy.full(raster_shape, 1, dtype=rasterio.float64), 1)
+
+            with rasterio_memory_file.open() as memory_raster:
+                masked_data, masked_transform = rasterio.mask.mask(memory_raster, [self.interpolation_region])
+
         x_values, y_values = numpy.meshgrid(
             numpy.linspace(raster_geotransform[0], raster_geotransform[0] + raster_geotransform[1] * raster_shape[1],
                            raster_shape[1]),
@@ -600,21 +619,8 @@ class RasterInterpolator(PointInterpolator):
                                              y_values[elevation_data != elevation_nodata],
                                              elevation_data[elevation_data != elevation_nodata]), axis=1)
 
-        self.elevation_region = shapely.geometry.MultiPolygon([shapely.geometry.shape(shape[0]) for shape in
-                                                               rasterio.features.shapes(numpy.where(
-                                                                   elevation_data != elevation_nodata, 1, 0),
-                                                                   transform=rasterio.transform.Affine.from_gdal(
-                                                                       *raster.GetGeoTransform()))])
-        self.coverage_regions = unary_union([_vectorize_raster_coverage(raster_filename, coverage_nodata) for
-                                             raster_filename in coverage_raster_files if '.tif' in raster_filename])
-
-        if self.elevation_region.intersects(self.coverage_regions):
-            raise ValueError('survey data does not intersect coverage extent')
-
-        self.interpolation_region = self.elevation_region.intersection(self.coverage_regions)
-
         point_dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
-        layer = point_dataset.CreateLayer('pts', osr.SpatialReference(wkt=_get_gdal_crs_wkt(raster)),
+        layer = point_dataset.CreateLayer('pts', osr.SpatialReference(wkt=_gdal_crs_wkt(raster)),
                                           geom_type=ogr.wkbPoint)
 
         for point in self.elevation_points:
@@ -806,7 +812,7 @@ def _epsg_to_wkt(epsg: int) -> str:
     return spatial_reference.ExportToWkt()
 
 
-def _get_gdal_crs_wkt(dataset: gdal.Dataset, layer_index: int = 0) -> str:
+def _gdal_crs_wkt(dataset: gdal.Dataset, layer_index: int = 0) -> str:
     """
     extract the well-known text of the CRS from the given GDAL dataset
 
@@ -867,3 +873,7 @@ def _vectorize_raster_coverage(raster_filename: str, nodata: int):
                                                                   rasterio.features.shapes(
                                                                       raster_mask.astype(rasterio.uint8),
                                                                       transform=raster.transform)] if polygon.is_valid])
+
+
+class ExtentError(Exception):
+    pass

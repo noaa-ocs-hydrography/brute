@@ -93,8 +93,7 @@ class FuseProcessor:
     _processing_info = [
         'logfilename',
         'version_reference',
-        'interpolate',
-        'file_size',
+        'interpolate'
     ]
 
     _scores = [
@@ -195,18 +194,19 @@ class FuseProcessor:
             dictionary of metadata keys
         """
 
+        # dictionary of the basic configuration, with their descriptions
         required_config_keys = {
-            'rawpaths': 'path to raw data',
-            'outpath': 'path to output data',
-            'to_horiz_datum': 'output horizontal datum description',
-            'to_horiz_frame': 'output horizontal datum frame',
-            'to_horiz_type': 'output horizontal datum type',
-            'to_horiz_units': 'output horizontal datum units',
-            'to_vert_key': 'output vertical datum key',
-            'to_vert_units': 'output vertical datum units',
-            'to_vert_direction': 'output vertical datum direction',
-            'to_vert_datum': 'output vertical datum description',
-            'metapath': 'metadata output',
+            'rawpaths': 'file path to raw data',
+            'outpath': 'file path to output data',
+            'to_horiz_datum': 'output horizontal datum',
+            'to_horiz_frame': 'frame of output horizontal datum',
+            'to_horiz_type': 'type (PCS / GCS) of output horizontal datum',
+            'to_horiz_units': 'units of output horizontal datum',
+            'to_vert_key': 'EPSG of output vertical datum',
+            'to_vert_units': 'units of output vertical datum units',
+            'to_vert_direction': 'vertical direction of output vertical datum',
+            'to_vert_datum': 'output vertical datum',
+            'metapath': 'file path to CSV of metadata',
         }
         for required_config_key in required_config_keys:
             if required_config_key not in config_dict:
@@ -436,30 +436,33 @@ class FuseProcessor:
                 if interpolate == 'True':
                     meta_interp = metadata.copy()
 
-                    root, filename = _os.path.split(metadata['outpath'])
+                    root, filename = _os.path.split(meta_interp['outpath'])
                     base = _os.path.splitext(filename)[0]
-                    metadata['from_filename'] = f'{base}.interpolated'
+                    meta_interp['from_filename'] = f'{base}.interpolated'
 
                     if self._config['interpolation_engine'] == 'raster':
-                        output_filename = f"{_os.path.join(root, base)}_interp.{metadata['new_ext']}"
+                        output_filename = f"{_os.path.join(root, base)}_interp.{meta_interp['new_ext']}"
                     else:
                         resolution = float(self._config['to_resolution'])
                         resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
-                        output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{metadata["new_ext"]}'
+                        output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{meta_interp["new_ext"]}'
 
-                    metadata['to_filename'] = output_filename
+                    meta_interp['to_filename'] = output_filename
                     method = self._config['interpolation_method']
-                    if self._config['interpolation_engine'] == 'raster':
-                        interpolator = _interp.RasterInterpolator(dataset, metadata['support_files'],
-                                                                  metadata['file_size'])
-                    else:
-                        interpolator = _interp.PointInterpolator(dataset)
 
-                    dataset = interpolator.interpolate(method, float(self._config['to_resolution']))
+                    try:
+                        if self._config['interpolation_engine'] == 'raster':
+                            interpolator = _interp.RasterInterpolator(dataset, metadata['support_files'])
+                        else:
+                            interpolator = _interp.PointInterpolator(dataset)
 
-                    metadata['interpolated'] = True
+                        dataset = interpolator.interpolate(method, float(self._config['to_resolution']))
+                        meta_interp['interpolated'] = True
+                        self._raster_writer.write(dataset, meta_interp['to_filename'])
+                    except _interp.ExtentError as error:
+                        print(error)
+                        meta_interp['interpolated'] = False
 
-                    self._raster_writer.write(dataset, meta_interp['to_filename'])
                     self._meta_obj.write_meta_record(meta_interp)
 
                 elif interpolate == 'False':
