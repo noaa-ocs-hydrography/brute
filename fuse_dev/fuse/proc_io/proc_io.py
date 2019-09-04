@@ -191,8 +191,14 @@ class ProcIO:
 
             try:
                 stdout, stderr = caris_process.communicate()
-                self._logger.log(logging.DEBUG, stdout)
-                self._logger.log(logging.DEBUG, stderr)
+                if stdout is not None:
+                    self._logger.log(logging.DEBUG, stdout)
+                else:
+                    self._logger.log(logging.DEBUG, 'No information returned from csar write process.')
+                if stderr is not None:
+                    self._logger.log(logging.DEBUG, stderr)
+                else:
+                    self._logger.log(logging.DEBUG, 'No errors returned from csar write process.')
             except Exception as error:
                 self._logger.log(logging.DEBUG, f'Error when logging subprocess error\n{error}')
 

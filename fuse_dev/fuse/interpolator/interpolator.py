@@ -862,6 +862,10 @@ def _gdal_crs_wkt(dataset: gdal.Dataset, layer_index: int = 0) -> str:
     elif re.match('^EPSG:[0-9]+$', crs_wkt):
         crs_wkt = _epsg_to_wkt(int(crs_wkt[5:]))
 
+    root, filename = _os.path.split(metadata['outpath'])
+    base, ext = _os.path.splitext(filename)
+    metadata['from_filename'] = self.gettag(base)
+
     return crs_wkt
 
 
@@ -927,6 +931,13 @@ def _write_region(output_filename: str, region: shapely.geometry.Polygon, crs_wk
                           'coordinates': [[numpy.stack(polygon.exterior.xy, axis=1).tolist()] for polygon in
                                           self.elevation_region]},
              'properties': {'name': 'elevation data'}})
+
+
+def gettag(self, from_name: str) -> str:
+    """
+    Return the tag for the interpolated dataset given the original filename.
+    """
+    return f"{from_name}.interpolated"
 
 
 class ExtentError(Exception):

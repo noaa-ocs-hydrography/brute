@@ -292,7 +292,6 @@ class BAGRawReader:
         root, name = _os.path.split(infilename)
         meta['from_filename'] = name
         meta['from_path'] = infilename
-        meta['interpolate'] = True
         meta['file_size'] = self._size_finder(infilename)
 
         return {**coverage, **meta}

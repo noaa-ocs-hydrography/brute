@@ -11,8 +11,9 @@ DATA_PATH = r"C:\Data\NBS"
 
 class TestPointInterpolator(unittest.TestCase):
     def test_linear(self):
-        input_directory = os.path.join(DATA_PATH, r'PBC_Northeast\USACE\eHydro_NewYork_CENAN\Original')
-        processed_directory = os.path.join(DATA_PATH, r'PBC_Northeast\USACE\eHydro_NewYork_CENAN\MLLW\Data\Active')
+        region_directory = os.path.join(DATA_PATH, r'PBC_Northeast\USACE\eHydro_NewYork_CENAN')
+        input_directory = os.path.join(region_directory, 'Original')
+        processed_directory = os.path.join(region_directory, r'MLLW\Data\Active')
 
         if not os.path.exists(input_directory):
             raise EnvironmentError(f'data directory not found: {input_directory}')
@@ -58,7 +59,7 @@ class TestPointInterpolator(unittest.TestCase):
 
 class TestRasterInterpolator(unittest.TestCase):
     def test_align2grid(self):
-        bag_testing_directory = os.path.join(DATA_PATH, 'testing', 'bag_interpolator', 'H12607')
+        bag_testing_directory = os.path.join(DATA_PATH, r'testing\bag_interpolator\H12607')
 
         if not os.path.exists(bag_testing_directory):
             raise EnvironmentError(f'test directory not found: {bag_testing_directory}')
@@ -79,29 +80,6 @@ class TestRasterInterpolator(unittest.TestCase):
 
         assert coverage_dataset.bounds == bag_dataset.bounds
         assert coverage_dataset.shape == bag_dataset.shape
-
-    def test_linear(self):
-        input_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'Original')
-        processed_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'MLLW', 'Data',
-                                           'Active')
-
-        if not os.path.exists(input_directory):
-            raise EnvironmentError(f'data directory not found: {input_directory}')
-        if not os.path.exists(processed_directory):
-            pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
-
-        survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
-        file_type = 'csar'
-
-        input_path = os.path.join(input_directory, survey_name, f'{survey_name}.XYZ')
-        config_path = os.path.join('data', 'cenan_kriging.config')
-        output_path = os.path.join(processed_directory, f'{survey_name}_5m_interp.{file_type}')
-
-        cenan_fuse_processor = FuseProcessor(config_path)
-        cenan_fuse_processor.read(input_path)
-        cenan_fuse_processor.process(input_path)
-
-        assert os.path.exists(output_path)
 
 
 if __name__ == '__main__':

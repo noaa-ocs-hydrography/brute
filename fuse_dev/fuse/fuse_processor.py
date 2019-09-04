@@ -432,8 +432,8 @@ class FuseProcessor:
             self._meta_obj.write_meta_record(metadata)
 
             if 'interpolate' in metadata:
-                interpolate = metadata['interpolate']
-                if interpolate == 'True':
+                interpolate = metadata['interpolate'].upper()
+                if interpolate == 'TRUE':
                     meta_interp = metadata.copy()
 
                     root, filename = _os.path.split(meta_interp['outpath'])

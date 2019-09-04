@@ -18,7 +18,7 @@ class TestFuse(unittest.TestCase):
         if not os.path.exists(processed_directory):
             pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
 
-        survey_name = 'LA_02_LAC_20150915'
+        survey_name = 'LA_01_LBC_20151118'
         file_type = 'bag'
 
         input_path = os.path.join(input_directory, survey_name, f'{survey_name}.XYZ')

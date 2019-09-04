@@ -395,7 +395,6 @@ class XMLMetadata:
                     my_etree_dict1['from_vert_key'] = self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')
             else:
                 my_etree_dict1['from_vert_key'] = ''
-            my_etree_dict1['script: from_vert_key'] = my_etree_dict1['from_vert_key']
         for x in self.xml_tree.findall('.//ellips'):
             if self.xml_tree.findall('.//ellips') is None:
                 my_etree_dict1['ISO_ellips'] = ''
@@ -1615,16 +1614,32 @@ def extract_from_iso_meta(xml_meta):
             Vert_unc = Vert_unc.rstrip('Feet').strip().rstrip('.')
             Vert_unc = float(Vert_unc)
             xml_meta['from_vert_unc'] = str(Vert_unc)
-        if xml_meta['System'] == 'single beam':
-            xml_meta['TECSOU'] = '1'
-        elif xml_meta['System'] == 'multibeam beam':
-            xml_meta['TECSOU'] = '3'
-        elif xml_meta['System'].find('sweep') >= 0 or xml_meta['System'].find('SmartSweep') >= 0:
-            xml_meta[
-                'TECSOU'] = '8'  # could also consider it just multiple single beams in this water depth range#Ross SmartSweep example modle
-            # see _print_TECSOU_defs() for more TECSOU definitions
-        xml_meta['from_horiz_datum'] = f"{xml_meta['Projected_Coordinate_System']},{xml_meta['Horizontal_Zone']}," + \
-                                       f"{xml_meta['Units']}"
+
+        for system in ('System', 'Sonar System'):
+            try:
+                if 'single' in xml_meta[system].lower():
+                    xml_meta['TECSOU'] = '1'
+                elif 'multi' in xml_meta[system].lower():
+                    xml_meta['TECSOU'] = '3'
+                elif 'sweep' in xml_meta[system].lower():
+                    xml_meta[
+                        'TECSOU'] = '8'  # could also consider it just multiple single beams in this water depth range#Ross SmartSweep example modle
+                    # see _print_TECSOU_defs() for more TECSOU definitions
+            except KeyError as e:
+                _logging.debug(_logging.ERROR, f"{system}: {e}")
+                pass
+
+        horiz_datum_items = []
+        for key in ('Projected_Coordinate_System', 'Horizontal_Zone', 'Units'):
+            try:
+                horiz_datum_items.append(xml_meta[key])
+            except KeyError as e:
+                _logging.debug(_logging.ERROR, f"{key}: {e}")
+                pass
+
+        if len(horiz_datum_items) < 0:
+            xml_meta['from_horiz_datum'] = ','.join(horiz_datum_items)
+
         if len(xml_meta['Horizontal_Zone']) > 0:
             code = xml_meta['Horizontal_Zone'].split(' ')[1]
             # print(code)
@@ -1633,16 +1648,16 @@ def extract_from_iso_meta(xml_meta):
                 try:
                     for key in SOURCEPROJECTION_dict:
                         if SOURCEPROJECTION_dict[key] in code:  # print(key)
-                            xml_meta['from_fips'] = SOURCEPROJECTION_dict[key]
+                            xml_meta['from_horiz_key'] = SOURCEPROJECTION_dict[key]
                             xml_meta['CHECK_FIPS'] = 'FROM_ABSTRACT'
                 except:
                     for key in SOURCEPROJECTION_dict:
                         if key.upper() in xml_meta['Horizontal_Zone']:  # print(key)
-                            xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
+                            xml_meta['from_horiz_key'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
                             xml_meta['CHECK_FIPS'] = 'FROM_ABSTRACT'
             for key in SOURCEPROJECTION_dict:
                 if key.upper() in xml_meta['Horizontal_Zone']:  # print(key)
-                    xml_meta['from_fips'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
+                    xml_meta['from_horiz_key'] = convert_tofips(SOURCEPROJECTION_dict, " ".join(key.split()))
                     xml_meta['CHECK_FIPS'] = 'FROM_ABSTRACT'
     return xml_meta
 
@@ -2016,7 +2031,7 @@ def convert_meta_to_input(m):
             # may need to enforce some kind of uniform spelling etc. here
             m['from_horiz_units'] = m['Horizontal_Units'].strip()
     if 'FIPS' in m:
-        m['from_fips'] = m['FIPS']
+        m['from_horiz_key'] = m['FIPS']
     if 'VERTDAT' in m:
         m['from_vert_key'] = m['VERTDAT']
         m['script: from_vert_key'] = m['VERTDAT']
@@ -2141,10 +2156,10 @@ def xml_SPCSconflict_flag(meta_xml):
         if meta_xml['CHECK_FIPS'] == 'FROM_ABSTRACT':
             for source in list_spcs_source:
                 if source in meta_xml:
-                    if meta_xml['from_fips'] != meta_xml[source]:
+                    if meta_xml['from_horiz_key'] != meta_xml[source]:
                         meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , abstract_disagrees_{source}"
                 if 'FIPS' in meta_xml:
-                    if meta_xml['from_fips'] != meta_xml['FIPS']:
+                    if meta_xml['from_horiz_key'] != meta_xml['FIPS']:
                         meta_xml['SPCS_conflict_XML'] = f"{meta_xml['SPCS_conflict_XML']} , abstract_disagrees"
         if meta_xml['CHECK_FIPS'] == 'CHECK_IF_EXPECTED':
             if 'SPCS' in meta_xml:
