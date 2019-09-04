@@ -11,7 +11,7 @@ DATA_PATH = r"C:\Data\NBS"
 
 class TestBagInterpolator(unittest.TestCase):
     def test_align2grid(self):
-        bag_testing_directory = os.path.join(DATA_PATH, 'testing', 'bag_interpolator', 'H12607')
+        bag_testing_directory = os.path.join(DATA_PATH, r'testing\bag_interpolator\H12607')
 
         if not os.path.exists(bag_testing_directory):
             raise EnvironmentError(f'test directory not found: {bag_testing_directory}')
@@ -36,9 +36,9 @@ class TestBagInterpolator(unittest.TestCase):
 
 class TestPointInterpolator(unittest.TestCase):
     def test_kriging(self):
-        input_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'Original')
-        processed_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'MLLW', 'Data',
-                                           'Active')
+        region_directory = os.path.join(DATA_PATH, r'PBC_Northeast\USACE\eHydro_NewYork_CENAN')
+        input_directory = os.path.join(region_directory, 'Original')
+        processed_directory = os.path.join(region_directory, r'MLLW\Data\Active')
 
         if not os.path.exists(input_directory):
             raise EnvironmentError(f'data directory not found: {input_directory}')
