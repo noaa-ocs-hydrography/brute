@@ -862,10 +862,6 @@ def _gdal_crs_wkt(dataset: gdal.Dataset, layer_index: int = 0) -> str:
     elif re.match('^EPSG:[0-9]+$', crs_wkt):
         crs_wkt = _epsg_to_wkt(int(crs_wkt[5:]))
 
-    root, filename = _os.path.split(metadata['outpath'])
-    base, ext = _os.path.splitext(filename)
-    metadata['from_filename'] = self.gettag(base)
-
     return crs_wkt
 
 
@@ -921,23 +917,18 @@ def _plot_regions(regions: [shapely.geometry.Polygon], colors: [str] = None):
     matplotlib.pyplot.show()
 
 
-def _write_region(output_filename: str, region: shapely.geometry.Polygon, crs_wkt: str):
+def _write_region(output_filename: str, region: shapely.geometry.MultiPolygon, crs_wkt: str):
     geometry_type = 'Polygon' if type(region) is shapely.geometry.Polygon else 'MultiPolygon'
+
+    # TODO generalize polygon / multipolygon
+    coordinates = [[numpy.stack(polygon.exterior.xy, axis=1).tolist()] for polygon in region]
 
     with fiona.open(output_filename, 'w', 'GPKG', {'geometry': geometry_type, 'properties': {'name': 'str'}},
                     crs_wkt=crs_wkt) as output_vector_file:
         output_vector_file.write(
             {'geometry': {'type': geometry_type,
-                          'coordinates': [[numpy.stack(polygon.exterior.xy, axis=1).tolist()] for polygon in
-                                          self.elevation_region]},
+                          'coordinates': coordinates},
              'properties': {'name': 'elevation data'}})
-
-
-def gettag(self, from_name: str) -> str:
-    """
-    Return the tag for the interpolated dataset given the original filename.
-    """
-    return f"{from_name}.interpolated"
 
 
 class ExtentError(Exception):
