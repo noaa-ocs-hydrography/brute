@@ -629,6 +629,7 @@ class RasterInterpolator(PointInterpolator):
             with rasterio_memory_file.open() as memory_raster:
                 masked_data, masked_transform = rasterio.mask.mask(memory_raster, [self.interpolation_region])
 
+        masked_data = masked_data[0, :, :]
         masked_geotransform = masked_transform.to_gdal()
         masked_shape = masked_data.shape
 
