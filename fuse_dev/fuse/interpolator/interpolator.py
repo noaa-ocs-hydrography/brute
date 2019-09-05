@@ -901,6 +901,8 @@ def _get_combined_coverage_masks_within_bounds(coverage_raster_filenames: [str],
     if type(output_nw_corner) is not numpy.array:
         output_nw_corner = numpy.array(output_nw_corner)
 
+    output_se_corner = output_nw_corner + (output_resolution * numpy.flip(output_shape))
+
     if type(output_resolution) is not numpy.array:
         output_resolution = numpy.array(output_resolution)
 
@@ -909,11 +911,6 @@ def _get_combined_coverage_masks_within_bounds(coverage_raster_filenames: [str],
 
     output_coverage_mask = numpy.empty(output_shape)
 
-    output_size = numpy.abs(output_resolution * numpy.flip(output_shape))
-
-    output_sw_corner = numpy.array((output_nw_corner[0], output_nw_corner[1] - output_size[1]))
-    output_ne_corner = output_sw_corner + output_size
-
     for coverage_raster_filename in coverage_raster_filenames:
         with rasterio.open(coverage_raster_filename) as coverage_raster:
             coverage_transform = coverage_raster.transform
@@ -921,34 +918,28 @@ def _get_combined_coverage_masks_within_bounds(coverage_raster_filenames: [str],
             coverage_data = coverage_raster.read()
 
         coverage_resolution = numpy.array((coverage_transform.a, coverage_transform.e))
-        coverage_size = numpy.abs(coverage_resolution * numpy.flip(coverage_shape))
 
         coverage_nw_corner = coverage_transform.c, coverage_transform.f
-        coverage_se_corner = coverage_transform.c, coverage_transform.f
+        coverage_se_corner = coverage_nw_corner + (coverage_resolution * numpy.flip(coverage_shape))
 
-        coverage_sw_corner = numpy.array((coverage_nw_corner[0], coverage_nw_corner[1] - coverage_size[1]))
-        coverage_ne_corner = coverage_sw_corner + coverage_size
-
-        coverage_mask = numpy.where(_coverage_mask(), 1, 0)
-
-        resolution_ratio = coverage_resolution / output_resolution
+        coverage_mask = numpy.where(_coverage_mask(coverage_data), 1, 0)
 
         # resample coverage data to match BAG resolution
+        resolution_ratio = coverage_resolution / output_resolution
         if resolution_ratio != 1:
             coverage_mask = zoom(coverage_mask, zoom=resolution_ratio, order=3, prefilter=False)
 
         # clip resampled coverage data to the bounds of the BAG
         output_array = numpy.full(output_shape, 0)
 
-        cov_ul = coverage_nw_corner
-        cov_lr = numpy.array(coverage_sw_corner), numpy.array(coverage.bounds[1])
         bag_ul, bag_lr = numpy.array(bounds[0]), numpy.array(bounds[1])
 
-        if bag_ul[0] > cov_lr[0] or bag_lr[0] < cov_ul[0] or bag_lr[1] > cov_ul[1] or bag_ul[1] < cov_lr[1]:
+        if bag_ul[0] > coverage_se_corner[0] or bag_lr[0] < coverage_nw_corner[0] or \
+                bag_lr[1] > coverage_nw_corner[1] or bag_ul[1] < coverage_se_corner[1]:
             raise ValueError('bag dataset is outside the bounds of coverage dataset')
 
-        ul_index_delta = numpy.round((bag_ul - cov_ul) / numpy.array(resolution)).astype(int)
-        lr_index_delta = numpy.round((bag_lr - cov_ul) / numpy.array(resolution)).astype(int)
+        ul_index_delta = numpy.round((bag_ul - coverage_nw_corner) / output_resolution.astype(int))
+        lr_index_delta = numpy.round((bag_lr - coverage_nw_corner) / output_resolution.astype(int))
 
         # indices to be written onto the output array
         output_array_index_slices = [slice(0, None), slice(0, None)]
