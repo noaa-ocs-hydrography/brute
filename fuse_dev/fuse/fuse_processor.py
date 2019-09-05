@@ -450,12 +450,10 @@ class FuseProcessor:
                     meta_interp['to_filename'] = output_filename
                     method = self._config['interpolation_method']
 
-                    try:
-                        if self._config['interpolation_engine'] == 'raster':
-                            interpolator = _interp.RasterInterpolator(dataset, metadata['support_files'])
-                        else:
-                            interpolator = _interp.PointInterpolator(dataset)
+                    support_files = meta_interp['support_files'] if 'support_files' in meta_interp else None
 
+                    try:
+                        interpolator = _interp.Interpolator(dataset, coverage_raster_files=support_files)
                         dataset = interpolator.interpolate(method, float(self._config['to_resolution']))
                         meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
