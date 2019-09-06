@@ -44,7 +44,7 @@ def write_csar(dataset, m: dict):
     z_dir = cc.Direction.HEIGHT
     layerName = "Elevation"
     band_info = cc.BandInfo(name=layerName, type=cc.DataType.FLOAT32, tuple_length=1, direction=z_dir, units='m',
-                            category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.BICUBIC, minimum=d_min,
+                            category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.MAX, minimum=d_min,
                             maximum=d_max)
     resolution = [m['resy'], m['resx']]
     origin = [m['originx'], m['originy']]
