@@ -7,6 +7,7 @@ Created on Thu Jun  6 15:30:21 2019
 
 from datetime import datetime as _dt
 
+import gdal
 import numpy as _np
 from fuse.proc_io.proc_io import ProcIO
 from fuse.raw_read.noaa import bag as _bag
@@ -25,37 +26,34 @@ class RasterInterpolator:
     """TODO write description"""
 
     def __init__(self):
-        ...
+        pass
 
-    def interpolate(self, dataset, interpolation_type: str,
-                    support_files: list, size: int, catzoc: str = 'A2/B',
-                    io: bool = False):
-        if interpolation_type not in ('linear', 'kriging'):
-            raise ValueError(f'Interpolation type "{interpolation_type}" not recognized.')
-        return self._process(interpolation_type, dataset, support_files, catzoc, io, size)
-
-
-    def _process(self, method, dataset, support_files: list, catzoc: str, io: bool, size: int):
+    def interpolate(self, dataset: gdal.Dataset, method: str, support_files: [str], size: int, catzoc: str = 'A2/B',
+                    io: bool = False) -> gdal.Dataset:
         """
-        Linear interpolation of a raster using supporting files as a mask
 
         Parameters
         ----------
-        dataset : _gdal.Dataset
-            A gdal Dataset
-        support_files : list of str
-            A list of GeoTiff and/or Geopackage files
+        dataset
+        method
+        support_files
+        size
+        catzoc
+        io
 
         Returns
         -------
         gdal.Dataset
-            A gdal Dataset
-
+            interpolated raster dataset
         """
+
+        if method not in ('linear', 'kriging'):
+            raise ValueError(f'Interpolation type "{method}" not recognized.')
+
         uval = _catZones.get(catzoc)
         bag = _bag.Open(dataset)
 
-        if size != None:
+        if size is not None:
             bag.size = int(size)
 
         coverage = _cvg.UnifiedCoverage(support_files, bag.wkt)
@@ -81,12 +79,9 @@ class RasterInterpolator:
                     print('interp is next')
                     interp = _itp.Interpolate(method, bathTile, uncrTile, covgTile, catzoc=uval)
                     del covgTile, bathTile, uncrTile
-                    unitedBag = _itp.chunk(interp.bathy, tile, mode='c',
-                                           copy=unitedBag)
-                    unitedUnc = _itp.chunk(interp.uncrt, tile, mode='c',
-                                           copy=unitedUnc)
-                    unitedPre = _itp.chunk(interp.unint, tile, mode='c',
-                                           copy=unitedPre)
+                    unitedBag = _itp.chunk(interp.bathy, tile, mode='c', copy=unitedBag)
+                    unitedUnc = _itp.chunk(interp.uncrt, tile, mode='c', copy=unitedUnc)
+                    unitedPre = _itp.chunk(interp.unint, tile, mode='c', copy=unitedPre)
                     del interp
                     td = _dt.now()
                     tdelt = td - ts
@@ -98,16 +93,15 @@ class RasterInterpolator:
             ts = _dt.now()
             print('\nTile 1 of 1 -', ts)
             print('interp is next')
-            interp = _itp.Interpolate(method, bag.elevation, bag.uncertainty,
-                                             coverage.array, uval)
+            interp = _itp.Interpolate(method, bag.elevation, bag.uncertainty, coverage.array, uval)
             ugrids = [interp.bathy, interp.uncrt, interp.unint]
             del interp
             td = _dt.now()
             tdelt = td - ts
             print('Tile complete -', td, '| Tile took:', tdelt)
 
-        bag.elevation, bag.uncertainty, coverage.array = _itp.rePrint(bag.elevation, bag.uncertainty,
-                                                                      coverage.array, ugrids, bag.nodata, io)
+        bag.elevation, bag.uncertainty, coverage.array = _itp.rePrint(bag.elevation, bag.uncertainty, coverage.array,
+                                                                      ugrids, bag.nodata, io)
 
         save = _bag.BagToGDALConverter('MLLW')
         save.bag2gdal(bag)
@@ -115,6 +109,7 @@ class RasterInterpolator:
         del coverage, bag, ugrids
 
         return save.dataset
+
 
 class Intitializor:
     """TODO write description"""

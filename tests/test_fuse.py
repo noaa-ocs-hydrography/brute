@@ -31,6 +31,33 @@ class TestFuse(unittest.TestCase):
 
         assert os.path.exists(output_path)
 
+    def test_bag(self):
+        region_directory = os.path.join(DATA_PATH, r'PBC_Northeast\NOAA_NCEI_OCS\BAGs')
+        input_directory = r'\\OCS-VS-NBS01\nbs\TestingResources\NOAABAG_related\H12525 - The first and easiest'
+        processed_directory = os.path.join(region_directory, r'MLLW\Active')
+
+        if not os.path.exists(input_directory):
+            raise EnvironmentError(f'data directory not found: {input_directory}')
+        if not os.path.exists(processed_directory):
+            pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
+
+        survey_name = 'H12525'
+        file_type = 'bag'
+
+        bag_filenames = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if '.bag' in name]
+
+        config_path = os.path.join('data', 'raster_interpolation.config')
+        output_path = os.path.join(processed_directory, f'{survey_name}_5m_interp.{file_type}')
+
+        cenan_fuse_processor = FuseProcessor(config_path)
+
+        for bag_filename in bag_filenames:
+            if 'INTERP' not in bag_filename:
+                cenan_fuse_processor.read(bag_filename)
+                cenan_fuse_processor.process(bag_filename)
+
+        assert os.path.exists(output_path)
+
 
 if __name__ == '__main__':
     unittest.main()
