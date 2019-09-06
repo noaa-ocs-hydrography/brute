@@ -93,7 +93,8 @@ class FuseProcessor:
     _processing_info = [
         'logfilename',
         'version_reference',
-        'interpolate'
+        'interpolate',
+        'file_size'
     ]
 
     _scores = [
@@ -453,8 +454,8 @@ class FuseProcessor:
                     support_files = meta_interp['support_files'] if 'support_files' in meta_interp else None
 
                     try:
-                        interpolator = _interp.Interpolator(dataset, coverage_raster_files=support_files)
-                        dataset = interpolator.interpolate(method, float(self._config['to_resolution']))
+                        interpolator = _interp.Interpolator(dataset, sidescan_raster_filenames=support_files)
+                        dataset = interpolator.interpolate(method, float(self._config['to_resolution']), plot=True)
                         meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
                     except _interp.ExtentError as error:

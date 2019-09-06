@@ -17,9 +17,10 @@ from typing import Union
 import fiona
 import matplotlib.cm
 import matplotlib.colors
-import matplotlib.pyplot
 import numpy
+import rasterio
 import rasterio.crs
+import rasterio.fill
 import rasterio.io
 import rasterio.mask
 import rasterio.transform
@@ -28,6 +29,7 @@ import scipy.interpolate
 import scipy.spatial
 import scipy.spatial.distance
 import shapely.geometry
+from matplotlib import pyplot
 from osgeo import gdal, osr
 from pykrige.ok import OrdinaryKriging
 from scipy.ndimage.interpolation import zoom
@@ -39,7 +41,7 @@ class Interpolator:
     """An abstraction for data interpolation."""
 
     def __init__(self, dataset: gdal.Dataset, default_nodata: float = None, window_scalar: float = 1.5, index: int = 0,
-                 coverage_raster_files: [str] = None):
+                 sidescan_raster_filenames: [str] = None):
         """
         Create a new point interpolator object for the given GDAL point cloud dataset.
 
@@ -75,67 +77,55 @@ class Interpolator:
                             numpy.max(points_2d[:, 0]), numpy.max(points_2d[:, 1])
 
         if self.is_raster:
-            if coverage_raster_files is None:
+            if sidescan_raster_filenames is None:
                 raise ValueError('raster interpolation requires coverage rasters')
 
             elevation_band = dataset.GetRasterBand(self.index)
             elevation_nodata = elevation_band.GetNoDataValue()
-            elevation_array = elevation_band.ReadAsArray()
+            elevation_data = elevation_band.ReadAsArray()
 
             raster_shape = dataset.RasterYSize, dataset.RasterXSize
             raster_geotransform = dataset.GetGeoTransform()
-            raster_nw_corner = raster_geotransform[0], raster_geotransform[3]
-            raster_resolution = raster_geotransform[1], raster_geotransform[5]
-            raster_affine = _get_affine(raster_nw_corner, raster_resolution)
+            raster_nw_corner = numpy.array((raster_geotransform[0], raster_geotransform[3]))
+            raster_resolution = numpy.array((raster_geotransform[1], raster_geotransform[5]))
 
             if self.default_nodata is None:
                 self.default_nodata = elevation_nodata
 
-            start_time = datetime.datetime.now()
-            print(f'starting region extent calculation at {start_time}')
+            self.window_size = numpy.mean(window_scalar * raster_resolution)
 
-            coverage_mask = _get_combined_coverage_masks_within_bounds(
-                [raster_filename for raster_filename in coverage_raster_files if '.tif' in raster_filename],
+            sidescan_coverage = _combined_coverage_within_window(
+                [raster_filename for raster_filename in sidescan_raster_filenames if
+                 '.tif' in raster_filename or '.gpkg' in raster_filename],
                 raster_nw_corner, raster_resolution, raster_shape)
-            elevation_region = _vectorize_geoarray(elevation_array, elevation_nodata, raster_nw_corner,
-                                                   raster_resolution)
+            elevation_coverage = _coverage_mask(elevation_data, elevation_nodata)
 
-            print(f'region calculation took {(datetime.datetime.now() - start_time).total_seconds()} s')
+            # elevation_region = _vectorize_geoarray(elevation_coverage, raster_nw_corner, raster_resolution,
+            #                                        False).convex_hull
 
-            # TODO implement a faster alpha hull of complicated regions
-            if type(coverage_region) is shapely.geometry.MultiPolygon:
-                coverage_region = coverage_region.convex_hull
-            if type(elevation_region) is shapely.geometry.MultiPolygon:
-                elevation_region = elevation_region.convex_hull
-                # vertices = list(zip(polygon.exterior.xy for polygon in elevation_region))
-                # vertices = numpy.concatenate([numpy.stack(vertices[index][0], axis=1) for index in range(len(vertices))])
-                # elevation_region = _alpha_hull(vertices)
+            self.elevation_region = shapely.geometry.MultiPoint(
+                _geoarray_to_points(elevation_coverage & sidescan_coverage,
+                                    raster_nw_corner, raster_resolution, False)[:, 0:2].tolist()).convex_hull
 
-            if not elevation_region.intersects(coverage_region):
-                raise ExtentError('survey data does not intersect the provided coverage extent')
+            # TODO change this from interpolating within the entire region to only interpolating within the intersection between sidescan and elevation coverage (afterwards adding back original elevation outside sidescan)
+            self.interpolation_region = _vectorize_geoarray(sidescan_coverage | elevation_coverage, raster_nw_corner,
+                                                            raster_resolution, False)
 
-            self.interpolation_region = elevation_region.intersection(coverage_region)
+            # if type(self.interpolation_region) in (shapely.geometry.GeometryCollection, shapely.geometry.MultiPolygon):
+            #     x = []
+            #     y = []
+            #
+            #     for feature in self.interpolation_region:
+            #         current_x, current_y = feature.exterior.xy
+            #         x.extend(current_x)
+            #         y.extend(current_y)
+            #
+            #     self.interpolation_region = _alpha_hull(numpy.stack((x, y), axis=1))
 
-            if type(self.interpolation_region) is shapely.geometry.GeometryCollection:
-                self.interpolation_region = self.interpolation_region.convex_hull
-
-            with rasterio.io.MemoryFile() as rasterio_memory_file:
-                with rasterio_memory_file.open(driver='GTiff', width=elevation_array.shape[1],
-                                               height=elevation_array.shape[0], count=1,
-                                               crs=rasterio.crs.CRS.from_wkt(self.crs_wkt), transform=raster_affine,
-                                               dtype=elevation_array.dtype, nodata=elevation_nodata) as memory_raster:
-                    memory_raster.write(elevation_array, 1)
-
-                with rasterio_memory_file.open() as memory_raster:
-                    masked_data, masked_transform = rasterio.mask.mask(memory_raster, [self.interpolation_region])
-
-            self.interpolation_points = _geoarray_to_points(masked_data[0, :, :],
-                                                            nw_corner=(masked_transform.c, masked_transform.f),
-                                                            resolution=(masked_transform.a, masked_transform.e),
-                                                            mask_value=elevation_nodata)
+            self.points = _geoarray_to_points(numpy.where(sidescan_coverage, elevation_data, elevation_nodata),
+                                              nw_corner=raster_nw_corner, resolution=raster_resolution,
+                                              mask_value=elevation_nodata)
         else:
-            self.interpolation_points = self.points
-
             if self.default_nodata is None:
                 self.default_nodata = 1000000.0
 
@@ -200,32 +190,30 @@ class Interpolator:
         else:
             raise NotImplementedError(f'interpolation method "{method}" is not supported')
 
-        mask = self.__get_mask_like(interpolated_dataset)
-
-        # mask the interpolated data using the input points
-        output_dataset = _mask_raster(interpolated_dataset, mask)
+        # mask the interpolated data to the interpolation region
+        interpolation_mask = self.__get_mask_like(self.interpolation_region, interpolated_dataset)
+        interpolated_dataset = _mask_raster(interpolated_dataset, interpolation_mask)
 
         print(f'{method} interpolation took {(datetime.datetime.now() - start_time).total_seconds()} s')
 
-        # TODO add points from original raster that are outside the interpolation region
         if self.is_raster:
-            elevation_band = self.dataset.GetRasterBand(self.index)
-            elevation_array = elevation_band.ReadAsArray()
-
-            del elevation_band
+            elevation_mask = self.__get_mask_like(self.elevation_region, interpolated_dataset)
+            interpolated_dataset = _mask_raster(interpolated_dataset, elevation_mask)
 
         if plot:
-            self.__plot(output_dataset, method)
+            self.__plot(interpolated_dataset, method)
 
-        return output_dataset
+        return interpolated_dataset
 
-    def __get_mask(self, shape: (float, float), resolution: float, nw_corner: (float, float), nodata: float,
-                   crs_wkt: str = None) -> gdal.Dataset:
+    def __get_mask(self, mask_polygon: shapely.geometry.Polygon, shape: (float, float), resolution: (float, float),
+                   nw_corner: (float, float), nodata: float, crs_wkt: str = None) -> gdal.Dataset:
         """
         Get a mask of the survey area with the given raster properties.
 
         Parameters
         ----------
+        mask_polygon
+            Shapely polygon with which to create mask
         shape
             shape of mask
         resolution
@@ -261,7 +249,7 @@ class Interpolator:
                 memory_raster.write(numpy.full(shape, 1, dtype=rasterio.float64), 1)
 
             with rasterio_memory_file.open() as memory_raster:
-                masked_data, masked_transform = rasterio.mask.mask(memory_raster, [self.interpolation_region])
+                masked_data, masked_transform = rasterio.mask.mask(memory_raster, [mask_polygon])
 
         output_dataset = gdal.GetDriverByName('MEM').Create('', shape[1], shape[0], 1, gdal.GDT_Float32)
         output_dataset.SetProjection(crs_wkt)
@@ -273,12 +261,15 @@ class Interpolator:
 
         return output_dataset
 
-    def __get_mask_like(self, like_raster: gdal.Dataset, band_index: int = 1) -> gdal.Dataset:
+    def __get_mask_like(self, mask_region: shapely.geometry.Polygon, like_raster: gdal.Dataset,
+                        band_index: int = 1) -> gdal.Dataset:
         """
         Get a mask of the survey area with the same properties as the given raster.
 
         Parameters
         ----------
+        mask_region
+            Shapely polygon with which to create mask
         like_raster
             raster to copy
         band_index
@@ -290,13 +281,14 @@ class Interpolator:
             mask
         """
 
-        shape = like_raster.RasterYSize, like_raster.RasterXSize
         geotransform = like_raster.GetGeoTransform()
-        resolution = geotransform[1]
-        nw_corner = geotransform[0], geotransform[3]
-        nodata = like_raster.GetRasterBand(band_index).GetNoDataValue()
-        crs_wkt = _gdal_crs_wkt(like_raster)
-        return self.__get_mask(shape, resolution, nw_corner, nodata, crs_wkt)
+        raster_band = like_raster.GetRasterBand(band_index)
+        return self.__get_mask(mask_polygon=mask_region,
+                               shape=(like_raster.RasterYSize, like_raster.RasterXSize),
+                               resolution=(geotransform[1], geotransform[5]),
+                               nw_corner=(geotransform[0], geotransform[3]),
+                               nodata=raster_band.GetNoDataValue(),
+                               crs_wkt=_gdal_crs_wkt(like_raster))
 
     def __linear_gdal(self, output_shape: (int, int), output_bounds: (float, float, float, float),
                       output_nodata: float = None) -> gdal.Dataset:
@@ -352,25 +344,25 @@ class Interpolator:
         if output_nodata is None:
             output_nodata = self.default_nodata
 
+        # interpolate using SciPy griddata
         output_x, output_y = numpy.meshgrid(numpy.arange(output_shape[1]), numpy.arange(output_shape[0]))
-
-        # interpolate linearly in SciPy
         interpolated_data = scipy.interpolate.griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2],
                                                        (output_x, output_y), method='linear', fill_value=output_nodata)
         interpolated_data[numpy.isnan(interpolated_data)] = output_nodata
 
-        output_resolution = (numpy.array(output_bounds[2:4]) - numpy.array(output_bounds[0:2])) / output_shape
+        output_resolution = (numpy.array(output_bounds[2:4]) - numpy.array(output_bounds[0:2])) / numpy.flip(
+            output_shape)
 
-        output_dataset = gdal.GetDriverByName('MEM').Create('temp', output_shape[1], output_shape[0], 2,
-                                                            gdal.GDT_Float32)
-        output_dataset.SetGeoTransform((output_bounds[0], output_resolution, 0.0,
-                                        output_bounds[1], 0.0, output_resolution))
-        output_dataset.SetProjection(self.crs_wkt)
-        band_1 = output_dataset.GetRasterBand(1)
+        output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 1,
+                                                           gdal.GDT_Float32)
+        output_raster.SetGeoTransform((output_bounds[0], output_resolution[0], 0.0,
+                                       output_bounds[1], 0.0, output_resolution[1]))
+        output_raster.SetProjection(self.crs_wkt)
+        band_1 = output_raster.GetRasterBand(1)
         band_1.SetNoDataValue(output_nodata)
         band_1.WriteArray(interpolated_data)
         del band_1
-        return output_dataset
+        return output_raster
 
     def __invdist_gdal(self, output_shape: (int, int), output_bounds: (float, float), output_nodata: float = None,
                        radius: float = None) -> gdal.Dataset:
@@ -557,23 +549,22 @@ class Interpolator:
         interpolated_grid_uncertainty = numpy.sqrt(interpolated_grid_variance) * 2.5
         del interpolated_grid_variance
 
-        output_dataset = gdal.GetDriverByName('MEM').Create('temp', output_shape[1], output_shape[0], 2,
-                                                            gdal.GDT_Float32)
+        output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 2,
+                                                           gdal.GDT_Float32)
+        output_raster.SetGeoTransform((output_bounds[0], output_resolution, 0.0,
+                                       output_bounds[1], 0.0, output_resolution))
+        output_raster.SetProjection(self.crs_wkt)
 
-        output_dataset.SetGeoTransform((output_bounds[0], output_resolution, 0.0,
-                                        output_bounds[1], 0.0, output_resolution))
-        output_dataset.SetProjection(self.crs_wkt)
-
-        band_1 = output_dataset.GetRasterBand(1)
+        band_1 = output_raster.GetRasterBand(1)
         band_1.SetNoDataValue(output_nodata)
         band_1.WriteArray(interpolated_grid_values)
 
-        band_2 = output_dataset.GetRasterBand(2)
+        band_2 = output_raster.GetRasterBand(2)
         band_2.SetNoDataValue(output_nodata)
         band_2.WriteArray(interpolated_grid_uncertainty)
 
         del band_1, band_2
-        return output_dataset
+        return output_raster
 
     def __plot(self, interpolated_raster: Union[numpy.array, gdal.Dataset], interpolation_method: str,
                nodata: float = None, band_index: int = 1):
@@ -586,6 +577,8 @@ class Interpolator:
             array of interpolated data
         interpolation_method
             method of interpolation
+        nodata
+            value for no data in given data
         band_index
             raster band (1-indexed)
         """
@@ -607,36 +600,43 @@ class Interpolator:
         max_z = numpy.nanmax(z_values)
 
         # create a new Matplotlib figure window
-        figure = matplotlib.pyplot.figure()
+        figure = pyplot.figure()
 
         # create subplots
-        survey_points_axis = figure.add_subplot(1, 2, 1)
-        survey_points_axis.set_title('survey points')
-        survey_points_axis.set_xlim(min_x, max_x)
-        survey_points_axis.set_ylim(min_y, max_y)
-        interpolated_raster_axis = figure.add_subplot(1, 2, 2, sharex=survey_points_axis, sharey=survey_points_axis)
-        interpolated_raster_axis.set_title(f'{interpolation_method} interpolation to raster')
+        original_data_axis = figure.add_subplot(1, 2, 1)
+        original_data_axis.set_title('survey data')
+        original_data_axis.set_xlim(min_x, max_x)
+        original_data_axis.set_ylim(min_y, max_y)
+        interpolated_data_axis = figure.add_subplot(1, 2, 2, sharex=original_data_axis, sharey=original_data_axis)
+        interpolated_data_axis.set_title(f'{interpolation_method} interpolation to raster')
 
         # plot data
-        survey_points_axis.scatter(self.points[:, 0], self.points[:, 1], c=self.points[:, 2], s=1,
-                                   vmin=min_z, vmax=max_z)
+        if self.is_raster:
+            elevation_band = self.dataset.GetRasterBand(self.index)
+            elevation_data = elevation_band.ReadAsArray()
+            elevation_data[elevation_data == nodata] = numpy.nan
+            original_data_axis.imshow(elevation_data, extent=(min_x, max_x, min_y, max_y), aspect='auto', vmin=min_z,
+                                      vmax=max_z)
+        else:
+            original_data_axis.scatter(self.points[:, 0], self.points[:, 1], c=self.points[:, 2], s=1, vmin=min_z,
+                                       vmax=max_z)
 
-        interpolated_raster_axis.imshow(interpolated_raster, extent=(min_x, max_x, min_y, max_y), aspect='auto',
-                                        vmin=min_z, vmax=max_z)
+        interpolated_data_axis.imshow(interpolated_raster, extent=(min_x, max_x, min_y, max_y), aspect='auto',
+                                      vmin=min_z, vmax=max_z)
 
         # create colorbar
         figure.colorbar(matplotlib.cm.ScalarMappable(norm=matplotlib.colors.Normalize(vmin=min_z, vmax=max_z)),
-                        ax=(interpolated_raster_axis, survey_points_axis))
+                        ax=(interpolated_data_axis, original_data_axis))
 
         # pause program execution and show the figure
-        matplotlib.pyplot.show()
+        pyplot.show()
 
     def __plot_concave_hull(self):
         triangles = scipy.spatial.Delaunay(self.points[:, 0:2])
-        matplotlib.pyplot.plot(*self.interpolation_region.exterior.xy, c='r')
-        matplotlib.pyplot.triplot(self.points[:, 0], self.points[:, 1], triangles=triangles.simplices, c='g')
-        matplotlib.pyplot.scatter(self.points[:, 0], self.points[:, 1], c='b')
-        matplotlib.pyplot.show()
+        pyplot.plot(*self.interpolation_region.exterior.xy, c='r')
+        pyplot.triplot(self.points[:, 0], self.points[:, 1], triangles=triangles.simplices, c='g')
+        pyplot.scatter(self.points[:, 0], self.points[:, 1], c='b')
+        pyplot.show()
 
 
 def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0) -> numpy.array:
@@ -876,9 +876,9 @@ def _gdal_crs_wkt(dataset: gdal.Dataset, layer_index: int = 0) -> str:
     return crs_wkt
 
 
-def _get_combined_coverage_masks_within_bounds(coverage_raster_filenames: [str], output_nw_corner: (float, float),
-                                               output_resolution: (float, float),
-                                               output_shape: (int, int)) -> numpy.array:
+def _combined_coverage_within_window(coverage_raster_filenames: [str], output_nw_corner: (float, float),
+                                     output_resolution: (float, float),
+                                     output_shape: (int, int)) -> numpy.array:
     """
     Return a boolean mask of the given rasters where data exists within the given window.
 
@@ -909,69 +909,70 @@ def _get_combined_coverage_masks_within_bounds(coverage_raster_filenames: [str],
     if type(output_shape) is not numpy.array:
         output_shape = numpy.array(output_shape)
 
-    output_coverage_mask = numpy.empty(output_shape)
+    output_coverage_masks = []
 
     for coverage_raster_filename in coverage_raster_filenames:
         with rasterio.open(coverage_raster_filename) as coverage_raster:
             coverage_transform = coverage_raster.transform
             coverage_shape = coverage_raster.shape
-            coverage_data = coverage_raster.read()
 
         coverage_resolution = numpy.array((coverage_transform.a, coverage_transform.e))
 
         coverage_nw_corner = coverage_transform.c, coverage_transform.f
         coverage_se_corner = coverage_nw_corner + (coverage_resolution * numpy.flip(coverage_shape))
 
-        coverage_mask = numpy.where(_coverage_mask(coverage_data), 1, 0)
+        # ensure the coverage array intersects the given window
+        if not (output_nw_corner[0] > coverage_se_corner[0] or output_se_corner[0] < coverage_nw_corner[0] or
+                output_se_corner[1] > coverage_nw_corner[1] or output_nw_corner[1] < coverage_se_corner[1]):
+            with rasterio.open(coverage_raster_filename) as coverage_raster:
+                coverage_data = coverage_raster.read()
 
-        # resample coverage data to match BAG resolution
-        resolution_ratio = coverage_resolution / output_resolution
-        if resolution_ratio != 1:
-            coverage_mask = zoom(coverage_mask, zoom=resolution_ratio, order=3, prefilter=False)
+            coverage_mask = numpy.where(_coverage_mask(coverage_data), 1, 0)
 
-        # clip resampled coverage data to the bounds of the BAG
-        output_array = numpy.full(output_shape, 0)
+            # resample coverage data to match BAG resolution
+            resolution_ratio = coverage_resolution / output_resolution
+            if numpy.any(resolution_ratio != 1):
+                coverage_mask = zoom(coverage_mask, zoom=resolution_ratio, order=3, prefilter=False)
 
-        bag_ul, bag_lr = numpy.array(bounds[0]), numpy.array(bounds[1])
+            # clip resampled coverage data to the bounds of the BAG
+            output_array = numpy.full(output_shape, 0)
 
-        if bag_ul[0] > coverage_se_corner[0] or bag_lr[0] < coverage_nw_corner[0] or \
-                bag_lr[1] > coverage_nw_corner[1] or bag_ul[1] < coverage_se_corner[1]:
-            raise ValueError('bag dataset is outside the bounds of coverage dataset')
+            nw_index_delta = numpy.round((output_nw_corner - coverage_nw_corner) / output_resolution).astype(int)
+            se_index_delta = numpy.round((output_se_corner - coverage_nw_corner) / output_resolution).astype(int)
 
-        ul_index_delta = numpy.round((bag_ul - coverage_nw_corner) / output_resolution.astype(int))
-        lr_index_delta = numpy.round((bag_lr - coverage_nw_corner) / output_resolution.astype(int))
+            # indices to be written onto the output array
+            output_array_index_slices = [slice(0, None), slice(0, None)]
 
-        # indices to be written onto the output array
-        output_array_index_slices = [slice(0, None), slice(0, None)]
+            # BAG leftmost X is to the left of coverage leftmost X
+            if nw_index_delta[0] < 0:
+                output_array_index_slices[1] = slice(nw_index_delta[0] * -1, output_array_index_slices[1].stop)
+                nw_index_delta[0] = 0
 
-        # BAG leftmost X is to the left of coverage leftmost X
-        if ul_index_delta[0] < 0:
-            output_array_index_slices[1] = slice(ul_index_delta[0] * -1, output_array_index_slices[1].stop)
-            ul_index_delta[0] = 0
+            # BAG topmost Y is above coverage topmost Y
+            if nw_index_delta[1] < 0:
+                output_array_index_slices[0] = slice(nw_index_delta[1] * -1, output_array_index_slices[0].stop)
+                nw_index_delta[1] = 0
 
-        # BAG topmost Y is above coverage topmost Y
-        if ul_index_delta[1] < 0:
-            output_array_index_slices[0] = slice(ul_index_delta[1] * -1, output_array_index_slices[0].stop)
-            ul_index_delta[1] = 0
+            # BAG rightmost X is to the right of coverage rightmost X
+            if se_index_delta[0] > coverage_mask.shape[1]:
+                output_array_index_slices[1] = slice(output_array_index_slices[1].start,
+                                                     coverage_mask.shape[1] - se_index_delta[0])
+                se_index_delta[0] = coverage_mask.shape[1]
 
-        # BAG rightmost X is to the right of coverage rightmost X
-        if lr_index_delta[0] > coverage_mask.shape[1]:
-            output_array_index_slices[1] = slice(output_array_index_slices[1].start,
-                                                 coverage_mask.shape[1] - lr_index_delta[0])
-            lr_index_delta[0] = coverage_mask.shape[1]
+            # BAG bottommost Y is lower than coverage bottommost Y
+            if se_index_delta[1] > coverage_mask.shape[0]:
+                output_array_index_slices[0] = slice(output_array_index_slices[0].start,
+                                                     coverage_mask.shape[0] - se_index_delta[1])
+                se_index_delta[1] = coverage_mask.shape[0]
 
-        # BAG bottommost Y is lower than coverage bottommost Y
-        if lr_index_delta[1] > coverage_mask.shape[0]:
-            output_array_index_slices[0] = slice(output_array_index_slices[0].start,
-                                                 coverage_mask.shape[0] - lr_index_delta[1])
-            lr_index_delta[1] = coverage_mask.shape[0]
+            coverage_mask = coverage_mask[nw_index_delta[1]: se_index_delta[1], nw_index_delta[0]: se_index_delta[0]]
 
-        # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
-        output_array[output_array_index_slices[0], output_array_index_slices[1]] = coverage_mask[
-                                                                                   ul_index_delta[1]:
-                                                                                   lr_index_delta[1],
-                                                                                   ul_index_delta[0]:
-                                                                                   lr_index_delta[0]]
+            # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
+            output_array[output_array_index_slices[0], output_array_index_slices[1]] = coverage_mask
+            output_coverage_masks.append(output_array)
+
+    # collapse coverage masks into single raster array
+    return numpy.logical_or.reduce(output_coverage_masks)
 
 
 def _coverage_mask(raster_data: numpy.array, nodata: float = None):
@@ -1066,7 +1067,7 @@ def _vectorize_raster_coverage(raster_filename: str) -> shapely.geometry.MultiPo
 
 
 def _plot_regions(regions: [shapely.geometry.Polygon], colors: [str] = None):
-    figure = matplotlib.pyplot.figure()
+    figure = pyplot.figure()
     axis = figure.add_subplot(1, 1, 1)
 
     if colors is None:
@@ -1081,7 +1082,7 @@ def _plot_regions(regions: [shapely.geometry.Polygon], colors: [str] = None):
             for polygon in geometry:
                 axis.plot(*polygon.exterior.xy, c=color)
 
-    matplotlib.pyplot.show()
+    pyplot.show()
 
 
 def _write_region(output_filename: str, region: shapely.geometry.MultiPolygon, crs_wkt: str):
@@ -1119,111 +1120,6 @@ def _get_affine(nw_corner: (float, float), resolution: (float, float)) -> raster
 
     return rasterio.transform.Affine.translation(nw_corner[0], nw_corner[1]) * rasterio.transform.Affine.scale(
         resolution[0], resolution[-1])
-
-
-def align2grid(coverage, bounds: ((float, float), (float, float)), shape: (int, int), resolution: (float, float),
-               nodata: float):
-    """
-    Takes an input of two arrays representing bag and tif data. These arrays
-    hold information like extent, data, and more. The goal of this function is
-    to fit and/or shift the provided tif to the area of the bag.
-
-    Steps:
-
-    1. Determine/confirm the resolution of the tif using a mix of file naming, extent, and dimensions.
-    2. Determine the resolution of the bag using file naming conventions.
-    3. Calculate the tif/bag resolution to determine the value needed to resize the tif.
-    4. Resize the tif so that the resolution matches the bag using.
-    5. Convert tif values to either numpy.nan or maxVal for use later.
-    6. Store the extents of the bag and tif and calculate the difference.
-    7. Create an empty array with dimensions equal to the original extents of the tiff data plus the additional space needed to match the total extents of the BAG data.
-    8. Align the content of the tiff as needed in order to match the bag and apply the shifted content to the empty array created in Step 7.
-    9. Enforce the size of the bag onto the shifted tiff data stored in the array created and modified in Step(s) 7 and 8.
-
-    Parameters
-    ----------
-    coverage
-        Input coverage data object
-    bounds
-        The ([nx, ny], [sx, sy]) extents to be applied to the input data
-    shape
-        The (y, x) shape to to be applied to the input data
-    resolution
-        The (x, y) resolution to be applied to the input data
-    nodata
-        The nodata value to be applied to the input array object
-
-    Returns
-    -------
-
-    """
-
-    print('align2grid')
-
-    # determine the ratio resolution between the BAG resolution and the coverage resolution
-    resolution_ratio = coverage.resolution[0] / resolution[0]
-
-    # resample coverage data to match BAG resolution
-    if resolution_ratio == 1:
-        resampled_coverage_array = coverage.array
-    else:
-        print('_zoom', datetime.datetime.now())
-        resampled_coverage_array = zoom(coverage.array, zoom=[resolution_ratio, resolution_ratio], order=3,
-                                        prefilter=False)
-        print('zoomed', datetime.datetime.now())
-    resampled_coverage_array = resampled_coverage_array.astype('float64')
-    resampled_coverage_array[resampled_coverage_array > 0] = numpy.nan
-    resampled_coverage_array[resampled_coverage_array < 1] = float(nodata)
-
-    # clip resampled coverage data to the bounds of the BAG
-    output_array = numpy.full(shape, nodata)
-
-    cov_ul, cov_lr = numpy.array(coverage.bounds[0]), numpy.array(coverage.bounds[1])
-    bag_ul, bag_lr = numpy.array(bounds[0]), numpy.array(bounds[1])
-
-    if bag_ul[0] > cov_lr[0] or bag_lr[0] < cov_ul[0] or bag_lr[1] > cov_ul[1] or bag_ul[1] < cov_lr[1]:
-        raise ValueError('bag dataset is outside the bounds of coverage dataset')
-
-    ul_index_delta = numpy.round((bag_ul - cov_ul) / numpy.array(resolution)).astype(int)
-    lr_index_delta = numpy.round((bag_lr - cov_ul) / numpy.array(resolution)).astype(int)
-
-    # indices to be written onto the output array
-    output_array_index_slices = [slice(0, None), slice(0, None)]
-
-    # BAG leftmost X is to the left of coverage leftmost X
-    if ul_index_delta[0] < 0:
-        output_array_index_slices[1] = slice(ul_index_delta[0] * -1, output_array_index_slices[1].stop)
-        ul_index_delta[0] = 0
-
-    # BAG topmost Y is above coverage topmost Y
-    if ul_index_delta[1] < 0:
-        output_array_index_slices[0] = slice(ul_index_delta[1] * -1, output_array_index_slices[0].stop)
-        ul_index_delta[1] = 0
-
-    # BAG rightmost X is to the right of coverage rightmost X
-    if lr_index_delta[0] > resampled_coverage_array.shape[1]:
-        output_array_index_slices[1] = slice(output_array_index_slices[1].start,
-                                             resampled_coverage_array.shape[1] - lr_index_delta[0])
-        lr_index_delta[0] = resampled_coverage_array.shape[1]
-
-    # BAG bottommost Y is lower than coverage bottommost Y
-    if lr_index_delta[1] > resampled_coverage_array.shape[0]:
-        output_array_index_slices[0] = slice(output_array_index_slices[0].start,
-                                             resampled_coverage_array.shape[0] - lr_index_delta[1])
-        lr_index_delta[1] = resampled_coverage_array.shape[0]
-
-    # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
-    output_array[output_array_index_slices[0], output_array_index_slices[1]] = resampled_coverage_array[
-                                                                               ul_index_delta[1]:lr_index_delta[1],
-                                                                               ul_index_delta[0]:lr_index_delta[0]]
-    del resampled_coverage_array
-
-    coverage.array = output_array
-    coverage.bounds = bounds
-    coverage.shape = shape
-    coverage.resolution = resolution
-
-    return coverage
 
 
 class ExtentError(Exception):
