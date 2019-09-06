@@ -130,12 +130,15 @@ class CESAMRawReader:
         if first_instance != '':
             if commas_present == ',':
                 xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
             else:
                 xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
-
         else:
             if commas_present == ',':
                 xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
             else:
                 xyz = _np.loadtxt(infilename, delimiter=' ', usecols=(0, 1, 2))
         return xyz
@@ -205,7 +208,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     f = filename
     basename = os.path.basename(f)
 
-    e_t = XYZHeaderReader(f)
+    e_t = XYZMetaReader(f)
     # xml pull here.
     xmlfilename = get_xml_match(f)
     if os.path.isfile(xmlfilename):
@@ -218,8 +221,8 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
         elif xml_data.version == 'ISO-8859-1':
             meta_xml = xml_data._extract_meta_USACE_ISO()
             if 'ISO_xml' not in meta_xml:
-                meta_xml = xml_data._extract_meta_USACE_FGDC(
-                    override='Y')  # xml_data._extract_meta_ISOlabel_USACE_FGDC()
+                meta_xml2 = xml_data._extract_meta_USACE_FGDC(override='Y')
+                meta_xml = {**meta_xml, **meta_xml2}
         else:
             meta_xml = xml_data.convert_xml_to_dict2()
         ext_dict = xml_data.extended_xml_fgdc()
@@ -229,11 +232,18 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
         ext_dict = {}
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESAM', default_meta='')
-    meta['special_handling'] = _check_special_handling(basename)#special handling is saved with text meta as it has to do with the text file
+    meta['special_handling'] = _check_special_handling(basename)
+    #special handling is saved with text meta as it has to do with the text file
+    if meta['special_handling'] == 'FullRES':
+        meta['interpolate']= False
+    #elif meta['special_handling'] == '.ppxyz':
+    #    meta['interpolate']= False
+    else:
+        meta['interpolate']= True
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
     
-    e_pick = eHydroPickleReader(xmlfilename)
+    e_pick = EhydroPickleReader(xmlfilename)
     meta_from_ehydro = e_pick._read_pickle()  # to handle files
     meta_from_ehydro = e_pick._when_use_pickle(meta_xml)
     meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
@@ -275,11 +285,12 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     # in merging sources from the text file and xml it will show any values that do not match as a list.
     merged_meta = {**meta, **meta_from_ehydro, **meta_xml}  # this method overwrites
     merged_meta = check_date_order(merged_meta, merged_meta)
+    merged_meta = use_best_spcs(merged_meta)
     return merged_meta
 
 
 ###----------------------------------------------------------------------------
-class eHydroPickleReader(object):
+class EhydroPickleReader(object):
     """
     Reading in ehydro pickle file, looking for conflicts with other metadata inputs
     and determining when /how to pass on metadata attributes 
@@ -347,8 +358,8 @@ class eHydroPickleReader(object):
         
         no_SPCS_conflict = ''
         no_SPCS_conflict_withpickle = ''
-        if 'SPCS_conflict_XML' in meta_from_ehydro:
-            if meta_from_ehydro['SPCS_conflict_XML'] != '':
+        if 'SPCS_conflict_XML' in meta_xml:
+            if meta_xml['SPCS_conflict_XML'] != '':
                 no_SPCS_conflict = 'False'
             else:
                 no_SPCS_conflict = 'True'
@@ -395,15 +406,18 @@ class eHydroPickleReader(object):
         meta_from_ehydro = self.meta_from_ehydro
         if 'SOURCEPROJECTION' in meta_from_ehydro:
             if 'from_FIPS' in meta_xml:
-                # run check for conflict
+                # run check for conflict               
+                meta_xml['xml_from_fips'] = meta_xml['from_FIPS']#record xml
                 no_SPCS_conflict, no_SPCS_conflict_withpickle = self._Check_for_SPCSconflicts(meta_xml,
                                                                                               meta_from_ehydro)
                 if no_SPCS_conflict_withpickle == 'False':
                     meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
                                                                                meta_from_ehydro['SOURCEPROJECTION'])
+                    meta_from_ehydro['ehdyro_from_fips'] = meta_from_ehydro['from_fips']
             else:
                 meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
                                                                            meta_from_ehydro['SOURCEPROJECTION'])
+                meta_from_ehydro['ehdyro_from_fips'] = meta_from_ehydro['from_fips']
         self.meta_from_ehydro = meta_from_ehydro
         return meta_from_ehydro
 
@@ -433,7 +447,7 @@ class eHydroPickleReader(object):
 
 
 ###----------------------------------------------------------------------------
-class XYZHeaderReader(object):
+class XYZMetaReader(object):
     """Extract both information from the filename as well as from the text file's header"""
     
     def __init__(self, preloadeddata, version='', filename=''):
@@ -721,12 +735,13 @@ def get_xml_match(f):
     -------
     
     """
+    xmlfilename=''
     ext_list = ['_FULL.XYZ', '_A.XYZ', '.PPXYZ']
     for extension in ext_list:
-        if extension in f.upper():
+        if f.upper().find(extension)>0:
             xmlfilename = get_xml_xt(f, extension)
-        else:
-            xmlfilename = get_xml(f)
+    if xmlfilename == '':
+        xmlfilename = get_xml(f)
     return xmlfilename
 
 
@@ -747,9 +762,9 @@ def _check_special_handling(basename):
     special_handling = ''
     if basename.find('.ppxyz') > 0:
         special_handling = 'ppxyz'
-    full_res = ['_A.xyz', '_A.XYZ', '_FULL.xyz', '_FULL.XYZ']
+    full_res = [ '_A.XYZ', '_FULL.XYZ']#_A.xyz, _FULL.xyz
     for ext_full in full_res:
-        if basename.find(ext_full) > 0:
+        if basename.upper().find(ext_full) > 0:
             special_handling = 'FullRES'
     return special_handling
 
@@ -779,6 +794,8 @@ def _start_xyz(infilename):
                 numberofrows.append(index1)
                 if line.find(',') > 0:
                     commas_present = ','
+                elif line.find('\t') > 0:
+                    commas_present = 'tab_instead'
         first_instance = numberofrows[0]
     return first_instance, commas_present
 
@@ -1306,7 +1323,36 @@ def _parse_ReviewedBy(line):
 
 
 ##-----------------------------------------------------------------------------
-def check_date_order(m, mm):
+    
+def use_best_spcs(merged_meta:dict) ->dict:
+    """
+    use_best_spcs()
+    
+    take merged_meta dictionary and use 'ehydro_from_fips' as
+    the from_fips value. if it was produced by the pickle SPCS checker:
+    e_pick._when_use_pickle_() it is the winner if it was calculated.
+    
+    Otherwise if there is a conflict between ehydro and the xml derived spcs,
+    both SPCS codes will output to the from_fips attribute
+    
+    *A conflict in the SPCS codes within the xml alone will not make
+    this occur its only if the final value disagrees 
+    
+    Parameters
+    ----------
+    merged_meta: dict
+        
+    Returns
+    -------   
+    merged_meta: dict
+    
+    """
+    if 'ehdyro_from_fips' in merged_meta:   
+        merged_meta['from_fips'] = merged_meta['ehdyro_from_fips']
+    return merged_meta
+##-----------------------------------------------------------------------------
+
+def check_date_order(m:dict, mm:dict):
     """
     ingest dates from e-hydro file name, and xml if available
     do a date check.

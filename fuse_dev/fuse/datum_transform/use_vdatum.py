@@ -5,10 +5,8 @@ Created on Wed Aug 22 12:27:39 2018
 
 @author: grice
 
-Use VDatum for conversions. 
+Use VDatum for conversions.
 """
-
-from typing import Tuple, List
 
 __version__ = 'use_vdatum 0.0.1'
 
@@ -20,170 +18,236 @@ from tempfile import TemporaryDirectory as tempdir
 import numpy as _np
 from osgeo import gdal, ogr, osr
 
+from_hdatum = [
+    'from_horiz_frame',
+    'from_horiz_type',
+    'from_horiz_units',
+    'from_horiz_key'
+]
+
+from_vdatum = [
+    'from_vert_key',
+    'from_vert_units',
+    'from_vert_direction'
+]
+
+to_hdatum = [
+    'to_horiz_frame',
+    'to_horiz_type',
+    'to_horiz_units'
+]
+
+to_vdatum = [
+    'to_vert_key',
+    'to_vert_units',
+    'to_vert_direction'
+]
+
 
 class VDatum:
     """An object for working with VDatum."""
 
     def __init__(self, config: dict, reader):
         """
+        Create a new object for using VDatum.
 
         Parameters
         ----------
         config
+            dictionary of configuration
         reader
+            reader object
         """
 
-        self._config = config
         self._reader = reader
-        self._setup()
-        self._logger = _logging.getLogger('fuse')
 
-    def _setup(self):
-        """Set up the object based on the provided configuration."""
-
-        if 'vdatum_path' in self._config:
-            pth = self._config['vdatum_path']
-            if _os.path.isdir(pth):
-                self._vdatum_path = pth
+        if 'vdatum_path' in config:
+            vdatum_path = config['vdatum_path']
+            if _os.path.isfile(_os.path.join(vdatum_path, 'vdatum.jar')):
+                self._vdatum_path = vdatum_path
             else:
-                raise ValueError(f'Invalid vdatum folder: {pth}')
+                raise ValueError(f'Invalid vdatum folder: {vdatum_path}')
         else:
             raise ValueError('No VDatum path provided')
-        if 'java_path' in self._config:
-            pth = self._config['java_path']
-            if _os.path.isdir(pth):
-                self._java_path = pth
+        if 'java_path' in config:
+            java_path = config['java_path']
+            if _os.path.isfile(_os.path.join(java_path, 'java.exe')):
+                self._java_path = java_path
             else:
-                raise ValueError(f'Invalid java path: {pth}')
+                raise ValueError(f'Invalid java path: {java_path}')
         else:
             raise ValueError('No java path provided')
 
-    def translate(self, infilename: str, in_hordat, in_verdat, out_epsg: int, out_verdat) -> gdal.Dataset:
+        self._logger = _logging.getLogger('fuse')
+
+    def translate(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
         Translate the provided filename from the provided in datums to the out
         datums and return a gdal object.
-        
+
         NSRS2007 is assumed for the out EPSG code.
 
         Parameters
         ----------
-        infilename :
-            param in_hordat:
-        in_verdat :
-            param out_epsg:
-        out_verdat :
-            
-        infilename: str :
-            
-        in_hordat :
-            
-        out_epsg: int :
-            
+        filename
+            filename of data file
+        instructions
+            dictionary of metadata
 
         Returns
         -------
-
+            GDAL point cloud dataset
         """
 
         self._logger.log(_logging.DEBUG, 'Begin datum transformation')
-        outxyz, out_zone = self._translatexyz(infilename, in_hordat, in_verdat, out_epsg, out_verdat)
-        out_gdal = self._xyz2gdal(outxyz, out_zone, out_verdat)  # passing UTM zone instead of EPSG code
+        if not _has_required_instructions(instructions):
+            raise ValueError('The required fields for transforming datums are not available')
+        points, utm_zone = self.__translate_xyz(filename, instructions)
+        vertical_datum = instructions['to_vert_key'].upper()
+        # passing UTM zone instead of EPSG code
+        dataset = self.__xyz2gdal(points, utm_zone, vertical_datum)
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
-        return out_gdal
+        return dataset
 
-    def _translatexyz(self, infilename: str, in_hordat: str, in_verdat: str, out_epsg: int, out_verdat: str) -> Tuple[
-        _np.array, int]:
+    def create(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
-        TODO write description
+        Get a GDAL point cloud dataset from the given file.
 
         Parameters
         ----------
-        infilename :
-            param in_hordat:
-        in_verdat :
-            param out_epsg:
-        out_verdat :
-            
-        infilename: str :
-            
-        in_hordat: str :
-            
-        in_verdat: str :
-            
-        out_epsg: int :
-            
-        out_verdat: str :
-            
+        filename
+            filename of data file
+        instructions
+            dictionary of metadata
 
         Returns
         -------
-
+            GDAL point cloud dataset
         """
 
-        # read the bathy and put it in a temp file for vdatum to read
-        bathy = self._reader.read_bathymetry(infilename)
-        d = tempdir()
-        outfilename = _os.path.join(d.name, 'outfile.txt')
-        vd_dir = tempdir()
-        vdfilename = _os.path.join(vd_dir.name, 'outfile.txt')
-        vdlogfilename = _os.path.join(vd_dir.name, 'outfile.txt.log')
-        _np.savetxt(outfilename, bathy, delimiter=',')
-        # set up vdatum
-        self._setup_vdatum(in_hordat, in_verdat, out_epsg, out_verdat)
-        # run vdatum
-        self._convert_file(outfilename, vd_dir.name)
-        # read out UTM Zone from VDatum log file
-        with open(vdlogfilename, 'r') as vd_log:
-            for line in vd_log.readlines():
-                if line.startswith('Zone:'):
-                    Output = line[54:82]
-                    Inputzone = line[27:53]
-                    out_zone = Output.rstrip(' ')
-        new_bathy = _np.loadtxt(vdfilename, delimiter=',')
-        return new_bathy, out_zone
+        if instructions['read_type'] == 'ehydro':
+            return self.__read_points(filename, instructions)
+        elif instructions['read_type'] == 'bag':
+            return self.__read_bag_bathy(filename, instructions)
+        else:
+            raise ValueError('Reader type not implemented')
 
-    def _setup_vdatum(self, in_fips: int, in_verdat: str, out_epsg: int, out_verdat: str):
+    def __read_points(self, filename: str, instructions: dict) -> gdal.Dataset:
+        """
+        Pass back a un-translated GDAL point cloud dataset
+
+        Parameters
+        ----------
+        filename
+            filename of data file
+        instructions
+            dictionary of metadata
+
+        Returns
+        -------
+            GDAL point cloud dataset
+        """
+
+        points = self._reader.read_bathymetry(filename)
+
+        if 'to_horiz_key' in instructions:
+            utm_zone = instructions['from_horiz_key']
+        if 'from_vert_key' in instructions:
+            vertical_datum = instructions['from_vert_key']
+
+        return self.__xyz2gdal(points, utm_zone, vertical_datum)
+
+    def __read_bag_bathy(self, filename: str, instructions: dict) -> gdal.Dataset:
+        """
+        Create a GDAL point cloud dataset from the given BAG file.
+
+        Parameters
+        ----------
+        filename
+            filename of BAG
+        instructions
+            dictionary of metadata
+
+        Returns
+        -------
+            GDAL point cloud dataset
+        """
+
+        return self._reader.read_bathy_data(filename, instructions['to_vert_key'])
+
+    def __translate_xyz(self, filename: str, instructions: dict) -> (_np.array, int):
+        """
+        Reproject XYZ from the given filename.
+
+        Parameters
+        ----------
+        filename
+            filename of XYZ points
+        instructions
+            dictionary of metadata
+
+        Returns
+        -------
+            array of XYZ points and UTM zone
+        """
+
+        # read the points and put it in a temp file for VDatum to read
+        points = self._reader.read_bathymetry(filename)
+        original_directory = tempdir()
+        output_filename = _os.path.join(original_directory.name, 'outfile.txt')
+        reprojected_directory = tempdir()
+        reprojected_filename = _os.path.join(reprojected_directory.name, 'outfile.txt')
+        log_filename = _os.path.join(reprojected_directory.name, 'outfile.txt.log')
+        # save point array to file
+        _np.savetxt(output_filename, points, delimiter=',')
+        # translate points with VDatum
+        self.__setup_vdatum(instructions)
+        self.__convert_file(output_filename, reprojected_directory.name)
+        if 'to_horiz_key' in instructions:
+            utm_zone = int(instructions['to_horiz_key'])
+        else:
+            # read out UTM Zone from VDatum log file
+            with open(log_filename, 'r') as logfile:
+                for line in logfile.readlines():
+                    if line.startswith('Zone:'):
+                        # input_zone = line[27:53].strip()
+                        utm_zone = int(line[54:82].strip())
+                        break
+                else:
+                    raise ValueError(f'no UTM zone found in file "{filename}"')
+        return _np.loadtxt(reprojected_filename, delimiter=','), utm_zone
+
+    def __setup_vdatum(self, instructions: dict):
         """
         Setup the VDatum command line arguments to convert points.
-        
+
         This method current assums US Survey Feet, and convert it into UTM
         (meters) with the otherwise the specified vertical datums.  Vertical
         assumed to be positive down for both input and output. NAD83 is assumed
         for horizontal datums.
-        
+
         The output epsg code is converted to a NSRS2007 zone using a dumb
         conversion.
 
         Parameters
         ----------
-        in_fips :
-            param in_verdat:
-        out_epsg :
-            param out_verdat:
-        in_fips: int :
-            
-        in_verdat: str :
-            
-        out_epsg: int :
-            
-        out_verdat: str :
-            
-
-        Returns
-        -------
-
+        instructions
+            dictionary of metadata
         """
 
-        ihorz = rf'ihorz:NAD83:spc:us_ft:{in_fips}'
-        ivert = f' ivert:{in_verdat.lower()}:us_ft:height'
-        ohorz = ' ohorz:NAD83:utm:m:'
-        overt = f' overt:{out_verdat.lower()}:m:height'
-        georef = f'{ihorz}{ivert}{ohorz}{overt}'
-        java_str = _os.path.join(self._java_path, 'java')
-        file_str = ' -file:txt:comma,0,1,2,skip0:'
-        self._shell = f'{java_str} -jar vdatum.jar {georef}{file_str}'
+        # having the output zone is optional
+        local_to_hdatum = to_hdatum.copy()
+        if 'to_horiz_key' in instructions:
+            local_to_hdatum.append('to_horiz_key')
 
-    def _convert_file(self, vdinfilename: str, vdoutdir: str):
+        self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
+                      f'ihorz:{":".join(instructions[key] for key in from_hdatum)} ' + \
+                      f'ivert:{":".join(instructions[key] for key in from_vdatum)} ' + \
+                      f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
+                      f'overt:{":".join(instructions[key] for key in to_vdatum)} ' + \
+                      f'-file:txt:comma,0,1,2,skip0:'
+
+    def __convert_file(self, filename: str, output_directory: str):
         """
         The provided file of xyz points will be converted and returned
         according to the from and to the datums provided through the
@@ -191,19 +255,13 @@ class VDatum:
 
         Parameters
         ----------
-        vdinfilename :
-            param vdoutdir:
-        vdinfilename: str :
-            
-        vdoutdir: str :
-            
-
-        Returns
-        -------
-
+        filename
+            filename of XYZ points file
+        output_directory
+            output directory
         """
 
-        command = f'{self._shell}{vdinfilename};{vdoutdir}'
+        command = f'{self._shell}{filename};{output_directory}'
         self._logger.log(_logging.DEBUG, command)
         try:
             proc = _subprocess.Popen(command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, cwd=self._vdatum_path)
@@ -223,47 +281,53 @@ class VDatum:
             print(output)
             print(outerr)
 
-    def _xyz2gdal(self, outxyz: List[Tuple[float, float, float]], out_zone: int, out_verdat: str) -> gdal.Dataset:
+    def __xyz2gdal(self, points: [(float, float, float)], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
         """
-        Convert from numpy xyz array to a gdal dataset.
+        Get a GDAL point cloud dataset from XYZ points.
 
         Parameters
         ----------
-        outxyz :
-            param out_zone:
-        out_verdat :
-            
-        outxyz: List[Tuple[float :
-            
-        float :
-            
-        float]] :
-            
-        out_zone: int :
-            
-        out_verdat: str :
-            
+        points
+            XYZ points
+        utm_zone
+            desired UTM zone
+        vertical_datum
+            name of desired vertical datum
 
         Returns
         -------
-
+            GDAL point cloud dataset
         """
 
         # setup the gdal bucket
-        dest = osr.SpatialReference()
-        dest.SetWellKnownGeogCS('NAD83')
-        if int(out_zone) < 0:  # if out_zone is positive it is in the northern hemisphere
-            hemisphere = '0'  # 0 = South
-        else:  # if out_zone is negative it is in the southern hemisphere
-            hemisphere = '1'  # 1 =North#boolean test being passed to SetUTM
-        dest.SetUTM(int(out_zone), int(hemisphere))
-        dest.SetVertCS(out_verdat, out_verdat, 2000)
+        spatial_reference = osr.SpatialReference()
+        spatial_reference.SetWellKnownGeogCS('NAD83')
+        # positive UTM zone is in the northern hemisphere
+        spatial_reference.SetUTM(abs(utm_zone), 1 if utm_zone > 0 else 0)
+        spatial_reference.SetVertCS(vertical_datum, vertical_datum, 2000)
         dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
-        layer = dataset.CreateLayer('pts', dest, geom_type=ogr.wkbPoint)
-        for p in outxyz:
-            newp = ogr.Geometry(ogr.wkbPoint)
-            newp.AddPoint(p[0], p[1], p[2])
+        layer = dataset.CreateLayer('pts', spatial_reference, geom_type=ogr.wkbPoint)
+        for point in points:
+            geometry = ogr.Geometry(ogr.wkbPoint)
+            geometry.AddPoint(*point)
             feature = ogr.Feature(layer.GetLayerDefn())
-            feature.SetGeometry(newp)
+            feature.SetGeometry(geometry)
             layer.CreateFeature(feature)
         return dataset
+
+
+def _has_required_instructions(instructions: dict) -> bool:
+    """
+    Confirm the existance of required information for datum transformations.
+
+    Parameters
+    ----------
+    instructions
+        dictionary of metadata
+    """
+
+    for key in from_hdatum + from_vdatum + to_hdatum + to_vdatum:
+        if key not in instructions:
+            return False
+    else:
+        return True

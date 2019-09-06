@@ -28,6 +28,7 @@ from shapely.geometry import Polygon
 
 _basedigits = string.digits + string.ascii_uppercase
 
+
 def get_tile_name(tile_number: int, name_len: int = 7) -> str:
     """
     Provide the name for a tile number.  The tile number is a flattened 
@@ -43,20 +44,23 @@ def get_tile_name(tile_number: int, name_len: int = 7) -> str:
     name = name.zfill(name_len)
     return name
 
+
 def get_dimension(r: int) -> float:
     """
     Return the dimension in degrees as defined by
     
     dimension = 180 / 2**r
     """
-    return 180. / (2**r)
+    return 180. / (2 ** r)
+
 
 def get_num_cols(r: int) -> int:
     """
     Return the number of columns for a given "R" value assuming coverage from
     -180 to +180.
     """
-    return 2**(r+1)
+    return 2 ** (r + 1)
+
 
 def get_num_rows(r: int) -> int:
     """
@@ -65,17 +69,20 @@ def get_num_rows(r: int) -> int:
     """
     return 2 ** r
 
+
 def dig2num(d: str) -> int:
     """
     Return the number associated with a digit.
     """
     return _basedigits.index(d)
 
+
 def num2dig(n: int) -> str:
     """
     Return the digit associated with a number.
     """
     return _basedigits[n]
+
 
 def get_tile_set_bounds(xy: str):
     """
@@ -86,7 +93,7 @@ def get_tile_set_bounds(xy: str):
     except AssertionError:
         raise ValueError('The provided name must be two characters')
     xyu = xy.upper()
-    x,y = xyu
+    x, y = xyu
     xr = dig2num(x)
     yr = dig2num(y)
     xn = get_num_cols(xr)
@@ -95,27 +102,29 @@ def get_tile_set_bounds(xy: str):
     yb = np.linspace(-90., 90., yn + 1)
     return xb, yb
 
+
 def get_tile_from_point(xy: str, point: list):
     """
     Get the bounds of a tile that includes a point.
     """
-    xb,yb = get_tile_set_bounds(xy)
-    x,y = point
+    xb, yb = get_tile_set_bounds(xy)
+    x, y = point
     pxb, idx = _get_closest_bounds(xb, x)
     pyb, idy = _get_closest_bounds(yb, y)
     bounds = [pxb.min(), pyb.min(), pxb.max(), pyb.max()]
     rx = dig2num(xy[0])
     ncols = get_num_cols(rx)
-    lin_id = _get_subn(ncols, [idx], [idy])[0,0]
+    lin_id = _get_subn(ncols, [idx], [idy])[0, 0]
     name = get_tile_name(lin_id)
     return bounds, name
+
 
 def build_gpkg(xy_level: str, bbox: list, path: str = '.'):
     """
     Create a geopackage with the tile set.
     """
     # get the bounds subset
-    xb,yb = get_tile_set_bounds(xy_level)
+    xb, yb = get_tile_set_bounds(xy_level)
     x_min, y_min, x_max, y_max = bbox
     subx, idx = _get_subbounds(xb, x_min, x_max)
     suby, idy = _get_subbounds(yb, y_min, y_max)
@@ -141,22 +150,23 @@ def build_gpkg(xy_level: str, bbox: list, path: str = '.'):
         for n in range(len(subx) - 1):
             ring = ogr.Geometry(ogr.wkbLinearRing)
             ring.AddPoint(subx[n], suby[m])
-            ring.AddPoint(subx[n], suby[m+1])
-            ring.AddPoint(subx[n+1], suby[m+1])
-            ring.AddPoint(subx[n+1], suby[m])
+            ring.AddPoint(subx[n], suby[m + 1])
+            ring.AddPoint(subx[n + 1], suby[m + 1])
+            ring.AddPoint(subx[n + 1], suby[m])
             ring.AddPoint(subx[n], suby[m])
             tile = ogr.Geometry(ogr.wkbPolygon)
             tile.AddGeometry(ring)
             f = ogr.Feature(fd)
             f.SetGeometry(tile)
-            f.SetField(id_field, str(idn[m,n]))
-            f.SetField(name_field, get_tile_name(idn[m,n]))
+            f.SetField(id_field, str(idn[m, n]))
+            f.SetField(name_field, get_tile_name(idn[m, n]))
             c += 1
             lyr.CreateFeature(f)
             del tile, f
     outfilename = os.path.join(path, f'{xy_level}_tesselation.gpkg')
     ogr.GetDriverByName("GPKG").CopyDataSource(ds, outfilename)
     del ds
+
 
 def get_shapely(xy_res: str, bbox: list):
     """
@@ -166,7 +176,7 @@ def get_shapely(xy_res: str, bbox: list):
     Things that go over the date line will probably be goofy...
     """
     # get the bounds subset
-    xb,yb = get_tile_set_bounds(xy_res)
+    xb, yb = get_tile_set_bounds(xy_res)
     x_min, y_min, x_max, y_max = bbox
     subx, idx = _get_subbounds(xb, x_min, x_max)
     suby, idy = _get_subbounds(yb, y_min, y_max)
@@ -177,14 +187,14 @@ def get_shapely(xy_res: str, bbox: list):
     c = 0
     collect = []
     names = []
-    for m in range(len(suby)-1):
-        for n in range(len(subx)-1):
+    for m in range(len(suby) - 1):
+        for n in range(len(subx) - 1):
             p = Polygon([(subx[n], suby[m]),
                          (subx[n], suby[m + 1]),
                          (subx[n + 1], suby[m + 1]),
                          (subx[n + 1], suby[m])])
             collect.append(p)
-            names.append(get_tile_name(idn[m,n]))
+            names.append(get_tile_name(idn[m, n]))
             c += 1
     return collect, names
 
@@ -201,6 +211,7 @@ def _get_subbounds(bounds, a_min: float, a_max: float):
     subset = bounds[idx]
     return subset, idx
 
+
 def _get_subn(dimx: int, idx, idy):
     """
     Get the global indicies for the subtiles.
@@ -209,11 +220,12 @@ def _get_subn(dimx: int, idx, idy):
     idy = np.array(idy)
     n_subx = len(idx)
     n_suby = len(idy)
-    idn = np.zeros(n_subx * n_suby, dtype = np.int)
-    for n,m in enumerate(idy):
-        idn[n * n_subx:(n+1) * n_subx] = m * dimx + idx
+    idn = np.zeros(n_subx * n_suby, dtype=np.int)
+    for n, m in enumerate(idy):
+        idn[n * n_subx:(n + 1) * n_subx] = m * dimx + idx
     idn.shape = (n_suby, n_subx)
     return idn
+
 
 def _get_closest_bounds(bounds, a: float):
     """

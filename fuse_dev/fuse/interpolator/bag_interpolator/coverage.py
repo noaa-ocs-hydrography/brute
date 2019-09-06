@@ -7,7 +7,6 @@ Created on Thu Jun  6 15:29:51 2019
 
 import os as _os
 from datetime import datetime as _dt
-from typing import List, Tuple
 
 import numpy as _np
 from osgeo import gdal as _gdal, gdal
@@ -95,11 +94,12 @@ class GeoTIFF:
 
         """
 
+        _fName = _os.path.split(filename)[-1]
+        self.name = _os.path.splitext(_fName)[0]
         _ds = _gdal.Open(filename)
         self.bounds, self.resolution = self._getBounds(_ds)
         self.array, self.shape, self.nodata = self._getArrayData(_ds)
-        _fName = _os.path.split(filename)[-1]
-        self.name = _os.path.splitext(_fName)[0]
+        self.wkt = _ds.GetProjectionRef()
         del _ds
 
     def _getBounds(self, gdal_obj):
@@ -117,6 +117,7 @@ class GeoTIFF:
         """
 
         ulx, xres, xskew, uly, yskew, yres = gdal_obj.GetGeoTransform()
+        check_origin(ulx, uly, self.name)
         lrx = ulx + (gdal_obj.RasterXSize * xres)
         lry = uly + (gdal_obj.RasterYSize * yres)
 
@@ -302,6 +303,7 @@ class Geopackage:
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_dim, y_dim,
                                                         1, _gdal.GDT_Float32)
         gt = (x_min, pixel_size, 0, y_max, 0, -pixel_size)
+        check_origin(x_min, y_min, fName)
         target_ds.SetGeoTransform(gt)
         target_ds.SetProjection(to_crs)
         band = target_ds.GetRasterBand(1)
@@ -350,13 +352,13 @@ class UnifiedCoverage:
         self._align_and_combine(_rasters, bag_name)
         del _rasters
 
-    def _open_data(self, files: List[str], bag_wkt: str):
+    def _open_data(self, files: [str], bag_wkt: str):
         """
         TODO write description
 
         Parameters
         ----------
-        files: List[str] :
+        files: [str] :
             TODO write description
         bag_wkt: str :
             TODO write description
@@ -369,20 +371,29 @@ class UnifiedCoverage:
         print('_open')
         bndRasts = []
         y = 0
+        error_string = ''
 
         for item in files:
             fName = _os.path.split(item)[1]
             ext = _os.path.splitext(fName)[1].lower()
 
-            if ext in ('.tiff', '.tif'):
-                rast = GeoTIFF()
-                rast.open_file(item)
-            elif ext in ('.shp', '.gpkg'):
-                rast = Geopackage()
-                rast.open_file(item, bag_wkt)
+            try:
+                if ext in ('.tiff', '.tif'):
+                    rast = GeoTIFF()
+                    rast.open_file(item)
+                    bndRasts.append(rast)
+                elif ext in ('.gpkg',):
+                    rast = Geopackage()
+                    rast.open_file(item, bag_wkt)
+                    bndRasts.append(rast)
+            except ValueError as e:
+                error_string += f'\n{e}'
+                pass
 
-            bndRasts.append(rast)
             y += 1
+
+        if len(bndRasts) == 0:
+            raise RuntimeError(f'No valid coverage in {files}{error_string}')
 
         return bndRasts
 
@@ -641,8 +652,13 @@ class UnifiedCoverage:
             return rasters, bounds
 
 
-def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]], shape: Tuple[int, int],
-               resolution: Tuple[float, float], nodata: float):
+def check_origin(x: float, y: float, filename: str) -> ValueError:
+    if 0 in (x, y):
+        raise ValueError(f'{filename} - Origin is not correctly georeferenced')
+
+
+def align2grid(coverage, bounds: ((float, float), (float, float)), shape: (int, int), resolution: (float, float),
+               nodata: float):
     """
     Takes an input of two arrays representing bag and tif data. These arrays
     hold information like extent, data, and more. The goal of this function is
@@ -662,15 +678,15 @@ def align2grid(coverage, bounds: Tuple[Tuple[float, float], Tuple[float, float]]
 
     Parameters
     ----------
-    coverage :
+    coverage
         Input coverage data object
-    bounds: Tuple[Tuple[float, float], Tuple[float, float]] :
+    bounds
         The ([nx, ny], [sx, sy]) extents to be applied to the input data
-    shape: Tuple[int, int] :
+    shape
         The (y, x) shape to to be applied to the input data
-    resolution: Tuple[float, float] :
+    resolution
         The (x, y) resolution to be applied to the input data
-    nodata: float :
+    nodata
         The nodata value to be applied to the input array object
 
     Returns
@@ -871,8 +887,13 @@ def write_vector(coverage, outputpath: str, out_verdat: str = 'MLLW', flip: bool
     -------
 
     """
+    float_resolution = abs(coverage.resolution[0])
+    if float_resolution < 1:
+        resolution = f"{str(float_resolution)[2:]}cm"
+    else:
+        resolution = f"{str(int(float_resolution))}m"
 
-    name = f'{coverage.name}.gpkg'
+    name = f'{coverage.name}_{resolution}.gpkg'
     outfilename = _os.path.join(outputpath, name)
 
     proj = _osr.SpatialReference(wkt=coverage.wkt)

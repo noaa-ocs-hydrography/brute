@@ -52,11 +52,16 @@ logLocation = os.path.join(progLoc, logName)
 # logLocation = os.path.join(progLoc, logName)
 """Default location for :attr:`logName`"""
 # """Default location for """
-holding = os.path.join(progLoc, 'downloads')
-"""Default location for all downloaded data, regardless of the type of query
-performed. Data is broken up into folders representing each district (ex.
-``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)
-"""
+
+if config['Downloads']['Downloads'] != '':
+    holding = config['Downloads']['Downloads']
+else:
+    holding = os.path.join(progLoc, 'downloads')
+    """Default location for all downloaded data, regardless of the type of query
+    performed. Data is broken up into folders representing each district (ex.
+    ``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)
+    """
+
 logging = os.path.join(progLoc, 'logs')
 """Default location for individual query logs. These are named like
 ``YYYYMMDD_0_eHydro_log.txt``
@@ -318,6 +323,22 @@ def geometryToShape(coordinates: list):
     return multipoly
 
 
+def list_chunks(input_list: list, n: int = 1000):
+    """
+    Returns a list of lists given a maximum length for each list;
+
+    Parameters
+    ----------
+    input_list :
+        list
+    n : int, optional
+        maximum lengh of the subdivided lists (Default = 1000)
+
+    """
+    for i in range(0, len(input_list), n):
+        yield input_list[i:i + n]
+
+
 def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> Tuple[list, list]:
     """
     Uses the json object return of the each queried survey id and the total
@@ -359,60 +380,61 @@ def surveyCompile(surveyIDs: list, newSurveysNum: int, pb=None) -> Tuple[list, l
         pb.SetRange(newSurveysNum)
         pb.SetValue(x)
 
-    while x < newSurveysNum:
-        print(x, end=' ')
+    id_chunks = list(list_chunks([str(objectID) for objectID in surveyIDs], n=100))
+
+    for chunk in id_chunks:
+        id_string = ','.join(chunk)
         query = 'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer/0/query' + \
-                f'?where=OBJECTID+=+{surveyIDs[x]}&outFields=*&returnGeometry=true&outSR=4326&f=json'
+                f'?where=&objectIds={id_string}&outFields=*&returnGeometry=true&outSR=4326&f=json'
         response = requests.get(query)
         page = response.json()
 
         if x == 0:
             version, attributes = versionComp(page)
 
-        row = []
-        metadata = {'version': version}
-
-        for attribute in attributes:
-            try:
-                if page['features'][0]['attributes'][attribute] is None:
-                    row.append('null')
-                    metadata[attribute] = 'null'
-                elif attribute in ("SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART"):
-                    if page['features'][0]['attributes'][attribute] is None:
+        object_num = 0
+        for objectID in chunk:
+            metadata = {'version': version}
+            row = []
+            for attribute in attributes:
+                try:
+                    if page['features'][object_num]['attributes'][attribute] is None:
                         row.append('null')
-                        metadata[attribute] = 'null'
+                    elif attribute in ("SURVEYDATEUPLOADED", "SURVEYDATEEND", "SURVEYDATESTART"):
+                        if page['features'][object_num]['attributes'][attribute] is None:
+                            row.append('null')
+                        else:
+                            date = (page['features'][object_num]['attributes'][attribute])
+
+                            try:
+                                date = datetime.datetime.utcfromtimestamp(date / 1000)
+                                row.append(f'{date:%Y-%m-%d}')
+                                metadata[attribute] = f'{date:%Y-%m-%d}'
+                            except OSError as e:
+                                print(e, date)
+                                row.append('error')
+
                     else:
-                        date = (page['features'][0]['attributes'][attribute])
-                        # print(date)
+                        row.append(str(page['features'][object_num]['attributes'][attribute]))
+                        metadata[attribute] = str(page['features'][object_num]['attributes'][attribute])
+                except KeyError as e:
+                    print(e, attribute)
+                    row.append('error')
 
-                        try:
-                            date = datetime.datetime.utcfromtimestamp(date / 1000)
-                            row.append(f'{date:%Y-%m-%d}')
-                            metadata[attribute] = f'{date:%Y-%m-%d}'
-                        except OSError as e:
-                            print(e, date)
-                            row.append('error')
-                            metadata[attribute] = 'error'
-                else:
-                    row.append(str(page['features'][0]['attributes'][attribute]))
-                    metadata[attribute] = str(page['features'][0]['attributes'][attribute])
+            try:
+                coords = page['features'][object_num]['geometry']['rings']
+                metadata['poly'] = geometryToShape(coords)
             except KeyError as e:
-                print(e, attribute)
-                row.append('error')
-                metadata[attribute] = 'error'
-        try:
-            coords = page['features'][0]['geometry']['rings']
-            metadata['poly'] = geometryToShape(coords)
-        except KeyError as e:
-            print(e, 'geometry')
-            metadata['poly'] = 'error'
+                print(e, 'geometry')
 
-        row.append(metadata)
-        rows.append(row)
-        x += 1
+            row.append(metadata)
+            rows.append(row)
+            print(x, end=' ')
+            x += 1
+            object_num += 1
 
-        if pb is not None:
-            pb.SetValue(x)
+            if pb is not None:
+                pb.SetValue(x)
 
     print(len(rows))
     print('rows complete')
@@ -465,20 +487,20 @@ def write_geopackage(out_path: str, name: str, poly: str,
     feat = ogr.Feature(defn)
     feat.SetField('Survey', name)
 
-    # Make a geometry, from Shapely object
+    # Make a geometry, from wkt object
     geom = ogr.CreateGeometryFromWkt(poly)
 
     feat.SetGeometry(geom)
 
     layer.CreateFeature(feat)
 
-    # Save and close everything
-    del ds, layer, feat
+
 
     linear_geom = geom.GetLinearGeometry()
     geojson = linear_geom.ExportToJson()
 
-    del geom
+    # Save and close everything
+    del ds, layer, feat, geom
 
     return geojson
 
@@ -586,7 +608,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
         if os.path.exists(saved):
             os.remove(saved)
 
-        if poly != 'error':
+        if poly in meta:
             shpfilename = os.path.join(holding, agency, f'{surname}.gpkg')
             meta['poly_name'] = f'{surname}.gpkg'
             geojson = write_geopackage(shpfilename, surname, poly, spcs)
@@ -640,7 +662,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                     zipped.write(pfile)
                     os.remove(pfile)
 
-                    if poly != 'error':
+                    if poly in meta:
                         zipped.write(sfile)
                         os.remove(sfile)
 
@@ -673,7 +695,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                     zipped.write(pfile)
                     os.remove(pfile)
 
-                    if poly != 'error':
+                    if poly in meta:
                         zipped.write(sfile)
                         os.remove(sfile)
 

@@ -13,7 +13,7 @@ import fuse.fuse_ehydro as ffe
 
 if __name__ == '__main__':
     processor = ffe.FuseProcessor_eHydro('cenan.config')  # this config is local for testing
-    flist = processor._meta_obj.read_meta_file()
+    flist = processor._meta_obj.read_metadata()
     for f in flist:
         if 'to_filename' not in f:
             infilename = f['from_path']

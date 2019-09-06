@@ -77,7 +77,7 @@ class BDB51IO:
                 if data:
                     command = pickle.loads(data)
                     response = self.take_commands(command)
-                    print('Response', response, end = '\n\n')
+                    print('Response', response, end='\n\n')
                     data = pickle.dumps(response)
                     # print('pickled data size is {}, buffer size is {}'.format(len(data), self.buffer_size))
                     lensent = self.sock.send(data)
@@ -280,7 +280,7 @@ class BDB51IO:
             surface = self._db.create_feature('surfac', geom)
             surface['OBJNAM'] = file_path
             surface['srcfil'] = file_path
-    
+
             # get a metadata container to put stuff into
             current_metadata = surface.attributes
             # need to load the metadata dictionary that was put on disk here.
@@ -288,7 +288,7 @@ class BDB51IO:
                 current_metadata[key] = new_metadata[key]
             # commit the feature to the database
             self._db.commit()
-    
+
             # upload coverage
             surface.upload_coverage(file_path)
             return 'Uploaded {} to {}'.format(file_path, self.database)
@@ -302,7 +302,7 @@ class BDB51IO:
         cql = "OBJNAM = '{}'".format(new_metadata['OBJNAM'])
         print(cql)
         features = self._db.query('surfac', cql)
-        for n,f in enumerate(features):
+        for n, f in enumerate(features):
             if n > 0:
                 msg = "More than one object found in query with provided key!"
                 break

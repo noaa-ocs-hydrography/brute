@@ -8,7 +8,7 @@ Created on Thu Aug 16 15:26:20 2018
 import os as _os
 
 
-def fips2wkt(fips: int, units: str = 'FEET'):
+def fips2wkt(fips: int, units: str = 'FEET') -> str:
     """
     Given an ESRI FIPS code, return the associated wkt string as found in the
     gdal module data file 'esri_StatePlane_extra.wkt'.
