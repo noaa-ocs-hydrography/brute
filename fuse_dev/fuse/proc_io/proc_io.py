@@ -237,9 +237,21 @@ class ProcIO:
         bag_driver = gdal.GetDriverByName("BAG")
 
         # write and close output raster dataset
-        output_raster = bag_driver.CreateCopy(filename, raster)
-        del output_raster
-        self._logger.log(logging.DEBUG, 'BAG file created')
+        try:
+            output_raster = bag_driver.CreateCopy(filename, raster)
+            del output_raster
+            self._logger.log(logging.DEBUG, 'BAG file created')
+        except RuntimeError as e:
+            self._logger.log(logging.DEBUG, f'Failed to create bag: {e}\n Attempting to pass correct wkt using OSR')
+            old_reference = raster.GetProjectionRef()
+            self._logger.log(logging.DEBUG, f'Old reference: {old_reference}')
+            spacial_reference = osr.SpatialReference(wkt=old_reference)
+            new_reference = spacial_reference.ExportToWkt()
+            self._logger.log(logging.DEBUG, f'New reference: {new_reference}')
+            raster.SetProjection(new_reference)
+            output_raster = bag_driver.CreateCopy(filename, raster)
+            del output_raster
+            self._logger.log(logging.DEBUG, 'BAG file created')
 
     def _write_points(self, points: gdal.Dataset, filename: str, layer_index: int = 0, output_layer: str = 'Elevation'):
         """
