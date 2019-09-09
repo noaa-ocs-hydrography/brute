@@ -1,75 +1,52 @@
 import os
-import pathlib
 import unittest
 
 from fuse.fuse_processor import FuseProcessor
 from fuse.interpolator.bag_interpolator import coverage
 from fuse.raw_read.noaa import bag
 
-DATA_PATH = r"C:\Data\NBS"
+TESTING_DIRECTORY = r'\\OCS-VS-NBS01\nbs\TestingResources'
+INPUT_ROOT = os.path.join(TESTING_DIRECTORY, 'raw')
+OUTPUT_ROOT = os.path.join(TESTING_DIRECTORY, 'output')
 
 
 class TestPointInterpolator(unittest.TestCase):
     def test_linear(self):
-        region_directory = os.path.join(DATA_PATH, r'PBC_Northeast\USACE\eHydro_NewYork_CENAN')
-        input_directory = os.path.join(region_directory, 'Original')
-        processed_directory = os.path.join(region_directory, r'MLLW\Data\Active')
-
-        if not os.path.exists(input_directory):
-            raise EnvironmentError(f'data directory not found: {input_directory}')
-        if not os.path.exists(processed_directory):
-            pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
-
-        survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
-        file_type = 'bag'
-
-        input_path = os.path.join(input_directory, survey_name, f'{survey_name}.XYZ')
         config_path = os.path.join('data', 'cenan_linear.config')
+        file_type = 'bag'
+        survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
+        input_path = os.path.join(INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
 
         cenan_fuse_processor = FuseProcessor(config_path)
         cenan_fuse_processor.read(input_path)
         cenan_fuse_processor.process(input_path)
 
-        output_path = os.path.join(processed_directory, f'{survey_name}_5m_interp.{file_type}')
         assert os.path.exists(output_path)
 
     def test_kriging(self):
-        input_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'Original')
-        processed_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'MLLW', 'Data',
-                                           'Active')
-
-        if not os.path.exists(input_directory):
-            raise EnvironmentError(f'data directory not found: {input_directory}')
-        if not os.path.exists(processed_directory):
-            pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
-
-        survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
-        file_type = 'bag'
-
-        input_path = os.path.join(input_directory, survey_name, f'{survey_name}.XYZ')
         config_path = os.path.join('data', 'cenan_kriging.config')
+        file_type = 'bag'
+        survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
+        input_path = os.path.join(INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
 
         cenan_fuse_processor = FuseProcessor(config_path)
         cenan_fuse_processor.read(input_path)
         cenan_fuse_processor.process(input_path)
 
-        output_path = os.path.join(processed_directory, f'{survey_name}_5m_interp.{file_type}')
         assert os.path.exists(output_path)
 
 
 class TestRasterInterpolator(unittest.TestCase):
     def test_align2grid(self):
-        bag_testing_directory = os.path.join(DATA_PATH, r'testing\bag_interpolator\H12607')
-
-        if not os.path.exists(bag_testing_directory):
-            raise EnvironmentError(f'test directory not found: {bag_testing_directory}')
-
-        bag_path = os.path.join(bag_testing_directory, 'H12607_MB_4m_MLLW_2of2.bag')
-        coverage_list = [os.path.join(bag_testing_directory, 'H12607_SSSAB_1m_600kHz_2of2.tif')]
+        input_directory = os.path.join(INPUT_ROOT, r'H12607 - smol')
+        bag_path = os.path.join(input_directory, 'H12607_MB_4m_MLLW_2of2.bag')
+        coverage_list = [os.path.join(input_directory, f'H12607_SSS_{id}_1m.tif') for id in (100, 200)]
 
         bag_dataset = bag.BagFile()
         bag_dataset.open_file(bag_path, 'hack')
-        bag_dataset.generate_name(bag_testing_directory, False)
+        bag_dataset.generate_name(input_directory, False)
         coverage_dataset = coverage.UnifiedCoverage(coverage_list, bag_dataset.wkt, bag_dataset.name)
 
         assert coverage_dataset.bounds != bag_dataset.bounds

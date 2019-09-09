@@ -100,12 +100,9 @@ class Interpolator:
                 raster_nw_corner, raster_resolution, raster_shape)
             elevation_coverage = _coverage_mask(elevation_data, elevation_nodata)
 
-            # elevation_region = _vectorize_geoarray(elevation_coverage, raster_nw_corner, raster_resolution,
-            #                                        False).convex_hull
-
-            self.elevation_region = shapely.geometry.MultiPoint(
-                _geoarray_to_points(elevation_coverage & sidescan_coverage,
-                                    raster_nw_corner, raster_resolution, False)[:, 0:2].tolist()).convex_hull
+            self.elevation_region = _alpha_hull(
+                _geoarray_to_points(elevation_coverage & sidescan_coverage, raster_nw_corner, raster_resolution,
+                                    False)[::50, 0:2]).simplify(100)
 
             # TODO change this from interpolating within the entire region to only interpolating within the intersection between sidescan and elevation coverage (afterwards adding back original elevation outside sidescan)
             self.interpolation_region = _vectorize_geoarray(sidescan_coverage | elevation_coverage, raster_nw_corner,
@@ -123,8 +120,7 @@ class Interpolator:
             #     self.interpolation_region = _alpha_hull(numpy.stack((x, y), axis=1))
 
             self.points = _geoarray_to_points(numpy.where(sidescan_coverage, elevation_data, elevation_nodata),
-                                              nw_corner=raster_nw_corner, resolution=raster_resolution,
-                                              mask_value=elevation_nodata)
+                                              raster_nw_corner, raster_resolution, elevation_nodata)
         else:
             if self.default_nodata is None:
                 self.default_nodata = 1000000.0
@@ -341,17 +337,22 @@ class Interpolator:
         if type(output_shape) is not numpy.array:
             output_shape = numpy.array(output_shape)
 
+        if type(output_bounds) is not numpy.array:
+            output_bounds = numpy.array(output_bounds)
+
         if output_nodata is None:
             output_nodata = self.default_nodata
+
+        output_resolution = (output_bounds[2:4] - output_bounds[0:2]) / numpy.flip(output_shape)
+
+        # min_x, min_y, max_x, max_y = self.input_bounds
+        # pyplot.imshow(self.dataset.ReadAsArray()[0, :, :], extent=(min_x, max_x, min_y, max_y))
+        # pyplot.scatter(self.points[:, 0], self.points[:, 1], c='r', marker='+', s=8)
 
         # interpolate using SciPy griddata
         output_x, output_y = numpy.meshgrid(numpy.arange(output_shape[1]), numpy.arange(output_shape[0]))
         interpolated_data = scipy.interpolate.griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2],
                                                        (output_x, output_y), method='linear', fill_value=output_nodata)
-        interpolated_data[numpy.isnan(interpolated_data)] = output_nodata
-
-        output_resolution = (numpy.array(output_bounds[2:4]) - numpy.array(output_bounds[0:2])) / numpy.flip(
-            output_shape)
 
         output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 1,
                                                            gdal.GDT_Float32)
@@ -364,8 +365,8 @@ class Interpolator:
         del band_1
         return output_raster
 
-    def __invdist_gdal(self, output_shape: (int, int), output_bounds: (float, float), output_nodata: float = None,
-                       radius: float = None) -> gdal.Dataset:
+    def __invdist_gdal(self, output_shape: (int, int), output_bounds: (float, float, float, float),
+                       output_nodata: float = None, radius: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via inverse distance.
 
@@ -473,6 +474,9 @@ class Interpolator:
         if type(output_shape) is not numpy.array:
             output_shape = numpy.array(output_shape)
 
+        if type(output_bounds) is not numpy.array:
+            output_bounds = numpy.array(output_bounds)
+
         if type(chunk_size) is not numpy.array:
             chunk_size = numpy.array(chunk_size)
 
@@ -481,14 +485,14 @@ class Interpolator:
 
         assert not numpy.any(chunk_size < numpy.array((40, 20))), 'a small chunk size may freeze your computer'
 
-        output_resolution = (numpy.array(output_bounds[2:4]) - numpy.array(output_bounds[0:2])) / output_shape
+        output_resolution = (output_bounds[2:4] - output_bounds[0:2]) / numpy.flip(output_shape)
 
         # define function to perform kriging (using PyKrige) from given N x 3 points onto the given regular grid
         def grid_krige(input_points: numpy.array, output_x: [float], output_y: [float]) -> (numpy.array, numpy.array):
             return OrdinaryKriging(input_points[:, 0], input_points[:, 1], input_points[:, 2], variogram_model='linear',
                                    verbose=False, enable_plotting=False).execute('grid', output_x, output_y)
 
-        chunk_shape = numpy.array(numpy.round(numpy.flip(chunk_size / output_resolution)), numpy.int)
+        chunk_shape = numpy.array(numpy.round(chunk_size / output_resolution), numpy.int)
         expand_indices = numpy.round(chunk_shape / 2).astype(numpy.int)
 
         input_points_sw = numpy.array((self.input_bounds[0], self.input_bounds[1]))
@@ -513,8 +517,8 @@ class Interpolator:
                                    for axis in range(len(chunk_shape)))
 
                 # expand the interpolation area past the edges of the chunk to make the chunk contextually aware
-                interpolation_sw = input_points_sw + numpy.flip((grid_start_index - expand_indices) * output_resolution)
-                interpolation_ne = input_points_sw + numpy.flip((grid_end_index + expand_indices) * output_resolution)
+                interpolation_sw = input_points_sw + (grid_start_index - expand_indices) * output_resolution
+                interpolation_ne = input_points_sw + (grid_end_index + expand_indices) * output_resolution
 
                 # get points within the interpolation area
                 interpolation_points = self.points[numpy.where((self.points[:, 0] >= interpolation_sw[0]) &
@@ -551,8 +555,8 @@ class Interpolator:
 
         output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 2,
                                                            gdal.GDT_Float32)
-        output_raster.SetGeoTransform((output_bounds[0], output_resolution, 0.0,
-                                       output_bounds[1], 0.0, output_resolution))
+        output_raster.SetGeoTransform((output_bounds[0], output_resolution[0], 0.0,
+                                       output_bounds[1], 0.0, output_resolution[1]))
         output_raster.SetProjection(self.crs_wkt)
 
         band_1 = output_raster.GetRasterBand(1)
@@ -738,16 +742,12 @@ def _alpha_hull(points: numpy.array, max_length: float = None) -> shapely.geomet
         point_b = points[index_b]
         point_c = points[index_c]
 
-        length_a = numpy.hypot(*(point_a - point_b))
-        length_b = numpy.hypot(*(point_b - point_c))
-        length_c = numpy.hypot(*(point_c - point_a))
+        vectors = numpy.stack((point_a - point_b, point_b - point_c, point_c - point_a))
+        lengths = numpy.hypot(vectors[:, 0], vectors[:, 1])
+        semiperimeter = numpy.sum(lengths) / 2
 
-        semiperimeter = (length_a + length_b + length_c) / 2
-        area = numpy.sqrt(
-            semiperimeter * (semiperimeter - length_a) * (semiperimeter - length_b) * (semiperimeter - length_c))
-        circumcircle_diameter = length_a * length_b * length_c / (area * 2)
-
-        if circumcircle_diameter < max_length:
+        if numpy.product(lengths) / (
+                2 * numpy.sqrt(semiperimeter * numpy.product(semiperimeter - lengths))) < max_length:
             for indices in ((index_a, index_b), (index_b, index_c), (index_c, index_a)):
                 if indices not in boundary_edges and reversed(indices) not in boundary_edges:
                     boundary_edges.add(indices)
@@ -877,8 +877,7 @@ def _gdal_crs_wkt(dataset: gdal.Dataset, layer_index: int = 0) -> str:
 
 
 def _combined_coverage_within_window(coverage_raster_filenames: [str], output_nw_corner: (float, float),
-                                     output_resolution: (float, float),
-                                     output_shape: (int, int)) -> numpy.array:
+                                     output_resolution: (float, float), output_shape: (int, int)) -> numpy.array:
     """
     Return a boolean mask of the given rasters where data exists within the given window.
 

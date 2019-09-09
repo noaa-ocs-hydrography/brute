@@ -1,31 +1,20 @@
 import os
-import pathlib
 import unittest
 
 from fuse.fuse_processor import FuseProcessor
 
-DATA_PATH = r'\\OCS-VS-NBS01\nbs'
+TESTING_DIRECTORY = r'\\OCS-VS-NBS01\nbs\TestingResources'
+INPUT_ROOT = os.path.join(TESTING_DIRECTORY, 'raw')
+OUTPUT_ROOT = os.path.join(TESTING_DIRECTORY, 'output')
 
 
 class TestFuse(unittest.TestCase):
-    def test_cespl(self):
-        region_directory = os.path.join(DATA_PATH, r'PBD_Pacific\USACE\eHydro_LosAngeles_CESPL')
-
+    def test_usace_cespl(self):
+        config_path = os.path.join('data', 'usace_cespl.config')
         survey_name = 'LA_01_LBC_20151118'
-        input_directory = os.path.join(region_directory, 'Original')
-
-        processed_directory = os.path.join(region_directory, r'MLLW\Active')
-
-        if not os.path.exists(input_directory):
-            raise EnvironmentError(f'data directory not found: {input_directory}')
-        if not os.path.exists(processed_directory):
-            pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
-
         file_type = 'bag'
-
-        input_path = os.path.join(input_directory, survey_name, f'{survey_name}.XYZ')
-        config_path = os.path.join('data', 'cespl.config')
-        output_path = os.path.join(processed_directory, f'{survey_name}_5m_interp.{file_type}')
+        input_path = os.path.join(INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
 
         cenan_fuse_processor = FuseProcessor(config_path)
         cenan_fuse_processor.read(input_path)
@@ -34,24 +23,12 @@ class TestFuse(unittest.TestCase):
         assert os.path.exists(output_path)
 
     def test_bag(self):
-        region_directory = os.path.join(DATA_PATH, r'TestingResources\NOAABAG_related')
-
+        config_path = os.path.join('data', 'bag.config')
         survey_name = 'H12525'
-        input_directory = os.path.join(region_directory, 'H12525 - The first and easiest')
-
-        processed_directory = os.path.join(input_directory, 'results')
-
-        if not os.path.exists(input_directory):
-            raise EnvironmentError(f'data directory not found: {input_directory}')
-        if not os.path.exists(processed_directory):
-            pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
-
         file_type = 'bag'
-
+        input_directory = os.path.join(INPUT_ROOT, 'H12525 - The first and easiest')
         bag_filenames = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if '.bag' in name]
-
-        config_path = os.path.join('data', 'raster_interpolation.config')
-        output_path = os.path.join(processed_directory, f'{survey_name}_5m_interp.{file_type}')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
 
         cenan_fuse_processor = FuseProcessor(config_path)
 
