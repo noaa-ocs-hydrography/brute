@@ -621,7 +621,7 @@ class FuseProcessor:
         -------
 
         """
-        s57_meta = self._meta_obj.row2s57(metadata)
+        s57_meta = self._meta_obj.csv_to_s57(metadata)
         return s57_meta
 
     def _datum_metadata_ready(self, metadata):
