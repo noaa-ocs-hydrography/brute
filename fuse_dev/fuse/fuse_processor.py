@@ -491,7 +491,7 @@ class FuseProcessor:
                 self._connect_to_db()
             procfile = metadata['to_filename']
             metadata['posted'] = True
-            s57_meta = self._get_meta_as_s57(metadata)
+            s57_meta = self._metadata_to_s57(metadata)
             self._db.write(procfile, 'new', s57_meta)
             # need to check for proper insertion...
             self._meta_obj.write_meta_record(metadata)
@@ -511,7 +511,7 @@ class FuseProcessor:
             if self._db == None:
                 self._connect_to_db()
             procfile = metadata['to_filename']
-            s57_meta = self._get_meta_as_s57(metadata)
+            s57_meta = self._metadata_to_s57(metadata)
             s57_meta['dcyscr'] = dscore
             self._db.write(procfile, 'metadata', s57_meta)
             log = f'Posting new decay score of {dscore} to database.'
@@ -604,7 +604,7 @@ class FuseProcessor:
         # need to catch if this file is not in the metadata record yet here.
         return self._meta
 
-    def _get_meta_as_s57(self, metadata) -> dict:
+    def _metadata_to_s57(self, metadata) -> dict:
         """
         The metadata is converted to an s57 version of the metadata.
 
@@ -618,8 +618,7 @@ class FuseProcessor:
             dictionary of metadata
         """
 
-        s57_meta = self._meta_obj.csv_to_s57(metadata)
-        return s57_meta
+        return self._meta_obj.csv_to_s57(metadata)
 
     def _datum_metadata_ready(self, metadata) -> bool:
         """
