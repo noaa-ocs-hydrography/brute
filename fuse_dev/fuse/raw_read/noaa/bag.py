@@ -1168,6 +1168,9 @@ class BagFile:
 
             xml_tree = _et.XML(meta_xml)
             self.wkt = self._read_wkt_prj(xml_tree)
+            if self.wkt is None:
+                meta_dict = BAGRawReader()
+                self.wkt = meta_dict.read_metadata(filepath)['from_horiz_datum']
             self.resolution = self._read_res_x_and_y(xml_tree)
             sw, ne = self._read_corners_sw_and_ne(xml_tree)
             sx, sy = sw
@@ -1483,7 +1486,8 @@ class BagToGDALConverter:
         target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=bag.wkt)
-        srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
+#        if not srs.IsCompound():
+#            srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
         wkt = srs.ExportToWkt()
         target_ds.SetProjection(wkt)
         x = 1
@@ -1537,7 +1541,8 @@ class BagToGDALConverter:
         target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=prj)
-        srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
+#        if not srs.IsCompound():
+#            srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
         wkt = srs.ExportToWkt()
         target_ds.SetProjection(wkt)
         x = 1
