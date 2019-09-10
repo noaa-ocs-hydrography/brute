@@ -197,7 +197,7 @@ class Interpolator:
             interpolated_dataset = _mask_raster(interpolated_dataset, elevation_mask)
 
         if plot:
-            self.__plot(interpolated_dataset, method)
+            self.__plot(interpolated_dataset, method, show=True)
 
         return interpolated_dataset
 
@@ -487,15 +487,10 @@ class Interpolator:
 
         output_resolution = (output_bounds[2:4] - output_bounds[0:2]) / numpy.flip(output_shape)
 
-        # define function to perform kriging (using PyKrige) from given N x 3 points onto the given regular grid
-        def grid_krige(input_points: numpy.array, output_x: [float], output_y: [float]) -> (numpy.array, numpy.array):
-            return OrdinaryKriging(input_points[:, 0], input_points[:, 1], input_points[:, 2], variogram_model='linear',
-                                   verbose=False, enable_plotting=False).execute('grid', output_x, output_y)
-
         chunk_shape = numpy.array(numpy.round(chunk_size / output_resolution), numpy.int)
         expand_indices = numpy.round(chunk_shape / 2).astype(numpy.int)
 
-        input_points_sw = numpy.array((self.input_bounds[0], self.input_bounds[1]))
+        input_points_sw = numpy.array(self.input_bounds[:2])
 
         interpolated_grid_x = numpy.linspace(output_bounds[0], output_bounds[2], output_shape[1])
         interpolated_grid_y = numpy.linspace(output_bounds[1], output_bounds[3], output_shape[0])
@@ -503,22 +498,21 @@ class Interpolator:
         interpolated_grid_values = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
         interpolated_grid_variance = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
 
-        chunks = numpy.array(numpy.floor(interpolated_grid_shape / chunk_shape), numpy.int)
-
+        chunk_grid_shape = numpy.array(numpy.floor(interpolated_grid_shape / chunk_shape), numpy.int)
         chunk_grid_index = numpy.array((0, 0), numpy.int)
         with futures.ProcessPoolExecutor() as concurrency_pool:
             running_futures = {}
 
-            for chunk_index in range(int(numpy.product(chunks))):
+            for _ in range(numpy.product(chunk_grid_shape)):
                 # determine indices of the lower left and upper right bounds of the chunk within the output grid
                 grid_start_index = chunk_grid_index * chunk_shape
                 grid_end_index = grid_start_index + chunk_shape
-                grid_slice = tuple(slice(grid_start_index[axis], grid_end_index[axis])
-                                   for axis in range(len(chunk_shape)))
+                grid_slice = tuple(slice(grid_start_index[dimension], grid_end_index[dimension]) for dimension in
+                                   range(len(chunk_shape)))
 
                 # expand the interpolation area past the edges of the chunk to make the chunk contextually aware
-                interpolation_sw = input_points_sw + (grid_start_index - expand_indices) * output_resolution
-                interpolation_ne = input_points_sw + (grid_end_index + expand_indices) * output_resolution
+                interpolation_sw = input_points_sw + numpy.flip(grid_start_index - expand_indices) * output_resolution
+                interpolation_ne = input_points_sw + numpy.flip(grid_end_index + expand_indices) * output_resolution
 
                 # get points within the interpolation area
                 interpolation_points = self.points[numpy.where((self.points[:, 0] >= interpolation_sw[0]) &
@@ -528,19 +522,19 @@ class Interpolator:
 
                 # only interpolate if there are points
                 if interpolation_points.shape[0] >= 3:
-                    current_future = concurrency_pool.submit(grid_krige, interpolation_points,
+                    current_future = concurrency_pool.submit(_krige_points_onto_grid, interpolation_points,
                                                              interpolated_grid_x[grid_slice[1]],
                                                              interpolated_grid_y[grid_slice[0]])
                     running_futures[current_future] = grid_slice
 
                 # go to next chunk
-                if chunk_grid_index[0] >= chunks[0]:
+                if chunk_grid_index[0] >= chunk_grid_shape[0]:
                     chunk_grid_index[0] = 0
                     chunk_grid_index[1] += 1
                 else:
                     chunk_grid_index[0] += 1
 
-            for _, completed_future in enumerate(futures.as_completed(running_futures)):
+            for completed_future in futures.as_completed(running_futures):
                 grid_slice = running_futures[completed_future]
                 try:
                     chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
@@ -571,7 +565,7 @@ class Interpolator:
         return output_raster
 
     def __plot(self, interpolated_raster: Union[numpy.array, gdal.Dataset], interpolation_method: str,
-               nodata: float = None, band_index: int = 1):
+               nodata: float = None, band_index: int = 1, show: bool = False):
         """
         Plot preinterpolated points and an interpolated raster side-by-side on synchronized subplots.
 
@@ -633,14 +627,17 @@ class Interpolator:
                         ax=(interpolated_data_axis, original_data_axis))
 
         # pause program execution and show the figure
-        pyplot.show()
+        if show:
+            pyplot.show()
 
-    def __plot_concave_hull(self):
-        triangles = scipy.spatial.Delaunay(self.points[:, 0:2])
+    def __plot_concave_hull(self, show: bool = False, **kwargs):
         pyplot.plot(*self.interpolation_region.exterior.xy, c='r')
-        pyplot.triplot(self.points[:, 0], self.points[:, 1], triangles=triangles.simplices, c='g')
-        pyplot.scatter(self.points[:, 0], self.points[:, 1], c='b')
-        pyplot.show()
+        pyplot.scatter(self.points[:, 0], self.points[:, 1], c='g')
+        triangles = scipy.spatial.Delaunay(self.points[:, 0:2])
+        pyplot.triplot(self.points[:, 0], self.points[:, 1], triangles=triangles.simplices, c='b', **kwargs)
+
+        if show:
+            pyplot.show()
 
 
 def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0) -> numpy.array:
@@ -1065,25 +1062,6 @@ def _vectorize_raster_coverage(raster_filename: str) -> shapely.geometry.MultiPo
     return _vectorize_geoarray(raster_data, nw_corner, resolution)
 
 
-def _plot_regions(regions: [shapely.geometry.Polygon], colors: [str] = None):
-    figure = pyplot.figure()
-    axis = figure.add_subplot(1, 1, 1)
-
-    if colors is None:
-        cmap = matplotlib.cm.get_cmap('gist_rainbow')
-        colors = [cmap(color_index / len(regions)) for color_index in range(len(regions))]
-
-    for color_index, geometry in enumerate(regions):
-        color = colors[color_index]
-        if type(geometry) is shapely.geometry.Polygon:
-            axis.plot(*geometry.exterior.xy, c=color)
-        else:
-            for polygon in geometry:
-                axis.plot(*polygon.exterior.xy, c=color)
-
-    pyplot.show()
-
-
 def _write_region(output_filename: str, region: shapely.geometry.MultiPolygon, crs_wkt: str):
     geometry_type = 'Polygon' if type(region) is shapely.geometry.Polygon else 'MultiPolygon'
 
@@ -1119,6 +1097,65 @@ def _get_affine(nw_corner: (float, float), resolution: (float, float)) -> raster
 
     return rasterio.transform.Affine.translation(nw_corner[0], nw_corner[1]) * rasterio.transform.Affine.scale(
         resolution[0], resolution[-1])
+
+
+def _krige_points_onto_grid(points: numpy.array, grid_x: [float], grid_y: [float]) -> (numpy.array, numpy.array):
+    """
+    Perform kriging (using PyKrige) from the given points onto a regular grid.
+
+    Parameters
+    ----------
+    points
+        N x 3 array of points to interpolate
+    grid_x
+        X coordinates of output grid
+    grid_y
+        Y coordinates of output grid
+
+    Returns
+    -------
+        interpolated values and uncertainty
+    """
+
+    return OrdinaryKriging(points[:, 0], points[:, 1], points[:, 2], variogram_model='linear', verbose=False,
+                           enable_plotting=False).execute('grid', grid_x, grid_y)
+
+
+def _plot_regions(regions: [shapely.geometry.Polygon], colors: [str] = None, axis: pyplot.Axes = None,
+                  show: bool = False, **kwargs):
+    if axis is None:
+        figure = pyplot.figure()
+        axis = figure.add_subplot(1, 1, 1)
+
+    if colors is None:
+        cmap = matplotlib.cm.get_cmap('gist_rainbow')
+        colors = [cmap(color_index / len(regions)) for color_index in range(len(regions))]
+
+    for color_index, geometry in enumerate(regions):
+        color = colors[color_index]
+        if type(geometry) is shapely.geometry.Polygon:
+            axis.plot(*geometry.exterior.xy, c=color, **kwargs)
+        else:
+            for polygon in geometry:
+                axis.plot(*polygon.exterior.xy, c=color, **kwargs)
+
+    if show:
+        pyplot.show()
+
+
+def _plot_bounds(sw_corner: (float, float), ne_corner: (float, float), axis: pyplot.Axes = None, show: bool = False,
+                 **kwargs):
+    if axis is None:
+        figure = pyplot.figure()
+        axis = figure.add_subplot(1, 1, 1)
+
+    corner_points = numpy.array(
+        [sw_corner, (ne_corner[0], sw_corner[1]), ne_corner, (sw_corner[0], ne_corner[1]), sw_corner])
+
+    axis.plot(corner_points[:, 0], corner_points[:, 1], **kwargs)
+
+    if show:
+        pyplot.show()
 
 
 class ExtentError(Exception):
