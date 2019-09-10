@@ -18,11 +18,15 @@ class TestPointInterpolator(unittest.TestCase):
         input_path = os.path.join(INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
         output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
 
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
         cenan_fuse_processor = FuseProcessor(config_path)
         cenan_fuse_processor.read(input_path)
         cenan_fuse_processor.process(input_path)
 
         assert os.path.exists(output_path)
+        os.remove(output_path)
 
     def test_kriging(self):
         config_path = os.path.join('data', 'cenan_kriging.config')
@@ -31,11 +35,15 @@ class TestPointInterpolator(unittest.TestCase):
         input_path = os.path.join(INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
         output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
 
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
         cenan_fuse_processor = FuseProcessor(config_path)
         cenan_fuse_processor.read(input_path)
         cenan_fuse_processor.process(input_path)
 
         assert os.path.exists(output_path)
+        os.remove(output_path)
 
 
 class TestRasterInterpolator(unittest.TestCase):
