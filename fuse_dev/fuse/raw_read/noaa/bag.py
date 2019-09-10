@@ -937,8 +937,10 @@ class BAGRawReader:
         try:
             if val.lower() == 'unknown':
                 val = ''
-            elif val.lower() in ('mean_lower_low_water', 'mean lower low water', 'mllw'):
+            elif val.lower() in ('mean_lower_low_water', 'mean lower low water', 'mllw', 'mllw depth'):
                 self.data['from_vert_key'] = 'MLLW'
+            elif val.lower() in ('hudson river datum', 'hrd'):
+                self.data['from_vert_key'] = 'HRD'
             self.data['from_vert_datum'] = val
         except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the survey vertical datum name attribute: {e}")
