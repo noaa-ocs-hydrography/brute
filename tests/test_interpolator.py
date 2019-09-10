@@ -26,7 +26,6 @@ class TestPointInterpolator(unittest.TestCase):
         cenan_fuse_processor.process(input_path)
 
         assert os.path.exists(output_path)
-        os.remove(output_path)
 
     def test_kriging(self):
         config_path = os.path.join('data', 'cenan_kriging.config')
@@ -43,7 +42,6 @@ class TestPointInterpolator(unittest.TestCase):
         cenan_fuse_processor.process(input_path)
 
         assert os.path.exists(output_path)
-        os.remove(output_path)
 
 
 class TestRasterInterpolator(unittest.TestCase):

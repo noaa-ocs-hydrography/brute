@@ -180,7 +180,7 @@ class Interpolator:
             interpolated_dataset = self.__invdist_gdal_linear_scipy(output_shape, output_bounds, output_nodata)
         elif method == 'kriging':
             # interpolate using Ordinary Kriging (`pykrige`) by dividing data into smaller chunks
-            chunk_size = (100, 100)
+            chunk_size = (40, 40)
             method = f'{method}_{chunk_size}m'
             interpolated_dataset = self.__kriging_pykrige(output_shape, output_bounds, chunk_size, output_nodata)
         else:

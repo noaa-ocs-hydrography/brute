@@ -24,7 +24,6 @@ class TestFuse(unittest.TestCase):
         cenan_fuse_processor.process(input_path)
 
         assert os.path.exists(output_path)
-        os.remove(output_path)
 
     def test_bag(self):
         config_path = os.path.join('data', 'bag.config')
@@ -44,7 +43,6 @@ class TestFuse(unittest.TestCase):
                 cenan_fuse_processor.process(bag_filename)
 
         assert os.path.exists(output_path)
-        os.remove(output_path)
 
 
 if __name__ == '__main__':
