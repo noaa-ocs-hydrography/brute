@@ -159,10 +159,12 @@ class FuseProcessor:
         config_file.read(configuration_file)
         sections = config_file.sections()
         for section in sections:
-            for key in config_file[section]:
+            config_file_section = config_file[section]
+            for key in config_file_section:
+                value = config_file_section[key]
                 if key == 'rawpaths':
                     rawpaths = []
-                    raw = config_file[section][key].split(';')
+                    raw = value.split(';')
                     for r in raw:
                         r = r.strip()
                         if _os.path.isdir(r):
@@ -171,12 +173,12 @@ class FuseProcessor:
                             raise ValueError(f'Invalid input path: {r}')
                     config[key] = rawpaths
                 elif key == 'outpath':
-                    if _os.path.isdir(config_file[section][key]):
-                        config[key] = config_file[section][key]
+                    if _os.path.isdir(value):
+                        config[key] = value
                     else:
-                        raise ValueError(f'Invalid input path: {config_file[section][key]}')
+                        raise ValueError(f'Invalid input path: {value}')
                 else:
-                    config[key] = config_file[section][key]
+                    config[key] = value
 
         if len(config) == 0:
             raise ValueError('Failed to read configuration file.')
@@ -455,7 +457,7 @@ class FuseProcessor:
 
                     try:
                         interpolator = _interp.Interpolator(dataset, sidescan_raster_filenames=support_files)
-                        dataset = interpolator.interpolate(method, float(self._config['to_resolution']))
+                        dataset = interpolator.interpolate(method, float(self._config['to_resolution']), plot=True)
                         meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
                     except _interp.ExtentError as error:

@@ -100,9 +100,9 @@ class Interpolator:
                 raster_nw_corner, raster_resolution, raster_shape)
             elevation_coverage = _coverage_mask(elevation_data, elevation_nodata)
 
-            self.elevation_region = _alpha_hull(
-                _geoarray_to_points(elevation_coverage & sidescan_coverage, raster_nw_corner, raster_resolution,
-                                    False)[::50, 0:2]).simplify(100)
+            # self.elevation_region = _alpha_hull(
+            #     _geoarray_to_points(elevation_coverage & sidescan_coverage, raster_nw_corner, raster_resolution,
+            #                         False)[::50, 0:2]).simplify(100)
 
             # TODO change this from interpolating within the entire region to only interpolating within the intersection between sidescan and elevation coverage (afterwards adding back original elevation outside sidescan)
             self.interpolation_region = _vectorize_geoarray(sidescan_coverage | elevation_coverage, raster_nw_corner,
@@ -180,21 +180,17 @@ class Interpolator:
             interpolated_dataset = self.__invdist_gdal_linear_scipy(output_shape, output_bounds, output_nodata)
         elif method == 'kriging':
             # interpolate using Ordinary Kriging (`pykrige`) by dividing data into smaller chunks
-            chunk_size = (40, 40)
+            chunk_size = (100, 100)
             method = f'{method}_{chunk_size}m'
             interpolated_dataset = self.__kriging_pykrige(output_shape, output_bounds, chunk_size, output_nodata)
         else:
             raise NotImplementedError(f'interpolation method "{method}" is not supported')
 
+        print(f'{method} interpolation took {(datetime.datetime.now() - start_time).total_seconds()} s')
+
         # mask the interpolated data to the interpolation region
         interpolation_mask = self.__get_mask_like(self.interpolation_region, interpolated_dataset)
         interpolated_dataset = _mask_raster(interpolated_dataset, interpolation_mask)
-
-        print(f'{method} interpolation took {(datetime.datetime.now() - start_time).total_seconds()} s')
-
-        if self.is_raster:
-            elevation_mask = self.__get_mask_like(self.elevation_region, interpolated_dataset)
-            interpolated_dataset = _mask_raster(interpolated_dataset, elevation_mask)
 
         if plot:
             self.__plot(interpolated_dataset, method, show=True)
@@ -350,7 +346,8 @@ class Interpolator:
         # pyplot.scatter(self.points[:, 0], self.points[:, 1], c='r', marker='+', s=8)
 
         # interpolate using SciPy griddata
-        output_x, output_y = numpy.meshgrid(numpy.arange(output_shape[1]), numpy.arange(output_shape[0]))
+        output_x, output_y = numpy.meshgrid(output_bounds[0] + numpy.arange(output_shape[1]) * output_resolution[0],
+                                            output_bounds[1] + numpy.arange(output_shape[0]) * output_resolution[1])
         interpolated_data = scipy.interpolate.griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2],
                                                        (output_x, output_y), method='linear', fill_value=output_nodata)
 
@@ -507,8 +504,6 @@ class Interpolator:
                 # determine indices of the lower left and upper right bounds of the chunk within the output grid
                 grid_start_index = chunk_grid_index * chunk_shape
                 grid_end_index = grid_start_index + chunk_shape
-                grid_slice = tuple(slice(grid_start_index[dimension], grid_end_index[dimension]) for dimension in
-                                   range(len(chunk_shape)))
 
                 # expand the interpolation area past the edges of the chunk to make the chunk contextually aware
                 interpolation_sw = input_points_sw + numpy.flip(grid_start_index - expand_indices) * output_resolution
@@ -522,6 +517,8 @@ class Interpolator:
 
                 # only interpolate if there are points
                 if interpolation_points.shape[0] >= 3:
+                    grid_slice = tuple(slice(grid_start_index[dimension], grid_end_index[dimension]) for dimension in
+                                       range(len(chunk_shape)))
                     current_future = concurrency_pool.submit(_krige_points_onto_grid, interpolation_points,
                                                              interpolated_grid_x[grid_slice[1]],
                                                              interpolated_grid_y[grid_slice[0]])
@@ -536,11 +533,7 @@ class Interpolator:
 
             for completed_future in futures.as_completed(running_futures):
                 grid_slice = running_futures[completed_future]
-                try:
-                    chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
-                except Exception as error:
-                    # TODO figure out why this causes an error
-                    print(error)
+                chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
                 interpolated_grid_values[grid_slice] = chunk_interpolated_values
                 interpolated_grid_variance[grid_slice] = chunk_interpolated_variance
 
@@ -1027,13 +1020,10 @@ def _vectorize_geoarray(raster_data: numpy.array, nw_corner: (float, float), res
         Shapely polygon or multipolygon of coverage extent
     """
 
-    raster_mask = numpy.where(_coverage_mask(raster_data, nodata), 1, 0)
-
-    shapes = list(rasterio.features.shapes(raster_mask, transform=_get_affine(nw_corner, resolution)))
-
-    return shapely.geometry.MultiPolygon(
-        polygon for polygon in [shapely.geometry.shape(shape[0]) for shape in shapes if shape[1] == 1] if
-        polygon.is_valid)
+    raster_mask = _coverage_mask(raster_data, nodata)
+    return shapely.geometry.MultiPolygon(shapely.geometry.shape(shape[0]) for shape in
+                                         rasterio.features.shapes(numpy.where(raster_mask, 1, 0), mask=raster_mask,
+                                                                  transform=_get_affine(nw_corner, resolution)))
 
 
 def _vectorize_raster_coverage(raster_filename: str) -> shapely.geometry.MultiPolygon:
@@ -1124,8 +1114,7 @@ def _krige_points_onto_grid(points: numpy.array, grid_x: [float], grid_y: [float
 def _plot_regions(regions: [shapely.geometry.Polygon], colors: [str] = None, axis: pyplot.Axes = None,
                   show: bool = False, **kwargs):
     if axis is None:
-        figure = pyplot.figure()
-        axis = figure.add_subplot(1, 1, 1)
+        axis = pyplot.figure().add_subplot(1, 1, 1)
 
     if colors is None:
         cmap = matplotlib.cm.get_cmap('gist_rainbow')
@@ -1146,8 +1135,7 @@ def _plot_regions(regions: [shapely.geometry.Polygon], colors: [str] = None, axi
 def _plot_bounds(sw_corner: (float, float), ne_corner: (float, float), axis: pyplot.Axes = None, show: bool = False,
                  **kwargs):
     if axis is None:
-        figure = pyplot.figure()
-        axis = figure.add_subplot(1, 1, 1)
+        axis = pyplot.figure().add_subplot(1, 1, 1)
 
     corner_points = numpy.array(
         [sw_corner, (ne_corner[0], sw_corner[1]), ne_corner, (sw_corner[0], ne_corner[1]), sw_corner])

@@ -28,9 +28,9 @@ class TestFuse(unittest.TestCase):
 
     def test_bag(self):
         config_path = os.path.join('data', 'bag.config')
-        survey_name = 'H12525'
+        survey_name = 'H12607'
         file_type = 'bag'
-        input_directory = os.path.join(INPUT_ROOT, 'H12525 - The first and easiest')
+        input_directory = os.path.join(INPUT_ROOT, 'H12607 - smol')
         bag_filenames = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if '.bag' in name]
         output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
 
