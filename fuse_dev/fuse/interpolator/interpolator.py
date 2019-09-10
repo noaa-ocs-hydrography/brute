@@ -485,7 +485,7 @@ class Interpolator:
         output_resolution = (output_bounds[2:4] - output_bounds[0:2]) / numpy.flip(output_shape)
 
         chunk_shape = numpy.array(numpy.round(chunk_size / output_resolution), numpy.int)
-        expand_indices = numpy.round(chunk_shape / 2).astype(numpy.int)
+        expand_indices = numpy.round(chunk_shape).astype(numpy.int)
 
         input_points_sw = numpy.array(self.input_bounds[:2])
 
