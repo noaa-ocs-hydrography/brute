@@ -80,10 +80,10 @@ class Interpolator:
             raster_nw_corner = numpy.array((raster_geotransform[0], raster_geotransform[3]))
             raster_resolution = numpy.array((raster_geotransform[1], raster_geotransform[5]))
 
-            self.input_bounds = numpy.array([raster_geotransform[0],
-                                             raster_geotransform[3] - raster_shape[0] + abs(raster_geotransform[5]),
-                                             raster_geotransform[0] + raster_shape[1] + raster_geotransform[1],
-                                             raster_geotransform[3]])
+            self.input_bounds = numpy.array([raster_nw_corner[0],
+                                             raster_nw_corner[0] + raster_shape[1] + raster_resolution[0],
+                                             raster_nw_corner[1] - raster_shape[0] + abs(raster_resolution[1]),
+                                             raster_nw_corner[1]])
 
             if self.default_nodata is None:
                 self.default_nodata = elevation_nodata
