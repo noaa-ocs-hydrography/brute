@@ -25,13 +25,32 @@ class TestFuse(unittest.TestCase):
 
         assert os.path.exists(output_path)
 
-    def test_bag(self):
-        config_path = os.path.join('data', 'bag.config')
+    def test_small_bag(self):
+        config_path = os.path.join('data', 'small_bag.config')
         survey_name = 'H12607'
         file_type = 'bag'
         input_directory = os.path.join(INPUT_ROOT, 'H12607 - smol')
         bag_filenames = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if '.bag' in name]
         output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
+
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
+        cenan_fuse_processor = FuseProcessor(config_path)
+        for bag_filename in bag_filenames:
+            if 'INTERP' not in bag_filename:
+                cenan_fuse_processor.read(bag_filename)
+                cenan_fuse_processor.process(bag_filename)
+
+        assert os.path.exists(output_path)
+
+    def test_bag(self):
+        config_path = os.path.join('data', 'bag.config')
+        survey_name = 'H12525'
+        file_type = 'bag'
+        input_directory = os.path.join(INPUT_ROOT, 'H12525 - The first and easiest')
+        bag_filenames = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if '.bag' in name]
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_4m_interp.{file_type}')
 
         if os.path.exists(output_path):
             os.remove(output_path)

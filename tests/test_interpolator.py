@@ -64,6 +64,38 @@ class TestRasterInterpolator(unittest.TestCase):
         assert coverage_dataset.bounds == bag_dataset.bounds
         assert coverage_dataset.shape == bag_dataset.shape
 
+    def test_linear(self):
+        config_path = os.path.join('data', 'cenan_linear.config')
+        file_type = 'bag'
+        survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
+        input_path = os.path.join(INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
+
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
+        cenan_fuse_processor = FuseProcessor(config_path)
+        cenan_fuse_processor.read(input_path)
+        cenan_fuse_processor.process(input_path)
+
+        assert os.path.exists(output_path)
+
+    def test_kriging(self):
+        config_path = os.path.join('data', 'cenan_kriging.config')
+        file_type = 'bag'
+        survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
+        input_path = os.path.join(INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
+
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
+        cenan_fuse_processor = FuseProcessor(config_path)
+        cenan_fuse_processor.read(input_path)
+        cenan_fuse_processor.process(input_path)
+
+        assert os.path.exists(output_path)
+
 
 if __name__ == '__main__':
     unittest.main()
