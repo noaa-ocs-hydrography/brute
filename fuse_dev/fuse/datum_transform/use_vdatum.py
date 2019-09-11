@@ -80,7 +80,7 @@ class VDatum:
 
         self._logger = _logging.getLogger('fuse')
 
-    def translate(self, filename: str, instructions: dict) -> gdal.Dataset:
+    def translate(self, filename: str, instructions: dict, reader: str) -> gdal.Dataset:
         """
         Translate the provided filename from the provided in datums to the out
         datums and return a gdal object.
@@ -101,11 +101,15 @@ class VDatum:
 
         self._logger.log(_logging.DEBUG, 'Begin datum transformation')
         if not _has_required_instructions(instructions):
+            instructions['interpolate'] = 'False'
             raise ValueError('The required fields for transforming datums are not available')
-        points, utm_zone = self.__translate_xyz(filename, instructions)
-        vertical_datum = instructions['to_vert_key'].upper()
-        # passing UTM zone instead of EPSG code
-        dataset = self.__xyz2gdal(points, utm_zone, vertical_datum)
+        if reader.upper() == 'BAG':
+            dataset, utm_zone = self.__translate_bag(filename, instructions)
+        else:
+            points, utm_zone = self.__translate_xyz(filename, instructions)
+            vertical_datum = instructions['to_vert_key'].upper()
+            # passing UTM zone instead of EPSG code
+            dataset = self.__xyz2gdal(points, utm_zone, vertical_datum)
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
         return dataset
 
@@ -128,7 +132,7 @@ class VDatum:
         if instructions['read_type'] == 'ehydro':
             return self.__read_points(filename, instructions)
         elif instructions['read_type'] == 'bag':
-            return self.__read_bag_bathy(filename, instructions)
+            return self.read_batheymetry(filename, instructions)
         else:
             raise ValueError('Reader type not implemented')
 
@@ -173,7 +177,7 @@ class VDatum:
             GDAL point cloud dataset
         """
 
-        return self._reader.read_bathy_data(filename, instructions['to_vert_key'])
+        return self._reader.read_batheymetry(filename, instructions['to_vert_key'])
 
     def __translate_xyz(self, filename: str, instructions: dict) -> (_np.array, int):
         """
@@ -201,7 +205,7 @@ class VDatum:
         # save point array to file
         _np.savetxt(output_filename, points, delimiter=',')
         # translate points with VDatum
-        self.__setup_vdatum(instructions)
+        self.__setup_vdatum(instructions, 'points')
         self.__convert_file(output_filename, reprojected_directory.name)
         if 'to_horiz_key' in instructions:
             utm_zone = int(instructions['to_horiz_key'])
@@ -217,7 +221,51 @@ class VDatum:
                     raise ValueError(f'no UTM zone found in file "{filename}"')
         return _np.loadtxt(reprojected_filename, delimiter=','), utm_zone
 
-    def __setup_vdatum(self, instructions: dict):
+    def __translate_bag(self, filename: str, instructions: dict) -> (gdal.Dataset, int):
+        """
+        Reproject BAG bathy from the given filename.
+
+        Parameters
+        ----------
+        filename
+            filename of the BAG
+        instructions
+            dictionary of metadata
+
+        Returns
+        -------
+            array of XYZ points and UTM zone
+        """
+
+        # create a gdal.Dataset and assign a temp file name for VDatum to read
+        dataset = self._reader.read_batheymetry(filename)
+        original_directory = tempdir()
+        output_filename = _os.path.join(original_directory.name, 'outfile.tif')
+        reprojected_directory = tempdir()
+        reprojected_filename = _os.path.join(reprojected_directory.name, 'outfile.tif')
+        log_filename = _os.path.join(reprojected_directory.name, 'outfile.tif.log')
+        # save dataset to file
+        driver = gdal.GetDriverByName('GTiff')
+        driver.CreateCopy(output_filename, dataset)
+        del driver
+        # translate points with VDatum
+        self.__setup_vdatum(instructions, 'geotiff')
+        self.__convert_file(output_filename, reprojected_directory.name)
+        if 'to_horiz_key' in instructions:
+            utm_zone = int(instructions['to_horiz_key'])
+        else:
+            # read out UTM Zone from VDatum log file
+            with open(log_filename, 'r') as logfile:
+                for line in logfile.readlines():
+                    if line.startswith('Zone:'):
+                        # input_zone = line[27:53].strip()
+                        utm_zone = int(line[54:82].strip())
+                        break
+                else:
+                    raise ValueError(f'no UTM zone found in file "{filename}"')
+        return gdal.Open(reprojected_filename), utm_zone
+
+    def __setup_vdatum(self, instructions: dict, mode: str = 'points'):
         """
         Setup the VDatum command line arguments to convert points.
 
@@ -239,13 +287,15 @@ class VDatum:
         local_to_hdatum = to_hdatum.copy()
         if 'to_horiz_key' in instructions:
             local_to_hdatum.append('to_horiz_key')
-
         self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
                       f'ihorz:{":".join(instructions[key] for key in from_hdatum)} ' + \
                       f'ivert:{":".join(instructions[key] for key in from_vdatum)} ' + \
                       f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
-                      f'overt:{":".join(instructions[key] for key in to_vdatum)} ' + \
-                      f'-file:txt:comma,0,1,2,skip0:'
+                      f'overt:{":".join(instructions[key] for key in to_vdatum)} '
+        if mode == 'points':
+            self._shell += f'-file:txt:comma,0,1,2,skip0:'
+        elif mode == 'geotiff':
+            self._shell += f'-file:geotiff:geotiff:'
 
     def __convert_file(self, filename: str, output_directory: str):
         """
