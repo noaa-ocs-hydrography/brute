@@ -132,7 +132,7 @@ class VDatum:
         if instructions['read_type'] == 'ehydro':
             return self.__read_points(filename, instructions)
         elif instructions['read_type'] == 'bag':
-            return self.read_batheymetry(filename, instructions)
+            return self.read_bathymetry(filename, instructions)
         else:
             raise ValueError('Reader type not implemented')
 
@@ -177,7 +177,7 @@ class VDatum:
             GDAL point cloud dataset
         """
 
-        return self._reader.read_batheymetry(filename, instructions['to_vert_key'])
+        return self._reader.read_bathymetry(filename, instructions['to_vert_key'])
 
     def __translate_xyz(self, filename: str, instructions: dict) -> (_np.array, int):
         """
@@ -238,7 +238,7 @@ class VDatum:
         """
 
         # create a gdal.Dataset and assign a temp file name for VDatum to read
-        dataset = self._reader.read_batheymetry(filename)
+        dataset = self._reader.read_bathymetry(filename)
         original_directory = tempdir()
         output_filename = _os.path.join(original_directory.name, 'outfile.tif')
         reprojected_directory = tempdir()

@@ -153,7 +153,7 @@ class BAGRawReader:
             print(error)
             return {}
 
-    def read_bathy_data(self, infilename: str, out_verdat: str) -> _gdal.Dataset:
+    def read_bathymetry(self, infilename: str, out_verdat: str) -> _gdal.Dataset:
         """
         Returns a BagFile data object
 
