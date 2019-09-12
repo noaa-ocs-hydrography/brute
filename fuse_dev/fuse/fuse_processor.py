@@ -578,6 +578,7 @@ class FuseProcessor:
 
     def _close_log(self):
         """ Close the object logging file. """
+
         # remove handlers
         for handler in self.logger.handlers:
             self.logger.removeHandler(handler)
