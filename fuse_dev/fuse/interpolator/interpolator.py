@@ -1158,7 +1158,3 @@ def _plot_raster(raster: gdal.Dataset, band_index: int = 1, axis: pyplot.Axes = 
 
     if show:
         pyplot.show()
-
-
-class ExtentError(Exception):
-    pass
