@@ -35,7 +35,7 @@ class TestFuse(unittest.TestCase):
         assert os.path.exists(output_path)
 
     def test_output_csar(self):
-        survey_name = 'LA_01_LBC_20151118'
+        survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
 
         interpolation_method = 'linear'
         output_file_extension = 'csar'

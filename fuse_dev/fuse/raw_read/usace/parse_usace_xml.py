@@ -929,7 +929,7 @@ def parse_namespace(meta_str):
             if v[0] == ':':
                 tmp = v[1:]
                 tmp = tmp.split('>')[0]
-                name, info = tmp.split('=')
+                name, info = tmp.split('=', 1)
                 site = info.split('"')[1]
                 namespace[name] = site
         else:  # this handles most cases

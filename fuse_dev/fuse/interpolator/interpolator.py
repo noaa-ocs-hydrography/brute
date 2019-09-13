@@ -12,7 +12,6 @@ An abstraction for data interpolation.
 from concurrent import futures
 from datetime import datetime
 from re import match
-from typing import Union
 
 import fiona
 import numpy
@@ -77,7 +76,7 @@ class Interpolator:
 
             raster_shape = dataset.RasterYSize, dataset.RasterXSize
             raster_geotransform = dataset.GetGeoTransform()
-            raster_nw_corner = numpy.array((raster_geotransform[0], raster_geotransform[3]))
+            raster_origin = numpy.array((raster_geotransform[0], raster_geotransform[3]))
             raster_resolution = numpy.array((raster_geotransform[1], raster_geotransform[5]))
 
             self.input_bounds = _raster_bounds(self.dataset)
@@ -89,7 +88,7 @@ class Interpolator:
 
             sidescan_coverage = _combined_coverage_within_window([raster_filename for raster_filename in sidescan_raster_filenames if
                                                                   '.tif' in raster_filename or '.gpkg' in raster_filename],
-                                                                 raster_nw_corner, raster_resolution, raster_shape)
+                                                                 raster_origin, raster_resolution, raster_shape)
             elevation_coverage = _coverage_mask(elevation_data, elevation_nodata)
 
             # # TODO implement edge-only for linear interpolation
@@ -101,18 +100,18 @@ class Interpolator:
             # self.raster_edge_points = _geoarray_to_points(numpy.where((vdiff == 1) | numpy.roll(vdiff == -1, -1, axis=0) |
             #                                                           (hdiff == 1) | numpy.roll(hdiff == -1, -1, axis=1),
             #                                                           elevation_data, elevation_nodata),
-            #                                               raster_nw_corner, raster_resolution, elevation_nodata)
+            #                                               raster_origin, raster_resolution, elevation_nodata)
 
             # TODO figure out how to make this commented section (alpha hull) faster
-            # sidescan_region = _vectorize_geoarray(sidescan_coverage, raster_nw_corner, raster_resolution, False)
-            # elevation_region = _vectorize_geoarray(elevation_coverage, raster_nw_corner, raster_resolution, False)
+            # sidescan_region = _vectorize_geoarray(sidescan_coverage, raster_origin, raster_resolution, False)
+            # elevation_region = _vectorize_geoarray(elevation_coverage, raster_origin, raster_resolution, False)
             # edge_points = numpy.stack([numpy.array(*polygon.exterior.xy) for polygon in elevation_region], axis=0)
             # elevation_region = _alpha_hull(edge_points)
             # self.interpolation_region = elevation_region.intersection(sidescan_region)
 
-            self.interpolation_region = _vectorize_geoarray(sidescan_coverage | elevation_coverage, raster_nw_corner, raster_resolution,
+            self.interpolation_region = _vectorize_geoarray(sidescan_coverage | elevation_coverage, raster_origin, raster_resolution,
                                                             False)
-            self.points = _geoarray_to_points(numpy.where(sidescan_coverage, elevation_data, elevation_nodata), raster_nw_corner,
+            self.points = _geoarray_to_points(numpy.where(sidescan_coverage, elevation_data, elevation_nodata), raster_origin,
                                               raster_resolution, elevation_nodata)
         else:
             if self.default_nodata is None:
@@ -178,7 +177,7 @@ class Interpolator:
             interpolated_dataset = self.__invdist_gdal_linear_scipy(output_shape, output_bounds, output_nodata)
         elif method == 'kriging':
             # interpolate using Ordinary Kriging (`pykrige`) by dividing data into smaller chunks
-            chunk_size = (40, 40)
+            chunk_size = (20, 20)
             method = f'{method}_{chunk_size}m'
             interpolated_dataset = self.__kriging_pykrige(output_shape, output_bounds, chunk_size, output_nodata)
         else:
@@ -195,7 +194,7 @@ class Interpolator:
 
         return interpolated_dataset
 
-    def __get_mask(self, mask_polygon: Polygon, shape: (float, float), resolution: (float, float), nw_corner: (float, float), nodata: float,
+    def __get_mask(self, mask_polygon: Polygon, shape: (float, float), resolution: (float, float), origin: (float, float), nodata: float,
                    crs_wkt: str = None) -> gdal.Dataset:
         """
         Get a mask of the survey area with the given raster properties.
@@ -208,7 +207,7 @@ class Interpolator:
             shape of mask
         resolution
             cell size of mask
-        nw_corner
+        origin
             northwest corner
         crs_wkt
             spatial reference of mask
@@ -220,8 +219,8 @@ class Interpolator:
             GDAL raster dataset
         """
 
-        if type(nw_corner) is not numpy.array:
-            nw_corner = numpy.array(nw_corner)
+        if type(origin) is not numpy.array:
+            origin = numpy.array(origin)
 
         if crs_wkt is None or crs_wkt == '':
             crs_wkt = self.crs_wkt
@@ -231,7 +230,7 @@ class Interpolator:
 
         with MemoryFile() as rasterio_memory_file:
             with rasterio_memory_file.open(driver='GTiff', width=shape[1], height=shape[0], count=1, crs=CRS.from_wkt(crs_wkt),
-                                           transform=_get_affine(nw_corner, resolution), dtype=rasterio.float64,
+                                           transform=_get_affine(origin, resolution), dtype=rasterio.float64,
                                            nodata=numpy.array([nodata]).astype(rasterio.float64).item()) as memory_raster:
                 memory_raster.write(numpy.full(shape, 1, dtype=rasterio.float64), 1)
 
@@ -271,7 +270,7 @@ class Interpolator:
         geotransform = like_raster.GetGeoTransform()
         raster_band = like_raster.GetRasterBand(band_index)
         return self.__get_mask(mask_polygon=mask_region, shape=(like_raster.RasterYSize, like_raster.RasterXSize),
-                               resolution=(geotransform[1], geotransform[5]), nw_corner=(geotransform[0], geotransform[3]),
+                               resolution=(geotransform[1], geotransform[5]), origin=(geotransform[0], geotransform[3]),
                                nodata=raster_band.GetNoDataValue(), crs_wkt=_gdal_crs_wkt(like_raster))
 
     def __linear_gdal(self, output_shape: (int, int), output_bounds: (float, float, float, float),
@@ -341,11 +340,11 @@ class Interpolator:
 
         output_raster = gdal.GetDriverByName('MEM').Create('', int(interpolated_data.shape[1]), int(interpolated_data.shape[0]), 1,
                                                            gdal.GDT_Float32)
-        output_raster.SetGeoTransform((output_bounds[0], output_resolution[0], 0.0, output_bounds[3], 0.0, -output_resolution[1]))
+        output_raster.SetGeoTransform((output_bounds[0], output_resolution[0], 0.0, output_bounds[1], 0.0, output_resolution[1]))
         output_raster.SetProjection(self.crs_wkt)
         band_1 = output_raster.GetRasterBand(1)
         band_1.SetNoDataValue(output_nodata)
-        band_1.WriteArray(numpy.flip(interpolated_data, axis=0))
+        band_1.WriteArray(interpolated_data)
         del band_1
         return output_raster
 
@@ -464,12 +463,12 @@ class Interpolator:
         if output_nodata is None:
             output_nodata = self.default_nodata
 
-        assert not numpy.any(chunk_size < numpy.array((40, 20))), 'a small chunk size may freeze your computer'
+        assert not numpy.any(chunk_size < numpy.array((20, 20))), 'a small chunk size may freeze your computer'
 
         output_resolution = (output_bounds[2:] - output_bounds[:2]) / numpy.flip(output_shape)
 
         chunk_shape = numpy.array(numpy.round(chunk_size / output_resolution), numpy.int)
-        expand_indices = numpy.round(chunk_shape).astype(numpy.int)
+        expand_indices = numpy.round(chunk_shape * 2).astype(numpy.int)
 
         input_points_sw = numpy.array(self.input_bounds[:2])
 
@@ -538,14 +537,13 @@ class Interpolator:
         del band_1, band_2
         return output_raster
 
-    def __plot(self, output_data: Union[numpy.array, gdal.Dataset], interpolation_method: str, nodata: float = None, band_index: int = 1,
-               show: bool = False):
+    def __plot(self, raster: gdal.Dataset, interpolation_method: str, nodata: float = None, band_index: int = 1, show: bool = False):
         """
         Plot preinterpolated points and an interpolated raster side-by-side on synchronized subplots.
 
         Parameters
         ----------
-        output_data
+        raster
             array (or GDAL raster) of interpolated data
         interpolation_method
             method of interpolation
@@ -555,27 +553,20 @@ class Interpolator:
             raster band (1-indexed)
         """
 
-        # if the input raster is a GDAL raster dataset, extract the data from the first band
-        if type(output_data) is gdal.Dataset:
-            interpolated_bounds = _raster_bounds(output_data)
-            interpolated_band = output_data.GetRasterBand(band_index)
-            default_nodata = interpolated_band.GetNoDataValue()
-            output_data = interpolated_band.ReadAsArray()
-        else:
-            interpolated_bounds = self.input_bounds
-            default_nodata = self.default_nodata
+        raster_band = raster.GetRasterBand(band_index)
 
         if nodata is None:
-            nodata = default_nodata
+            nodata = raster_band.GetNoDataValue()
+
+        raster_data = raster_band.ReadAsArray()
+        input_data = self.dataset.GetRasterBand(band_index).ReadAsArray() if self.is_raster else self.points[:, 2]
 
         # replace `nodata` values with NaN
-        output_data[output_data == nodata] = numpy.nan
-
-        original_data = self.dataset.GetRasterBand(band_index).ReadAsArray() if self.is_raster else self.points[:, 2]
-        original_data[original_data == nodata] = numpy.nan
+        input_data[input_data == nodata] = numpy.nan
+        raster_data[raster_data == nodata] = numpy.nan
 
         # get minimum and maximum values for all three dimensions
-        z_values = numpy.concatenate((numpy.ravel(output_data), numpy.ravel(original_data)))
+        z_values = numpy.concatenate((numpy.ravel(raster_data), numpy.ravel(input_data)))
         min_z = numpy.nanmin(z_values)
         max_z = numpy.nanmax(z_values)
 
@@ -588,11 +579,11 @@ class Interpolator:
 
         # plot data
         if self.is_raster:
-            input_data_axis.imshow(original_data, extent=_raster_bounds(self.dataset)[[0, 2, 1, 3]], aspect='auto', vmin=min_z, vmax=max_z)
+            _plot_raster(self.dataset, self.index, input_data_axis, vmin=min_z, vmax=max_z)
         else:
             input_data_axis.scatter(self.points[:, 0], self.points[:, 1], c=self.points[:, 2], s=1, vmin=min_z, vmax=max_z)
 
-        output_data_axis.imshow(output_data, extent=interpolated_bounds[[0, 2, 1, 3]], aspect='auto', vmin=min_z, vmax=max_z)
+        _plot_raster(raster, band_index, output_data_axis, vmin=min_z, vmax=max_z)
 
         # create colorbar
         figure.colorbar(ScalarMappable(norm=Normalize(vmin=min_z, vmax=max_z)), ax=(output_data_axis, input_data_axis))
@@ -659,12 +650,11 @@ def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> 
         if nodata is None:
             nodata = raster_band.GetNoDataValue()
 
-        return _geoarray_to_points(raster_band.ReadAsArray(), nw_corner=(geotransform[0], geotransform[3]),
+        return _geoarray_to_points(raster_band.ReadAsArray(), origin=(geotransform[0], geotransform[3]),
                                    resolution=(geotransform[1], geotransform[5]), nodata=nodata)
 
 
-def _geoarray_to_points(grid: numpy.array, nw_corner: (float, float), resolution: (float, float),
-                        nodata: float = None) -> numpy.array:
+def _geoarray_to_points(grid: numpy.array, origin: (float, float), resolution: (float, float), nodata: float = None) -> numpy.array:
     """
     Extract XYZ points from an array of data using the given geographic reference.
 
@@ -672,7 +662,7 @@ def _geoarray_to_points(grid: numpy.array, nw_corner: (float, float), resolution
     ----------
     grid
         array of gridded data
-    nw_corner
+    origin
         X, Y coordinates of northwest corner
     resolution
         cell size
@@ -684,8 +674,8 @@ def _geoarray_to_points(grid: numpy.array, nw_corner: (float, float), resolution
         N x 3 array of XYZ points
     """
 
-    x_values, y_values = numpy.meshgrid(numpy.linspace(nw_corner[0], nw_corner[0] + resolution[0] * grid.shape[1], grid.shape[1]),
-                                        numpy.linspace(nw_corner[1], nw_corner[1] + resolution[1] * grid.shape[0], grid.shape[0]))
+    x_values, y_values = numpy.meshgrid(numpy.linspace(origin[0], origin[0] + resolution[0] * grid.shape[1], grid.shape[1]),
+                                        numpy.linspace(origin[1], origin[1] + resolution[1] * grid.shape[0], grid.shape[0]))
 
     if nodata is not None:
         x_values = x_values[grid != nodata]
@@ -854,7 +844,7 @@ def _gdal_crs_wkt(dataset: gdal.Dataset, layer_index: int = 0) -> str:
     return crs_wkt
 
 
-def _combined_coverage_within_window(coverage_raster_filenames: [str], output_nw_corner: (float, float), output_resolution: (float, float),
+def _combined_coverage_within_window(coverage_raster_filenames: [str], output_origin: (float, float), output_resolution: (float, float),
                                      output_shape: (int, int)) -> numpy.array:
     """
     Return a boolean mask of the given rasters where data exists within the given window.
@@ -863,7 +853,7 @@ def _combined_coverage_within_window(coverage_raster_filenames: [str], output_nw
     ----------
     coverage_raster_filenames
         list of filenames of coverage rasters
-    output_nw_corner
+    output_origin
         XY coordinates of northwest corner of output mask
     output_resolution
         XY resolution of output mask
@@ -875,10 +865,10 @@ def _combined_coverage_within_window(coverage_raster_filenames: [str], output_nw
         boolean array indicating where data exists
     """
 
-    if type(output_nw_corner) is not numpy.array:
-        output_nw_corner = numpy.array(output_nw_corner)
+    if type(output_origin) is not numpy.array:
+        output_origin = numpy.array(output_origin)
 
-    output_se_corner = output_nw_corner + (output_resolution * numpy.flip(output_shape))
+    output_se_corner = output_origin + (output_resolution * numpy.flip(output_shape))
 
     if type(output_resolution) is not numpy.array:
         output_resolution = numpy.array(output_resolution)
@@ -895,12 +885,12 @@ def _combined_coverage_within_window(coverage_raster_filenames: [str], output_nw
 
         coverage_resolution = numpy.array((coverage_transform.a, coverage_transform.e))
 
-        coverage_nw_corner = coverage_transform.c, coverage_transform.f
-        coverage_se_corner = coverage_nw_corner + (coverage_resolution * numpy.flip(coverage_shape))
+        coverage_origin = coverage_transform.c, coverage_transform.f
+        coverage_se_corner = coverage_origin + (coverage_resolution * numpy.flip(coverage_shape))
 
         # ensure the coverage array intersects the given window
-        if not (output_nw_corner[0] > coverage_se_corner[0] or output_se_corner[0] < coverage_nw_corner[0] or
-                output_se_corner[1] > coverage_nw_corner[1] or output_nw_corner[1] < coverage_se_corner[1]):
+        if not (output_origin[0] > coverage_se_corner[0] or output_se_corner[0] < coverage_origin[0] or
+                output_se_corner[1] > coverage_origin[1] or output_origin[1] < coverage_se_corner[1]):
             with rasterio.open(coverage_raster_filename) as coverage_raster:
                 coverage_data = coverage_raster.read()
 
@@ -914,8 +904,8 @@ def _combined_coverage_within_window(coverage_raster_filenames: [str], output_nw
             # clip resampled coverage data to the bounds of the BAG
             output_array = numpy.full(output_shape, 0)
 
-            nw_index_delta = numpy.round((output_nw_corner - coverage_nw_corner) / output_resolution).astype(int)
-            se_index_delta = numpy.round((output_se_corner - coverage_nw_corner) / output_resolution).astype(int)
+            nw_index_delta = numpy.round((output_origin - coverage_origin) / output_resolution).astype(int)
+            se_index_delta = numpy.round((output_se_corner - coverage_origin) / output_resolution).astype(int)
 
             # indices to be written onto the output array
             output_array_index_slices = [slice(0, None), slice(0, None)]
@@ -982,7 +972,7 @@ def _coverage_mask(raster_data: numpy.array, nodata: float = None):
     return raster_mask
 
 
-def _vectorize_geoarray(raster_data: numpy.array, nw_corner: (float, float), resolution: (float, float),
+def _vectorize_geoarray(raster_data: numpy.array, origin: (float, float), resolution: (float, float),
                         nodata: float = None) -> MultiPolygon:
     """
     Vectorize the extent of the given raster where data exists.
@@ -992,7 +982,7 @@ def _vectorize_geoarray(raster_data: numpy.array, nw_corner: (float, float), res
 
     raster_data
         array of gridded data
-    nw_corner
+    origin
         XY coordinates of the northwest corner
     resolution
         XY cell size
@@ -1006,7 +996,7 @@ def _vectorize_geoarray(raster_data: numpy.array, nw_corner: (float, float), res
 
     raster_mask = _coverage_mask(raster_data, nodata)
     return MultiPolygon(shapely_shape(shape[0]) for shape in
-                        rasterio_shapes(numpy.where(raster_mask, 1, 0), mask=raster_mask, transform=_get_affine(nw_corner, resolution)))
+                        rasterio_shapes(numpy.where(raster_mask, 1, 0), mask=raster_mask, transform=_get_affine(origin, resolution)))
 
 
 def _vectorize_raster_coverage(raster_filename: str) -> MultiPolygon:
@@ -1029,10 +1019,10 @@ def _vectorize_raster_coverage(raster_filename: str) -> MultiPolygon:
         raster_data = raster.read()
         raster_transform = raster.transform
 
-    nw_corner = raster_transform.c, raster_transform.f
+    origin = raster_transform.c, raster_transform.f
     resolution = raster_transform.a, raster_transform.e
 
-    return _vectorize_geoarray(raster_data, nw_corner, resolution)
+    return _vectorize_geoarray(raster_data, origin, resolution)
 
 
 def _write_region(output_filename: str, region: MultiPolygon, crs_wkt: str):
@@ -1047,13 +1037,13 @@ def _write_region(output_filename: str, region: MultiPolygon, crs_wkt: str):
             {'geometry': {'type': geometry_type, 'coordinates': coordinates}, 'properties': {'name': 'elevation data'}})
 
 
-def _get_affine(nw_corner: (float, float), resolution: (float, float)) -> Affine:
+def _get_affine(origin: (float, float), resolution: (float, float)) -> Affine:
     """
     Calculate affine transformation from the given geographic parameters.
 
     Parameters
     ----------
-    nw_corner
+    origin
         XY coordinates of the northwest corner
     resolution
         XY cell size
@@ -1066,7 +1056,7 @@ def _get_affine(nw_corner: (float, float), resolution: (float, float)) -> Affine
     if type(resolution) is float:
         resolution = tuple(resolution)
 
-    return Affine.translation(nw_corner[0], nw_corner[1]) * Affine.scale(resolution[0], resolution[-1])
+    return Affine.translation(*origin) * Affine.scale(*resolution)
 
 
 def _krige_points_onto_grid(points: numpy.array, grid_x: [float], grid_y: [float]) -> (numpy.array, numpy.array):
@@ -1105,13 +1095,18 @@ def _raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
         min X, min Y, max X, max Y
     """
 
-    raster_shape = raster.RasterYSize, raster.RasterXSize
-    raster_geotransform = raster.GetGeoTransform()
-    raster_nw_corner = numpy.array((raster_geotransform[0], raster_geotransform[3]))
-    raster_resolution = numpy.array((raster_geotransform[1], raster_geotransform[5]))
+    geotransform = raster.GetGeoTransform()
+    origin = numpy.array((geotransform[0], geotransform[3]))
+    resolution = numpy.array((geotransform[1], geotransform[5]))
 
-    return numpy.array([raster_nw_corner[0], raster_nw_corner[1] - raster_shape[0] * abs(raster_resolution[1]),
-                        raster_nw_corner[0] + raster_shape[1] * raster_resolution[0], raster_nw_corner[1]])
+    opposite_origin = origin + numpy.flip((raster.RasterYSize, raster.RasterXSize)) * resolution
+
+    west = origin[0] if resolution[0] > 0 else opposite_origin[0]
+    south = origin[1] if resolution[1] > 0 else opposite_origin[1]
+    east = opposite_origin[0] if resolution[0] > 0 else origin[0]
+    north = opposite_origin[1] if resolution[1] > 0 else origin[1]
+
+    return numpy.array((west, south, east, north))
 
 
 def _plot_regions(regions: [Polygon], colors: [str] = None, axis: pyplot.Axes = None, show: bool = False, **kwargs):
@@ -1153,7 +1148,8 @@ def _plot_raster(raster: gdal.Dataset, band_index: int = 1, axis: pyplot.Axes = 
     raster_data = numpy.flip(raster_band.ReadAsArray(), axis=0)
     raster_data[raster_data == raster_band.GetNoDataValue()] = numpy.nan
 
-    axis.imshow(raster_data, extent=_raster_bounds(raster)[[0, 2, 1, 3]], **kwargs)
+    raster_extent = _raster_bounds(raster)[[0, 2, 1, 3]]
+    axis.imshow(raster_data, extent=raster_extent, aspect='auto', **kwargs)
 
     if show:
         pyplot.show()
