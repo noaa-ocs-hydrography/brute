@@ -460,7 +460,7 @@ class FuseProcessor:
                         dataset = interpolator.interpolate(method, float(self._config['to_resolution']))
                         meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
-                    except Exception as error:
+                    except (ValueError, RuntimeError, IndexError) as error:
                         print(error)
                         meta_interp['interpolated'] = False
 

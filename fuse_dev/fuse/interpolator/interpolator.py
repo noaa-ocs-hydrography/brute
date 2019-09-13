@@ -122,7 +122,7 @@ class Interpolator:
             points_2d = self.points[:, :2]
 
             # get the bounds (min X, min Y, max X, max Y)
-            self.input_bounds = numpy.concatenate(numpy.min(points_2d, axis=0), numpy.max(points_2d, axis=0))
+            self.input_bounds = numpy.concatenate((numpy.min(points_2d, axis=0), numpy.max(points_2d, axis=0)))
 
             # set the size of the interpolation window size to be the minimum of all nearest neighbor distances
             self.window_size = window_scalar * numpy.max(cKDTree(points_2d).query(points_2d, k=2)[0][:, 1])
@@ -1119,8 +1119,7 @@ def _plot_regions(regions: [Polygon], colors: [str] = None, axis: pyplot.Axes = 
         axis = pyplot.gca()
 
     if colors is None:
-        cmap = get_cmap('gist_rainbow')
-        colors = [cmap(color_index / len(regions)) for color_index in range(len(regions))]
+        colors = [get_cmap('gist_rainbow')(color_index / len(regions)) for color_index in range(len(regions))]
 
     for color_index, geometry in enumerate(regions):
         color = colors[color_index]
