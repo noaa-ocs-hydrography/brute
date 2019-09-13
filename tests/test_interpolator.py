@@ -5,6 +5,8 @@ from fuse.fuse_processor import FuseProcessor
 
 TESTING_DIRECTORY = r'\\OCS-VS-NBS02\data\testing'
 INPUT_ROOT = os.path.join(TESTING_DIRECTORY, 'raw')
+NOAA_INPUT_ROOT = os.path.join(INPUT_ROOT, 'NOAA')
+USACE_INPUT_ROOT = os.path.join(INPUT_ROOT, 'USACE')
 OUTPUT_ROOT = os.path.join(TESTING_DIRECTORY, 'output')
 
 USACE_CONFIG_ROOT = os.path.join('data', 'USACE')
@@ -15,11 +17,12 @@ class TestPointInterpolator(unittest.TestCase):
     def test_linear(self):
         survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
 
-        file_type = 'bag'
-        config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_linear.config')
+        interpolation_method = 'linear'
+        output_file_extension = 'bag'
 
-        input_path = os.path.join(INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
+        config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
+        input_path = os.path.join(USACE_INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
 
         if os.path.exists(output_path):
             os.remove(output_path)
@@ -33,11 +36,12 @@ class TestPointInterpolator(unittest.TestCase):
     def test_kriging(self):
         survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
 
-        file_type = 'bag'
-        config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_kriging.config')
+        interpolation_method = 'kriging'
+        output_file_extension = 'bag'
 
-        input_path = os.path.join(INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
+        config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
+        input_path = os.path.join(USACE_INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
 
         if os.path.exists(output_path):
             os.remove(output_path)
@@ -53,12 +57,13 @@ class TestRasterInterpolator(unittest.TestCase):
     def test_linear(self):
         survey_name = 'H12607'
 
-        file_type = 'bag'
-        config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}.config')
+        interpolation_method = 'linear'
+        output_file_extension = 'bag'
 
-        input_directory = os.path.join(INPUT_ROOT, survey_name)
+        config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
+        input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
         bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if '.bag' in name]
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
 
         if os.path.exists(output_path):
             os.remove(output_path)
@@ -74,12 +79,13 @@ class TestRasterInterpolator(unittest.TestCase):
     def test_kriging(self):
         survey_name = 'H12607'
 
-        file_type = 'bag'
-        config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_kriging.config')
+        interpolation_method = 'kriging'
+        output_file_extension = 'bag'
 
-        input_directory = os.path.join(INPUT_ROOT, survey_name)
+        config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
+        input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
         bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if '.bag' in name]
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{file_type}')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
 
         if os.path.exists(output_path):
             os.remove(output_path)
