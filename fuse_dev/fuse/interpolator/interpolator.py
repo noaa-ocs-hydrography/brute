@@ -8,7 +8,6 @@ Created on Mon Feb 11 12:55:51 2019
 
 An abstraction for data interpolation.
 """
-
 from concurrent import futures
 from datetime import datetime
 from re import match
@@ -480,6 +479,7 @@ class Interpolator:
 
         chunk_grid_shape = numpy.array(numpy.floor(interpolated_grid_shape / chunk_shape), numpy.int)
         chunk_grid_index = numpy.array((0, 0), numpy.int)
+
         with futures.ProcessPoolExecutor() as concurrency_pool:
             running_futures = {}
 
@@ -515,9 +515,13 @@ class Interpolator:
 
             for completed_future in futures.as_completed(running_futures):
                 grid_slice = running_futures[completed_future]
-                chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
-                interpolated_grid_values[grid_slice] = chunk_interpolated_values
-                interpolated_grid_variance[grid_slice] = chunk_interpolated_variance
+
+                try:
+                    chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
+                    interpolated_grid_values[grid_slice] = chunk_interpolated_values
+                    interpolated_grid_variance[grid_slice] = chunk_interpolated_variance
+                except ValueError as error:
+                    print(f'malformed slice of {interpolated_grid_shape}: {grid_slice}')
 
         interpolated_grid_uncertainty = numpy.sqrt(interpolated_grid_variance) * 2.5
         del interpolated_grid_variance
@@ -1077,8 +1081,8 @@ def _krige_points_onto_grid(points: numpy.array, grid_x: [float], grid_y: [float
         interpolated values and uncertainty
     """
 
-    return OrdinaryKriging(points[:, 0], points[:, 1], points[:, 2], variogram_model='linear', verbose=False,
-                           enable_plotting=False).execute('grid', grid_x, grid_y)
+    interpolator = OrdinaryKriging(points[:, 0], points[:, 1], points[:, 2], variogram_model='linear', verbose=False, enable_plotting=False)
+    return interpolator.execute('grid', grid_x, grid_y)
 
 
 def _raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
@@ -1147,6 +1151,12 @@ def _plot_raster(raster: gdal.Dataset, band_index: int = 1, axis: pyplot.Axes = 
     raster_band = raster.GetRasterBand(band_index)
     raster_data = numpy.flip(raster_band.ReadAsArray(), axis=0)
     raster_data[raster_data == raster_band.GetNoDataValue()] = numpy.nan
+
+    geotransform = raster.GetGeoTransform()
+    if geotransform[1] < 0:
+        raster_data = numpy.flip(raster_data, axis=1)
+    if geotransform[5] < 0:
+        raster_data = numpy.flip(raster_data, axis=0)
 
     raster_extent = _raster_bounds(raster)[[0, 2, 1, 3]]
     axis.imshow(raster_data, extent=raster_extent, aspect='auto', **kwargs)

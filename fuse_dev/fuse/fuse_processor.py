@@ -457,11 +457,12 @@ class FuseProcessor:
 
                     try:
                         interpolator = _interp.Interpolator(dataset, sidescan_raster_filenames=support_files)
-                        dataset = interpolator.interpolate(method, float(self._config['to_resolution']))
+                        dataset = interpolator.interpolate(method, float(self._config['to_resolution']), plot=True)
                         meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
                         print(error)
+                        self.logger.warning(str(error))
                         meta_interp['interpolated'] = False
 
                     self._meta_obj.write_meta_record(meta_interp)

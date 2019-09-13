@@ -53,7 +53,7 @@ class TestFuse(unittest.TestCase):
 
         assert os.path.exists(output_path)
 
-    def test_noaa_bag(self):
+    def test_noaa_bag_linear(self):
         survey_name = 'H12525'
 
         interpolation_method = 'linear'
@@ -75,10 +75,10 @@ class TestFuse(unittest.TestCase):
 
         assert os.path.exists(output_path)
 
-    def test_noaa_bag_small(self):
+    def test_noaa_bag_kriging(self):
         survey_name = 'H12607'
 
-        interpolation_method = 'linear'
+        interpolation_method = 'kriging'
         output_file_extension = 'bag'
 
         config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
