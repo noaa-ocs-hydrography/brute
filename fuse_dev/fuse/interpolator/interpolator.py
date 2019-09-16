@@ -93,9 +93,9 @@ class Interpolator:
             elevation_coverage = _coverage(elevation_data, elevation_nodata)
 
             transform = _affine(raster_origin, raster_resolution)
-            raster_edge_points = _raster_edge_points(elevation_coverage, raster_origin, raster_resolution, elevation_nodata)
+            raster_edge_points = _raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)
 
-            elevation_region = _alpha_hull(raster_edge_points[:, :2], raster_resolution[0] * 5)
+            elevation_region = _alpha_hull(raster_edge_points[:, :2], numpy.mean(numpy.abs(raster_resolution)) * 10)
             sidescan_region = _vectorize_geoarray(sidescan_coverage, transform, False)
 
             if not sidescan_region.is_valid:
@@ -712,7 +712,7 @@ def _alpha_hull(points: numpy.array, max_length: float = None) -> Polygon:
     lengths = numpy.hypot(vectors[:, :, 0], vectors[:, :, 1])
     indices = numpy.sort(indices[lengths < max_length], axis=1)
 
-    if len(indices) > 0:
+    if indices.shape[0] > 0:
         boundary_edge_indices = numpy.unique(indices, axis=0)
         return unary_union(list(polygonize(MultiLineString(points[boundary_edge_indices].tolist()))))
     else:
@@ -872,63 +872,66 @@ def _combined_coverage_within_window(coverage_raster_filenames: [str], output_or
     output_coverage_masks = []
 
     for coverage_raster_filename in coverage_raster_filenames:
-        with rasterio.open(coverage_raster_filename) as coverage_raster:
-            coverage_transform = coverage_raster.transform
-            coverage_shape = coverage_raster.shape
-
-        coverage_resolution = numpy.array((coverage_transform.a, coverage_transform.e))
-
-        coverage_origin = coverage_transform.c, coverage_transform.f
-        coverage_se_corner = coverage_origin + (coverage_resolution * numpy.flip(coverage_shape))
-
-        # ensure the coverage array intersects the given window
-        if not (output_origin[0] > coverage_se_corner[0] or output_se_corner[0] < coverage_origin[0] or
-                output_se_corner[1] > coverage_origin[1] or output_origin[1] < coverage_se_corner[1]):
+        try:
             with rasterio.open(coverage_raster_filename) as coverage_raster:
-                coverage_data = coverage_raster.read()
+                coverage_transform = coverage_raster.transform
+                coverage_shape = coverage_raster.shape
 
-            # nodata for sidescan coverage is usually the maximum value
-            coverage_mask = numpy.where(_coverage(coverage_data, numpy.max(coverage_data)), 1, 0)
+            coverage_resolution = numpy.array((coverage_transform.a, coverage_transform.e))
 
-            # resample coverage data to match BAG resolution
-            resolution_ratio = coverage_resolution / output_resolution
-            if numpy.any(resolution_ratio != 1):
-                coverage_mask = zoom(coverage_mask, zoom=resolution_ratio, order=3, prefilter=False)
+            coverage_origin = coverage_transform.c, coverage_transform.f
+            coverage_se_corner = coverage_origin + (coverage_resolution * numpy.flip(coverage_shape))
 
-            # clip resampled coverage data to the bounds of the BAG
-            output_array = numpy.full(output_shape, 0)
+            # ensure the coverage array intersects the given window
+            if not (output_origin[0] > coverage_se_corner[0] or output_se_corner[0] < coverage_origin[0] or
+                    output_se_corner[1] > coverage_origin[1] or output_origin[1] < coverage_se_corner[1]):
+                with rasterio.open(coverage_raster_filename) as coverage_raster:
+                    coverage_data = coverage_raster.read()
 
-            nw_index_delta = numpy.round((output_origin - coverage_origin) / output_resolution).astype(int)
-            se_index_delta = numpy.round((output_se_corner - coverage_origin) / output_resolution).astype(int)
+                # nodata for sidescan coverage is usually the maximum value
+                coverage_mask = numpy.where(_coverage(coverage_data, numpy.max(coverage_data)), 1, 0)
 
-            # indices to be written onto the output array
-            output_array_index_slices = [slice(0, None), slice(0, None)]
+                # resample coverage data to match BAG resolution
+                resolution_ratio = coverage_resolution / output_resolution
+                if numpy.any(resolution_ratio != 1):
+                    coverage_mask = zoom(coverage_mask, zoom=resolution_ratio, order=3, prefilter=False)
 
-            # BAG leftmost X is to the left of coverage leftmost X
-            if nw_index_delta[0] < 0:
-                output_array_index_slices[1] = slice(nw_index_delta[0] * -1, output_array_index_slices[1].stop)
-                nw_index_delta[0] = 0
+                # clip resampled coverage data to the bounds of the BAG
+                output_array = numpy.full(output_shape, 0)
 
-            # BAG topmost Y is above coverage topmost Y
-            if nw_index_delta[1] < 0:
-                output_array_index_slices[0] = slice(nw_index_delta[1] * -1, output_array_index_slices[0].stop)
-                nw_index_delta[1] = 0
+                nw_index_delta = numpy.round((output_origin - coverage_origin) / output_resolution).astype(int)
+                se_index_delta = numpy.round((output_se_corner - coverage_origin) / output_resolution).astype(int)
 
-            # BAG rightmost X is to the right of coverage rightmost X
-            if se_index_delta[0] > coverage_mask.shape[1]:
-                output_array_index_slices[1] = slice(output_array_index_slices[1].start, coverage_mask.shape[1] - se_index_delta[0])
-                se_index_delta[0] = coverage_mask.shape[1]
+                # indices to be written onto the output array
+                output_array_index_slices = [slice(0, None), slice(0, None)]
 
-            # BAG bottommost Y is lower than coverage bottommost Y
-            if se_index_delta[1] > coverage_mask.shape[0]:
-                output_array_index_slices[0] = slice(output_array_index_slices[0].start, coverage_mask.shape[0] - se_index_delta[1])
-                se_index_delta[1] = coverage_mask.shape[0]
+                # BAG leftmost X is to the left of coverage leftmost X
+                if nw_index_delta[0] < 0:
+                    output_array_index_slices[1] = slice(nw_index_delta[0] * -1, output_array_index_slices[1].stop)
+                    nw_index_delta[0] = 0
 
-            coverage_mask = coverage_mask[nw_index_delta[1]: se_index_delta[1], nw_index_delta[0]: se_index_delta[0]]
+                # BAG topmost Y is above coverage topmost Y
+                if nw_index_delta[1] < 0:
+                    output_array_index_slices[0] = slice(nw_index_delta[1] * -1, output_array_index_slices[0].stop)
+                    nw_index_delta[1] = 0
 
-            # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
-            output_array[output_array_index_slices[0], output_array_index_slices[1]] = coverage_mask
-            output_coverage_masks.append(output_array)
+                # BAG rightmost X is to the right of coverage rightmost X
+                if se_index_delta[0] > coverage_mask.shape[1]:
+                    output_array_index_slices[1] = slice(output_array_index_slices[1].start, coverage_mask.shape[1] - se_index_delta[0])
+                    se_index_delta[0] = coverage_mask.shape[1]
+
+                # BAG bottommost Y is lower than coverage bottommost Y
+                if se_index_delta[1] > coverage_mask.shape[0]:
+                    output_array_index_slices[0] = slice(output_array_index_slices[0].start, coverage_mask.shape[0] - se_index_delta[1])
+                    se_index_delta[1] = coverage_mask.shape[0]
+
+                coverage_mask = coverage_mask[nw_index_delta[1]: se_index_delta[1], nw_index_delta[0]: se_index_delta[0]]
+
+                # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
+                output_array[output_array_index_slices[0], output_array_index_slices[1]] = coverage_mask
+                output_coverage_masks.append(output_array)
+        except:
+            print(f'error opening file {coverage_raster_filename}')
 
     # collapse coverage masks into single raster array
     return numpy.logical_or.reduce(output_coverage_masks)
@@ -1214,3 +1217,9 @@ def _plot_raster(raster: gdal.Dataset, band_index: int = 1, axis: pyplot.Axes = 
 
     if show:
         pyplot.show()
+
+
+def timeit(function, *args, **kwargs):
+    start_time = datetime.now()
+    function(*args, **kwargs)
+    print((datetime.now() - start_time).total_seconds())
