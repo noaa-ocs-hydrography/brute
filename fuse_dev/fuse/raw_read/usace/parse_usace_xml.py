@@ -2027,7 +2027,7 @@ def convert_meta_to_input(m):
     elif 'horizontal_datum_i' in m:
         m['from_horiz_datum'] = m['horizontal_datum_i'].split('Vertical Datum:')[0]
     if 'Horizontal_Units' in m:
-        if m['Horizontal_Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET')
+        if m['Horizontal_Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
             m['from_horiz_units'] = 'US Survey Foot'
         elif m['Horizontal_Units'].strip().upper() in ('INTL FOOT'):
             m['from_horiz_units'] = 'Intl Foot'
