@@ -308,8 +308,10 @@ class FuseProcessor:
         if 'from_fips' in meta:
             meta['from_horiz_key'] = meta['from_fips']
         if 'from_horiz_units' in meta:
-            if meta['from_horiz_units'].upper() == 'US SURVEY FOOT':
+            if meta['from_horiz_units'].upper() in ('US SURVEY FOOT'):
                 meta['from_horiz_units'] = 'us_ft'
+            elif meta['from_horiz_units'].upper() in ('INTL FOOT'):
+                meta['from_horiz_units'] = 'ft'
             else:
                 raise ValueError(f'Input datum units are unknown: {meta["from_horiz_units"]}')
         if 'from_vert_key' in meta:
@@ -646,7 +648,7 @@ class FuseProcessor:
     def _quality_metadata_ready(self, metadata):
         """
         Check the metadata to see if the required fields are populated.
-        
+
         Parameters
         ----------
         metadata
@@ -683,7 +685,7 @@ class FuseProcessor:
     def _date_metadata_ready(self, metadata):
         """
         Check the metadata to see if the required fields are populated.
-        
+
         Parameters
         ----------
         metadata
