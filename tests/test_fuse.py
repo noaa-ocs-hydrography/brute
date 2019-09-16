@@ -61,7 +61,7 @@ class TestFuse(unittest.TestCase):
 
         config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
         input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
-        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if '.bag' in name]
+        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
         output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_4m_interp.{output_file_extension}')
 
         if os.path.exists(output_path):
@@ -83,7 +83,7 @@ class TestFuse(unittest.TestCase):
 
         config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
         input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
-        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if '.bag' in name]
+        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
         output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
 
         if os.path.exists(output_path):
@@ -105,7 +105,7 @@ class TestFuse(unittest.TestCase):
 
         config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
         input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
-        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if '.bag' in name]
+        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
         output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_4m_interp.{output_file_extension}')
 
         if os.path.exists(output_path):
@@ -127,7 +127,7 @@ class TestFuse(unittest.TestCase):
 
         config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
         input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
-        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if '.bag' in name]
+        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
         output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_4m_interp.{output_file_extension}')
 
         if os.path.exists(output_path):
@@ -153,9 +153,9 @@ class TestFuse(unittest.TestCase):
         survey_1_input_directory = os.path.join(NOAA_INPUT_ROOT, survey_1_name)
         survey_2_input_directory = os.path.join(NOAA_INPUT_ROOT, survey_2_name)
         survey_1_bag_paths = [os.path.join(survey_1_input_directory, name) for name in
-                              os.listdir(survey_1_input_directory) if '.bag' in name]
+                              os.listdir(survey_1_input_directory) if name[-4:] == '.bag']
         survey_2_bag_paths = [os.path.join(survey_2_input_directory, name) for name in
-                              os.listdir(survey_2_input_directory) if '.bag' in name]
+                              os.listdir(survey_2_input_directory) if name[-4:] == '.bag']
         survey_1_output_path = os.path.join(OUTPUT_ROOT, f'{survey_1_name}_4m_interp.{output_file_extension}')
         survey_2_output_path = os.path.join(OUTPUT_ROOT, f'{survey_2_name}_4m_interp.{output_file_extension}')
 
