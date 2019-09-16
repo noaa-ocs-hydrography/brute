@@ -261,13 +261,13 @@ class FuseProcessor:
     def _set_data_writer(self):
         """Set up the location and method to write tranformed and interpolated data."""
 
-        raster_extension = self._config['bathymetry_intermediate_file']
-        if raster_extension == 'bag':
-            point_extension = 'gpkg'
+        self._raster_extension = self._config['bathymetry_intermediate_file']
+        if self._raster_extension == 'bag':
+            self._point_extension = 'csar'
         else:
-            point_extension = raster_extension
-        self._raster_writer = ProcIO('gdal', raster_extension)
-        self._point_writer = ProcIO('point', point_extension)
+            self._point_extension = self._raster_extension
+        self._raster_writer = ProcIO('gdal', self._raster_extension)
+        self._point_writer = ProcIO('point', self._point_extension)
 
     def read(self, filename: str):
         """
@@ -420,7 +420,7 @@ class FuseProcessor:
             # convert the bathy for the original data
             input_directory = _os.path.splitext(_os.path.split(filename)[-1])[0]
             metadata['outpath'] = _os.path.join(self._config['outpath'], input_directory)
-            metadata['new_ext'] = self._config['bathymetry_intermediate_file']
+            metadata['new_ext'] = self._point_extension
 
             # oddly _transform becomes the bathymetry reader here...
             # return a GDAL dataset in the right datums to combine
@@ -446,11 +446,11 @@ class FuseProcessor:
                     meta_interp['from_filename'] = f'{base}.interpolated'
 
                     if self._config['interpolation_engine'] == 'raster':
-                        output_filename = f"{_os.path.join(root, base)}_interp.{meta_interp['new_ext']}"
+                        output_filename = f"{_os.path.join(root, base)}_interp.{self._raster_extension}"
                     else:
                         resolution = float(self._config['to_resolution'])
                         resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
-                        output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{meta_interp["new_ext"]}'
+                        output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
 
                     meta_interp['to_filename'] = output_filename
                     method = self._config['interpolation_method']
