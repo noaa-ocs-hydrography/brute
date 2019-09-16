@@ -39,14 +39,13 @@ else:
 if not os.path.isdir(os.path.join(downloads)):
     os.mkdir(downloads)
 
-ncei_head = 'https://data.ngdc.noaa.gov/platforms/ocean/nos/coast/'
 # https://data.ngdc.noaa.gov/platforms/ocean/nos/coast/H12001-H14000/H12001/[BAG, TIFF]
 
 zList = ['xmin', 'ymin', 'xmax', 'ymax']
 attributes = {3: ['Name', 'SURVEY_ID', 'CELL_SIZE'],
               0: ['*']}
 date_fields = ['DATE_SURVEY_BEGIN', 'DATE_SURVEY_END', 'DATE_MODIFY_DATA',
-               'DATE_SURVEY_APPROVAL']
+               'DATE_SURVEY_APPROVAL', 'START_TIME', 'END_TIME']
 
 
 def wgs84_to_esri(min_x: float, min_y: float, max_x: float, max_y: float) -> dict:
@@ -185,6 +184,8 @@ def survey_objectID_query(bounds: [dict], qId=0) -> ([int], int):
     # Today - 1 (ex. '2018-08-06'), unformatted
     yesterday = today - datetime.timedelta(1)
 
+    data_type = config_data_type()
+
     if config['Timeframe']['Start Date'] != '':
         start_parse =  datetime.datetime.strptime(config['Timeframe']['Start Date'], '%Y-%m-%d')
         start = f'{start_parse:%Y-%m-%d}'
@@ -209,13 +210,12 @@ def survey_objectID_query(bounds: [dict], qId=0) -> ([int], int):
         where = '1%3D1'
 
     for box in que:
-        bagList = f'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/{qId}/query' + \
-                  f'?where={where}&text=&objectIds=&time=&geometry={box}&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=true&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
-        bagListRequest = requests.get(bagList)
-        bagListRequestJSON = bagListRequest.json()
-#            print (bagListRequestJSON)
-        if bagListRequestJSON['objectIds'] is not None:
-            objectIDs.extend(bagListRequestJSON['objectIds'])
+        dataList = f'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/{data_type}/MapServer/{qId}/query?where={where}&text=&objectIds=&time=&geometry={box}&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=true&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
+        dataListRequest = requests.get(dataList)
+        dataListRequestJSON = dataListRequest.json()
+#            print (dataListRequestJSON)
+        if dataListRequestJSON['objectIds'] is not None:
+            objectIDs.extend(dataListRequestJSON['objectIds'])
             objectNum += len(objectIDs) - 1
             print(objectNum)
         else:
@@ -314,11 +314,13 @@ def survey_compile(objectIDs: list, num: int, history: [dict], qId=0, pb=None) -
     if pb is not None:
         pb.SetRange(num)
 
+    data_type = config_data_type()
+
     id_chunks = list(list_chunks([str(objectID) for objectID in objectIDs]))
 
     for chunk in id_chunks:
         id_string = ','.join(chunk)
-        query = f'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/nos_hydro_dynamic/MapServer/{qId}/query' + \
+        query = f'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/{data_type}/MapServer/{qId}/query' + \
                 f'?where=&text=&objectIds={id_string}&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields={opts}&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
         response = requests.get(query)
         page = response.json()
@@ -478,12 +480,21 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
         function
 
     """
+    data_type = config_data_type()
+
+
+    if data_type == 'nos_hydro_dynamic':
+        ncei_head = 'https://data.ngdc.noaa.gov/platforms/ocean/nos/coast/'
+        branch_tail = r"\NOAA_NCEI_OCS\BAGs\Original"
+    elif data_type == 'multibeam_dynamic':
+        ncei_head = 'https://data.ngdc.noaa.gov/ocean/platforms/ships/'
+        branch_tail = r"\NOAA_NCEI_MBBDB\MBs\Original"
 
     for row in rows:
         row['PROCESSING_REGION'] = f"{region['Processing Branch']}_{region['Region']}"
 
         if rows.index(row) == 0 and config['Destination']['Structure'] == 'NBS':
-            branch_path = fr"{row['PROCESSING_REGION']}\NOAA_NCEI_OCS\BAGs\Original"
+            branch_path = fr"{row['PROCESSING_REGION']}{branch_tail}"
             download_to = os.path.join(downloads, branch_path)
             if not os.path.isdir(download_to):
                 os.makedirs(download_to)
@@ -504,26 +515,29 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
 
         survey = row['SURVEY_ID']
         ncei_sub = '/'.join(os.path.splitext(row['DOWNLOAD_URL'])[0].split('/')[-2:])
+        if data_type == 'multibeam_dynamic':
+            ncei_sub = re.sub(r"_mb", "", ncei_sub)
         download_links = []
         print(f'Survey - {rows.index(row) + 1} of {len(rows)}: {survey}')
-
+        survey_folder = os.path.join(download_to, survey)
         for folder, extensions in {'BAG': ['.bag', '.gz'],
-                                   'TIFF': ['.tif', '.tiff', '.tfw', '.gz']}.items():
+                                   'TIFF': ['.tif', '.tiff', '.tfw', '.gz'],
+                                   'multibeam/data/version1/products': ['.xyz', '.gz']}.items():
             source_url = f'{ncei_head}/{ncei_sub}/{folder}'
             download_links = link_grab(source_url, extensions)
 
             if len(download_links) > 0:
-                survey_folder = os.path.join(download_to, survey)
                 if not os.path.isdir(survey_folder):
                     os.mkdir(survey_folder)
                 row['SURVEY_FILES'].extend(file_downloader(survey_folder, download_links, row['SURVEY_FILES']))
 
-        pickle_name = f'{os.path.join(survey_folder, survey)}.pickle'
-        row['SURVEY_FILES'].extend([pickle_name])
+        if os.path.isdir(survey_folder):
+            pickle_name = f'{os.path.join(survey_folder, survey)}.pickle'
+            row['SURVEY_FILES'].extend([pickle_name])
 
-        with open(pickle_name, 'wb') as metafile:
-            pickle.dump(row, metafile)
-            metafile.close()
+            with open(pickle_name, 'wb') as metafile:
+                pickle.dump(row, metafile)
+                metafile.close()
 
     return rows
 
@@ -554,6 +568,7 @@ def survey_list() -> [dict]:
         .json file defined in the config file
 
     """
+
     surveys_file = os.path.join(progLoc, config['Reference']['History'])
     with open(surveys_file) as json_file:
         surveys = json.load(json_file)
@@ -575,6 +590,15 @@ def info_save(rows: [dict]):
     with open(surveys_file, 'w') as json_file:
         json.dump(rows, json_file)
         json_file.close()
+
+
+def config_data_type():
+    if config['Data']['Data Type'].upper() in ('', 'BAG'):
+        return 'nos_hydro_dynamic'
+    elif config['Data']['Data Type'].upper() in ('MB', 'MULTIBEAM'):
+        return 'multibeam_dynamic'
+    else:
+        raise ValueError(f"Data Type not supported: {config['Data']['Data Type']}")
 
 
 def main(pb=None):
