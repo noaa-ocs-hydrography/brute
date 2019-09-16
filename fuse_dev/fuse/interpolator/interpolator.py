@@ -11,24 +11,26 @@ An abstraction for data interpolation.
 from concurrent import futures
 from datetime import datetime
 from re import match
+from typing import Union
 
 import fiona
+import fiona.crs
 import numpy
 import rasterio
+import rasterio.crs
 from affine import Affine
 from matplotlib import pyplot
 from matplotlib.cm import ScalarMappable, get_cmap
 from matplotlib.colors import Normalize
 from osgeo import gdal, osr
 from pykrige.ok import OrdinaryKriging
-from rasterio.crs import CRS
 from rasterio.features import shapes as rasterio_shapes
 from rasterio.io import MemoryFile
 from rasterio.mask import mask
 from scipy.interpolate import griddata
 from scipy.ndimage.interpolation import zoom
 from scipy.spatial import cKDTree, Delaunay
-from shapely.geometry import Polygon, MultiPolygon, MultiLineString, shape as shapely_shape
+from shapely.geometry import Polygon, MultiPolygon, MultiLineString, shape as shapely_shape, mapping
 from shapely.ops import unary_union, polygonize
 
 
@@ -88,28 +90,20 @@ class Interpolator:
             sidescan_coverage = _combined_coverage_within_window([raster_filename for raster_filename in sidescan_raster_filenames if
                                                                   '.tif' in raster_filename or '.gpkg' in raster_filename],
                                                                  raster_origin, raster_resolution, raster_shape)
-            elevation_coverage = _coverage_mask(elevation_data, elevation_nodata)
+            elevation_coverage = _coverage(elevation_data, elevation_nodata)
 
-            # # TODO implement edge-only for linear interpolation
-            # hdiff = numpy.concatenate((numpy.full((elevation_coverage.shape[0], 1), 0),
-            #                            numpy.diff(numpy.where(elevation_coverage, 1, 0), axis=1)), axis=1)
-            # vdiff = numpy.concatenate((numpy.full((1, elevation_coverage.shape[1]), 0),
-            #                            numpy.diff(numpy.where(elevation_coverage, 1, 0), axis=0)), axis=0)
-            #
-            # self.raster_edge_points = _geoarray_to_points(numpy.where((vdiff == 1) | numpy.roll(vdiff == -1, -1, axis=0) |
-            #                                                           (hdiff == 1) | numpy.roll(hdiff == -1, -1, axis=1),
-            #                                                           elevation_data, elevation_nodata),
-            #                                               raster_origin, raster_resolution, elevation_nodata)
+            transform = _affine(raster_origin, raster_resolution)
+            raster_edge_points = _raster_edge_points(elevation_coverage, raster_origin, raster_resolution, elevation_nodata)
 
-            # TODO figure out how to make this commented section (alpha hull) faster
-            # sidescan_region = _vectorize_geoarray(sidescan_coverage, raster_origin, raster_resolution, False)
-            # elevation_region = _vectorize_geoarray(elevation_coverage, raster_origin, raster_resolution, False)
-            # edge_points = numpy.stack([numpy.array(*polygon.exterior.xy) for polygon in elevation_region], axis=0)
-            # elevation_region = _alpha_hull(edge_points)
-            # self.interpolation_region = elevation_region.intersection(sidescan_region)
+            elevation_region = _alpha_hull(raster_edge_points[:, :2], raster_resolution[0] * 5)
+            sidescan_region = _vectorize_geoarray(sidescan_coverage, transform, False)
 
-            self.interpolation_region = _vectorize_geoarray(sidescan_coverage | elevation_coverage, raster_origin, raster_resolution,
-                                                            False)
+            if not sidescan_region.is_valid:
+                sidescan_region = sidescan_region.buffer(0)
+
+            self.interpolation_region = elevation_region.intersection(sidescan_region)
+
+            # self.interpolation_region = _vectorize_geoarray(sidescan_coverage | elevation_coverage, transform, False)
             self.points = _geoarray_to_points(numpy.where(sidescan_coverage, elevation_data, elevation_nodata), raster_origin,
                                               raster_resolution, elevation_nodata)
         else:
@@ -176,7 +170,7 @@ class Interpolator:
             interpolated_dataset = self.__invdist_gdal_linear_scipy(output_shape, output_bounds, output_nodata)
         elif method == 'kriging':
             # interpolate using Ordinary Kriging (`pykrige`) by dividing data into smaller chunks
-            chunk_size = (20, 20)
+            chunk_size = (100, 100)
             method = f'{method}_{chunk_size}m'
             interpolated_dataset = self.__kriging_pykrige(output_shape, output_bounds, chunk_size, output_nodata)
         else:
@@ -228,8 +222,8 @@ class Interpolator:
             nodata = self.default_nodata
 
         with MemoryFile() as rasterio_memory_file:
-            with rasterio_memory_file.open(driver='GTiff', width=shape[1], height=shape[0], count=1, crs=CRS.from_wkt(crs_wkt),
-                                           transform=_get_affine(origin, resolution), dtype=rasterio.float64,
+            with rasterio_memory_file.open(driver='GTiff', width=shape[1], height=shape[0], count=1, crs=rasterio.crs.CRS.from_wkt(crs_wkt),
+                                           transform=_affine(origin, resolution), dtype=rasterio.float64,
                                            nodata=numpy.array([nodata]).astype(rasterio.float64).item()) as memory_raster:
                 memory_raster.write(numpy.full(shape, 1, dtype=rasterio.float64), 1)
 
@@ -467,7 +461,7 @@ class Interpolator:
         output_resolution = (output_bounds[2:] - output_bounds[:2]) / numpy.flip(output_shape)
 
         chunk_shape = numpy.array(numpy.round(chunk_size / output_resolution), numpy.int)
-        expand_indices = numpy.round(chunk_shape * 2).astype(numpy.int)
+        expand_indices = numpy.round(chunk_shape).astype(numpy.int)
 
         input_points_sw = numpy.array(self.input_bounds[:2])
 
@@ -489,14 +483,14 @@ class Interpolator:
                 grid_end_index = grid_start_index + chunk_shape
 
                 # expand the interpolation area past the edges of the chunk to make the chunk contextually aware
-                interpolation_sw = input_points_sw + numpy.flip(grid_start_index - expand_indices) * output_resolution
-                interpolation_ne = input_points_sw + numpy.flip(grid_end_index + expand_indices) * output_resolution
+                interpolation_sw_corner = input_points_sw + numpy.flip(grid_start_index - expand_indices) * output_resolution
+                interpolation_ne_corner = input_points_sw + numpy.flip(grid_end_index + expand_indices) * output_resolution
 
                 # get points within the interpolation area
-                interpolation_points = self.points[numpy.where((self.points[:, 0] >= interpolation_sw[0]) &
-                                                               (self.points[:, 0] <= interpolation_ne[0]) &
-                                                               (self.points[:, 1] >= interpolation_sw[1]) &
-                                                               (self.points[:, 1] <= interpolation_ne[1]))[0]]
+                interpolation_points = self.points[numpy.where((self.points[:, 0] >= interpolation_sw_corner[0]) &
+                                                               (self.points[:, 0] <= interpolation_ne_corner[0]) &
+                                                               (self.points[:, 1] >= interpolation_sw_corner[1]) &
+                                                               (self.points[:, 1] <= interpolation_ne_corner[1]))[0]]
 
                 # only interpolate if there are points
                 if interpolation_points.shape[0] >= 3:
@@ -600,7 +594,7 @@ class Interpolator:
         if axis is None:
             axis = pyplot.gca()
 
-        axis.plot(*self.interpolation_region.exterior.xy, c='r')
+        _plot_region(self.interpolation_region, axis, c='r')
         axis.scatter(self.points[:, 0], self.points[:, 1], c='g')
         triangles = Delaunay(self.points[:, :2])
         axis.triplot(self.points[:, 0], self.points[:, 1], triangles=triangles.simplices, c='b', **kwargs)
@@ -709,26 +703,21 @@ def _alpha_hull(points: numpy.array, max_length: float = None) -> Polygon:
         max_length = numpy.max(cKDTree(points).query(points, k=2)[0][:, 1])
 
     triangles = Delaunay(points)
-    boundary_edges = set()
-    for index_a, index_b, index_c in triangles.simplices:
-        point_a = points[index_a]
-        point_b = points[index_b]
-        point_c = points[index_c]
 
-        vectors = numpy.stack((point_a - point_b, point_b - point_c, point_c - point_a))
-        lengths = numpy.hypot(vectors[:, 0], vectors[:, 1])
-        semiperimeter = numpy.sum(lengths) / 2
+    indices = numpy.stack(((triangles.simplices[:, 0], triangles.simplices[:, 1]),
+                           (triangles.simplices[:, 1], triangles.simplices[:, 2]),
+                           (triangles.simplices[:, 2], triangles.simplices[:, 0])), axis=1).T
+    edges = points[indices]
+    vectors = numpy.squeeze(numpy.diff(edges, axis=2))
+    lengths = numpy.hypot(vectors[:, :, 0], vectors[:, :, 1])
+    indices = numpy.sort(indices[lengths < max_length], axis=1)
 
-        if numpy.product(lengths) / (2 * numpy.sqrt(semiperimeter * numpy.product(semiperimeter - lengths))) < max_length:
-            for indices in ((index_a, index_b), (index_b, index_c), (index_c, index_a)):
-                if indices not in boundary_edges and reversed(indices) not in boundary_edges:
-                    boundary_edges.add(indices)
-                else:
-                    # remove the edge if it already exists (if it is shared by another triangle)
-                    boundary_edges.remove(indices)
-
-    boundary_edges = points[numpy.array(tuple(boundary_edges))].tolist()
-    return unary_union(list(polygonize(MultiLineString(boundary_edges))))
+    if len(indices) > 0:
+        boundary_edge_indices = numpy.unique(indices, axis=0)
+        return unary_union(list(polygonize(MultiLineString(points[boundary_edge_indices].tolist()))))
+    else:
+        print('no edges were found to be shorter than the specified length; reverting to maximum nearest-neighbor distance')
+        return _alpha_hull(points)
 
 
 def _mask_raster(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: float = None, mask_band_index: int = 1) -> gdal.Dataset:
@@ -898,7 +887,8 @@ def _combined_coverage_within_window(coverage_raster_filenames: [str], output_or
             with rasterio.open(coverage_raster_filename) as coverage_raster:
                 coverage_data = coverage_raster.read()
 
-            coverage_mask = numpy.where(_coverage_mask(coverage_data), 1, 0)
+            # nodata for sidescan coverage is usually the maximum value
+            coverage_mask = numpy.where(_coverage(coverage_data, numpy.max(coverage_data)), 1, 0)
 
             # resample coverage data to match BAG resolution
             resolution_ratio = coverage_resolution / output_resolution
@@ -944,63 +934,59 @@ def _combined_coverage_within_window(coverage_raster_filenames: [str], output_or
     return numpy.logical_or.reduce(output_coverage_masks)
 
 
-def _coverage_mask(raster_data: numpy.array, nodata: float = None):
+def _coverage(array: numpy.array, nodata: float = None):
     """
-    Return a boolean mask of the given array where data exists.
+    Return a boolean array of where data exists in the given array.
 
     Parameters
     ----------
-    raster_data
-        array of gridded data
+    array
+        array of gridded data with dimensions (Z)YX
     nodata
         value where there is no data in the given array
 
     Returns
     -------
-        boolean array indicating where data exists
+        array of booleans indicating where data exists
     """
 
-    # nodata for sidescan coverage is usually the maximum value
-    if nodata is None:
-        nodata = numpy.max(raster_data)
+    if len(array.shape) > 2:
+        array = numpy.squeeze(array)
 
-    if raster_data.shape[0] == 1:
-        raster_data = raster_data[0, :, :]
+    if nodata is None:
+        nodata = numpy.nan
 
     # TODO find reduced generalization of multiple bands
-    if raster_data.shape[0] == 3:
-        raster_mask = (raster_data[0, :, :] != nodata) | (raster_data[1, :, :] != nodata) | (raster_data[2, :, :] != nodata)
+    if array.shape[0] == 3:
+        coverage = (array[0, :, :] != nodata) | (array[1, :, :] != nodata) | (array[2, :, :] != nodata)
     else:
-        raster_mask = raster_data != nodata
+        coverage = array != nodata
 
-    return raster_mask
+    return coverage
 
 
-def _vectorize_geoarray(raster_data: numpy.array, origin: (float, float), resolution: (float, float),
-                        nodata: float = None) -> MultiPolygon:
+def _vectorize_geoarray(geoarray: numpy.array, transform: Affine, nodata: float = None) -> MultiPolygon:
     """
     Vectorize the extent of the given raster where data exists.
 
     Parameters
     ----------
 
-    raster_data
+    geoarray
         array of gridded data
-    origin
-        XY coordinates of the northwest corner
-    resolution
-        XY cell size
+    transform
+        Affine transform of geoarray
     nodata
-        value where there is no data in the given array
+        value where there is no data
 
     Returns
     -------
         Shapely polygon or multipolygon of coverage extent
     """
 
-    raster_mask = _coverage_mask(raster_data, nodata)
-    return MultiPolygon(shapely_shape(shape[0]) for shape in
-                        rasterio_shapes(numpy.where(raster_mask, 1, 0), mask=raster_mask, transform=_get_affine(origin, resolution)))
+    raster_mask = _coverage(geoarray, nodata)
+    return MultiPolygon(shapely_shape(shape[0]) for shape in rasterio_shapes(numpy.where(raster_mask, 1, 0), mask=raster_mask,
+                                                                             transform=transform))
 
 
 def _vectorize_raster_coverage(raster_filename: str) -> MultiPolygon:
@@ -1020,30 +1006,32 @@ def _vectorize_raster_coverage(raster_filename: str) -> MultiPolygon:
     """
 
     with rasterio.open(raster_filename) as raster:
-        raster_data = raster.read()
-        raster_transform = raster.transform
+        geoarray = raster.read()
+        transform = raster.transform
 
-    origin = raster_transform.c, raster_transform.f
-    resolution = raster_transform.a, raster_transform.e
-
-    return _vectorize_geoarray(raster_data, origin, resolution)
+    return _vectorize_geoarray(geoarray, transform)
 
 
-def _write_region(output_filename: str, region: MultiPolygon, crs_wkt: str):
-    geometry_type = 'Polygon' if type(region) is Polygon else 'MultiPolygon'
-
-    # TODO generalize polygon / multipolygon
-    coordinates = [[numpy.stack(polygon.exterior.xy, axis=1).tolist()] for polygon in region]
-
-    with fiona.open(output_filename, 'w', 'GPKG', {'geometry': geometry_type, 'properties': {'name': 'str'}},
-                    crs_wkt=crs_wkt) as output_vector_file:
-        output_vector_file.write(
-            {'geometry': {'type': geometry_type, 'coordinates': coordinates}, 'properties': {'name': 'elevation data'}})
+def _write_shapely_geometry(output_filename: str, geometry: Union[Polygon, MultiPolygon], crs_wkt: str = None, name: str = None,
+                            layer: str = None):
+    _write_geojson_dict(output_filename, mapping(geometry), crs_wkt, name, layer)
 
 
-def _get_affine(origin: (float, float), resolution: (float, float)) -> Affine:
+def _write_geojson_dict(output_filename: str, geojson: dict, crs_wkt: str = None, name: str = None, layer: str = None):
+    if crs_wkt is None:
+        crs_wkt = fiona.crs.to_string(fiona.crs.from_epsg(4326))
+
+    if name is None:
+        name = geojson['type']
+
+    with fiona.open(output_filename, 'w', 'GPKG', schema={'geometry': geojson['type'], 'properties': {'name': 'str'}}, crs_wkt=crs_wkt,
+                    layer=layer) as output_vector_file:
+        output_vector_file.write({'geometry': geojson, 'properties': {'name': name}})
+
+
+def _affine(origin: (float, float), resolution: (float, float), rotation: (float, float) = None) -> Affine:
     """
-    Calculate affine transformation from the given geographic parameters.
+    Calculate the affine transformation from the given geographic parameters.
 
     Parameters
     ----------
@@ -1054,13 +1042,16 @@ def _get_affine(origin: (float, float), resolution: (float, float)) -> Affine:
 
     Returns
     -------
-        Affine transformation
+        Affine transform
     """
 
     if type(resolution) is float:
-        resolution = tuple(resolution)
+        resolution = resolution, resolution
 
-    return Affine.translation(*origin) * Affine.scale(*resolution)
+    if rotation is None:
+        rotation = 0, 0
+
+    return Affine.translation(*origin) * Affine.scale(*resolution) * Affine.rotation(rotation[0])
 
 
 def _krige_points_onto_grid(points: numpy.array, grid_x: [float], grid_y: [float]) -> (numpy.array, numpy.array):
@@ -1087,7 +1078,7 @@ def _krige_points_onto_grid(points: numpy.array, grid_x: [float], grid_y: [float
 
 def _raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
     """
-    Get the bounds of the given raster.
+    Get the bounds of the given (unrotated) raster.
 
     Parameters
     ----------
@@ -1102,8 +1093,13 @@ def _raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
     geotransform = raster.GetGeoTransform()
     origin = numpy.array((geotransform[0], geotransform[3]))
     resolution = numpy.array((geotransform[1], geotransform[5]))
+    rotation = numpy.array((geotransform[2], geotransform[4]))
+    shape = raster.RasterYSize, raster.RasterXSize
 
-    opposite_origin = origin + numpy.flip((raster.RasterYSize, raster.RasterXSize)) * resolution
+    if numpy.any(rotation != 0):
+        raise NotImplementedError('rotated rasters not supported')
+
+    opposite_origin = origin + numpy.flip(shape) * resolution
 
     west = origin[0] if resolution[0] > 0 else opposite_origin[0]
     south = origin[1] if resolution[1] > 0 else opposite_origin[1]
@@ -1111,6 +1107,61 @@ def _raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
     north = opposite_origin[1] if resolution[1] > 0 else origin[1]
 
     return numpy.array((west, south, east, north))
+
+
+def _raster_edge_points(raster_array: numpy.array, origin: (float, float), resolution: (float, float), nodata: float) -> numpy.array:
+    """
+    Get the edge points of the given georeferenced array.
+
+    Parameters
+    ----------
+    raster_array
+        array of raster data
+    origin
+        origin of raster
+    resolution
+        resolution of raster
+    nodata
+        value for no data in raster
+
+    Returns
+    -------
+    numpy.array
+        N x 3 array of points
+    """
+
+    elevation_coverage = _coverage(raster_array, nodata)
+
+    horizontal_difference = numpy.concatenate((numpy.full((elevation_coverage.shape[0], 1), 0),
+                                               numpy.diff(numpy.where(elevation_coverage, 1, 0), axis=1)), axis=1)
+    vertical_difference = numpy.concatenate((numpy.full((1, elevation_coverage.shape[1]), 0),
+                                             numpy.diff(numpy.where(elevation_coverage, 1, 0), axis=0)), axis=0)
+
+    horizontal_edges = (horizontal_difference == 1) | numpy.roll(horizontal_difference == -1, -1, axis=1)
+    vertical_edges = (vertical_difference == 1) | numpy.roll(vertical_difference == -1, -1, axis=0)
+
+    return _geoarray_to_points(numpy.where(horizontal_edges | vertical_edges, raster_array, nodata), origin, resolution, nodata)
+
+
+def _plot_region(region: Union[Polygon, MultiPolygon], axis: pyplot.Axes = None, show: bool = False, **kwargs):
+    if axis is None:
+        axis = pyplot.gca()
+
+    if type(region) is Polygon:
+        axis.plot(*region.exterior.xy, **kwargs)
+    else:
+        if 'c' not in kwargs:
+            try:
+                color = next(axis._get_lines.color_cycle)
+            except AttributeError:
+                color = 'r'
+            kwargs['c'] = color
+
+        for geometry in region:
+            axis.plot(*geometry.exterior.xy, **kwargs)
+
+    if show:
+        pyplot.show()
 
 
 def _plot_regions(regions: [Polygon], colors: [str] = None, axis: pyplot.Axes = None, show: bool = False, **kwargs):
