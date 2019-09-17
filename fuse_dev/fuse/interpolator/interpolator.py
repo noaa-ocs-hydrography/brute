@@ -620,18 +620,6 @@ class Interpolator:
         if show:
             pyplot.show()
 
-    def __plot_concave_hull(self, axis: pyplot.Axes = None, show: bool = False, **kwargs):
-        if axis is None:
-            axis = pyplot.gca()
-
-        _plot_region(self.interpolation_region, axis, c='r')
-        axis.scatter(self.points[:, 0], self.points[:, 1], c='g')
-        triangles = Delaunay(self.points[:, :2])
-        axis.triplot(self.points[:, 0], self.points[:, 1], triangles=triangles.simplices, c='b', **kwargs)
-
-        if show:
-            pyplot.show()
-
 
 def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> numpy.array:
     """
