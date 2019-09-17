@@ -58,8 +58,8 @@ class Interpolator:
         self.is_raster = dataset.GetProjectionRef() != ''
         self.index = index
 
-        if self.index == 0 and self.is_raster:
-            self.index = 1
+        if self.is_raster:
+            self.index += 1
         elif self.index < 0:
             self.index += self.dataset.RasterCount + 1 if self.is_raster else self.dataset.GetLayerCount()
 
@@ -93,9 +93,9 @@ class Interpolator:
             elevation_coverage = _coverage(elevation_data, elevation_nodata)
 
             transform = _affine(raster_origin, raster_resolution)
-            edge_points_2d = _raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)[:, :2]
+            self.edge_points = _raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)
 
-            elevation_region = _alpha_hull(edge_points_2d, self.window_size)
+            elevation_region = _alpha_hull(self.edge_points[:, :2], self.window_size)
             sidescan_region = _vectorize_geoarray(sidescan_coverage, transform, False)
 
             if not sidescan_region.is_valid:
@@ -145,7 +145,11 @@ class Interpolator:
         if output_nodata is None:
             output_nodata = self.default_nodata
 
-        output_shape, output_bounds = _shape_from_cell_size(output_resolution, self.input_bounds)
+        if self.is_raster:
+            output_shape = self.dataset.RasterYSize, self.dataset.RasterXSize
+            output_bounds = self.input_bounds
+        else:
+            output_shape, output_bounds = _shape_from_cell_size(output_resolution, self.input_bounds)
 
         start_time = datetime.now()
 
@@ -325,10 +329,12 @@ class Interpolator:
 
         output_resolution = (output_bounds[2:] - output_bounds[:2]) / numpy.flip(output_shape)
 
+        points = self.edge_points if self.is_raster else self.points
+
         # interpolate using SciPy griddata
         output_x, output_y = numpy.meshgrid(numpy.linspace(output_bounds[0], output_bounds[2], output_shape[1]),
                                             numpy.linspace(output_bounds[1], output_bounds[3], output_shape[0]))
-        interpolated_data = griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2], (output_x, output_y), method='linear',
+        interpolated_data = griddata((points[:, 0], points[:, 1]), points[:, 2], (output_x, output_y), method='linear',
                                      fill_value=output_nodata)
 
         output_raster = gdal.GetDriverByName('MEM').Create('', int(interpolated_data.shape[1]), int(interpolated_data.shape[0]), 1,
@@ -520,6 +526,14 @@ class Interpolator:
 
         interpolated_uncertainty = numpy.sqrt(interpolated_variance)
         del interpolated_variance
+
+        if self.is_raster:
+            uncertainty_band = self.dataset.GetRasterBand(self.index + 1)
+            input_uncertainty = uncertainty_band.ReadAsArray()
+            uncertainty_nodata = uncertainty_band.GetNoDataValue()
+            del uncertainty_band
+
+            interpolated_uncertainty = numpy.where(input_uncertainty != uncertainty_nodata, input_uncertainty, interpolated_uncertainty)
 
         output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 2, gdal.GDT_Float32)
         output_raster.SetGeoTransform((output_bounds[0], output_resolution[0], 0.0, output_bounds[1], 0.0, output_resolution[1]))
