@@ -85,7 +85,7 @@ class Interpolator:
             if self.default_nodata is None:
                 self.default_nodata = elevation_nodata
 
-            self.window_size = numpy.mean(window_scalar * raster_resolution)
+            self.window_size = numpy.mean(window_scalar * numpy.abs(raster_resolution)) * 20
 
             sidescan_coverage = _combined_coverage_within_window([raster_filename for raster_filename in sidescan_raster_filenames if
                                                                   '.tif' in raster_filename or '.gpkg' in raster_filename],
@@ -93,9 +93,9 @@ class Interpolator:
             elevation_coverage = _coverage(elevation_data, elevation_nodata)
 
             transform = _affine(raster_origin, raster_resolution)
-            raster_edge_points = _raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)
+            edge_points_2d = _raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)[:, :2]
 
-            elevation_region = _alpha_hull(raster_edge_points[:, :2], numpy.mean(numpy.abs(raster_resolution)) * 30)
+            elevation_region = _alpha_hull(edge_points_2d, self.window_size)
             sidescan_region = _vectorize_geoarray(sidescan_coverage, transform, False)
 
             if not sidescan_region.is_valid:
@@ -445,7 +445,7 @@ class Interpolator:
         """
 
         if type(output_shape) is not numpy.array:
-            output_shape = numpy.array(output_shape)
+            output_shape = numpy.round(output_shape).astype(int)
 
         if type(output_bounds) is not numpy.array:
             output_bounds = numpy.array(output_bounds)
@@ -461,20 +461,19 @@ class Interpolator:
         output_resolution = (output_bounds[2:] - output_bounds[:2]) / numpy.flip(output_shape)
 
         chunk_shape = numpy.array(numpy.round(chunk_size / output_resolution), numpy.int)
-        expand_indices = numpy.round(chunk_shape).astype(numpy.int)
+        expand_indices = numpy.round(chunk_shape / 3).astype(numpy.int)
 
         input_points_sw = numpy.array(self.input_bounds[:2])
 
-        interpolated_grid_x = numpy.linspace(output_bounds[0], output_bounds[2], output_shape[1])
-        interpolated_grid_y = numpy.linspace(output_bounds[1], output_bounds[3], output_shape[0])
-        interpolated_grid_shape = numpy.array((len(interpolated_grid_y), len(interpolated_grid_x)), numpy.int)
-        interpolated_grid_values = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
-        interpolated_grid_variance = numpy.full(interpolated_grid_shape, fill_value=numpy.nan)
+        output_x = numpy.linspace(output_bounds[0], output_bounds[2], output_shape[1])
+        output_y = numpy.linspace(output_bounds[1], output_bounds[3], output_shape[0])
+        interpolated_values = numpy.full(output_shape, fill_value=numpy.nan)
+        interpolated_variance = numpy.full(output_shape, fill_value=numpy.nan)
 
-        chunk_grid_shape = numpy.array(numpy.floor(interpolated_grid_shape / chunk_shape), numpy.int)
+        chunk_grid_shape = numpy.array(numpy.floor(output_shape / chunk_shape), numpy.int)
         chunk_grid_index = numpy.array((0, 0), numpy.int)
 
-        print(f'kriging {chunk_grid_shape} chunks')
+        print(f'kriging {chunk_grid_shape} chunks ({chunk_shape} cells with catchment area expanded by {expand_indices} cells)')
 
         with futures.ProcessPoolExecutor() as concurrency_pool:
             running_futures = {}
@@ -499,7 +498,7 @@ class Interpolator:
                     grid_slice = tuple(slice(grid_start_index[dimension], grid_end_index[dimension]) for dimension in
                                        range(len(chunk_shape)))
                     current_future = concurrency_pool.submit(_krige_points_onto_grid, interpolation_points,
-                                                             interpolated_grid_x[grid_slice[1]], interpolated_grid_y[grid_slice[0]])
+                                                             output_x[grid_slice[1]], output_y[grid_slice[0]])
                     running_futures[current_future] = grid_slice
 
                 # go to next chunk
@@ -514,13 +513,13 @@ class Interpolator:
 
                 try:
                     chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
-                    interpolated_grid_values[grid_slice] = chunk_interpolated_values
-                    interpolated_grid_variance[grid_slice] = chunk_interpolated_variance
+                    interpolated_values[grid_slice] = chunk_interpolated_values.filled(output_nodata)
+                    interpolated_variance[grid_slice] = chunk_interpolated_variance.filled(output_nodata)
                 except ValueError as error:
-                    print(f'malformed slice of {interpolated_grid_shape}: {grid_slice} ({error})')
+                    print(f'malformed slice of {output_shape}: {grid_slice} ({error})')
 
-        interpolated_grid_uncertainty = numpy.sqrt(interpolated_grid_variance)
-        del interpolated_grid_variance
+        interpolated_uncertainty = numpy.sqrt(interpolated_variance)
+        del interpolated_variance
 
         output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 2, gdal.GDT_Float32)
         output_raster.SetGeoTransform((output_bounds[0], output_resolution[0], 0.0, output_bounds[1], 0.0, output_resolution[1]))
@@ -528,11 +527,11 @@ class Interpolator:
 
         band_1 = output_raster.GetRasterBand(1)
         band_1.SetNoDataValue(output_nodata)
-        band_1.WriteArray(interpolated_grid_values)
+        band_1.WriteArray(interpolated_values)
 
         band_2 = output_raster.GetRasterBand(2)
         band_2.SetNoDataValue(output_nodata)
-        band_2.WriteArray(interpolated_grid_uncertainty)
+        band_2.WriteArray(interpolated_uncertainty)
 
         del band_1, band_2
         return output_raster
@@ -572,21 +571,22 @@ class Interpolator:
 
         # create a new figure window with two subplots
         figure = pyplot.figure()
-        input_data_axis = figure.add_subplot(1, 2, 1)
-        input_data_axis.set_title('survey data')
-        output_data_axis = figure.add_subplot(1, 2, 2, sharex=input_data_axis, sharey=input_data_axis)
-        output_data_axis.set_title(f'{interpolation_method} interpolation to raster')
+        left_axis = figure.add_subplot(1, 2, 1)
+        left_axis.set_title('survey data')
+        right_axis = figure.add_subplot(1, 2, 2, sharex=left_axis, sharey=left_axis)
+        right_axis.set_title(f'{interpolation_method} interpolation to raster')
 
         # plot data
         if self.is_raster:
-            _plot_raster(self.dataset, self.index, input_data_axis, vmin=min_z, vmax=max_z)
+            _plot_raster(self.dataset, self.index, left_axis, vmin=min_z, vmax=max_z)
         else:
-            input_data_axis.scatter(self.points[:, 0], self.points[:, 1], c=self.points[:, 2], s=1, vmin=min_z, vmax=max_z)
+            left_axis.scatter(self.points[:, 0], self.points[:, 1], c=self.points[:, 2], s=1, vmin=min_z, vmax=max_z)
 
-        _plot_raster(raster, band_index, output_data_axis, vmin=min_z, vmax=max_z)
+        _plot_raster(raster, band_index, right_axis, vmin=min_z, vmax=max_z)
+        right_axis.axes.get_yaxis().set_visible(False)
 
         # create colorbar
-        figure.colorbar(ScalarMappable(norm=Normalize(vmin=min_z, vmax=max_z)), ax=(output_data_axis, input_data_axis))
+        figure.colorbar(ScalarMappable(norm=Normalize(vmin=min_z, vmax=max_z)), ax=(right_axis, left_axis))
 
         # pause program execution and show the figure
         if show:
@@ -1214,8 +1214,7 @@ def _plot_raster(raster: gdal.Dataset, band_index: int = 1, axis: pyplot.Axes = 
     if geotransform[5] < 0:
         raster_data = numpy.flip(raster_data, axis=0)
 
-    raster_extent = _raster_bounds(raster)[[0, 2, 1, 3]]
-    axis.imshow(raster_data, extent=raster_extent, aspect='auto', **kwargs)
+    axis.matshow(raster_data, extent=_raster_bounds(raster)[[0, 2, 1, 3]], aspect='auto', **kwargs)
 
     if show:
         pyplot.show()
