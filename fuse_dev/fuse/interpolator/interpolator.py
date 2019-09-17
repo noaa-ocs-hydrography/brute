@@ -93,9 +93,9 @@ class Interpolator:
             elevation_coverage = _coverage(elevation_data, elevation_nodata)
 
             transform = _affine(raster_origin, raster_resolution)
-            self.edge_points = _raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)
 
-            elevation_region = _alpha_hull(self.edge_points[:, :2], self.window_size)
+            elevation_region = _alpha_hull(_raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)[:, :2],
+                                           self.window_size)
             sidescan_region = _vectorize_geoarray(sidescan_coverage, transform, False)
 
             if not sidescan_region.is_valid:
@@ -329,22 +329,35 @@ class Interpolator:
 
         output_resolution = (output_bounds[2:] - output_bounds[:2]) / numpy.flip(output_shape)
 
-        points = self.edge_points if self.is_raster else self.points
-
         # interpolate using SciPy griddata
         output_x, output_y = numpy.meshgrid(numpy.linspace(output_bounds[0], output_bounds[2], output_shape[1]),
                                             numpy.linspace(output_bounds[1], output_bounds[3], output_shape[0]))
-        interpolated_data = griddata((points[:, 0], points[:, 1]), points[:, 2], (output_x, output_y), method='linear',
-                                     fill_value=output_nodata)
+        interpolated_values = griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2], (output_x, output_y), method='linear',
+                                       fill_value=output_nodata)
 
-        output_raster = gdal.GetDriverByName('MEM').Create('', int(interpolated_data.shape[1]), int(interpolated_data.shape[0]), 1,
+        output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 2 if self.is_raster else 1,
                                                            gdal.GDT_Float32)
         output_raster.SetGeoTransform((output_bounds[0], output_resolution[0], 0.0, output_bounds[1], 0.0, output_resolution[1]))
         output_raster.SetProjection(self.crs_wkt)
+
         band_1 = output_raster.GetRasterBand(1)
         band_1.SetNoDataValue(output_nodata)
-        band_1.WriteArray(interpolated_data)
+        band_1.WriteArray(interpolated_values)
         del band_1
+
+        if self.is_raster:
+            uncertainty_band = self.dataset.GetRasterBand(self.index + 1)
+            input_uncertainty = uncertainty_band.ReadAsArray()
+            uncertainty_nodata = uncertainty_band.GetNoDataValue()
+            del uncertainty_band
+
+            input_uncertainty[input_uncertainty == uncertainty_nodata] = output_nodata
+
+            band_2 = output_raster.GetRasterBand(2)
+            band_2.SetNoDataValue(output_nodata)
+            band_2.WriteArray(input_uncertainty)
+            del band_2
+
         return output_raster
 
     def __invdist_gdal(self, output_shape: (int, int), output_bounds: (float, float, float, float), output_nodata: float = None,
@@ -542,12 +555,13 @@ class Interpolator:
         band_1 = output_raster.GetRasterBand(1)
         band_1.SetNoDataValue(output_nodata)
         band_1.WriteArray(interpolated_values)
+        del band_1
 
         band_2 = output_raster.GetRasterBand(2)
         band_2.SetNoDataValue(output_nodata)
         band_2.WriteArray(interpolated_uncertainty)
+        del band_2
 
-        del band_1, band_2
         return output_raster
 
     def __plot(self, raster: gdal.Dataset, interpolation_method: str, nodata: float = None, band_index: int = 1, show: bool = False):
