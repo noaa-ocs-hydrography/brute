@@ -95,7 +95,7 @@ class Interpolator:
             transform = _affine(raster_origin, raster_resolution)
             raster_edge_points = _raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)
 
-            elevation_region = _alpha_hull(raster_edge_points[:, :2], numpy.mean(numpy.abs(raster_resolution)) * 10)
+            elevation_region = _alpha_hull(raster_edge_points[:, :2], numpy.mean(numpy.abs(raster_resolution)) * 30)
             sidescan_region = _vectorize_geoarray(sidescan_coverage, transform, False)
 
             if not sidescan_region.is_valid:
@@ -170,7 +170,7 @@ class Interpolator:
             interpolated_dataset = self.__invdist_gdal_linear_scipy(output_shape, output_bounds, output_nodata)
         elif method == 'kriging':
             # interpolate using Ordinary Kriging (`pykrige`) by dividing data into smaller chunks
-            chunk_size = (100, 100)
+            chunk_size = (40, 40)
             method = f'{method}_{chunk_size}m'
             interpolated_dataset = self.__kriging_pykrige(output_shape, output_bounds, chunk_size, output_nodata)
         else:
@@ -474,6 +474,8 @@ class Interpolator:
         chunk_grid_shape = numpy.array(numpy.floor(interpolated_grid_shape / chunk_shape), numpy.int)
         chunk_grid_index = numpy.array((0, 0), numpy.int)
 
+        print(f'kriging {chunk_grid_shape} chunks')
+
         with futures.ProcessPoolExecutor() as concurrency_pool:
             running_futures = {}
 
@@ -515,7 +517,7 @@ class Interpolator:
                     interpolated_grid_values[grid_slice] = chunk_interpolated_values
                     interpolated_grid_variance[grid_slice] = chunk_interpolated_variance
                 except ValueError as error:
-                    print(f'malformed slice of {interpolated_grid_shape}: {grid_slice}')
+                    print(f'malformed slice of {interpolated_grid_shape}: {grid_slice} ({error})')
 
         interpolated_grid_uncertainty = numpy.sqrt(interpolated_grid_variance)
         del interpolated_grid_variance
