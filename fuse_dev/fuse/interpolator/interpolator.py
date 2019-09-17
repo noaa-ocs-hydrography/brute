@@ -326,8 +326,8 @@ class Interpolator:
         output_resolution = (output_bounds[2:] - output_bounds[:2]) / numpy.flip(output_shape)
 
         # interpolate using SciPy griddata
-        output_x, output_y = numpy.meshgrid(numpy.arange(output_bounds[0], output_bounds[2] + output_resolution[0], output_resolution[0]),
-                                            numpy.arange(output_bounds[1], output_bounds[3] + output_resolution[1], output_resolution[1]))
+        output_x, output_y = numpy.meshgrid(numpy.linspace(output_bounds[0], output_bounds[2], output_shape[1]),
+                                            numpy.linspace(output_bounds[1], output_bounds[3], output_shape[0]))
         interpolated_data = griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2], (output_x, output_y), method='linear',
                                      fill_value=output_nodata)
 
@@ -517,7 +517,7 @@ class Interpolator:
                 except ValueError as error:
                     print(f'malformed slice of {interpolated_grid_shape}: {grid_slice}')
 
-        interpolated_grid_uncertainty = numpy.sqrt(interpolated_grid_variance) * 2.5
+        interpolated_grid_uncertainty = numpy.sqrt(interpolated_grid_variance)
         del interpolated_grid_variance
 
         output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 2, gdal.GDT_Float32)
