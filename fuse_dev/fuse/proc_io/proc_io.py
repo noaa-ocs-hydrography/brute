@@ -184,8 +184,7 @@ class ProcIO:
             self._logger.log(logging.DEBUG, argument_string)
 
             try:
-                caris_process = subprocess.Popen(argument_string,
-                                                 creationflags=subprocess.CREATE_NEW_CONSOLE if show_console else 0)
+                caris_process = subprocess.Popen(argument_string, creationflags=subprocess.CREATE_NEW_CONSOLE if show_console else 0)
             except Exception as error:
                 self._logger.log(logging.DEBUG, f'Error when executing "{argument_string}"\n{error}')
 
