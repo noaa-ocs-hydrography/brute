@@ -305,7 +305,7 @@ class ProcIO:
         with fiona.open(filename, 'w', 'GPKG', schema=layer_schema, crs=projection, layer=output_layer) as output_file:
             output_file.writerecords(point_records)
 
-    def _write_vectorized_raster(self, raster: gdal.Dataset, filename: str, band_index: int = 1):
+    def _write_vectorized_raster(self, raster: gdal.Dataset, filename: str, band_index: int = 1, output_layer_name: str = 'Elevation'):
         """
         Write the given GDAL raster dataset to a GDAL vector dataset (vectorizing to a multipolygon).
 
@@ -314,15 +314,13 @@ class ProcIO:
         raster
             GDAL raster dataset
         filename
-            filename to write GDAL vector dataset containing vectorized multipolygon
+            filename to write vectorized multipolygon
         band_index
             raster band (1-indexed)
         """
 
-        layer_name = 'Elevation'
-
-        points, meta = self._point2wkt(dataset)
-        directory, filename = os.path.split(outfilename)
+        points, meta = self._gdal_points_to_wkt(raster)
+        directory, filename = os.path.split(filename)
         outfilename = f'{directory}{os.path.splitext(filename)[0]}_Vector.gpkg'
 
         layer_schema = {
@@ -332,8 +330,9 @@ class ProcIO:
             }
         }
 
-        # TODO install rasterio and also test this
-        multipolygon = rasterio.features.shapes(dataset.GetRasterBand(1))
+        raster_array = raster.GetRasterBand(1)
+
+        # MultiPolygon(shapely_shape(shape[0]) for shape in rasterio_shapes(, mask=raster_mask, transform=transform))
 
         # in fiona features are input as dictionary "records"
         multipolygon_record = {
@@ -347,7 +346,7 @@ class ProcIO:
         }
 
         with fiona.open(outfilename, 'w', 'GPKG', schema=layer_schema, crs=fiona.crs.from_string(meta['crs']),
-                        layer=layer_name) as output_file:
+                        layer=output_layer_name) as output_file:
             output_file.writerecord(multipolygon_record)
 
     def _gdal_raster_to_array(self, raster: gdal.Dataset, band_index: int = 1) -> (np.array, dict):
