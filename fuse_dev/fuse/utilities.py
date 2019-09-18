@@ -123,10 +123,10 @@ def alpha_hull(points: numpy.array, max_length: float = None) -> Polygon:
     edges = points[indices]
     vectors = numpy.squeeze(numpy.diff(edges, axis=2))
     lengths = numpy.hypot(vectors[:, :, 0], vectors[:, :, 1])
-    indices = numpy.sort(indices[lengths < max_length], axis=1)
+    indices = indices[lengths < max_length]
 
     if indices.shape[0] > 0:
-        boundary_edge_indices = numpy.unique(indices, axis=0)
+        boundary_edge_indices = numpy.unique(numpy.sort(indices, axis=1), axis=0)
         return unary_union(list(polygonize(MultiLineString(points[boundary_edge_indices].tolist()))))
     else:
         print('no edges were found to be shorter than the specified length; reverting to maximum nearest-neighbor distance')
