@@ -238,7 +238,7 @@ class VDatum:
         """
 
         # create a gdal.Dataset and assign a temp file name for VDatum to read
-        dataset = self._reader.read_bathymetry(filename)
+        dataset = self._reader.read_bathymetry(filename, out_verdat=None)
         original_directory = tempdir()
         output_filename = _os.path.join(original_directory.name, 'outfile.tif')
         reprojected_directory = tempdir()
