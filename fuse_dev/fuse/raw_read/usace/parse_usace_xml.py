@@ -304,7 +304,7 @@ class XMLMetadata:
             if x.text == 'Z_depth':
                 my_etree_dict1['Z_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
                 # use to debug #print(f"{self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text} Z units")
-                if my_etree_dict1['Z_units'].upper() == 'usSurveyFoot'.upper():
+                if my_etree_dict1['Z_units'].upper() in ('usSurveyFoot'.upper(), 'FEET'):
                     my_etree_dict1['from_vert_units'] = 'US Survey Foot'
         for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
             if x.text == 'Z_use':
@@ -318,16 +318,16 @@ class XMLMetadata:
                             './eainfo/detailed/attr/attrdomv/rdom/attrunit').text
                         my_etree_dict1['H_units'] = self.xml_tree.find(
                             './eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-                        if my_etree_dict1['H_units'].upper() == 'usSurveyFoot'.upper():
-                            my_etree_dict1['Horizontal_Units'] = 'US Survey Foot'
+                        if my_etree_dict1['H_units'].upper() in ('usSurveyFoot'.upper(), 'FEET'):
+                            my_etree_dict1['from_horiz_units'] = 'US Survey Foot'
         else:
             for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
                 if x.text == 'xLocation':  # horizontal unit, yLocation should be the same
                     my_etree_dict1['xLocation'] = self.xml_tree.find(
                         './eainfo/detailed/attr/attrdomv/rdom/attrunit').text
                     my_etree_dict1['H_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-                    if my_etree_dict1['H_units'].upper() == 'usSurveyFoot'.upper():
-                        my_etree_dict1['Horizontal_Units'] = 'US Survey Foot'
+                    if my_etree_dict1['H_units'].upper() in ('usSurveyFoot'.upper(), 'FEET'):
+                        my_etree_dict1['from_horiz_units'] = 'US Survey Foot'
         # Location for END DATES in some files!
         # 'metadata/idinfo/timeperd/timeinfo/rngdates': 'rngdates',
         # 'metadata/dataqual/lineage/srcinfo/srctime/timeinfo/rngdates': 'rngdates',
@@ -1837,8 +1837,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 elif name.find('depths below National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
                     m['VERTDAT'] = 'NGVD29'
                 if name.find('Soundings are shown in feet') >= 0:
-                    m['script: from_vert_units'] = 'Feet'
-                    m['script: from_vert_units'] = 'US Survey Foot'
+                    m['from_vert_units'] = 'US Survey Foot'
         except:
             # Other way to split abstract, in case format changed over time
             # print('issue parsing')
@@ -2021,7 +2020,6 @@ def convert_meta_to_input(m):
     elif 'from_vert_datum' not in m:
         if 'VERTDAT' in m:
             m['from_vert_datum'] = m['VERTDAT']
-    # m['script: from_vert_units'] = m['from_vert_units']#needs to be added
     if 'SPCS' in m and 'horizontal_datum_i' in m:
         m['from_horiz_datum'] = f"{m['horizontal_datum_i'].split('Vertical Datum:')[0]},{m['SPCS']}"
     elif 'horizontal_datum_i' in m:
