@@ -532,8 +532,12 @@ class Interpolator:
 
                 try:
                     chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
-                    interpolated_values[grid_slice] = chunk_interpolated_values.filled(output_nodata)
-                    interpolated_variance[grid_slice] = chunk_interpolated_variance.filled(output_nodata)
+                    if type(chunk_interpolated_values) is numpy.ma.MaskedArray:
+                        chunk_interpolated_values = chunk_interpolated_values.filled(output_nodata)
+                    if type(chunk_interpolated_variance) is numpy.ma.MaskedArray:
+                        chunk_interpolated_variance = chunk_interpolated_variance.filled(output_nodata)
+                    interpolated_values[grid_slice] = chunk_interpolated_values
+                    interpolated_variance[grid_slice] = chunk_interpolated_variance
                 except ValueError as error:
                     print(f'malformed slice of {output_shape}: {grid_slice} ({error})')
 
