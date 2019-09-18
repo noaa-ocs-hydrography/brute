@@ -8,6 +8,7 @@ Created on Mon Feb 11 12:55:51 2019
 
 An abstraction for data interpolation.
 """
+
 from concurrent import futures
 from datetime import datetime
 

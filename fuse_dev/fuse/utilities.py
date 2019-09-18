@@ -1,8 +1,8 @@
-from datetime import datetime
 from re import match
 from typing import Union
 
 import fiona
+import fiona.crs
 import numpy
 import rasterio
 from affine import Affine
@@ -201,7 +201,7 @@ def shape_from_cell_size(resolution: (float, float), bounds: (float, float, floa
     return shape, numpy.concatenate((sw_corner, ne_corner))
 
 
-def _epsg_to_wkt(epsg: int) -> str:
+def epsg_to_wkt(epsg: int) -> str:
     """
     Use OSR to get the well-known text of a CRS from its EPSG code.
 
@@ -243,9 +243,9 @@ def gdal_crs_wkt(dataset: gdal.Dataset, layer_index: int = 0) -> str:
         if vector_layer is not None:
             crs_wkt = vector_layer.GetSpatialRef().ExportToWkt()
         else:
-            crs_wkt = _epsg_to_wkt(4326)
+            crs_wkt = epsg_to_wkt(4326)
     elif match('^EPSG:[0-9]+$', crs_wkt):
-        crs_wkt = _epsg_to_wkt(int(crs_wkt[5:]))
+        crs_wkt = epsg_to_wkt(int(crs_wkt[5:]))
 
     return crs_wkt
 
@@ -281,14 +281,14 @@ def array_coverage(array: numpy.array, nodata: float = None):
     return coverage
 
 
-def vectorize_geoarray(geoarray: numpy.array, transform: Affine, nodata: float = None) -> MultiPolygon:
+def vectorize_geoarray(array: numpy.array, transform: Affine, nodata: float = None) -> MultiPolygon:
     """
-    Vectorize the extent of the given raster where data exists.
+    Vectorize the extent of the given georeferenced array where data exists.
 
     Parameters
     ----------
 
-    geoarray
+    array
         array of gridded data
     transform
         Affine transform of geoarray
@@ -300,40 +300,82 @@ def vectorize_geoarray(geoarray: numpy.array, transform: Affine, nodata: float =
         Shapely polygon or multipolygon of coverage extent
     """
 
-    raster_mask = array_coverage(geoarray, nodata)
+    raster_mask = array_coverage(array, nodata)
     return MultiPolygon(shapely_shape(shape[0]) for shape in rasterio_shapes(numpy.where(raster_mask, 1, 0), mask=raster_mask,
                                                                              transform=transform))
 
 
-def _vectorize_raster_coverage(raster_filename: str) -> MultiPolygon:
+def vectorize_raster(raster: Union[gdal.Dataset, str], band_index: int = 1) -> MultiPolygon:
     """
     Vectorize the extent of the given raster where data exists.
 
     Parameters
     ----------
-    raster_filename
-        file path to raster
-    nodata
-        value where there is no data in the given raster file
+    raster
+        GDAL raster dataset or filename of raster
+    band_index
+        raster band (1-indexed)
 
     Returns
     -------
-        Shapely polygon or multipolygon of coverage extent
+        Shapely multipolygon of coverage extent
     """
 
-    with rasterio.open(raster_filename) as raster:
-        geoarray = raster.read()
-        transform = raster.transform
+    if type(raster) is gdal.Dataset:
+        raster_band = raster.GetRasterBand(band_index)
+        raster_array = raster_band.ReadAsArray()
+        del raster_band
+        transform = Affine.from_gdal(*raster.GetGeoTransform())
+    elif type(raster) is str:
+        with rasterio.open(raster) as raster:
+            raster_array = raster.read()
+            transform = raster.transform
+    else:
+        raise ValueError(f'unsupported input type {type(raster)}')
 
-    return vectorize_geoarray(geoarray, transform)
+    return vectorize_geoarray(raster_array, transform)
 
 
-def _write_shapely_geometry(output_filename: str, geometry: Union[Polygon, MultiPolygon], crs_wkt: str = None, name: str = None,
-                            layer: str = None):
-    _write_geojson_dict(output_filename, mapping(geometry), crs_wkt, name, layer)
+def write_shapely_geometry(output_filename: str, geometry: Union[Polygon, MultiPolygon], crs_wkt: str = None, name: str = None,
+                           layer: str = None):
+    """
+    Write the given Shapely geometry to the given vector file.
+
+    Parameters
+    ----------
+    output_filename
+        file path to vector file
+    geometry
+        Shapely geometry
+    crs_wkt
+        well-known text of CRS
+    name
+        value to write to the `name` attribute
+    layer
+        name of layer to write to
+    """
+
+    write_geojson(output_filename, mapping(geometry), crs_wkt, name, layer)
 
 
-def _write_geojson_dict(output_filename: str, geojson: dict, crs_wkt: str = None, name: str = None, layer: str = None):
+def write_geojson(output_filename: str, geojson: dict, crs_wkt: str = None, name: str = None, layer: str = None):
+    """
+    Write the given GeoJSON dictionary to the given vector file.
+
+    Parameters
+    ----------
+    output_filename
+        file path to vector file
+    geojson
+        dictionary with GeoJSON mappings
+    crs_wkt
+        well-known text of CRS
+    name
+        value to write to the `name` attribute
+    layer
+        name of layer to write to
+    """
+
     if crs_wkt is None:
         crs_wkt = fiona.crs.to_string(fiona.crs.from_epsg(4326))
 
@@ -437,7 +479,20 @@ def raster_edge_points(raster_array: numpy.array, origin: (float, float), resolu
     return geoarray_to_points(numpy.where(horizontal_edges | vertical_edges, raster_array, nodata), origin, resolution, nodata)
 
 
-def _plot_region(region: Union[Polygon, MultiPolygon], axis: pyplot.Axes = None, show: bool = False, **kwargs):
+def plot_region(region: Union[Polygon, MultiPolygon], axis: pyplot.Axes = None, show: bool = False, **kwargs):
+    """
+    PLot the given region (a Shapely polygon or multipolygon).
+
+    Parameters
+    ----------
+    region
+        shapely polygon or multipolygon
+    axis
+        `pyplot` axis to plot to
+    show
+        whether to show the plot
+    """
+
     if axis is None:
         axis = pyplot.gca()
 
@@ -458,7 +513,22 @@ def _plot_region(region: Union[Polygon, MultiPolygon], axis: pyplot.Axes = None,
         pyplot.show()
 
 
-def _plot_regions(regions: [Polygon], colors: [str] = None, axis: pyplot.Axes = None, show: bool = False, **kwargs):
+def plot_regions(regions: [Polygon], colors: [str] = None, axis: pyplot.Axes = None, show: bool = False, **kwargs):
+    """
+    PLot the given regions using the given colors.
+
+    Parameters
+    ----------
+    regions
+        list of shapely polygons or multipolygons
+    colors
+        colors to plot each region
+    axis
+        `pyplot` axis to plot to
+    show
+        whether to show the plot
+    """
+
     if axis is None:
         axis = pyplot.gca()
 
@@ -477,7 +547,22 @@ def _plot_regions(regions: [Polygon], colors: [str] = None, axis: pyplot.Axes = 
         pyplot.show()
 
 
-def _plot_bounds(sw_corner: (float, float), ne_corner: (float, float), axis: pyplot.Axes = None, show: bool = False, **kwargs):
+def plot_bounding_box(sw_corner: (float, float), ne_corner: (float, float), axis: pyplot.Axes = None, show: bool = False, **kwargs):
+    """
+    Plot the bounding box of the given extent.
+
+    Parameters
+    ----------
+    sw_corner
+        XY coordinates of southwest corner
+    ne_corner
+        XY coordinates of northeast corner
+    axis
+        `pyplot` axis to plot to
+    show
+        whether to show the plot
+    """
+
     if axis is None:
         axis = pyplot.gca()
 
@@ -490,6 +575,21 @@ def _plot_bounds(sw_corner: (float, float), ne_corner: (float, float), axis: pyp
 
 
 def plot_raster(raster: gdal.Dataset, band_index: int = 1, axis: pyplot.Axes = None, show: bool = False, **kwargs):
+    """
+    Plot the given GDAL raster dataset using its georeference information.
+
+    Parameters
+    ----------
+    raster
+        GDAL raster dataset
+    band_index
+        raster band (1-indexed)
+    axis
+        `pyplot` axis to plot to
+    show
+        whether to show the plot
+    """
+
     if axis is None:
         axis = pyplot.gca()
 
@@ -507,9 +607,3 @@ def plot_raster(raster: gdal.Dataset, band_index: int = 1, axis: pyplot.Axes = N
 
     if show:
         pyplot.show()
-
-
-def timeit(function, *args, **kwargs):
-    start_time = datetime.now()
-    function(*args, **kwargs)
-    print((datetime.now() - start_time).total_seconds())
