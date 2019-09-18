@@ -14,17 +14,18 @@ into the metadata file for qualification.
 import os
 from glob import glob
 
-import fuse.fuse_ehydro as ffe
+import fuse.fuse_processor as ffp
 
-cespl = ffe.fuse_ehydro('cespl.config')  # this config is local for testing
-root = cespl.rawdata_path[0]
-top = [os.path.join(root, name) for name in os.listdir(root)]
-total = str(len(top))
-x = 1
-for path in top:
-    print('\n\n', str(x), 'of', total, path, sep='')
-    flist = glob(os.path.join(path, '*.xyz'))
-    for f in flist:
-        cespl.read(f)
-        cespl.process(f)
-    x += 1
+if __name__ == '__main__':
+    cespl = ffp.FuseProcessor('cespl.config')  # this config is local for testing
+    root = cespl.rawdata_path[0]
+    top = [os.path.join(root, name) for name in os.listdir(root)]
+    total = len(top)
+    x = 1
+    for path in top:
+        print(f'\n\n{x}of{total}{path}')
+        flist = glob(os.path.join(path, '*.xyz'))
+        for f in flist:
+            cespl.read(f)
+            cespl.process(f)
+        x += 1

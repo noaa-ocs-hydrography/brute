@@ -29,7 +29,8 @@ class Form(wx.Frame):
         self.bar_menu.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWFRAME))
 
         self.menu_file = wx.Menu()
-        self.menu_quit = wx.MenuItem(self.menu_file, wx.ID_ANY, u"Quit\tCTRL+Q", wx.EmptyString, wx.ITEM_NORMAL)
+        self.menu_quit = wx.MenuItem(self.menu_file, wx.ID_ANY, u"Quit" + u"\t" + u"CTRL+Q", wx.EmptyString,
+                                     wx.ITEM_NORMAL)
         self.menu_file.Append(self.menu_quit)
 
         self.bar_menu.Append(self.menu_file, u"File")
@@ -60,13 +61,13 @@ class Form(wx.Frame):
                                             wx.FLP_DEFAULT_STYLE)
         opts_form.Add(self.picker_bag, 1, wx.ALL | wx.EXPAND, 5)
 
-        self.label_tif = wx.StaticText(self, wx.ID_ANY, u"Add Bounding File:", wx.DefaultPosition, wx.DefaultSize, 0)
+        self.label_tif = wx.StaticText(self, wx.ID_ANY, u"Add Coverage File:", wx.DefaultPosition, wx.DefaultSize, 0)
         self.label_tif.Wrap(-1)
 
         opts_form.Add(self.label_tif, 0, wx.ALL | wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL, 5)
 
         self.picker_tif = wx.FilePickerCtrl(self, wx.ID_ANY, wx.EmptyString, u"Select a file",
-                                            u"GeoTIFF Files (*.tiff; *tif)|*.tiff; *.tif|Shapefile Files (*.shp; *.gpkg)|*.shp; *.gpkg",
+                                            u"GeoTIFF Files (*.tiff; *tif)|*.tiff; *.tif|Oultine Files (*.shp; *.gpkg)|*.shp; *.gpkg",
                                             wx.DefaultPosition, wx.DefaultSize, wx.FLP_DEFAULT_STYLE)
         opts_form.Add(self.picker_tif, 1, wx.ALL | wx.EXPAND, 5)
 
@@ -129,42 +130,48 @@ class Form(wx.Frame):
         opts_prog.AddButton(self.opts_progOK)
         self.opts_progCancel = wx.Button(self, wx.ID_CANCEL)
         opts_prog.AddButton(self.opts_progCancel)
-        opts_prog.Realize();
 
-        container_form.Add(opts_prog, 0, wx.BOTTOM | wx.EXPAND | wx.TOP, 5)
+    opts_prog.Realize()
 
-        self.progressBar = wx.Gauge(self, wx.ID_ANY, 100, wx.DefaultPosition, wx.DefaultSize, wx.GA_HORIZONTAL)
-        self.progressBar.SetValue(0)
-        container_form.Add(self.progressBar, 0, wx.ALL | wx.EXPAND, 5)
+    container_form.Add(opts_prog, 0, wx.BOTTOM | wx.EXPAND | wx.TOP, 5)
 
-        self.SetSizer(container_form)
-        self.Layout()
-        self.bar_status = self.CreateStatusBar(1, wx.STB_SIZEGRIP, wx.ID_ANY)
+    self.progressBar = wx.Gauge(self, wx.ID_ANY, 100, wx.DefaultPosition, wx.DefaultSize, wx.GA_HORIZONTAL)
+    self.progressBar.SetValue(0)
+    container_form.Add(self.progressBar, 0, wx.ALL | wx.EXPAND, 5)
 
-        self.Centre(wx.BOTH)
+    self.SetSizer(container_form)
+    self.Layout()
+    self.bar_status = self.CreateStatusBar(1, wx.STB_SIZEGRIP, wx.ID_ANY)
 
-        # Connect Events
-        self.Bind(wx.EVT_MENU, self.programQuit, id=self.menu_quit.GetId())
-        self.picker_tif.Bind(wx.EVT_FILEPICKER_CHANGED, self.itemInsert)
-        self.button_tifRemove.Bind(wx.EVT_BUTTON, self.itemRemove)
-        self.opts_progCancel.Bind(wx.EVT_BUTTON, self.programQuit)
-        self.opts_progOK.Bind(wx.EVT_BUTTON, self.programProg)
+    self.Centre(wx.BOTH)
 
-    def __del__(self):
-        pass
+    # Connect Events
+    self.Bind(wx.EVT_MENU, self.programQuit, id=self.menu_quit.GetId())
+    self.picker_tif.Bind(wx.EVT_FILEPICKER_CHANGED, self.itemInsert)
+    self.button_tifRemove.Bind(wx.EVT_BUTTON, self.itemRemove)
+    self.opts_progCancel.Bind(wx.EVT_BUTTON, self.programQuit)
+    self.opts_progOK.Bind(wx.EVT_BUTTON, self.programProg)
 
-    # Virtual event handlers, overide them in your derived class
-    def programQuit(self, event):
-        event.Skip()
 
-    def itemInsert(self, event):
-        event.Skip()
+def __del__(self):
+    pass
 
-    def itemRemove(self, event):
-        event.Skip()
 
-    def programProg(self, event):
-        event.Skip()
+# Virtual event handlers, overide them in your derived class
+def programQuit(self, event):
+    event.Skip()
+
+
+def itemInsert(self, event):
+    event.Skip()
+
+
+def itemRemove(self, event):
+    event.Skip()
+
+
+def programProg(self, event):
+    event.Skip()
 
 
 ###########################################################################
@@ -192,14 +199,16 @@ class Done(wx.Dialog):
         opts_done.AddButton(self.opts_doneOK)
         self.opts_doneCancel = wx.Button(self, wx.ID_CANCEL)
         opts_done.AddButton(self.opts_doneCancel)
-        opts_done.Realize();
 
-        container_dialog.Add(opts_done, 0, wx.EXPAND | wx.ALIGN_CENTER_HORIZONTAL, 5)
+    opts_done.Realize()
 
-        self.SetSizer(container_dialog)
-        self.Layout()
+    container_dialog.Add(opts_done, 0, wx.EXPAND | wx.ALIGN_CENTER_HORIZONTAL, 5)
 
-        self.Centre(wx.BOTH)
+    self.SetSizer(container_dialog)
+    self.Layout()
 
-    def __del__(self):
-        pass
+    self.Centre(wx.BOTH)
+
+
+def __del__(self):
+    pass

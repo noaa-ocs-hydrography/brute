@@ -1,0 +1,21 @@
+{
+  "version": 1.2,
+  "date": "2019-01-01",
+  "attributes": [
+    "OBJECTID",
+    "SURVEYJOBIDPK",
+    "SURVEYAGENCY",
+    "CHANNELAREAIDFK",
+    "SDSFEATURENAME",
+    "SOURCEPROJECTION",
+    "SOURCEDATALOCATION",
+    "SURVEYDATEUPLOADED",
+    "SURVEYDATEEND",
+    "SURVEYDATESTART",
+    "SURVEYTYPE",
+    "PROJECTEDAREA",
+    "SOURCEDATAFORMAT",
+    "Shape__Area",
+    "Shape__Length"
+  ]
+}

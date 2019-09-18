@@ -7,9 +7,6 @@ Created on Mon Mar 25 11:55:07 2019
 
 import os
 import sys
-
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir))
-
 from datetime import datetime as _dt
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir))
@@ -98,7 +95,7 @@ class Form(autointerp_ui.Form):
             self.choice_catzoc.GetCurrentSelection()
         )
         ioOut = self.radio_data.GetSelection()
-        interp = _bip.process.intitialize(desPath, 'linear', catzoc, ioOut)
+        interp = _bip.process.Intitializor(desPath, 'linear', catzoc, ioOut)
         interp.linear(bagPath, tifPath)
         self.progressBar.SetValue(100)
 

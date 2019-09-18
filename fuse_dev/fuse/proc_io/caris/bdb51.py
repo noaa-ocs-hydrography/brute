@@ -16,13 +16,13 @@ import socket
 import subprocess
 import sys
 import threading
+from tempfile import NamedTemporaryFile
 from typing import Dict
 
 from fuse.proc_io.caris import helper
-from osgeo import gdal
 
 
-class bdb51:
+class BDB51:
     """
     A class for doing I/O with the CARIS Bathy DataBASE 5.1 server.
 
@@ -43,7 +43,7 @@ class bdb51:
         log : returning a log message
     """
 
-    def __init__(self, database_loc: str, database_name: str, caris_env_name: str = 'NBS35',
+    def __init__(self, database_loc: str, database_name: str, caris_env_name: str = 'CARIS35',
                  host='localhost'):
         """
         Instantiate the object and connect to the database referenced, waiting
@@ -65,6 +65,7 @@ class bdb51:
         self.connected = False  # is the sub environment talking to the db
         self._response = None
         self._command = None
+        self._bufsize = 4096
         self.msg_id = 0
         self.database_loc = database_loc
         self.database_name = database_name
@@ -75,9 +76,11 @@ class bdb51:
             ch = logging.StreamHandler(sys.stdout)
             ch.setLevel(logging.DEBUG)
             self._logger.addHandler(ch)
-
+            self._logger.setLevel(logging.DEBUG)
         self._thread = threading.Thread(target=self._form_connection)
         self._thread.start()
+        while not self.status():
+            pass
 
     def _form_connection(self):
         """
@@ -101,7 +104,7 @@ class bdb51:
         while True:
             self._conn, addr = self.sock.accept()
             self._logger.log(logging.DEBUG, 'accepted connection from {} at {}'.format(addr, self._conn))
-            data = self._conn.recv(1024)
+            data = self._conn.recv(self._bufsize)
 
             if len(data) > 0:
                 response = pickle.loads(data)
@@ -112,15 +115,15 @@ class bdb51:
                 print('No response from subprocess received')
 
             while self.alive:
-                ''' 
-                TO DO: should we should try to detect if the connection is 
+                '''
+                TO DO: should we should try to detect if the connection is
                 broken and look for another connection if it is
                 '''
                 if self._command is not None:
                     try:
                         self._conn.send(pickle.dumps(self._command))
                         self._command = None
-                        data = self._conn.recv(1024)
+                        data = self._conn.recv(self._bufsize)
                         if len(data) > 0:
                             response = pickle.loads(data)
                             self._response = response
@@ -139,10 +142,8 @@ class bdb51:
 
         Parameters
         ----------
-        port :
-
-        port: int :
-
+        port
+            port number
 
         Returns
         -------
@@ -161,7 +162,7 @@ class bdb51:
 
         args = ["cmd.exe", "/K", "set pythonpath= &&",  # setup the commandline
                 activate_file, conda_env_name, "&&",  # activate the Caris 3.5 virtual environment
-                python_path, db_obj, str(port),  # call the script for the object
+                python_path, db_obj, str(port), str(self._bufsize),  # call the script for the object
                 ]
         args = ' '.join(args)
         self._logger.log(logging.DEBUG, args)
@@ -173,30 +174,16 @@ class bdb51:
             print(err)
             self._logger.log(logging.DEBUG, err)
 
-        try:
-            # if len(out) > 0:
-            #     msg = out.decode(encoding='UTF-8')
-            #     print(msg)
-            #     self._logger.log(logging.DEBUG, msg)
-            # if len(err) > 0:
-            #     msg = err.decode(encoding='UTF-8')
-            #     print(msg)
-            #     self._logger.log(logging.DEBUG, msg)
-            pass
-        except Exception as e:
-            err = 'Error in handling error output: {}'.format(e)
-            print(err)
-            self._logger.log(logging.DEBUG, err)
-
-    def connect(self):
+    def connect(self) -> bool:
         """
         Form and send the connect command to the BDB51 wapper.
         """
 
         command = {'command': 'connect', 'node_manager': self.database_loc, 'database': self.database_name}
         response = self._set_command(command)
+        return response['success']
 
-    def status(self):
+    def status(self) -> bool:
         """
         Check to see if the subprocess is still communicating and connected to
         the database.
@@ -211,29 +198,41 @@ class bdb51:
 
         command = {'command': 'status'}
         response = self._set_command(command)
+        if response['success']:
+            self.alive = response['alive']
+            self.connected = response['connected']
+        return response['success']
 
-    def upload(self, dataset: gdal.Dataset, instruction: str):
+    def upload(self, dataset: str, instruction: str, metadata: dict) -> bool:
         """
         Send the BDB environment instructions on where data is and what to do
         with it.
 
         Parameters
         ----------
-        dataset :
-            param instruction:
-        dataset: gdal.Dataset :
-
-        instruction: str :
-
+        dataset
+        instruction
+        metadata
 
         Returns
         -------
 
         """
+        if metadata is None:
+            raise ValueError('Metadata is required for database upload')
+        else:
+            command = {'command': 'upload', 'action': instruction, 'bathy_path': dataset}
+            with NamedTemporaryFile(delete=False) as t:
+                pickle.dump(metadata, t)
+            command['meta_path'] = t.name
+            response = self._set_command(command)
+            if response['success']:
+                os.remove(t.name)
+            else:
+                print(metadata)
+            return response['success']
 
-        pass
-
-    def die(self, delay: int = 0):
+    def die(self, delay: int = 0) -> bool:
         """
         Destroy the BDB51 wrapper object and environment.
 
@@ -254,6 +253,8 @@ class bdb51:
 
         if response['command'] == 'die' and response['success']:
             self.alive = False
+            self._thread.join()
+        return response['success']
 
     def _set_command(self, command: Dict[str, str]):
         """
@@ -266,17 +267,26 @@ class bdb51:
 
         if self._command is None and self._response is None:
             self._command = command
+            if self.alive:
+                while True:
+                    if self._response is not None:  # we need a way to check if the connection is alive
+                        response = self._response
+                        if 'log' in response:
+                            msg = response['log']
+                        else:
+                            msg = str(response)
+                        self._logger.log(logging.DEBUG, msg)
 
-            while True:
-                if self._response is not None:  # we need a way to check if the connection is alive
-                    response = self._response
-                    self._logger.log(logging.DEBUG, str(response))
-
-                    if not response['success']:
-                        print('{} failed!'.format(response['command']))
-
-                    self._response = None
-                    break
+                        if not response['success']:
+                            print('{} failed!'.format(response['command']))
+                            if 'log' in response:
+                                print(response['log'])
+                        self._response = None
+                        break
+            else:
+                self._command = None
+                response = command
+                response['success'] = False
         else:
             raise ValueError('command / response state is unexpected')
 

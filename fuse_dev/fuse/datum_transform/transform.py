@@ -7,72 +7,70 @@ transform.py
 Abstract datum transformation.
 """
 
+import gdal
 from fuse.datum_transform import use_vdatum as uv
 
 
-class transform:
+
+
+class DatumTransformer:
     """
     An object for abstracting the datum transformation API.  This should allow
     for different transformation machines and versions.
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-
     """
+    _from_datum_info = [
+        'from_horiz_frame',
+        'from_horiz_type',
+        'from_horiz_units',
+        'from_horiz_key',
+        'from_vert_key',
+        'from_vert_units',
+        'from_vert_direction',
+    ]
+    _to_datum_info = [
+        'to_horiz_frame',
+        'to_horiz_type',
+        'to_horiz_units',
+        'to_horiz_key',
+        'to_vert_key',
+        'to_vert_units',
+        'to_vert_direction',
+    ]
 
     def __init__(self, config: dict, reader):
         """
-        Provided a key and a config file, get the method to use for datum
-        conversion.
+        Set up and configure the transformation tools based on the information provided in the configruation file.
         """
 
-        self._config = config
         self._reader = reader
-        self._setup()
 
-    def _setup(self):
-        """
-        Set up and configure the transformation tools based on the information
-        provided in the configruation file.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        """
-
-        if 'vdatum_path' in self._config:
-            self._engine = uv.vdatum(self._config, self._reader)
+        if 'vdatum_path' in config:
+            self._engine = uv.VDatum(config, self._reader)
         else:
-            raise ValueError('No java path provided')
+            raise ValueError('no vdatum path provided')
 
-    def translate(self, infilename: str, metadata: dict):
+    def translate(self, filename: str, metadata: dict) -> (gdal.Dataset, bool):
         """
         Run the specified transformation engine to translate the provided
         dataset.
 
         Parameters
         ----------
-        infilename :
-            param metadata:
-        infilename: str :
-            
-        metadata: dict :
-            
+        filename
+            filename of data file
+        metadata
+            dictionary of metadata
 
         Returns
         -------
-
+            GDAL point cloud and whether data was reprojected (`True`) or projected (`False`)
         """
 
-        self._meta = metadata
-        in_fips = int(self._meta['from_fips'])
-        in_verdat = self._meta['from_vert_key']
-        out_epsg = int(self._meta['to_horiz_datum'])
-        out_verdat = self._meta['to_vert_datum']
-        return self._engine.translate(infilename, in_fips, in_verdat, out_epsg, out_verdat)
+        if False in [metadata[self._from_datum_info[key]] != metadata[self._to_datum_info[key]] for key in range(len(self._from_datum_info))]:
+            if self._reader.version == 'BAG':
+                metadata['interpolate'] == 'False'
+                return self._engine.create(filename, metadata), metadata, False
+            else:
+                return self._engine.translate(filename, metadata), metadata, True
+        else:
+            return self._engine.create(filename, metadata), metadata, False

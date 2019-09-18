@@ -16,18 +16,22 @@ import wx.xrc
 ###########################################################################
 
 class Form(wx.Frame):
-    """ """
 
     def __init__(self, parent):
         wx.Frame.__init__(self, parent, id=wx.ID_ANY, title=u"NCEI Bag Finder", pos=wx.DefaultPosition,
-                          size=wx.Size(300, 350), style=wx.DEFAULT_FRAME_STYLE | wx.TAB_TRAVERSAL)
+                          size=wx.Size(300, 475), style=wx.DEFAULT_FRAME_STYLE | wx.TAB_TRAVERSAL)
 
-        self.SetSizeHints(wx.Size(300, 350), wx.DefaultSize)
+        self.SetSizeHints(wx.Size(300, 475), wx.DefaultSize)
         self.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
 
         self.menu_bar = wx.MenuBar(0)
         self.menu_file = wx.Menu()
-        self.menu_quit = wx.MenuItem(self.menu_file, wx.ID_ANY, u"Quit\tCTRL+Q", wx.EmptyString, wx.ITEM_NORMAL)
+        self.menu_about = wx.MenuItem(self.menu_file, wx.ID_ANY, u"About" + u"\t" + u"CTRL+H", wx.EmptyString,
+                                      wx.ITEM_NORMAL)
+        self.menu_file.Append(self.menu_about)
+
+        self.menu_quit = wx.MenuItem(self.menu_file, wx.ID_ANY, u"Quit" + u"\t" + u"CTRL+Q", wx.EmptyString,
+                                     wx.ITEM_NORMAL)
         self.menu_file.Append(self.menu_quit)
 
         self.menu_bar.Append(self.menu_file, u"File")
@@ -54,7 +58,22 @@ class Form(wx.Frame):
 
         box_filename.Add(self.label_txt, 0, wx.ALIGN_CENTER_VERTICAL | wx.TOP | wx.BOTTOM | wx.RIGHT, 5)
 
-        box_container.Add(box_filename, 1, wx.ALIGN_CENTER_HORIZONTAL | wx.ALL, 5)
+        box_container.Add(box_filename, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALL, 5)
+
+        radio_queryChoices = [u"Bag Names (ID:3)", u"Survey Info (ID:0)"]
+        self.radio_query = wx.RadioBox(self, wx.ID_ANY, u"Query Type", wx.DefaultPosition, wx.DefaultSize,
+                                       radio_queryChoices, 2, wx.RA_SPECIFY_COLS)
+        self.radio_query.SetSelection(0)
+        box_container.Add(self.radio_query, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALL, 5)
+
+        self.label_about = wx.StaticText(self, wx.ID_ANY,
+                                         u"Use 'CTRL+H' or 'File -> About' for more information on the attribute fields returned by either Query Type",
+                                         wx.DefaultPosition, wx.DefaultSize, wx.ALIGN_LEFT)
+        self.label_about.Wrap(250)
+
+        self.label_about.SetForegroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_INFOTEXT))
+
+        box_container.Add(self.label_about, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 5)
 
         box_latlong = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, u"Latitude and Longitude (Decimal Degrees)"),
                                         wx.VERTICAL)
@@ -129,6 +148,7 @@ class Form(wx.Frame):
         self.Centre(wx.BOTH)
 
         # Connect Events
+        self.Bind(wx.EVT_MENU, self.programAbout, id=self.menu_about.GetId())
         self.Bind(wx.EVT_MENU, self.programQuit, id=self.menu_quit.GetId())
         self.button_prog.Bind(wx.EVT_BUTTON, self.programProg)
         self.button_quit.Bind(wx.EVT_BUTTON, self.programQuit)
@@ -137,34 +157,11 @@ class Form(wx.Frame):
         pass
 
     # Virtual event handlers, overide them in your derived class
+    def programAbout(self, event):
+        event.Skip()
+
     def programQuit(self, event):
-        """
-
-
-        Parameters
-        ----------
-        event :
-
-
-        Returns
-        -------
-
-        """
-
         event.Skip()
 
     def programProg(self, event):
-        """
-
-
-        Parameters
-        ----------
-        event :
-
-
-        Returns
-        -------
-
-        """
-
         event.Skip()

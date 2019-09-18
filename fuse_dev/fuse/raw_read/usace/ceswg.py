@@ -14,14 +14,15 @@ is either FGDC or ISO FGDC USACE metadata format.
 
 update 4/17,4/5/19
 major update April 2, 2019
-
+update July 12,2019 adding in call to pickle reader
+update July 22, 2019 adding in vertical datum read from filename
 """
 __version__ = 'FUSE'
 import os as os
 import pickle as _pickle
 import re as _re
 
-_ussft2m = 0.30480060960121924  # US survey feet to meters
+#_ussft2m = 0.30480060960121924  # US survey feet to meters
 from datetime import datetime
 import numpy as _np
 
@@ -32,58 +33,78 @@ except:
         from . import parse_usace_xml as p_usace_xml
     except:
         print('importing fuse.raw_read.usace.parse_usace_xml as p_usace_xml did not work')
-    ##-----------------------------------------------------------------------------
+try:
+    import fuse.raw_read.usace.parse_usace_pickle as parse_usace_pickle
+except:
+    try:
+        from . import parse_usace_pickle as parse_usace_pickle
+    except:
+        print('importing fuse.raw_read.usace.parse_usace_pickle as parse_usace_pickle  did not work')
+##-----------------------------------------------------------------------------
 
 
-class read_raw:
+class CESWGRawReader:
     """
     This class passes back bathymetry
     & a metadata dictionary from the e-Hydro files
-
+    
     Parameters
     ----------
-
+    
     Returns
     -------
-
+    
     """
 
-    def read_metadata(self, infilename):
+    def read_metadata(self, infilename: str):
         """
         Read all available meta data.
         returns dictionary
-
+        
         Parameters
         ----------
-        infilename :
-            
-
+        infilename : str :
+        
+        
         Returns
         -------
-
+        -> dict
+        
         """
         version = 'CESWG'
         self.version = version
-        return retrieve_meta_for_Ehydro_out_onefile(infilename)  #
+        return retrieve_meta_for_Ehydro_out_onefile(infilename)#
 
     def read_bathymetry_dat(self, infilename):
         """
         Read the bathymetry from the .dat file. The dat file is less precise,
         but had no header and is in a standardized format
-
+        
         Parameters
         ----------
         infilename :
-            
-
+        
+        
         Returns
         -------
-
+        xyz
+        
         """
         # get the dat file for CESWG# Galveston
         stub, ext = os.path.splitext(infilename)
         bathyfilename = f'{stub}.dat'
+        """
+        F-strings provide a way to embed expressions inside string literals, using a minimal syntax.
+        It should be noted that an f-string is really an expression evaluated at run time, not a constant
+         value. In Python source code, an f-string is a literal string, prefixed with f, which contains 
+        expressions inside braces. The expressions are replaced with their values.
+        https://realpython.com/python-f-strings/
+        one can also include expressions within the quoted strings, The expressions in an f-string are evaluated in left-to-right order. This is detectable only if the expressions have side effects:
+        https://www.python.org/dev/peps/pep-0498/
+        """
+        
         xyz = _np.loadtxt(bathyfilename, delimiter=' ')
+        self.xy#remove later using still during debugging
         return xyz
 
     def read_bathymetry(self, infilename):
@@ -92,15 +113,15 @@ class read_raw:
         the header when reading the file
         
         Note: The high resolution multibeam files are available as .xyz on E-Hydro
-
+        
         Parameters
         ----------
-        infilename :
-            
-
+        infilename: str :
+        
         Returns
         -------
-
+        xyz
+        
         """
         version = 'CESWG'
         self.version = version
@@ -108,31 +129,36 @@ class read_raw:
         if first_instance != '':
             if commas_present == ',':
                 xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
             else:
                 xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
-            # xyz = _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance)
-        # else:
-        # xyz = _np.loadtxt(infilename, delimiter = ',')
+        else:
+            if commas_present == ',':
+                xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+            else:
+                xyz = _np.loadtxt(infilename, delimiter=' ', usecols=(0, 1, 2))
         return xyz
 
-    # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
-
-def return_surveyid(filenamepath, ex_string):
+def return_surveyid(filenamepath: str, ex_string: str) -> str:
     """
     strip end of filename off
     surveybasename =return_surveyid(filenamepath, ex_string)
-
+    
     Parameters
     ----------
-    filenamepath :
+    filenamepath: str :
         param ex_string:
-    ex_string :
-        
-
+    ex_string: str :
+    
     Returns
     -------
-
+    surveybasename
+    
     """
     basename = os.path.basename(filenamepath)
     surveybasename = basename.rstrip(ex_string)
@@ -162,42 +188,47 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     merge2 = {}
     f = filename
     basename = os.path.basename(f)
-    ex_string1 = '*_A.xyz'
-    ex_string2 = '*_FULL.xyz'
-    ex_string3 = '*_FULL.XYZ'
-    ex_string4 = '*_A.XYZ'
-    basename = os.path.basename(basename)
-    basename = return_surveyid(basename, ex_string1)
-    basename = return_surveyid(basename, ex_string2)
-    basename = return_surveyid(basename, ex_string3)
-    basename = return_surveyid(basename, ex_string4)
-    basename = basename.rstrip('.XYZ')
-    basename = basename.rstrip('.xyz')
-    # empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
-    meta_from_ehydro = {}
-    e_t = Extract_Txt(f)
+
+    e_t = XYZMetaReader(f)
     # xml pull here.
     xmlfilename = get_xml_match(f)
     if os.path.isfile(xmlfilename):
         with open(xmlfilename, 'r') as xml_file:
             xml_txt = xml_file.read()
         xmlbasename = os.path.basename(xmlfilename)
-        xml_data = p_usace_xml.XML_Meta(xml_txt, filename=xmlbasename)
+        xml_data = p_usace_xml.XMLMetadata(xml_txt, filename=xmlbasename)
         if xml_data.version == 'USACE_FGDC':
             meta_xml = xml_data._extract_meta_USACE_FGDC()  # CEMVN()
         elif xml_data.version == 'ISO-8859-1':
             meta_xml = xml_data._extract_meta_USACE_ISO()
             if 'ISO_xml' not in meta_xml:
-                meta_xml = xml_data._extract_meta_USACE_FGDC(
-                    override='Y')  # xml_data._extract_meta_ISOlabel_USACE_FGDC()
+                meta_xml2 = xml_data._extract_meta_USACE_FGDC(override='Y')
+                meta_xml = {**meta_xml, **meta_xml2}
         else:
             meta_xml = xml_data.convert_xml_to_dict2()
         ext_dict = xml_data.extended_xml_fgdc()
         ext_dict = p_usace_xml.ext_xml_map_enddate(ext_dict)
+        meta_xml = p_usace_xml.xml_SPCSconflict_flag(meta_xml)
     else:
         ext_dict = {}
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESWG', default_meta='')  #
+    meta['special_handling'] = _check_special_handling(basename)
+    #special handling is saved with text meta as it has to do with the text file
+    if meta['special_handling'] == 'FullRES':
+        meta['interpolate']= False
+    #elif meta['special_handling'] == '.ppxyz':
+    #    meta['interpolate']= False
+    else:
+        meta['interpolate']= True
+    # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
+    meta_from_ehydro = {}
+
+    e_pick = EhydroPickleReader(xmlfilename)
+    meta_from_ehydro = e_pick._read_pickle()#to handle files
+    meta_from_ehydro = e_pick._when_use_pickle(meta_xml)
+    meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
+    
     list_keys_empty = []
     combined_row = {}
     subset_row = {}
@@ -239,12 +270,160 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     merged_meta = check_date_order(merged_meta, merged_meta)
     return merged_meta
 
-
 ###----------------------------------------------------------------------------
-class Extract_Txt(object):
+class EhydroPickleReader(object):
+    
+    def __init__(self, infilename):
+        
+        """
+        Pass filename that matches the pickle file you want to match 
+        but with any extension
+        (Here we tend to pass the xmlfilename as it already has been matched
+        in the cases of _A.xyz etc., but one could use a .xyz file)
+    
+    
+        Parameters
+        ----------
+        infilename :
+    
+    
+        Returns
+        -------
+        self.filename = infilename
+        """
+        self.filename = infilename
+        
+    def _read_pickle(self):
+        """
+        Read in picklefile that ehydro_move creates from the E-Hydro REST API
+        table attributes.
+    
+    
+        Parameters
+        ----------
+        infilename :
+    
+    
+        Returns
+        -------
+    
+        """ 
+        print(f'reading in pickle based on: {self.filename}')#making sure pickle passing is working
+        pickle_meta = parse_usace_pickle.read_pickle(self.filename)
+        self.meta_from_ehydro = pickle_meta
+        #pickle = parse_usace_pickle.pickle_file(infilename)
+        #self.pickle_meta = pickle.pickle_meta
+        #self.meta_from_ehydro = self.pickle_meta#separating while debugging to track original
+        return pickle_meta
+    
+    def _Check_for_SPCSconflicts(self, meta_xml):#, meta_from_ehydro = None
+        """
+        Cheacking to see if the SPCS codes conflict between sources
+        
+        Parameters
+        ----------
+        meta_xml :
+        xml_data : (class object)
+        self :# meta_from_ehydro :
+    
+        Returns
+        -------
+        """
+        #if meta_from_ehydro == None:
+        meta_from_ehydro = self.meta_from_ehydro
+               
+        no_SPCS_conflict = ''
+        no_SPCS_conflict_withpickle = ''
+        if 'SPCS_conflict_XML' in meta_from_ehydro:
+            if meta_from_ehydro['SPCS_conflict_XML'] != '':
+                no_SPCS_conflict = 'False'
+            else:
+                no_SPCS_conflict = 'True'
+                
+        if 'SOURCEPROJECTION' in meta_from_ehydro:
+            if 'from_fips' in meta_xml:
+                meta_xml = p_usace_xml.xml_SPCSconflict_otherspcs(meta_xml, f"{p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']}")
+                if p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']) == meta_xml['from_fips']:
+                    no_SPCS_conflict_withpickle = 'True'
+                else:
+                    no_SPCS_conflict_withpickle = 'False'
+            if meta_xml['SPCS_conflict_XML_other'] != '':
+                no_SPCS_conflict = 'False'
+                #We know for CEMVN thath this will conflict with some of the SPCS values but have a method that works.
+                #this way we pass on that there are conflicts but do not raise a flag unless the final from_fips disagrees
+                
+        meta_from_ehydro['no_SPCS_conflict_withpickle'] = no_SPCS_conflict_withpickle
+        self.meta_from_ehydro
+        return no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro
+    
+    def _when_use_pickle(self, meta_xml):#, meta_from_ehydro
+        """
+        If there is no SPCS code in the xml, use the pickle/ REST API SPCS code
+        
+        Additional check to see if their is a conflict. District specific rules on conflict resolution may need to apply.
+        1st assumption is that the REST API has the correct SPCS code according to E-Hydro team. (John McKenzie) and reinterated by
+        District contacts thus far (as of June 2019) base on E-hydro upload procedures.
+        
+        Parameters
+        ----------
+        meta_xml :
+        xml_data(xml reader class)
+        self :
+    
+    
+        Returns
+        -------
+        """
+        meta_from_ehydro = self.meta_from_ehydro
+        if 'SOURCEPROJECTION' in meta_from_ehydro:
+            if 'from_FIPS' in meta_xml:
+                #run check for conflict
+                no_SPCS_conflict, no_SPCS_conflict_withpickle = self._Check_for_SPCSconflicts(meta_xml, meta_from_ehydro)
+                if no_SPCS_conflict_withpickle == 'False':
+                    #test
+                    meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION'])
+            else:
+                meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION'])
+        self.meta_from_ehydro = meta_from_ehydro
+        return meta_from_ehydro
+    
+    def _when_use_pickle_startdate(self, meta_xml):
+        """
+        if xml_meta is blank and if meta does not have information use pickle data for date
+        next: Check survey start & end date against filename and other locations
+        
+        Parameters
+        ----------
+        meta_xml :
+        self: # uses meta_from_ehydro :
+    
+    
+        Returns
+        """
+        meta_from_ehydro = self.meta_from_ehydro
+        if meta_from_ehydro:#check if dictionary empty
+            if meta_xml:#check if dictionary empty
+                print(meta_from_ehydro['SURVEYDATEEND'])
+                #Check survey start & end date against filename and other locations
+            else:#if xml_meta is blank and if meta does not have information use pickle data:
+                meta_from_ehydro['start_date'] = meta_from_ehydro['SURVEYDATESTART']
+                #"SURVEYDATESTART"
+                #"SURVEYDATEEND"
+        return meta_from_ehydro
+    
+###----------------------------------------------------------------------------
+class XYZMetaReader(object):
     """Extract both information from the filename as well as from the text file's header"""
 
     def __init__(self, preloadeddata, version='', filename=''):
+        """
+        xyz file (the ascii text file) handler for metadata parsing  gets initiated here
+        Parameters
+        ----------
+        preloadeddata
+        version
+        filename
+        """
         self.filename = preloadeddata
         if filename != "" or None:
             self.filename_1 = filename
@@ -257,6 +436,7 @@ class Extract_Txt(object):
     def parse_ehydro_xyz(self, infilename, meta_source='xyz', version='CESWG',
                          default_meta=''):  # need to change version to None
         """
+        Parse an USACE eHydro file for the available meta data.
         'CESWG'
 
         Parameters
@@ -296,17 +476,18 @@ class Extract_Txt(object):
         merged_meta = {**default_meta, **name_meta, **file_meta}
         if 'from_horiz_unc' in merged_meta:
             if merged_meta['from_horiz_units'] == 'US Survey Foot':
-                val = _ussft2m * float(merged_meta['from_horiz_unc'])
+                val = float(merged_meta['from_horiz_unc'])
                 merged_meta['horiz_uncert'] = val
         if 'from_vert_unc' in merged_meta:
             if merged_meta['from_vert_units'] == 'US Survey Foot':
-                val = _ussft2m * float(merged_meta['from_vert_unc'])
+                val = float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
         sorind = f"{name_meta['projid']}_{name_meta['uniqueid']}_{name_meta['subprojid']}_{name_meta['start_date']}_" + \
                  f"{name_meta['statuscode']}"
         merged_meta['source_indicator'] = f'US,US,graph,{sorind}'
         merged_meta['script_version'] = __version__
+        merged_meta = get_vertdat_ceswg(merged_meta)#pulls in vertical datum from filename
         return merged_meta
 
     def parse_ehydro_filename(self, infilename):
@@ -516,33 +697,94 @@ def get_xml_match(f):
     -------
 
     """
-    if '_A.xyz' in f:
-        xmlfilename = get_xml_xt(f, '_A.xyz')
-    elif '_FULL.xyz' in f:
-        xmlfilename = get_xml_xt(f, '_FULL.xyz')
-    elif '_FULL.XYZ' in f:
-        xmlfilename = get_xml_xt(f, '_FULL.XYZ')
-    elif '_A.XYZ' in f:
-        xmlfilename = get_xml_xt(f, '_A.XYZ')
-    else:
+    xmlfilename=''
+    ext_list = ['_FULL.XYZ', '_A.XYZ', '.PPXYZ']
+    for extension in ext_list:
+        if f.upper().find(extension)>0:
+            xmlfilename = get_xml_xt(f, extension)
+    if xmlfilename == '':
         xmlfilename = get_xml(f)
     return xmlfilename
 
-
 ##-----------------------------------------------------------------------------
-def _start_xyz(infilename):
+def get_vertdat_ceswg(meta: dict):# -> dict:
     """
-    looks for the first line of the xyz data after the header
-    returns the row number of first line of data
-
+    pass the meta dict of the filename broken up
+    returns the vertical datum found in the filename back to the meta dict
+    
+    Expected possible USACE Galveston District Vertical Datums include:
+        MLLW : Mean Lower Low Water
+        LWD  : Low Water Datum
+        MLT  : Mean Low Tide
+        
+        All data should as of 2018 be in MLLW or LWD, both are official chart 
+        datums. LWD is based on the same 19 year epoch as MLLW NTDE, but it
+        looks at lowest water levels that are non-tidal, whereas in MLLW
+        areas one expects the low water level to be driven by the tidal cycle.
+        Areas of LWD still may have tidal effects, but they are far less than
+        more meteorological forcings (pressure and wind, riverine inputs etc. 
+        (storm surge, wind pilling up water on one side of the bay etc.)
+        
+        MLT should no longer be being produced by USACE CESWG, but it is
+        includined in older data on e-hydro.
+        
     Parameters
     ----------
-    infilename :
+    meta: dict
         
 
     Returns
     -------
+    meta: dict
+    #with the vertical datum
 
+    """
+    CESWG_datums_list = ['MLLW', 'LWD', 'MLT']
+    
+    for ceswg_datum in CESWG_datums_list:
+        if meta['optional'].find(ceswg_datum)>0:
+            meta['VERDAT_from_filename'] = ceswg_datum
+            meta['from_vert_datum'] = ceswg_datum
+            meta['from_vert_key'] = ceswg_datum
+    return meta
+
+##-----------------------------------------------------------------------------
+def _check_special_handling(basename):
+    """
+    Doing a check if the xyz file type is full resolution or may have
+    other special handling flags that should be passed
+    
+    Parameters
+    ----------
+    basename :
+        
+
+    Returns
+    -------
+    """
+    special_handling = ''
+    if basename.find('.ppxyz') > 0:
+        special_handling = 'ppxyz'
+    full_res = [ '_A.XYZ', '_FULL.XYZ']#_A.xyz, _FULL.xyz
+    for ext_full in full_res:
+        if basename.upper().find(ext_full) > 0:
+            special_handling = 'FullRES'
+    return special_handling
+    
+##-----------------------------------------------------------------------------
+
+def _start_xyz(infilename):
+    """
+    looks for the first line of the xyz data after the header
+    returns the row number of first line of data
+    
+    Parameters
+    ----------
+    infilename :
+    
+    Returns
+    -------
+    
     """
     first_instance = ''
     numberofrows = []
@@ -554,6 +796,8 @@ def _start_xyz(infilename):
                 numberofrows.append(index1)
                 if line.find(',') > 0:
                     commas_present = ','
+                elif line.find('\t') > 0:
+                    commas_present = 'tab_instead'
         first_instance = numberofrows[0]
 
     return first_instance, commas_present
@@ -561,18 +805,18 @@ def _start_xyz(infilename):
 
 def _is_header2(line, version=None):
     """
+    looks at header
     
-
     Parameters
     ----------
     line :
         param version:  (Default value = None)
     version :
          (Default value = None)
-
+    
     Returns
     -------
-
+    
     """
     if version is None:
         version = ''
@@ -923,17 +1167,16 @@ def _parse_LWRP_(line):
 def _parse_Gage_Reading(line, allcap1):
     """
     Looks for the water level Gage
-
+    
     Parameters
     ----------
     line :
         param allcap1:
     allcap1 :
-        
-
+    
     Returns
     -------
-
+    
     """
     if allcap1 == 1:
         name = line.split('GAGE_READING==')[-1]
@@ -949,15 +1192,14 @@ def _parse_Gage_Reading(line, allcap1):
 def _parse_sound_velocity(line):
     """
     Looks for Sound Velocity
-
+    
     Parameters
     ----------
     line :
-        
-
+    
     Returns
     -------
-
+    
     """
     name = line.split('SOUND VELOCITY')[-1]
     name = name.strip('\n')
@@ -967,16 +1209,15 @@ def _parse_sound_velocity(line):
 
 def _parse_Ranges(line):
     """
+    looks at ranges
     
-
     Parameters
     ----------
     line :
-        
-
+    
     Returns
     -------
-
+    
     """
     name = line.split('Range:')[-1]
     name = name.strip('\n')
@@ -986,16 +1227,16 @@ def _parse_Ranges(line):
 
 def _is_RTK(line):
     """
+    pulls RTK line
     
-
     Parameters
     ----------
     line :
-        
-
+    
+    
     Returns
     -------
-
+    
     """
     pattern_coordinates = '[RTK]'  # at least six digits# should be seven then . plus two digits
     if _re.findall(pattern_coordinates, line) is not None:
@@ -1006,16 +1247,16 @@ def _is_RTK(line):
 
 def _is_RTK_Tide(line):
     """
+    looks for RTK Tide
     
-
     Parameters
     ----------
     line :
-        
-
+    
+    
     Returns
     -------
-
+    
     """
     if _re.findall('[VRS RTK TIDES]', line) is not None:
         return False
@@ -1025,16 +1266,16 @@ def _is_RTK_Tide(line):
 
 def _parse_processedBy(line):
     """
-    
+    parse processedBy
 
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     metadata = {'ProcessedBy': line}
     return metadata
@@ -1042,16 +1283,16 @@ def _parse_processedBy(line):
 
 def _parse_CheckedBy(line):
     """
+    parse CheckedBy
     
-
     Parameters
     ----------
     line :
         
-
+    
     Returns
     -------
-
+    
     """
     metadata = {'CheckedBy': line.split('CheckedBy==')[1]}
     return metadata
@@ -1059,16 +1300,16 @@ def _parse_CheckedBy(line):
 
 def _parse_ReviewedBy(line):
     """
+    parse ReviewedBy
     
-
     Parameters
     ----------
     line :
-        
-
+    
+    
     Returns
     -------
-
+    
     """
     metadata = {'ReviewedBy': line.split('ReviewedBy==')[1]}
     return metadata
@@ -1079,17 +1320,17 @@ def check_date_order(m, mm):
     """
     ingest dates from e-hydro file name, and xml if available
     do a date check.
-
+    
     Parameters
     ----------
     m :
         param mm:
     mm :
-        
-
+    
+    
     Returns
     -------
-
+    
     """
     date_list = []  # date_list = [begdate, enddate,filename_date]
     if 'begdate' in m:
@@ -1226,16 +1467,16 @@ def check_abst_date(filename_date, daterange):
 
 def check_datelist(next_date):
     """
+    checks date list
     
-
     Parameters
     ----------
     next_date :
-        
-
+    
+    
     Returns
     -------
-
+    
     """
     dateonly_list = []
     for day in next_date:
@@ -1246,21 +1487,20 @@ def check_datelist(next_date):
 
 def check_date_format_hasday(date_string, b_or_e=None):
     """
+    check_date_format_hasday
     
-
     Parameters
     ----------
     date_string :
         param b_or_e:  (Default value = None)
     b_or_e :
          (Default value = None)
-
+    
     Returns
     -------
-
+    
     """
     pattern_missing_valid_day = '[\d][\d][\d][\d][\d][\d][0][0]'
-
     if b_or_e is None:
         day = '1'
     elif type(b_or_e) == int:

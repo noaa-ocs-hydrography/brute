@@ -20,7 +20,7 @@ import re as _re
 import shutil as _shutil
 from datetime import datetime as _dt
 from string import ascii_lowercase as _al
-from typing import List, Tuple, Union
+from typing import Union
 
 import astropy.convolution as _apc
 import lxml.etree as _et
@@ -123,8 +123,7 @@ def getTifElev(file: str, y):
     print(arr.shape)
     print(_np.amax(arr), _np.amin(arr))
     print(meta)
-    band = None
-    ds = None
+    del band, ds
     tifFile = [y, file, meta, arr]
 
     return tifFile, name
@@ -156,7 +155,7 @@ def getShpRast(file: str, y, pixel_size=1, nodata=255):
     fName = _os.path.split(file)[-1]
     splits = _os.path.splitext(fName)
     name = splits[0]
-    # tif = f'{splits[0]}.tif'
+    tif = f'{splits[0]}.tif'
 
     # Open the data source and read in the extent
     source_ds = _ogr.Open(file)
@@ -183,15 +182,14 @@ def getShpRast(file: str, y, pixel_size=1, nodata=255):
 
     write_raster(arr, gt, target_ds, tif)
 
-    band = None
-    source_ds = None
+    del band, source_ds
 
     shpRast = [y, tif, meta, arr]
 
     return shpRast, name
 
 
-def getBndRast(files: List[str]):
+def getBndRast(files: [str]):
     """
     Passes individual file paths to the appropriate data reader(s)
     :func:`getTifElev` or :func:`getShpRast`
@@ -200,7 +198,7 @@ def getBndRast(files: List[str]):
     ----------
     files :
         File paths of the input GeoTiff and/or Shapefile files
-    files: List[str] :
+    files: [str] :
 
 
     Returns
@@ -240,9 +238,8 @@ def getBagLyrs(fileObj: str):
 
     Parameters
     ----------
-    fileObj :
+    fileObj : str
         File path of the input BAG file
-    fileObj: str :
 
 
     Returns
@@ -382,7 +379,7 @@ def write_raster(raster_array, gt, data_obj, outputpath, dtype=_gdal.GDT_UInt32,
     dest.SetProjection(srs.ExportToWkt())
 
     # Close output raster dataset
-    dest = None
+    del dest
 
 
 def maxValue(arr: _np.array):
@@ -469,7 +466,7 @@ def tupleGrid(grid: _np.array, maxVal: int):
     return _np.array(points)
 
 
-def concatGrid(grids: list, maxVal: int, shape: Tuple[int, int]):
+def concatGrid(grids: list, maxVal: int, shape: (int, int)):
     """
     Takes an input of an array of grid objects and the assumed nodata value
     Passes the assumed nodata value and the arrays held within each of the
@@ -485,20 +482,12 @@ def concatGrid(grids: list, maxVal: int, shape: Tuple[int, int]):
 
     Parameters
     ----------
-    grids :
+    grids
         The BAG and GeoTiff objects
-    maxVal :
+    maxVal
         The BAG data's nodata value
-    shape :
+    shape
         Dimensions of the input BAG data (y, x)
-    grids: list :
-
-    maxVal: int :
-
-    shape: Tuple[int :
-
-    int] :
-
 
     Returns
     -------
@@ -672,7 +661,7 @@ def alignTifs(tifs: list):
         return tifs, ext
 
 
-def polyTifVals(tifs: list, path: str, names: List[str], extent: list):
+def polyTifVals(tifs: list, path: str, names: [str], extent: list):
     """
     Heavy Influence From:
     "What is the simplest way..." on GIS Stack Exchange [Answer by 'Jon'
@@ -709,7 +698,7 @@ def polyTifVals(tifs: list, path: str, names: List[str], extent: list):
 
     path: str :
 
-    names: List[str] :
+    names: [str] :
 
     extent: list :
 
@@ -762,7 +751,7 @@ def polyTifVals(tifs: list, path: str, names: List[str], extent: list):
         else:
             meanTiff = (meanTiff > maxVal).astype(_np.int)
 
-    outputname = f'{path}\\{names[0]}_COMBINEDPOLY'
+    outputname = _os.path.join(path, f'{names[0]}_COMBINEDPOLY')
     outputtiff = f'{outputname}.tif'
     outputhdf5 = f'{outputname}.h5'
 
@@ -884,7 +873,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
         tifRes = 1
         print('same tif res', tifRes)
     else:
-        tifRes = _np.round(_np.mean([tex / tx, tey / ty]))
+        tifRes = _np.round(_np.mean([tex / tx, tey / ty]), decimals=2)
         print('diff tif res', tifRes)
 
     ##2
@@ -906,25 +895,26 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     print(bagRes, zres)
     #    _plt.imshow(tif[-1][::100,::100])
     #    _plt.show()
+
     ## 4
     print(tif[-1])
     if zres == 1:
-        newarr = tif[-1]
+        resampled_coverage_array = tif[-1]
     else:
         print('_zoom', _dt.now())
-        newarr = _zoom(tif[-1], zoom=[zres, zres], order=3, prefilter=False)
+        resampled_coverage_array = _zoom(tif[-1], zoom=[zres, zres], order=3, prefilter=False)
         print('zoomed', _dt.now())
     #    _plt.imshow(newarr[::100,::100])
     #    _plt.show()
 
     ## 5
-    newarr = newarr.astype('float64')
-    newarr[newarr > 0] = _np.nan
-    newarr[newarr < 1] = float(maxVal)
+    resampled_coverage_array = resampled_coverage_array.astype('float64')
+    resampled_coverage_array[resampled_coverage_array > 0] = _np.nan
+    resampled_coverage_array[resampled_coverage_array < 1] = float(maxVal)
     #    _plt.imshow(newarr[::100,::100])
     #    _plt.show()
-    print(newarr)
-    print(tif[-1].shape, newarr.shape)
+    print(resampled_coverage_array)
+    print(tif[-1].shape, resampled_coverage_array.shape)
 
     ## 6
     bagBounds = bag[2]
@@ -932,74 +922,52 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     print(bagBounds)
     print(tifBounds)
     bulx, buly = bagBounds[0]
-    blrx, blry = bagBounds[-1]
-    tulx, tuly = tifBounds[0]
-    tlrx, tlry = tifBounds[-1]
-    dulx, duly, dlrx, dlry = 0, 0, 0, 0
-    if bulx != tulx:
-        dulx = tulx - bulx
-        print(bulx, tulx, dulx)
-    if buly != tuly:
-        duly = buly - tuly
-        print(buly, tuly, duly)
-    if blrx != tlrx:
-        dlrx = blrx - tlrx
-        print(blrx, tlrx, dlrx)
-    if blry != tlry:
-        dlry = tlry - blry
-        print(blry, tlry, dlry)
-    print(dulx, duly)
-    print(dlrx, dlry)
 
     ## 7
-    bShape = bag[4]
-    bSy, bSx = bShape
-    tSy, tSx = newarr.shape
-    print(bSy, tSy)
-    print(bSx, tSx)
-    expx, expy = 0, 0
-    if newarr.shape != bShape:
-        print(bSy - tSy, bSx - tSx)
-        if tSy < bSy:
-            expy = int(_np.abs(bSy - tSy))
-            print('expy', expy)
-        if tSx < bSx:
-            expx = int(_np.abs(bSx - tSx))
-            print('expx', expx)
-    ay = _np.full((tSy + expy, tSx + expx), maxVal)
-    print('expz', ay.shape, bShape)
-    rollx = int(dulx * zres)
-    rolly = int(duly * zres)
+    shape = bag[4]
+    # clip resampled coverage data to the bounds of the BAG
+    output_array = _np.full(shape, maxVal)
+
+    cov_ul, cov_lr = _np.array(tifBounds[0]), _np.array(tifBounds[1])
+    bag_ul, bag_lr = _np.array(bagBounds[0]), _np.array(bagBounds[1])
+
+    if bag_ul[0] > cov_lr[0] or bag_lr[0] < cov_ul[0] or bag_lr[1] > cov_ul[1] or bag_ul[1] < cov_lr[1]:
+        raise ValueError('bag dataset is outside the bounds of coverage dataset')
+
+    ul_index_delta = _np.round((bag_ul - cov_ul) / _np.array((bagRes, -bagRes))).astype(int)
+    lr_index_delta = _np.round((bag_lr - cov_ul) / _np.array((bagRes, -bagRes))).astype(int)
 
     ## 8
-    up, left = 0, 0
-    down, right = 0, 0
-    if duly < 0:
-        up = -int(rolly)
-    elif duly > 0:
-        down = rolly
-        up = 0
-    if dulx < 0:
-        left = -int(rollx)
-    elif dulx > 0:
-        right = rollx
-        left = 0
+    # indices to be written onto the output array
+    output_array_index_slices = [slice(0, None), slice(0, None)]
 
-    if dulx != 0 or duly != 0:
-        print('rollz', up, left, down, right)
-        temp = newarr[up:, left:]
-        print(temp.shape)
-        #        _plt.imshow(temp[::100,::100])
-        #        _plt.show()
-        ay[down:temp.shape[0] + down, right:temp.shape[1] + right] = temp[:, :]
-        temp = None
-    else:
-        ay[:] = newarr[:]
-    print('expz', ay.shape)
-    ax = _np.full(bShape, maxVal)
-    ax[:] = ay[:bSy, :bSx]
-    newarr = None
-    ay = None
+    # BAG leftmost X is to the left of coverage leftmost X
+    if ul_index_delta[0] < 0:
+        output_array_index_slices[1] = slice(ul_index_delta[0] * -1, output_array_index_slices[1].stop)
+        ul_index_delta[0] = 0
+
+    # BAG topmost Y is above coverage topmost Y
+    if ul_index_delta[1] < 0:
+        output_array_index_slices[0] = slice(ul_index_delta[1] * -1, output_array_index_slices[0].stop)
+        ul_index_delta[1] = 0
+
+    # BAG rightmost X is to the right of coverage rightmost X
+    if lr_index_delta[0] > resampled_coverage_array.shape[1]:
+        output_array_index_slices[1] = slice(output_array_index_slices[1].start,
+                                             resampled_coverage_array.shape[1] - lr_index_delta[0])
+        lr_index_delta[0] = resampled_coverage_array.shape[1]
+
+    # BAG bottommost Y is lower than coverage bottommost Y
+    if lr_index_delta[1] > resampled_coverage_array.shape[0]:
+        output_array_index_slices[0] = slice(output_array_index_slices[0].start,
+                                             resampled_coverage_array.shape[0] - lr_index_delta[1])
+        lr_index_delta[1] = resampled_coverage_array.shape[0]
+
+    # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
+    output_array[output_array_index_slices[0], output_array_index_slices[1]] = resampled_coverage_array[
+                                                                               ul_index_delta[1]:lr_index_delta[1],
+                                                                               ul_index_delta[0]:lr_index_delta[0]]
+    del resampled_coverage_array
 
     ## 9
     ext = _os.path.splitext(targs[1])[1].lower()
@@ -1009,7 +977,7 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     #        gd_obj = _ogr.Open(targs[1])
     tif.pop()
     print(tif)
-    tif.append(ax)
+    tif.append(output_array)
     print(tif, tif[-1].shape)
     #    print ('h5')
     #    outputhdf5 = tif[1]
@@ -1021,8 +989,8 @@ def alignGrids(bag: list, tif: list, maxVal: int, targs: list):
     print('tiff')
     temp = targs[0]
     gt = (bulx, bagRes, temp[2], buly, temp[4], -bagRes)
-    write_raster(ax, gt, gd_obj, targs[2], options=['COMPRESS=LZW'])
-    ax = None
+    write_raster(output_array, gt, gd_obj, targs[2], options=['COMPRESS=LZW'])
+    del output_array
 
     grids = [tif, bag]
     bShape = bag[-1].shape
@@ -1120,7 +1088,7 @@ def rePrint(grids: list, ugrids: list, maxVal, ioVal: Union[int, bool], debug: U
     """
 
     print('rePrint', _dt.now())
-    print(maxVal)
+    print(maxVal, ioVal)
     poly = grids[0][-1]
     bag = grids[-1][-1]
     uncr = grids[-1][-2]
@@ -1145,7 +1113,7 @@ def rePrint(grids: list, ugrids: list, maxVal, ioVal: Union[int, bool], debug: U
     fpoly = _np.logical_and(dpoly, npoly)
     ## 8
 
-    if ioVal is None:
+    if ioVal:
         nbag = _np.where(fpoly, interp, maxVal)
         nunc = _np.where(fpoly, iuncrt, maxVal)
     elif not ioVal:
@@ -1236,7 +1204,7 @@ def triangulateSurfaces(grids: list, combo: _np.array, vals: _np.array, uval: tu
     return grid, uncr, grid_pre
 
 
-def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
+def bagSave(bag, new, tifs, res, ext, path, newu, poly_list, ioVal):
     """
     Primary function for saving final products of the tool.
 
@@ -1260,7 +1228,7 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
 
     path :
 
-    polyList :
+    poly_list :
 
 
     Returns
@@ -1302,13 +1270,13 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
         elif not _os.path.exists(outputpath2):
             break
 
-    for num in range(len(polyList)):
-        outputpath = f'{path}\\{bagName}_{num}.tif'
+    for num in range(len(poly_list)):
+        outputpath = _os.path.join(path, f'{bagName}_{num}.tif')
         print(outputpath)
-        write_raster(polyList[num], gtran, gd_obj, outputpath, dtype=_gdal.GDT_Float64, nodata=0,
+        write_raster(poly_list[num], gtran, gd_obj, outputpath, dtype=_gdal.GDT_Float64, nodata=0,
                      options=['COMPRESS=LZW'])
 
-    polyList = None
+    del poly_list
     _shutil.copy2(bag[1], outputpath2)
 
     with _tb.open_file(outputpath2, mode='a') as bagfile:
@@ -1323,11 +1291,11 @@ def bagSave(bag, new, tifs, res, ext, path, newu, polyList, ioVal):
         bagfile.flush()
 
     bagfile.close()
-    gd_obj = None
+    del gd_obj
     print('done')
 
 
-def sliceFinder(size: int, res: float, shape: Tuple[int, int], var: int = 5000):
+def sliceFinder(size: int, res: float, shape: (int, int), var: int = 5000):
     """
     Uses the file size of the bag to determine if the grid should be tiled.
     If the file is less than 100Mb, the file will not be tiled.  If the file is
@@ -1355,18 +1323,6 @@ def sliceFinder(size: int, res: float, shape: Tuple[int, int], var: int = 5000):
         Dimensions of the input BAG data (y, x)
     var :
         Arbitrary value for determining chunk size (Default value = 5000)
-    size :
-
-    size: int :
-
-    res: float :
-
-    shape: Tuple[int :
-
-    int] :
-
-    var: int :
-         (Default value = 5000)
 
     Returns
     -------
@@ -1403,7 +1359,7 @@ def sliceFinder(size: int, res: float, shape: Tuple[int, int], var: int = 5000):
         return tiles, chunckGrid, sliceInfo
 
 
-def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tuple, ioVal: Union[int, bool]):
+def interp(grids: list, size: int, res: float, shape: (int, int), uval: tuple, ioVal: Union[int, bool]):
     """
     Summary of function
 
@@ -1423,22 +1379,6 @@ def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tup
         Values for uncertainty calculation
     ioVal :
         User input. Determines whether origninal and interpolated or only interpolated data is output
-    grids: list :
-
-    size: int :
-
-    res: float :
-
-    shape: Tuple[int :
-
-    int] :
-
-    uval: tuple :
-
-    ioVal: Union[int :
-
-    bool] :
-
 
     Returns
     -------
@@ -1461,7 +1401,7 @@ def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tup
                 ts = _dt.now()
                 index = ySlice, xSlice
                 print(f'\nTile {chunkGrid[index] + 1} of {z} - {ts}')
-                tile = chunk(sliceInfo, index, bagShape)
+                tile = Chunk(sliceInfo, index, bagShape)
                 tiffTile = tifObjras[tile.yMin:tile.yMax, tile.xMin:tile.xMax]
                 #                tiffTile[tiffTile < 0] = chunkGrid[index]
                 #                tiffTile[tiffTile > 0] = -chunkGrid[index]
@@ -1473,9 +1413,7 @@ def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tup
                 gridSplit[0].append(tiffTile)
                 gridSplit[-1].append(uncrTile)
                 gridSplit[-1].append(bathTile)
-                tiffTile = None
-                bathTile = None
-                uncrTile = None
+                del tiffTile, bathTile, uncrTile
                 combo, vals = comboGrid(gridSplit)
                 print('interp is next')
                 newBag, newUncr, preBag = triangulateSurfaces(gridSplit, combo, vals, uval)
@@ -1487,15 +1425,11 @@ def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tup
                                                                           tile.xIMin:tile.xIMax]
                 #                unitedBag[tile.yBMin:tile.yBMax,tile.xBMin:tile.xBMax] = bathTile[tile.yIMin:tile.yIMax,tile.xIMin:tile.xIMax]
                 #                unitedPre[tile.yBMin:tile.yBMax,tile.xBMin:tile.xBMax] = tiffTile[tile.yIMin:tile.yIMax,tile.xIMin:tile.xIMax]
-                newBag = None
-                newUncr = None
-                preBag = None
+                del newBag, newUncr, preBag
                 td = _dt.now()
                 tdelt = td - ts
                 print('Tile complete -', td, '| Tile took:', tdelt)
-        tifObjras = None
-        bagObjras = None
-        uncObjras = None
+        del tifObjras, bagObjras, uncObjras
     else:
         ts = _dt.now()
         print('\nTile 1 of 1 -', ts)
@@ -1513,7 +1447,7 @@ def interp(grids: list, size: int, res: float, shape: Tuple[int, int], uval: tup
     return ugrids
 
 
-def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioVal: Union[int, bool]):
+def main(bagPath: str, bndPaths: [str], desPath: [str], catzoc: str, ioVal: Union[int, bool]):
     """
     main function of the interpolation process.  This function handles the flow of data in input, tiling, interpolation, and reintigration of the final grid.
 
@@ -1531,9 +1465,9 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
         User input. Determines whether origninal and interpolated or only interpolated data is output
     bagPath: str :
 
-    bndPaths: List[str] :
+    bndPaths: [str] :
 
-    desPath: List[str] :
+    desPath: [str] :
 
     catzoc: str :
 
@@ -1578,8 +1512,7 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
     ## Tiling Ends
     print('\nsaving is next\n')
     saveBag, saveUnc, polyList = rePrint(grids, ugrids, maxVal, ioVal)
-    grids = None
-    ugrids = None
+    del grids, ugrids
     bagSave(bag, saveBag, tifGrids, res, ext, desPath, saveUnc, polyList, ioVal)
     done = _dt.now()
     print(f'acually done {done}')
@@ -1589,7 +1522,7 @@ def main(bagPath: str, bndPaths: List[str], desPath: List[str], catzoc: str, ioV
     return msg
 
 
-class chunk:
+class Chunk:
     """
     chunk() serves as the data container for individual tile data. It's
     inputs inlcude sliceInfo=[buffer, height, width], chunkSlice=tile[y,x]

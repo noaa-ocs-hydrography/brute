@@ -12,12 +12,26 @@ into the metadata file for qualification.
 import os
 from glob import glob
 
-import fuse.fuse_ehydro as ffe
+import fuse.fuse_processor as ffp
 
 if __name__ == '__main__':
-    cenan = ffe.fuse_ehydro('cenan.config')  # this config is local for testing
+    cenan = ffp.FuseProcessor('cenan.config')  # this config is local for testing
     for path in cenan.rawdata_path:
+        print(f'Begin working in {path}:')
+        c = 1
         flist = glob(os.path.join(path, '*.xyz'))
         for f in flist:
+            p,fname = os.path.split(f)
+            print(f'{c}:Reading {fname}', end = ', ')
             cenan.read(f)
-            cenan.process(f)
+            try:
+                print(f'processing', end = ', ')
+                cenan.process(f)
+                print(f'done.')
+                c += 1
+            except ValueError as e:
+                print('\n')
+                print(e)
+                print('\n')
+            if c > 3:
+                break
