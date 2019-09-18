@@ -336,8 +336,7 @@ def vectorize_raster(raster: Union[gdal.Dataset, str], band_index: int = 1) -> M
     return vectorize_geoarray(raster_array, transform)
 
 
-def write_shapely_geometry(output_filename: str, geometry: Union[Polygon, MultiPolygon], crs_wkt: str = None, name: str = None,
-                           layer: str = None):
+def write_geometry(output_filename: str, geometry: Union[Polygon, MultiPolygon], crs_wkt: str = None, name: str = None, layer: str = None):
     """
     Write the given Shapely geometry to the given vector file.
 

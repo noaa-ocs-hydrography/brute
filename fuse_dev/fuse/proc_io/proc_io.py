@@ -17,6 +17,7 @@ from tempfile import TemporaryDirectory as tempdir
 import fiona
 import fiona.crs
 import numpy as np
+from fuse.utilities import vectorize_raster, write_geometry
 from osgeo import gdal, ogr, osr
 
 gdal.UseExceptions()
@@ -304,49 +305,23 @@ class ProcIO:
         with fiona.open(filename, 'w', 'GPKG', schema=layer_schema, crs=projection, layer=output_layer) as output_file:
             output_file.writerecords(point_records)
 
-    def _write_vectorized_raster(self, raster: gdal.Dataset, filename: str, band_index: int = 1, output_layer_name: str = 'Elevation'):
+    def _write_vectorized_raster(self, filename: str, raster: gdal.Dataset, crs_wkt: str, band_index: int = 1, layer: str = 'Elevation'):
         """
         Write the given GDAL raster dataset to a GDAL vector dataset (vectorizing to a multipolygon).
 
         Parameters
         ----------
+        filename
+            file path to write
         raster
             GDAL raster dataset
-        filename
-            filename to write vectorized multipolygon
         band_index
             raster band (1-indexed)
+        layer
+            name of output layer
         """
 
-        points, meta = self._gdal_points_to_wkt(raster)
-        directory, filename = os.path.split(filename)
-        outfilename = f'{directory}{os.path.splitext(filename)[0]}_Vector.gpkg'
-
-        layer_schema = {
-            'geometry': 'Multipolygon',
-            'properties': {
-                'Survey': 'str',
-            }
-        }
-
-        raster_array = raster.GetRasterBand(1)
-
-        # MultiPolygon(shapely_shape(shape[0]) for shape in rasterio_shapes(, mask=raster_mask, transform=transform))
-
-        # in fiona features are input as dictionary "records"
-        multipolygon_record = {
-            'geometry': {
-                'type': 'Multipolygon',
-                'coordinates': ()
-            },
-            'properties': {
-                'Survey': filename
-            }
-        }
-
-        with fiona.open(outfilename, 'w', 'GPKG', schema=layer_schema, crs=fiona.crs.from_string(meta['crs']),
-                        layer=output_layer_name) as output_file:
-            output_file.writerecord(multipolygon_record)
+        write_geometry(filename, vectorize_raster(raster, band_index), crs_wkt, os.path.split(filename)[-1], layer)
 
     def _gdal_raster_to_array(self, raster: gdal.Dataset, band_index: int = 1) -> (np.array, dict):
         """
