@@ -526,8 +526,10 @@ class USACERawReader:
             metadata['from_horiz_key'] = fips
             metadata['from_wkt'] = _usefips.fips2wkt(fips)
             horiz_units = horiz_datum.split(',')[1]
-            if horiz_units.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+            if horiz_units.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
                 metadata['from_horiz_units'] = 'US Survey Foot'
+            elif horiz_units.strip().upper() in ('INTL FOOT'):
+                metadata['from_horiz_units'] = 'Intl Foot'
             else:
                 metadata['from_horiz_units'] = horiz_units.strip()
             metadata['from_horiz_datum'] = horiz_datum
@@ -676,8 +678,10 @@ class USACERawReader:
                 _logging.debug(_logging.DEBUG, f'ValueError: {e}')
                 return meta
         elif key == 'Distance_Units':
-            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
                 meta['from_horiz_units'] = 'US Survey Foot'
+            elif value.strip().upper() in ('INTL FOOT'):
+                meta['from_horiz_units'] = 'Intl Foot'
             else:
                 meta['from_horiz_units'] = value.strip()
         elif key == 'Vertical_Datum':

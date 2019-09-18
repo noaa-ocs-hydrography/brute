@@ -1,85 +1,102 @@
 import os
-import pathlib
 import unittest
 
 from fuse.fuse_processor import FuseProcessor
-from fuse.interpolator.bag_interpolator import coverage
-from fuse.raw_read.noaa import bag
 
-DATA_PATH = r"C:\Data\NBS"
+TESTING_DIRECTORY = r'\\OCS-VS-NBS02\data\testing'
+INPUT_ROOT = os.path.join(TESTING_DIRECTORY, 'raw')
+NOAA_INPUT_ROOT = os.path.join(INPUT_ROOT, 'NOAA')
+USACE_INPUT_ROOT = os.path.join(INPUT_ROOT, 'USACE')
+OUTPUT_ROOT = os.path.join(TESTING_DIRECTORY, 'output')
+
+USACE_CONFIG_ROOT = os.path.join('data', 'USACE')
+NOAA_CONFIG_ROOT = os.path.join('data', 'NOAA')
 
 
 class TestPointInterpolator(unittest.TestCase):
     def test_linear(self):
-        region_directory = os.path.join(DATA_PATH, r'PBC_Northeast\USACE\eHydro_NewYork_CENAN')
-        input_directory = os.path.join(region_directory, 'Original')
-        processed_directory = os.path.join(region_directory, r'MLLW\Data\Active')
-
-        if not os.path.exists(input_directory):
-            raise EnvironmentError(f'data directory not found: {input_directory}')
-        if not os.path.exists(processed_directory):
-            pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
-
         survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
-        file_type = 'bag'
 
-        input_path = os.path.join(input_directory, survey_name, f'{survey_name}.XYZ')
-        config_path = os.path.join('data', 'cenan_linear.config')
+        interpolation_method = 'linear'
+        output_file_extension = 'bag'
 
-        cenan_fuse_processor = FuseProcessor(config_path)
-        cenan_fuse_processor.read(input_path)
-        cenan_fuse_processor.process(input_path)
+        config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
+        input_path = os.path.join(USACE_INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
 
-        output_path = os.path.join(processed_directory, f'{survey_name}_5m_interp.{file_type}')
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
+        fuse_processor = FuseProcessor(config_path)
+        fuse_processor.read(input_path)
+        fuse_processor.process(input_path)
+
         assert os.path.exists(output_path)
 
     def test_kriging(self):
-        input_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'Original')
-        processed_directory = os.path.join(DATA_PATH, 'PBC_Northeast', 'USACE', 'eHydro_NewYork_CENAN', 'MLLW', 'Data',
-                                           'Active')
-
-        if not os.path.exists(input_directory):
-            raise EnvironmentError(f'data directory not found: {input_directory}')
-        if not os.path.exists(processed_directory):
-            pathlib.Path(processed_directory).mkdir(parents=True, exist_ok=True)
-
         survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
-        file_type = 'bag'
 
-        input_path = os.path.join(input_directory, survey_name, f'{survey_name}.XYZ')
-        config_path = os.path.join('data', 'cenan_kriging.config')
+        interpolation_method = 'kriging'
+        output_file_extension = 'bag'
 
-        cenan_fuse_processor = FuseProcessor(config_path)
-        cenan_fuse_processor.read(input_path)
-        cenan_fuse_processor.process(input_path)
+        config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
+        input_path = os.path.join(USACE_INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
 
-        output_path = os.path.join(processed_directory, f'{survey_name}_5m_interp.{file_type}')
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
+        fuse_processor = FuseProcessor(config_path)
+        fuse_processor.read(input_path)
+        fuse_processor.process(input_path)
+
         assert os.path.exists(output_path)
 
 
 class TestRasterInterpolator(unittest.TestCase):
-    def test_align2grid(self):
-        bag_testing_directory = os.path.join(DATA_PATH, r'testing\bag_interpolator\H12607')
+    def test_linear(self):
+        survey_name = 'H12607'
 
-        if not os.path.exists(bag_testing_directory):
-            raise EnvironmentError(f'test directory not found: {bag_testing_directory}')
+        interpolation_method = 'linear'
+        output_file_extension = 'bag'
 
-        bag_path = os.path.join(bag_testing_directory, 'H12607_MB_4m_MLLW_2of2.bag')
-        coverage_list = [os.path.join(bag_testing_directory, 'H12607_SSSAB_1m_600kHz_2of2.tif')]
+        config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
+        input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
+        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
 
-        bag_dataset = bag.BagFile()
-        bag_dataset.open_file(bag_path, 'hack')
-        bag_dataset.generate_name(bag_testing_directory, False)
-        coverage_dataset = coverage.UnifiedCoverage(coverage_list, bag_dataset.wkt, bag_dataset.name)
+        if os.path.exists(output_path):
+            os.remove(output_path)
 
-        assert coverage_dataset.bounds != bag_dataset.bounds
-        assert coverage_dataset.shape != bag_dataset.shape
+        fuse_processor = FuseProcessor(config_path)
+        for bag_filename in bag_paths:
+            if 'INTERP' not in bag_filename:
+                fuse_processor.read(bag_filename)
+                fuse_processor.process(bag_filename)
 
-        coverage_dataset = coverage.align2grid(coverage_dataset, bag_dataset.bounds, bag_dataset.shape,
-                                               bag_dataset.resolution, bag_dataset.nodata)
+        assert os.path.exists(output_path)
 
-        assert coverage_dataset.bounds == bag_dataset.bounds
-        assert coverage_dataset.shape == bag_dataset.shape
+    def test_kriging(self):
+        survey_name = 'H12607'
+
+        interpolation_method = 'kriging'
+        output_file_extension = 'bag'
+
+        config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
+        input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
+        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
+
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
+        fuse_processor = FuseProcessor(config_path)
+        for bag_filename in bag_paths:
+            if 'INTERP' not in bag_filename:
+                fuse_processor.read(bag_filename)
+                fuse_processor.process(bag_filename)
+
+        assert os.path.exists(output_path)
 
 
 if __name__ == '__main__':

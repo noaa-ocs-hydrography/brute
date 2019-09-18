@@ -13,8 +13,7 @@ class TestTiling(unittest.TestCase):
         assert tiling.get_tile_from_point(xy_level, test_point) == ([-78.75, 33.75, -67.5, 45.0], '00000A1')
 
         assert tiling.get_tile_from_point('33', test_point) == ([-90.0, 22.5, -67.5, 45.0], '000002C')
-        assert tiling.get_shapely(xy_level, [-90.0, 22.5, -67.5, 45.0])[-1] == ['0000094', '0000095', '00000A0',
-                                                                                '00000A1']
+        assert tiling.get_shapely(xy_level, [-90.0, 22.5, -67.5, 45.0])[-1] == ['0000094', '0000095', '00000A0', '00000A1']
 
         # os.remove(os.path.join(os.curdir, f'{xy_level}_tesselation.gpkg'))
 

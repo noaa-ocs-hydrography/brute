@@ -929,7 +929,7 @@ def parse_namespace(meta_str):
             if v[0] == ':':
                 tmp = v[1:]
                 tmp = tmp.split('>')[0]
-                name, info = tmp.split('=')
+                name, info = tmp.split('=', 1)
                 site = info.split('"')[1]
                 namespace[name] = site
         else:  # this handles most cases
@@ -1597,8 +1597,10 @@ def extract_from_iso_meta(xml_meta):
                 xml_meta['from_vert_datum'] = xml_meta['Vertical Datum Description']
     # horizontal units
     if 'Units' in xml_meta:
-        if xml_meta['Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+        if xml_meta['Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
             xml_meta['from_horiz_units'] = 'US Survey Foot'
+        elif xml_meta['Units'].strip().upper() in ('INTL FOOT'):
+            xml_meta['from_horiz_units'] = 'Intl Foot'
         else:
             xml_meta['from_horiz_units'] = xml_meta['Units'].strip()
     if 'Implied_Horizontal_Accuracy' in xml_meta:
@@ -1895,14 +1897,14 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 'plandu'].upper() == 'FOOT_US':  # plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
                 m['Horizontal_Units'] = 'US Survey Foot'
             elif meta_xml['plandu'].upper() == 'INTL FOOT':
-                m['from_horiz_units'] = 'ft'  # international feet code for vdatum
+                m['from_horiz_units'] = 'Intl Foot'  # international feet code for vdatum
     horizpar = meta_xml['horizpar']
     if horizpar.find('DGPS, 1 Meter') >= 0:
         m['horiz_uncert'] = '1'  # (POSACC) DGPS, 1 Meter
     elif horizpar.find('DGPS, +/-1.0 Meter (3.28 feet)') >= 0:
         m['horiz_uncert'] = '3.28'  # (POSACC) DGPS, 1 Meter
     elif horizpar.find('International Feet') >= 0:
-        m['from_horiz_units'] = 'ft'  # international feet code for vdatum
+        m['from_horiz_units'] = 'Intl Foot'  # international feet code for vdatum
     vertaccr = meta_xml['vertaccr']
     if vertaccr.find('Expected values 0.5 -1.0 Foot') >= 0:
         m['vert_acc'] = '1.0'  # 1 ft =   0.30480060960121924 m#'0.3'm
@@ -2025,8 +2027,10 @@ def convert_meta_to_input(m):
     elif 'horizontal_datum_i' in m:
         m['from_horiz_datum'] = m['horizontal_datum_i'].split('Vertical Datum:')[0]
     if 'Horizontal_Units' in m:
-        if m['Horizontal_Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+        if m['Horizontal_Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
             m['from_horiz_units'] = 'US Survey Foot'
+        elif m['Horizontal_Units'].strip().upper() in ('INTL FOOT'):
+            m['from_horiz_units'] = 'Intl Foot'
         else:
             # may need to enforce some kind of uniform spelling etc. here
             m['from_horiz_units'] = m['Horizontal_Units'].strip()
