@@ -74,6 +74,12 @@ class Interpolator:
             elevation_band = dataset.GetRasterBand(self.index)
             elevation_nodata = elevation_band.GetNoDataValue()
             elevation_data = elevation_band.ReadAsArray()
+            del elevation_band
+
+            uncertainty_band = dataset.GetRasterBand(self.index)
+            uncertainty_nodata = uncertainty_band.GetNoDataValue()
+            uncertainty_data = uncertainty_band.ReadAsArray()
+            del uncertainty_band
 
             raster_shape = dataset.RasterYSize, dataset.RasterXSize
             raster_geotransform = dataset.GetGeoTransform()
@@ -106,6 +112,8 @@ class Interpolator:
             # self.interpolation_region = _vectorize_geoarray(sidescan_coverage | elevation_coverage, transform, False)
             self.points = _geoarray_to_points(numpy.where(sidescan_coverage, elevation_data, elevation_nodata), raster_origin,
                                               raster_resolution, elevation_nodata)
+            self.uncertainty_points = _geoarray_to_points(numpy.where(sidescan_coverage, uncertainty_data, elevation_nodata), raster_origin,
+                                                          raster_resolution, uncertainty_nodata)
         else:
             if self.default_nodata is None:
                 self.default_nodata = 1000000.0
@@ -335,8 +343,7 @@ class Interpolator:
         interpolated_values = griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2], (output_x, output_y), method='linear',
                                        fill_value=output_nodata)
 
-        output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 2 if self.is_raster else 1,
-                                                           gdal.GDT_Float32)
+        output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 2, gdal.GDT_Float32)
         output_raster.SetGeoTransform((output_bounds[0], output_resolution[0], 0.0, output_bounds[1], 0.0, output_resolution[1]))
         output_raster.SetProjection(self.crs_wkt)
 
@@ -351,12 +358,17 @@ class Interpolator:
             uncertainty_nodata = uncertainty_band.GetNoDataValue()
             del uncertainty_band
 
-            input_uncertainty[input_uncertainty == uncertainty_nodata] = output_nodata
+            if uncertainty_nodata != output_nodata:
+                input_uncertainty[input_uncertainty == uncertainty_nodata] = output_nodata
 
-            band_2 = output_raster.GetRasterBand(2)
-            band_2.SetNoDataValue(output_nodata)
-            band_2.WriteArray(input_uncertainty)
-            del band_2
+            input_uncertainty = numpy.flip(input_uncertainty, axis=0)
+        else:
+            input_uncertainty = numpy.full(output_shape, output_nodata)
+
+        band_2 = output_raster.GetRasterBand(2)
+        band_2.SetNoDataValue(output_nodata)
+        band_2.WriteArray(input_uncertainty)
+        del band_2
 
         return output_raster
 
@@ -487,6 +499,7 @@ class Interpolator:
         output_x = numpy.linspace(output_bounds[0], output_bounds[2], output_shape[1])
         output_y = numpy.linspace(output_bounds[1], output_bounds[3], output_shape[0])
         interpolated_values = numpy.full(output_shape, fill_value=numpy.nan)
+        interpolated_uncertainty = numpy.full(output_shape, fill_value=0)
         interpolated_variance = numpy.full(output_shape, fill_value=numpy.nan)
 
         chunk_grid_shape = numpy.array(numpy.floor(output_shape / chunk_shape), numpy.int)
@@ -496,6 +509,7 @@ class Interpolator:
 
         with futures.ProcessPoolExecutor() as concurrency_pool:
             running_futures = {}
+            running_uncertainty_futures = {}
 
             for _ in range(numpy.product(chunk_grid_shape)):
                 # determine indices of the lower left and upper right bounds of the chunk within the output grid
@@ -520,6 +534,16 @@ class Interpolator:
                                                              output_x[grid_slice[1]], output_y[grid_slice[0]])
                     running_futures[current_future] = grid_slice
 
+                    if self.is_raster:
+                        uncertainty_points = self.uncertainty_points[
+                            numpy.where((self.points[:, 0] >= interpolation_sw_corner[0]) &
+                                        (self.points[:, 0] <= interpolation_ne_corner[0]) &
+                                        (self.points[:, 1] >= interpolation_sw_corner[1]) &
+                                        (self.points[:, 1] <= interpolation_ne_corner[1]))[0]]
+                        current_uncertainty_future = concurrency_pool.submit(_krige_points_onto_grid, uncertainty_points,
+                                                                             output_x[grid_slice[1]], output_y[grid_slice[0]])
+                        running_uncertainty_futures[current_uncertainty_future] = grid_slice
+
                 # go to next chunk
                 if chunk_grid_index[0] >= chunk_grid_shape[0]:
                     chunk_grid_index[0] = 0
@@ -532,21 +556,30 @@ class Interpolator:
 
                 try:
                     chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
-                    interpolated_values[grid_slice] = chunk_interpolated_values.filled(output_nodata)
-                    interpolated_variance[grid_slice] = chunk_interpolated_variance.filled(output_nodata)
+                    if type(chunk_interpolated_values) is numpy.ma.MaskedArray:
+                        chunk_interpolated_values = chunk_interpolated_values.filled(output_nodata)
+                    if type(chunk_interpolated_variance) is numpy.ma.MaskedArray:
+                        chunk_interpolated_variance = chunk_interpolated_variance.filled(output_nodata)
+                    interpolated_values[grid_slice] = chunk_interpolated_values
+                    interpolated_variance[grid_slice] = chunk_interpolated_variance
                 except ValueError as error:
                     print(f'malformed slice of {output_shape}: {grid_slice} ({error})')
 
-        interpolated_uncertainty = numpy.sqrt(interpolated_variance)
+            if self.is_raster:
+                for completed_future in futures.as_completed(running_uncertainty_futures):
+                    grid_slice = running_uncertainty_futures[completed_future]
+
+                    try:
+                        chunk_interpolated_uncertainty, _ = completed_future.result()
+                        interpolated_uncertainty[grid_slice] = chunk_interpolated_uncertainty.filled(output_nodata)
+                    except ValueError as error:
+                        print(f'malformed slice of {output_shape}: {grid_slice} ({error})')
+
+        interpolated_uncertainty = numpy.sqrt(interpolated_variance + interpolated_uncertainty ** 2)
         del interpolated_variance
 
-        if self.is_raster:
-            uncertainty_band = self.dataset.GetRasterBand(self.index + 1)
-            input_uncertainty = uncertainty_band.ReadAsArray()
-            uncertainty_nodata = uncertainty_band.GetNoDataValue()
-            del uncertainty_band
-
-            interpolated_uncertainty = numpy.where(input_uncertainty != uncertainty_nodata, input_uncertainty, interpolated_uncertainty)
+        interpolated_values[numpy.isnan(interpolated_values)] = output_nodata
+        interpolated_uncertainty[numpy.isnan(interpolated_uncertainty)] = output_nodata
 
         output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 2, gdal.GDT_Float32)
         output_raster.SetGeoTransform((output_bounds[0], output_resolution[0], 0.0, output_bounds[1], 0.0, output_resolution[1]))
