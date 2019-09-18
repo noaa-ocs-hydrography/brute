@@ -360,6 +360,8 @@ class Interpolator:
 
             if uncertainty_nodata != output_nodata:
                 input_uncertainty[input_uncertainty == uncertainty_nodata] = output_nodata
+
+            input_uncertainty = numpy.flip(input_uncertainty, axis=0)
         else:
             input_uncertainty = numpy.full(output_shape, output_nodata)
 
