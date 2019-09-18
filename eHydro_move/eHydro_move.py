@@ -11,7 +11,7 @@ import os as _os
 import re as _re
 import shutil as _shutil
 import zipfile as _zf
-from typing import Union, Dict, List
+from typing import Union, Dict
 
 from osgeo import ogr as _ogr
 from osgeo import osr as _osr
@@ -32,7 +32,7 @@ repo = _os.path.split(progLoc)[0]
 method = config.getboolean('Method', 'method')
 
 
-def regionPath(root: str, folder: str) -> dict:
+def regionPath(repo: str, downloads: str) -> dict:
     """
     Uses repo path derived from the program's location to find the downloads
     folder of eHydro_scrape.
@@ -49,9 +49,9 @@ def regionPath(root: str, folder: str) -> dict:
 
     Parameters
     ----------
-    root :
+    repo : str
         A string representing the base path of the repository
-    folder :
+    downloads : str
         A string representing the downloads folder of eHydro_scrape
 
     Returns
@@ -63,6 +63,9 @@ def regionPath(root: str, folder: str) -> dict:
     """
 
     regions = []
+
+    default_downloads = repo + r'\eHydro_scrape\downloads'
+
     with open(config['CSVs']['NBS'], 'r') as fileName:
         temp = [row for row in _csv.reader(fileName, delimiter=',') if len(row) > 0]
 
@@ -71,8 +74,14 @@ def regionPath(root: str, folder: str) -> dict:
         dwnlds = []
         districts = [i.strip() for i in row[2].split(',')]
 
+
         for i in districts:
-            dwnlds.append(repo + _os.path.join(downloads, i))
+            if downloads != '' and _os.path.isdir(downloads):
+                dwnlds.append(_os.path.join(downloads, i))
+            elif downloads == '' and _os.path.isdir(default_downloads):
+                dwnlds.append(_os.path.join(default_downloads, i))
+            else:
+                raise RuntimeError(f'Unable to find location of downloaded files. If the files are not stored in {default_downloads}, please ensure the Source\downloads field is set in the config.ini or that {default_downloads} exists')
 
         bounds = row[-1]
         regions.append((regionName, [dwnlds, bounds]))
@@ -261,7 +270,7 @@ def fileCollect(path: str, bounds: str) -> list:
         return zips
 
 
-def eHydroZIPs(regions: Dict[str, List[str]]) -> Dict[str, List[str]]:
+def eHydroZIPs(regions: {str: [str]}) -> {str: [str]}:
     """
     Creates a dictionary with keys of region names and values of a list of all
     files downloaded from districts within the respective regions
@@ -288,20 +297,20 @@ def eHydroZIPs(regions: Dict[str, List[str]]) -> Dict[str, List[str]]:
 
     hold = []
 
-    for k, v in regions.items():
+    for region, downloads in regions.items():
         zips = []
 
-        for meta in v[0]:
-            zips.extend(fileCollect(meta, v[1]))
+        for meta in downloads[0]:
+            zips.extend(fileCollect(meta, downloads[1]))
 
         num = len(zips)
-        hold.append((k, (zips, num)))
+        hold.append((region, (zips, num)))
 
     hold = dict(hold)
     return hold
 
 
-def contentSearch(filenames: List[str], extensions: List[str]) -> List[str]:
+def contentSearch(filenames: [str], extensions: [str]) -> [str]:
     """
     This funtion takes a list of zipfile contents.
 
@@ -311,9 +320,9 @@ def contentSearch(filenames: List[str], extensions: List[str]) -> List[str]:
 
     Parameters
     ----------
-    filenames: List[str] :
+    filenames: [str] :
         A list of file names
-    extensions: List[str] :
+    extensions: [str] :
         list of extensions to filter by
 
     Returns
@@ -360,7 +369,7 @@ def zipManipulate(path: str, name: str):
     _os.chdir(progLoc)
 
 
-def fileMove(regionFiles: Dict[str, List[str]], destination: str, method,
+def fileMove(regionFiles: {str: [str]}, destination: str, method,
              text_region=None, progressBar=None, text_output=None):
     """
     Takes a dictionary of keys representing regions and values representing
@@ -402,16 +411,16 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method,
     with open(config['CSVs']['USACE'], 'r') as fileName:
         district_name = dict([row[:2] for row in _csv.reader(fileName, delimiter=',') if len(row) > 0][1:])
 
-    for k, v in regionFiles.items():
+    for region, downloads in regionFiles.items():
         if text_region is not None:
-            text_region.SetValue(k)
+            text_region.SetValue(region)
 
         if progressBar is not None:
-            progressBar.SetRange(v[1])
+            progressBar.SetRange(downloads[1])
             progressBar.SetValue(0)
             pbv = 0
 
-        for item in v[0]:
+        for item in downloads[0]:
             if item is not None:
                 splits = _os.path.split(item)
                 name = splits[-1]
@@ -420,7 +429,7 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method,
                 district_abbr = district_code[-3:]
                 district_full = f'{district_name[district_abbr]}_{district_code}'
                 eHydro_folder = _os.path.join('USACE', f'eHydro_{district_full}', 'Original')
-                newerPath = _os.path.join(destination, k, eHydro_folder, surname)
+                newerPath = _os.path.join(destination, region, eHydro_folder, surname)
 
                 if _os.path.isdir(newerPath):
                     pass
@@ -433,7 +442,7 @@ def fileMove(regionFiles: Dict[str, List[str]], destination: str, method,
                     if text_output is not None:
                         text_output.write(f'{_os.path.join(eHydro_folder, name)}\n')
 
-                    if method is None:
+                    if method:
                         _shutil.move(item, newName)
                     elif not method:
                         _shutil.copy2(item, newName)

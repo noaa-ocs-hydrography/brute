@@ -18,7 +18,7 @@ import caris.bathy.db as bdb
 from get_access import *
 
 
-class bdb51_io:
+class BDB51IO:
     """
     An object for handling CARIS BDB I/O through the Python interface.
     """
@@ -77,7 +77,7 @@ class bdb51_io:
                 if data:
                     command = pickle.loads(data)
                     response = self.take_commands(command)
-                    print('Response', response, end = '\n\n')
+                    print('Response', response, end='\n\n')
                     data = pickle.dumps(response)
                     # print('pickled data size is {}, buffer size is {}'.format(len(data), self.buffer_size))
                     lensent = self.sock.send(data)
@@ -234,8 +234,7 @@ class bdb51_io:
                 msg = 'Updating only bathy is not implemented yet'
                 # query for the object and replace the bathy
             elif action == 'metadata':
-                msg = 'Updating only metadata is not implemented yet'
-                # query for the object and replace the metadata
+                msg = self._update_metadata(metadata)
             else:
                 raise ValueError('Upload action type not understood')
 
@@ -262,44 +261,60 @@ class bdb51_io:
         -------
 
         """
+        # check to see if file with same object name already exists
+        n = -1
+        cql = "OBJNAM = '{}'".format(new_metadata['OBJNAM'])
+        features = self._db.query('surfac', cql)
+        for n,f in enumerate(features):
+            pass
+        if n > -1:
+            up_msg = self._update_metadata(new_metadata)
+            objnam = new_metadata['OBJNAM']
+            msg = '{} already found in database, updating metadata only...'.format(objnam)
+            return msg + up_msg
+        else:
+            # create a fake feature
+            crs = self._db.crs
+            fake_coverage = 'POLYGON((0 0,0 1,1 1,1 0,0 0))'
+            geom = caris.Geometry(crs, fake_coverage)
+            surface = self._db.create_feature('surfac', geom)
+            surface['OBJNAM'] = file_path
+            surface['srcfil'] = file_path
 
-        # create a fake feature
-        crs = self._db.crs
-        fake_coverage = 'POLYGON((0 0,0 1,1 1,1 0,0 0))'
-        geom = caris.Geometry(crs, fake_coverage)
-        surface = self._db.create_feature('surfac', geom)
-        surface['OBJNAM'] = file_path
-        surface['srcfil'] = file_path
+            # get a metadata container to put stuff into
+            current_metadata = surface.attributes
+            # need to load the metadata dictionary that was put on disk here.
+            for key in new_metadata:
+                current_metadata[key] = new_metadata[key]
+            # commit the feature to the database
+            self._db.commit()
 
-        # get a metadata container to put stuff into
-        current_metadata = surface.attributes
-        # need to load the metadata dictionary that was put on disk here.
-        for key in new_metadata:
-            current_metadata[key] = new_metadata[key]
-        # commit the feature to the database
-        self._db.commit()
-
-        # upload coverage
-        surface.upload_coverage(file_path)
-        return 'Uploaded {} to {}'.format(file_path, self.database)
-
-    def query(self, command_dict: dict) -> dict:
+            # upload coverage
+            surface.upload_coverage(file_path)
+            return 'Uploaded {} to {}'.format(file_path, self.database)
+    
+    def _update_metadata(self, new_metadata: dict) -> str:
         """
-        Query for and return data from the db.
-
-        Parameters
-        ----------
-        command_dict :
-
-        command_dict: dict :
-
-
-        Returns
-        -------
-
+        Query for the data object and update the metadata with the provided
+        dictionary.
         """
-
-        pass
+        n = -1
+        cql = "OBJNAM = '{}'".format(new_metadata['OBJNAM'])
+        print(cql)
+        features = self._db.query('surfac', cql)
+        for n, f in enumerate(features):
+            if n > 0:
+                msg = "More than one object found in query with provided key!"
+                break
+            else:
+                current_metadata = f.attributes
+                for key in new_metadata:
+                    current_metadata[key] = new_metadata[key]
+                self._db.commit()
+                msg = "FID found: {}".format(str(f.id))
+        if n == -1:
+            msg = "No object with the provided name found."
+        return msg
 
     def die(self, command_dict: dict) -> dict:
         """
@@ -348,7 +363,7 @@ def main(port: int, buffer_size: int):
 
     """
 
-    db_io = bdb51_io(port, buffer_size)
+    db_io = BDB51IO(port, buffer_size)
 
 
 if __name__ == '__main__':

@@ -22,7 +22,7 @@ import os as os
 import pickle as _pickle
 import re as _re
 
-_ussft2m = 0.30480060960121924  # US survey feet to meters
+#_ussft2m = 0.30480060960121924  # US survey feet to meters
 from datetime import datetime
 import numpy as _np
 
@@ -43,7 +43,7 @@ except:
 ##-----------------------------------------------------------------------------
 
 
-class read_raw:
+class CESWGRawReader:
     """
     This class passes back bathymetry
     & a metadata dictionary from the e-Hydro files
@@ -129,11 +129,17 @@ class read_raw:
         if first_instance != '':
             if commas_present == ',':
                 xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
             else:
                 xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
-            # xyz = _np.loadtxt(infilename, delimiter = ',', skiprows = first_instance)
-        # else:
-        # xyz = _np.loadtxt(infilename, delimiter = ',')
+        else:
+            if commas_present == ',':
+                xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
+            elif commas_present == 'tab_instead':
+                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+            else:
+                xyz = _np.loadtxt(infilename, delimiter=' ', usecols=(0, 1, 2))
         return xyz
 
 # ------------------------------------------------------------------------------
@@ -183,21 +189,21 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     f = filename
     basename = os.path.basename(f)
 
-    e_t = Extract_Txt(f)
+    e_t = XYZMetaReader(f)
     # xml pull here.
     xmlfilename = get_xml_match(f)
     if os.path.isfile(xmlfilename):
         with open(xmlfilename, 'r') as xml_file:
             xml_txt = xml_file.read()
         xmlbasename = os.path.basename(xmlfilename)
-        xml_data = p_usace_xml.XML_Meta(xml_txt, filename=xmlbasename)
+        xml_data = p_usace_xml.XMLMetadata(xml_txt, filename=xmlbasename)
         if xml_data.version == 'USACE_FGDC':
             meta_xml = xml_data._extract_meta_USACE_FGDC()  # CEMVN()
         elif xml_data.version == 'ISO-8859-1':
             meta_xml = xml_data._extract_meta_USACE_ISO()
             if 'ISO_xml' not in meta_xml:
-                meta_xml = xml_data._extract_meta_USACE_FGDC(
-                    override='Y')  # xml_data._extract_meta_ISOlabel_USACE_FGDC()
+                meta_xml2 = xml_data._extract_meta_USACE_FGDC(override='Y')
+                meta_xml = {**meta_xml, **meta_xml2}
         else:
             meta_xml = xml_data.convert_xml_to_dict2()
         ext_dict = xml_data.extended_xml_fgdc()
@@ -207,11 +213,18 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
         ext_dict = {}
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESWG', default_meta='')  #
-    meta['special_handling'] = _check_special_handling(basename)#special handling is saved with text meta as it has to do with the text file
+    meta['special_handling'] = _check_special_handling(basename)
+    #special handling is saved with text meta as it has to do with the text file
+    if meta['special_handling'] == 'FullRES':
+        meta['interpolate']= False
+    #elif meta['special_handling'] == '.ppxyz':
+    #    meta['interpolate']= False
+    else:
+        meta['interpolate']= True
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
-    
-    e_pick = ehydro_pickle_use(xmlfilename)
+
+    e_pick = EhydroPickleReader(xmlfilename)
     meta_from_ehydro = e_pick._read_pickle()#to handle files
     meta_from_ehydro = e_pick._when_use_pickle(meta_xml)
     meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
@@ -258,7 +271,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     return merged_meta
 
 ###----------------------------------------------------------------------------
-class ehydro_pickle_use(object):
+class EhydroPickleReader(object):
     
     def __init__(self, infilename):
         
@@ -399,7 +412,7 @@ class ehydro_pickle_use(object):
         return meta_from_ehydro
     
 ###----------------------------------------------------------------------------
-class Extract_Txt(object):
+class XYZMetaReader(object):
     """Extract both information from the filename as well as from the text file's header"""
 
     def __init__(self, preloadeddata, version='', filename=''):
@@ -463,11 +476,11 @@ class Extract_Txt(object):
         merged_meta = {**default_meta, **name_meta, **file_meta}
         if 'from_horiz_unc' in merged_meta:
             if merged_meta['from_horiz_units'] == 'US Survey Foot':
-                val = _ussft2m * float(merged_meta['from_horiz_unc'])
+                val = float(merged_meta['from_horiz_unc'])
                 merged_meta['horiz_uncert'] = val
         if 'from_vert_unc' in merged_meta:
             if merged_meta['from_vert_units'] == 'US Survey Foot':
-                val = _ussft2m * float(merged_meta['from_vert_unc'])
+                val = float(merged_meta['from_vert_unc'])
                 merged_meta['vert_uncert_fixed'] = val
                 merged_meta['vert_uncert_vari'] = 0
         sorind = f"{name_meta['projid']}_{name_meta['uniqueid']}_{name_meta['subprojid']}_{name_meta['start_date']}_" + \
@@ -684,17 +697,12 @@ def get_xml_match(f):
     -------
 
     """
-    if '_A.xyz' in f:
-        xmlfilename = get_xml_xt(f, '_A.xyz')
-    elif '_FULL.xyz' in f:
-        xmlfilename = get_xml_xt(f, '_FULL.xyz')
-    elif '_FULL.XYZ' in f:
-        xmlfilename = get_xml_xt(f, '_FULL.XYZ')
-    elif '_A.XYZ' in f:
-        xmlfilename = get_xml_xt(f, '_A.XYZ')
-    elif '.ppxyz' in f:
-        xmlfilename = get_xml_xt(f, '.ppxyz')
-    else:
+    xmlfilename=''
+    ext_list = ['_FULL.XYZ', '_A.XYZ', '.PPXYZ']
+    for extension in ext_list:
+        if f.upper().find(extension)>0:
+            xmlfilename = get_xml_xt(f, extension)
+    if xmlfilename == '':
         xmlfilename = get_xml(f)
     return xmlfilename
 
@@ -755,11 +763,11 @@ def _check_special_handling(basename):
     -------
     """
     special_handling = ''
-    if basename.find('.ppxyz')>0:
+    if basename.find('.ppxyz') > 0:
         special_handling = 'ppxyz'
-    full_res = ['_A.xyz', '_A.XYZ', '_FULL.xyz', '_FULL.XYZ']
+    full_res = [ '_A.XYZ', '_FULL.XYZ']#_A.xyz, _FULL.xyz
     for ext_full in full_res:
-        if basename.find(ext_full)>0:
+        if basename.upper().find(ext_full) > 0:
             special_handling = 'FullRES'
     return special_handling
     
@@ -788,6 +796,8 @@ def _start_xyz(infilename):
                 numberofrows.append(index1)
                 if line.find(',') > 0:
                     commas_present = ','
+                elif line.find('\t') > 0:
+                    commas_present = 'tab_instead'
         first_instance = numberofrows[0]
 
     return first_instance, commas_present

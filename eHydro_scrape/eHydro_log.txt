@@ -1,0 +1,17 @@
+2019-07-17 16:34:49 - Program Initiated, Log Opened
+	Survey IDs queried from eHydro
+	Parameters:
+		Start Date: 2018-10-06
+		End Date: 2019-01-06
+		Districts: CEMVN,CESAJ,CESWG,CESAM
+		Query Only Districts: yes
+		Keep All Data: yes
+	Compiling survey objects from Survey IDs
+	eHydro query failed
+	Survey data not populated due to query failure
+	Parsing new entries for resolution:
+	Parsing for resolution failed
+	Unable to add results to output csv
+	Output Log saved as C:\NBS_GIT\eHydro_scrape\eHydro_log.txt
+2019-07-17 16:35:05 - Program Finished, Log Closed
+
