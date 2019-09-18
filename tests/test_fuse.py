@@ -53,50 +53,6 @@ class TestFuse(unittest.TestCase):
 
         assert os.path.exists(output_path)
 
-    def test_noaa_bag_linear(self):
-        survey_name = 'H12525'
-
-        interpolation_method = 'linear'
-        output_file_extension = 'bag'
-
-        config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
-        input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
-        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_4m_interp.{output_file_extension}')
-
-        if os.path.exists(output_path):
-            os.remove(output_path)
-
-        fuse_processor = FuseProcessor(config_path)
-        for bag_filename in bag_paths:
-            if 'INTERP' not in bag_filename:
-                fuse_processor.read(bag_filename)
-                fuse_processor.process(bag_filename)
-
-        assert os.path.exists(output_path)
-
-    def test_noaa_bag_kriging(self):
-        survey_name = 'H12607'
-
-        interpolation_method = 'kriging'
-        output_file_extension = 'bag'
-
-        config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
-        input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
-        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
-
-        if os.path.exists(output_path):
-            os.remove(output_path)
-
-        fuse_processor = FuseProcessor(config_path)
-        for bag_filename in bag_paths:
-            if 'INTERP' not in bag_filename:
-                fuse_processor.read(bag_filename)
-                fuse_processor.process(bag_filename)
-
-        assert os.path.exists(output_path)
-
     def test_noaa_bag_stripes(self):
         survey_name = 'H12963'
 

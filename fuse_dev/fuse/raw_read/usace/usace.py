@@ -691,7 +691,7 @@ class USACERawReader:
                 meta['from_vert_key'] = 'MLLW'
 
         elif key == 'Depth_Units':
-            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
                 meta['from_vert_units'] = 'US Survey Foot'
             else:
                 meta['from_vert_units'] = value.strip()
