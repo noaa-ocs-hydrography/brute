@@ -31,7 +31,7 @@ _ehydro_quality_metrics = {
 
 
 class FuseProcessor:
-    """The fuse object."""
+    """Bathymetric survey object."""
 
     _datums = [
         'from_horiz_datum',
@@ -117,13 +117,7 @@ class FuseProcessor:
         self._config = self._read_configfile(config_filename)
         self.rawdata_path = self._config['rawpaths']
         self.procdata_path = self._config['outpath']
-        self._cols = FuseProcessor._paths + \
-                     FuseProcessor._dates + \
-                     FuseProcessor._datums + \
-                     FuseProcessor._quality_metrics + \
-                     FuseProcessor._scores + \
-                     FuseProcessor._source_info + \
-                     FuseProcessor._processing_info
+        self._cols = FuseProcessor._paths + FuseProcessor._dates + FuseProcessor._datums + FuseProcessor._quality_metrics + FuseProcessor._scores + FuseProcessor._source_info + FuseProcessor._processing_info
         self._meta_obj = _mr.MetaReviewer(self._config['metapath'], self._cols)
         self._set_data_reader()
         self._set_data_transform()
@@ -256,7 +250,7 @@ class FuseProcessor:
     def _set_data_transform(self):
         """Set up the datum transformation engine."""
 
-        self._transform = _trans.DatumTransformer(self._config, self._reader)
+        self._transform = _trans.DatumTransformer(self._config['vdatum_path'], self._config['java_path'], self._reader)
 
     def _set_data_writer(self):
         """Set up the location and method to write tranformed and interpolated data."""

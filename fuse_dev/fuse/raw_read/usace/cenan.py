@@ -9,18 +9,17 @@ Created on Fri Feb  1 16:35:18 2019
 Read the various data sources available for a particular data stream such that
 any available bathymetry or metadata can be accessed.
 """
+from fuse.raw_read.usace.usace import USACERawReader
 
-from . import usace
 
-
-class CENANRawReader(usace.USACERawReader):
+class CENANRawReader(USACERawReader):
     """An abstract raw data reader."""
 
     def __init__(self):
         """
         No init needed?
         """
-        usace.USACERawReader.__init__(self, version='CENAN')
+        super().__init__('CENAN')
 
     def read_metadata(self, filename: str):
         """
