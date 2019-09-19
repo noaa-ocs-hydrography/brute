@@ -17,6 +17,7 @@ from tempfile import TemporaryDirectory as tempdir
 import fiona
 import fiona.crs
 import numpy as np
+from fuse.utilities import vectorize_raster, write_geometry
 from osgeo import gdal, ogr, osr
 
 gdal.UseExceptions()
@@ -184,8 +185,7 @@ class ProcIO:
             self._logger.log(logging.DEBUG, argument_string)
 
             try:
-                caris_process = subprocess.Popen(argument_string,
-                                                 creationflags=subprocess.CREATE_NEW_CONSOLE if show_console else 0)
+                caris_process = subprocess.Popen(argument_string, creationflags=subprocess.CREATE_NEW_CONSOLE if show_console else 0)
             except Exception as error:
                 self._logger.log(logging.DEBUG, f'Error when executing "{argument_string}"\n{error}')
 
@@ -305,44 +305,25 @@ class ProcIO:
         with fiona.open(filename, 'w', 'GPKG', schema=layer_schema, crs=projection, layer=output_layer) as output_file:
             output_file.writerecords(point_records)
 
-    def _write_vectorized_raster(self, raster: gdal.Dataset, filename: str, band_index: int = 1):
+    def _write_vectorized_raster(self, filename: str, raster: gdal.Dataset, crs_wkt: str, band_index: int = 1, layer: str = 'Elevation'):
         """
         Write the given GDAL raster dataset to a GDAL vector dataset (vectorizing to a multipolygon).
 
         Parameters
         ----------
+        filename
+            file path to write
         raster
             GDAL raster dataset
-        filename
-            filename to write GDAL vector dataset containing vectorized multipolygon
         band_index
             raster band (1-indexed)
+        layer
+            name of output layer
         """
 
-        splits = os.path.split(filename)[1]
-        name = os.path.splitext(filename)[0]
-        filename = os.path.join(splits[0], f'{name}_Vector.gpkg')
+        write_geometry(filename, vectorize_raster(raster, band_index), crs_wkt, os.path.split(filename)[-1], layer)
 
-        projection = osr.SpatialReference(wkt=raster.GetProjection())
-        band = raster.GetRasterBand(band_index)
-
-        driver = ogr.GetDriverByName('GPKG')
-        vector_dataset = driver.CreateDataSource(filename)
-        layer = vector_dataset.CreateLayer(name, projection, ogr.wkbMultiPolygon)
-
-        # Add one attribute
-        layer.CreateField(ogr.FieldDefn('Survey', ogr.OFTString))
-
-        # Create a new feature (attribute and geometry)
-        feature = ogr.Feature(layer.GetLayerDefn())
-        feature.SetField('Survey', name)
-
-        gdal.Polygonize(band, None, layer, 0, [], callback=None)
-
-        del band
-        del vector_dataset
-
-    def _gdal_raster_to_array(self, raster: gdal.Dataset, band_index: int = 1) -> (np.array, dict):
+    def _gdal_raster_to_array(self, raster: gdal.Dataset) -> (np.array, dict):
         """
         Extract data and metadata from the given band of a GDAL raster dataset.
         The dataset should have the `nodata` value set appropriately.
@@ -359,10 +340,10 @@ class ProcIO:
         numpy.array
             array of raster data and a dictionary of metadata
         """
-
-        raster_band = raster.GetRasterBand(band_index)
+        
+        
         geotransform = raster.GetGeoTransform()
-
+        raster_band = raster.GetRasterBand(1)
         metadata = {
             'resx': geotransform[1],
             'resy': geotransform[5],
@@ -373,9 +354,17 @@ class ProcIO:
             'crs': raster.GetProjection(),
             'nodata': raster_band.GetNoDataValue()
         }
+        del raster_band
+        
+        
+        grids = []
+        count = raster.RasterCount
+        for band_index in range(count):
+            band = raster.GetRasterBand(band_index + 1)
+            grids.append(band.ReadAsArray())
 
         # return the gdal data raster and metadata
-        return raster.ReadAsArray(), metadata
+        return grids, metadata
 
     def _gdal_points_to_array(self, points: gdal.Dataset, layer_index: int = 0) -> (np.array, dict):
         """
