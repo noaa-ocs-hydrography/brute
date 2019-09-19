@@ -342,7 +342,7 @@ class ProcIO:
         del band
         del vector_dataset
 
-    def _gdal_raster_to_array(self, raster: gdal.Dataset, band_index: int = 1) -> (np.array, dict):
+    def _gdal_raster_to_array(self, raster: gdal.Dataset) -> (np.array, dict):
         """
         Extract data and metadata from the given band of a GDAL raster dataset.
         The dataset should have the `nodata` value set appropriately.
@@ -359,10 +359,10 @@ class ProcIO:
         numpy.array
             array of raster data and a dictionary of metadata
         """
-
-        raster_band = raster.GetRasterBand(band_index)
+        
+        
         geotransform = raster.GetGeoTransform()
-
+        raster_band = raster.GetRasterBand(1)
         metadata = {
             'resx': geotransform[1],
             'resy': geotransform[5],
@@ -373,9 +373,17 @@ class ProcIO:
             'crs': raster.GetProjection(),
             'nodata': raster_band.GetNoDataValue()
         }
+        del raster_band
+        
+        
+        grids = []
+        count = raster.RasterCount
+        for band_index in range(count):
+            band = raster.GetRasterBand(band_index + 1)
+            grids.append(band.ReadAsArray())
 
         # return the gdal data raster and metadata
-        return raster.ReadAsArray(), metadata
+        return grids, metadata
 
     def _gdal_points_to_array(self, points: gdal.Dataset, layer_index: int = 0) -> (np.array, dict):
         """
