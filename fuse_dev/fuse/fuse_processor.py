@@ -430,8 +430,7 @@ class FuseProcessor:
                 outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                 self._point_writer.write(dataset, outfilename)
                 metadata['to_filename'] = outfilename
-
-            if self._read_type == 'bag':
+            elif self._read_type == 'bag':
                 metadata['to_filename'] = filename
 
             self._meta_obj.write_meta_record(metadata)
