@@ -178,7 +178,7 @@ class Interpolator:
             interpolated_dataset = self.__invdist_gdal_linear_scipy(output_shape, output_bounds, output_nodata)
         elif method == 'kriging':
             # interpolate using Ordinary Kriging (`pykrige`) by dividing data into smaller chunks
-            chunk_size = (40, 40)
+            chunk_size = (100, 100)
             method = f'{method}_{chunk_size}m'
             interpolated_dataset = self.__kriging_pykrige(output_shape, output_bounds, chunk_size, output_nodata)
         else:
@@ -488,7 +488,7 @@ class Interpolator:
         output_resolution = (output_bounds[2:] - output_bounds[:2]) / numpy.flip(output_shape)
 
         chunk_shape = numpy.array(numpy.round(chunk_size / output_resolution), numpy.int)
-        expand_indices = numpy.round(chunk_shape / 3).astype(numpy.int)
+        expansion_size = chunk_size
 
         input_points_sw = numpy.array(self.input_bounds[:2])
 
@@ -499,53 +499,52 @@ class Interpolator:
         interpolated_variance = numpy.full(output_shape, fill_value=numpy.nan)
 
         chunk_grid_shape = numpy.array(numpy.floor(output_shape / chunk_shape), numpy.int)
-        chunk_grid_index = numpy.array((0, 0), numpy.int)
 
-        print(f'kriging {chunk_grid_shape} chunks ({chunk_shape} cells with catchment area expanded by {expand_indices} cells)')
+        print(f'kriging {chunk_grid_shape} chunks ({chunk_shape} cells with catchment area expanded by {expansion_size} units)')
 
         with futures.ProcessPoolExecutor() as concurrency_pool:
             running_futures = {}
             running_uncertainty_futures = {}
 
-            for _ in range(numpy.product(chunk_grid_shape)):
-                # determine indices of the lower left and upper right bounds of the chunk within the output grid
-                grid_start_index = chunk_grid_index * chunk_shape
-                grid_end_index = grid_start_index + chunk_shape
+            # determine indices of the chunk bounds within the output grid, expanding the interpolation area past the edges of the chunk
+            for chunk_row in range(chunk_grid_shape[0] + 1):
+                start_row = chunk_row * chunk_shape[0]
+                end_row = start_row + chunk_shape[0]
 
-                # expand the interpolation area past the edges of the chunk to make the chunk contextually aware
-                interpolation_sw_corner = input_points_sw + numpy.flip(grid_start_index - expand_indices) * output_resolution
-                interpolation_ne_corner = input_points_sw + numpy.flip(grid_end_index + expand_indices) * output_resolution
+                interpolation_south = input_points_sw[1] + start_row * output_resolution[1] - expansion_size[0]
+                interpolation_north = input_points_sw[1] + end_row * output_resolution[1] + expansion_size[0]
 
-                # get points within the interpolation area
-                interpolation_points = self.points[numpy.where((self.points[:, 0] >= interpolation_sw_corner[0]) &
-                                                               (self.points[:, 0] <= interpolation_ne_corner[0]) &
-                                                               (self.points[:, 1] >= interpolation_sw_corner[1]) &
-                                                               (self.points[:, 1] <= interpolation_ne_corner[1]))[0]]
+                row_indices = (self.points[:, 1] >= interpolation_south) & (self.points[:, 1] <= interpolation_north)
 
-                # only interpolate if there are points
-                if interpolation_points.shape[0] >= 3:
-                    grid_slice = tuple(slice(grid_start_index[dimension], grid_end_index[dimension]) for dimension in
-                                       range(len(chunk_shape)))
-                    current_future = concurrency_pool.submit(_krige_points_onto_grid, interpolation_points,
-                                                             output_x[grid_slice[1]], output_y[grid_slice[0]])
-                    running_futures[current_future] = grid_slice
+                row_points = self.points[row_indices]
 
-                    if self.is_raster:
-                        uncertainty_points = self.uncertainty_points[
-                            numpy.where((self.points[:, 0] >= interpolation_sw_corner[0]) &
-                                        (self.points[:, 0] <= interpolation_ne_corner[0]) &
-                                        (self.points[:, 1] >= interpolation_sw_corner[1]) &
-                                        (self.points[:, 1] <= interpolation_ne_corner[1]))[0]]
-                        current_uncertainty_future = concurrency_pool.submit(_krige_points_onto_grid, uncertainty_points,
-                                                                             output_x[grid_slice[1]], output_y[grid_slice[0]])
-                        running_uncertainty_futures[current_uncertainty_future] = grid_slice
+                if self.is_raster:
+                    row_uncertainty_points = self.uncertainty_points[row_indices]
 
-                # go to next chunk
-                if chunk_grid_index[0] >= chunk_grid_shape[0]:
-                    chunk_grid_index[0] = 0
-                    chunk_grid_index[1] += 1
-                else:
-                    chunk_grid_index[0] += 1
+                for chunk_col in range(chunk_grid_shape[1] + 1):
+                    start_col = chunk_col * chunk_shape[1]
+                    end_col = start_col + chunk_shape[1]
+
+                    interpolation_west = input_points_sw[0] + start_col * output_resolution[0] - expansion_size[1]
+                    interpolation_east = input_points_sw[0] + end_col * output_resolution[0] + expansion_size[1]
+
+                    col_indices = (row_points[:, 0] >= interpolation_west) & (row_points[:, 0] <= interpolation_east)
+
+                    interpolation_points = row_points[col_indices]
+
+                    # only interpolate if there are points
+                    if interpolation_points.shape[0] >= 3:
+                        grid_slice = (slice(start_row, end_row), slice(start_col, end_col))
+
+                        current_future = concurrency_pool.submit(_krige_points_onto_grid, interpolation_points,
+                                                                 output_x[grid_slice[1]], output_y[grid_slice[0]])
+                        running_futures[current_future] = grid_slice
+
+                        if self.is_raster:
+                            uncertainty_points = row_uncertainty_points[col_indices]
+                            current_uncertainty_future = concurrency_pool.submit(_krige_points_onto_grid, uncertainty_points,
+                                                                                 output_x[grid_slice[1]], output_y[grid_slice[0]])
+                            running_uncertainty_futures[current_uncertainty_future] = grid_slice
 
             for completed_future in futures.as_completed(running_futures):
                 grid_slice = running_futures[completed_future]
