@@ -280,14 +280,13 @@ class FuseProcessor:
         """
 
         if self._read_type == 'ehydro':
-            survey_folder = filename
-            self._read_ehydro(survey_folder)
+            self._read_ehydro(filename)
         elif self._read_type == 'bag':
             self._read_noaa_bag(filename)
         else:
             raise ValueError('Reader type not implemented')
 
-    def _read_ehydro(self, survey_folder: str):
+    def _read_ehydro(self, filename: str):
         """
         Extract metadata from the provided eHydro file path and write the metadata
         to the specified metadata file.  The bathymetry will be interpolated and
@@ -295,13 +294,13 @@ class FuseProcessor:
 
         Parameters
         ----------
-        survey_folder
-            path to eHydro XYZ folder
+        filename
+            path to eHydro XYZ file
         """
 
-        self._set_log(survey_folder)
+        self._set_log(filename)
         # get the metadata
-        raw_meta = self._reader.read_metadata(survey_folder)
+        raw_meta = self._reader.read_metadata(filename)
         meta = raw_meta.copy()
         meta['read_type'] = 'ehydro'
 
@@ -600,19 +599,15 @@ class FuseProcessor:
         -------
             dictionary of metadata
         """
-        try:
-            # file name is the key rather than the path
-            path, f = _os.path.split(filename)
-            if 'from_filename' not in self._meta:
-                self._meta = self._meta_obj.read_meta_record(f)
-            elif self._meta['from_filename'] is not filename:
-                self._meta = self._meta_obj.read_meta_record(f)
-            else:
-                # need to catch if this file is not in the metadata record yet here.
-                raise KeyError(f'File not referenced in stored metadata: {f}')
-            return self._meta
-        except KeyError as e:
-            return None
+
+        # file name is the key rather than the path
+        path, f = _os.path.split(filename)
+        if 'from_filename' not in self._meta:
+            self._meta = self._meta_obj.read_meta_record(f)
+        elif self._meta['from_filename'] is not filename:
+            self._meta = self._meta_obj.read_meta_record(f)
+        # need to catch if this file is not in the metadata record yet here.
+        return self._meta
 
     def _metadata_to_s57(self, metadata) -> dict:
         """

@@ -17,7 +17,7 @@ class CENAERawReader(usace.USACERawReader):
         """
         usace.USACERawReader.__init__(self, version='CENAE')
 
-    def read_metadata(self, survey_folder: str):
+    def read_metadata(self, filename: str):
         """
         Function overwite of :func:`usace.USACERawReader.read_metadata` based
         on where the best metadata is for this district
@@ -30,8 +30,8 @@ class CENAERawReader(usace.USACERawReader):
 
         Parameters
         ----------
-        survey_folder : str
-            folder path of the input ``.xyz`` data
+        filename : str
+            File path of the input ``.xyz`` data
 
         Returns
         -------
@@ -41,7 +41,6 @@ class CENAERawReader(usace.USACERawReader):
         """
 
         meta_supplement = {}
-        meta_determine, filename = self._data_determination(meta_supplement, survey_folder)
         basexyzname, suffix = self.name_gen(filename, ext='.xyz')
         meta_xml = self._parse_usace_xml(filename)
         meta_xyz = self._parse_ehydro_xyz_header(basexyzname)
@@ -50,6 +49,7 @@ class CENAERawReader(usace.USACERawReader):
         meta_date = self._parse_start_date(filename,
                                            {**meta_pickle, **meta_xyz,
                                             **meta_xml})
+        meta_determine = self._data_determination(meta_supplement, filename)
         meta_supplement = {**meta_determine, **meta_date, **meta_supplement}
         return {**meta_pickle, **meta_xml, **meta_xyz, **meta_filename,
                 **meta_supplement}
