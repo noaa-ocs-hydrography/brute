@@ -174,9 +174,7 @@ class Interpolator:
             interpolated_dataset = self.__invdist_gdal_linear_scipy(output_shape, output_bounds, nodata)
         elif method == 'kriging':
             # interpolate using Ordinary Kriging (`pykrige`) by dividing data into smaller chunks
-            chunk_size = (40, 40)
-            method = f'{method}_{chunk_size}m'
-            interpolated_dataset = self.__kriging_pykrige(output_shape, output_bounds, chunk_size, nodata, 1, 8)
+            interpolated_dataset = self.__kriging_pykrige(output_shape, output_bounds, (40, 40), nodata, 1, 2)
         else:
             raise NotImplementedError(f'interpolation method "{method}" is not supported')
 
@@ -187,7 +185,7 @@ class Interpolator:
         interpolated_dataset = fuse.utilities.apply_raster_mask(interpolated_dataset, interpolation_mask)
 
         if plot:
-            self.__plot(interpolated_dataset, method, show=True)
+            self.plot(interpolated_dataset, method, show=True)
 
         return interpolated_dataset
 
@@ -407,9 +405,9 @@ class Interpolator:
 
         assert not numpy.any(chunk < numpy.array((20, 20))), 'a small chunk size may freeze your computer'
 
-        output_resolution = (bounds[2:] - bounds[:2]) / numpy.flip(shape)
+        resolution = (bounds[2:] - bounds[:2]) / numpy.flip(shape)
 
-        chunk_shape = numpy.array(numpy.round(chunk / output_resolution), numpy.int)
+        chunk_shape = numpy.array(numpy.round(chunk / resolution), numpy.int)
 
         input_points_sw = numpy.array(self.input_bounds[:2])
 
@@ -421,6 +419,13 @@ class Interpolator:
         interpolated_variance = numpy.full(shape, fill_value=numpy.nan)
 
         chunk_grid_shape = numpy.array(numpy.floor(shape / chunk_shape), numpy.int)
+
+        mask = fuse.utilities.raster_mask(self.interpolation_region, shape, resolution, input_points_sw, nodata, self.crs_wkt)
+        mask_band = mask.GetRasterBand(1)
+        mask = numpy.flip(mask_band.ReadAsArray(), axis=0) != nodata
+        del mask_band
+
+        expansion_indices = (expansion * chunk_shape / 2).astype(int)
 
         print(f'dividing output grid into {chunk_grid_shape * multiplier} chunks; ' +
               f'{chunk_shape} chunk with {expansion * chunk_shape} catchment area')
@@ -434,8 +439,8 @@ class Interpolator:
                 start_row = int(chunk_row * chunk_shape[0] / multiplier)
                 end_row = start_row + chunk_shape[0]
 
-                interpolation_south = input_points_sw[1] + (start_row - int(expansion * chunk_shape[0] / 2)) * output_resolution[1]
-                interpolation_north = input_points_sw[1] + (end_row + int(expansion * chunk_shape[0] / 2)) * output_resolution[1]
+                interpolation_south = input_points_sw[1] + (start_row - expansion_indices[0]) * resolution[1]
+                interpolation_north = input_points_sw[1] + (end_row + expansion_indices[0]) * resolution[1]
 
                 row_indices = (self.points[:, 1] >= interpolation_south) & (self.points[:, 1] <= interpolation_north)
 
@@ -448,9 +453,8 @@ class Interpolator:
                     start_col = int(chunk_col * chunk_shape[1] / multiplier)
                     end_col = start_col + chunk_shape[1]
 
-                    interpolation_west = input_points_sw[0] + (start_col - int(expansion * chunk_shape[1] / 2)) * output_resolution[
-                        0]
-                    interpolation_east = input_points_sw[0] + (end_col + int(expansion * chunk_shape[1] / 2)) * output_resolution[0]
+                    interpolation_west = input_points_sw[0] + (start_col - expansion_indices[1]) * resolution[0]
+                    interpolation_east = input_points_sw[0] + (end_col + expansion_indices[1]) * resolution[0]
 
                     col_indices = (row_points[:, 0] >= interpolation_west) & (row_points[:, 0] <= interpolation_east)
 
@@ -459,15 +463,15 @@ class Interpolator:
                     # only interpolate if there are points
                     if interpolation_points.shape[0] >= 3:
                         grid_slice = slice(start_row, end_row), slice(start_col, end_col)
-
-                        current_future = concurrency_pool.submit(_krige_points_onto_grid, interpolation_points,
-                                                                 output_x[grid_slice[1]], output_y[grid_slice[0]])
+                        current_future = concurrency_pool.submit(_krige_points_onto_grid, interpolation_points, output_x[grid_slice[1]],
+                                                                 output_y[grid_slice[0]], mask=mask[grid_slice])
                         running_futures[current_future] = grid_slice
 
                         if self.is_raster:
                             uncertainty_points = row_uncertainty_points[col_indices]
                             current_uncertainty_future = concurrency_pool.submit(_krige_points_onto_grid, uncertainty_points,
-                                                                                 output_x[grid_slice[1]], output_y[grid_slice[0]])
+                                                                                 output_x[grid_slice[1]], output_y[grid_slice[0]],
+                                                                                 mask=mask[grid_slice])
                             running_uncertainty_futures[current_uncertainty_future] = grid_slice
 
             for completed_future in futures.as_completed(running_futures):
@@ -479,7 +483,6 @@ class Interpolator:
                         chunk_interpolated_values = chunk_interpolated_values.filled(nodata)
                     if type(chunk_interpolated_variance) is numpy.ma.MaskedArray:
                         chunk_interpolated_variance = chunk_interpolated_variance.filled(nodata)
-
                     interpolated_values[grid_slice] = chunk_interpolated_values
                     interpolated_variance[grid_slice] = chunk_interpolated_variance
                 except ValueError as error:
@@ -491,10 +494,8 @@ class Interpolator:
 
                     try:
                         chunk_interpolated_uncertainty, _ = completed_future.result()
-
                         if type(chunk_interpolated_uncertainty) is numpy.ma.MaskedArray:
                             chunk_interpolated_uncertainty = chunk_interpolated_uncertainty.filled(nodata)
-
                         interpolated_uncertainty[grid_slice] = chunk_interpolated_uncertainty
                     except ValueError as error:
                         print(f'malformed slice of {shape}: {grid_slice} ({error})')
@@ -506,7 +507,7 @@ class Interpolator:
         interpolated_uncertainty[numpy.isnan(interpolated_uncertainty)] = nodata
 
         output_raster = gdal.GetDriverByName('MEM').Create('', int(shape[1]), int(shape[0]), 2, gdal.GDT_Float32)
-        output_raster.SetGeoTransform((bounds[0], output_resolution[0], 0.0, bounds[1], 0.0, output_resolution[1]))
+        output_raster.SetGeoTransform((bounds[0], resolution[0], 0.0, bounds[1], 0.0, resolution[1]))
         output_raster.SetProjection(self.crs_wkt)
 
         band_1 = output_raster.GetRasterBand(1)
@@ -521,7 +522,7 @@ class Interpolator:
 
         return output_raster
 
-    def __plot(self, raster: gdal.Dataset, method: str, nodata: float = None, band: int = 1, show: bool = False):
+    def plot(self, raster: gdal.Dataset, method: str, nodata: float = None, band: int = 1, show: bool = False):
         """
         Plot preinterpolated points and an interpolated raster side-by-side on synchronized subplots.
 
