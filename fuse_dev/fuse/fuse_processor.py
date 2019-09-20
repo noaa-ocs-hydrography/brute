@@ -457,7 +457,7 @@ class FuseProcessor:
                     support_files = meta_interp['support_files'] if 'support_files' in meta_interp else None
 
                     try:
-                        interpolator = _interp.Interpolator(dataset, sidescan_raster_filenames=support_files)
+                        interpolator = _interp.Interpolator(dataset, sidescan_rasters=support_files)
                         dataset = interpolator.interpolate(method, float(self._config['to_resolution']))
                         meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])

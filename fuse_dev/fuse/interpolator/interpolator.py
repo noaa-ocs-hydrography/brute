@@ -12,29 +12,25 @@ An abstraction for data interpolation.
 from concurrent import futures
 from datetime import datetime
 
+import fuse.utilities
 import numpy
 import rasterio
 import rasterio.crs
-from fuse.utilities import gdal_to_xyz, geoarray_to_points, alpha_hull, mask_raster, shape_from_cell_size, gdal_crs_wkt, array_coverage, \
-    vectorize_geoarray, georeference_to_affine, raster_bounds, raster_edge_points, plot_raster
 from matplotlib import pyplot
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 from osgeo import gdal
 from pykrige.ok import OrdinaryKriging
-from rasterio.io import MemoryFile
-from rasterio.mask import mask
 from scipy.interpolate import griddata
 from scipy.ndimage.interpolation import zoom
 from scipy.spatial import cKDTree
-from shapely.geometry import Polygon
 
 
 class Interpolator:
     """Interpolator for bathymetric surveys."""
 
-    def __init__(self, dataset: gdal.Dataset, default_nodata: float = None, window_scalar: float = 1.5, index: int = 0,
-                 sidescan_raster_filenames: [str] = None):
+    def __init__(self, dataset: gdal.Dataset, nodata: float = None, window_scalar: float = 1.5, band: int = 0,
+                 sidescan_rasters: [str] = None):
         """
         Create a new point interpolator object for the given GDAL point cloud dataset.
 
@@ -42,29 +38,29 @@ class Interpolator:
         ----------
         dataset
             GDAL point cloud dataset
-        default_nodata
+        nodata
             value to set for no data in the output interpolation
         window_scalar
             multiplier to use to expand interpolation radius from minimum point spacing
-        index
+        band
             index of layer / band to read from the given dataset
         """
 
         self.dataset = dataset
         self.is_raster = dataset.GetProjectionRef() != ''
-        self.index = index
+        self.index = band
 
         if self.is_raster:
             self.index += 1
         elif self.index < 0:
             self.index += self.dataset.RasterCount + 1 if self.is_raster else self.dataset.GetLayerCount()
 
-        self.default_nodata = default_nodata
+        self.nodata = nodata
 
-        self.crs_wkt = gdal_crs_wkt(self.dataset, self.index)
+        self.crs_wkt = fuse.utilities.gdal_crs_wkt(self.dataset, self.index)
 
         if self.is_raster:
-            if sidescan_raster_filenames is None:
+            if sidescan_rasters is None:
                 raise ValueError('raster interpolation requires coverage rasters')
 
             elevation_band = dataset.GetRasterBand(self.index)
@@ -82,23 +78,23 @@ class Interpolator:
             raster_origin = numpy.array((raster_geotransform[0], raster_geotransform[3]))
             raster_resolution = numpy.array((raster_geotransform[1], raster_geotransform[5]))
 
-            self.input_bounds = raster_bounds(self.dataset)
+            self.input_bounds = fuse.utilities.raster_bounds(self.dataset)
 
-            if self.default_nodata is None:
-                self.default_nodata = elevation_nodata
+            if self.nodata is None:
+                self.nodata = elevation_nodata
 
             self.window_size = numpy.mean(window_scalar * numpy.abs(raster_resolution)) * 20
 
-            sidescan_coverage = _combined_coverage_within_window([raster_filename for raster_filename in sidescan_raster_filenames if
+            sidescan_coverage = _combined_coverage_within_window([raster_filename for raster_filename in sidescan_rasters if
                                                                   '.tif' in raster_filename or '.gpkg' in raster_filename],
                                                                  raster_origin, raster_resolution, raster_shape)
-            elevation_coverage = array_coverage(elevation_data, elevation_nodata)
+            elevation_coverage = fuse.utilities.array_coverage(elevation_data, elevation_nodata)
 
-            transform = georeference_to_affine(raster_origin, raster_resolution)
+            transform = fuse.utilities.georeference_to_affine(raster_origin, raster_resolution)
 
-            elevation_region = alpha_hull(raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)[:, :2],
-                                          self.window_size)
-            sidescan_region = vectorize_geoarray(sidescan_coverage, transform, False)
+            elevation_region = fuse.utilities.alpha_hull(
+                fuse.utilities.raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)[:, :2], self.window_size)
+            sidescan_region = fuse.utilities.vectorize_geoarray(sidescan_coverage, transform, False)
 
             if not sidescan_region.is_valid:
                 sidescan_region = sidescan_region.buffer(0)
@@ -106,15 +102,15 @@ class Interpolator:
             self.interpolation_region = elevation_region.intersection(sidescan_region)
 
             # self.interpolation_region = _vectorize_geoarray(sidescan_coverage | elevation_coverage, transform, False)
-            self.points = geoarray_to_points(numpy.where(sidescan_coverage, elevation_data, elevation_nodata), raster_origin,
-                                             raster_resolution, elevation_nodata)
-            self.uncertainty_points = geoarray_to_points(numpy.where(sidescan_coverage, uncertainty_data, elevation_nodata), raster_origin,
-                                                         raster_resolution, uncertainty_nodata)
+            self.points = fuse.utilities.geoarray_to_points(numpy.where(sidescan_coverage, elevation_data, elevation_nodata), raster_origin,
+                                                            raster_resolution, elevation_nodata)
+            self.uncertainty_points = fuse.utilities.geoarray_to_points(numpy.where(sidescan_coverage, uncertainty_data, elevation_nodata),
+                                                                        raster_origin, raster_resolution, uncertainty_nodata)
         else:
-            if self.default_nodata is None:
-                self.default_nodata = 1000000.0
+            if self.nodata is None:
+                self.nodata = 1000000.0
 
-            self.points = gdal_to_xyz(self.dataset, self.index, self.default_nodata)
+            self.points = fuse.utilities.gdal_to_xyz(self.dataset, self.index, self.nodata)
             points_2d = self.points[:, :2]
 
             # get the bounds (min X, min Y, max X, max Y)
@@ -124,9 +120,9 @@ class Interpolator:
             self.window_size = window_scalar * numpy.max(cKDTree(points_2d).query(points_2d, k=2)[0][:, 1])
 
             # get the concave hull of the survey points
-            self.interpolation_region = alpha_hull(points_2d, self.window_size)
+            self.interpolation_region = fuse.utilities.alpha_hull(points_2d, self.window_size)
 
-    def interpolate(self, method: str, output_resolution: (float, float), output_nodata: float = None, plot: bool = False) -> gdal.Dataset:
+    def interpolate(self, method: str, resolution: (float, float), nodata: float = None, plot: bool = False) -> gdal.Dataset:
         """
         Generate a raster from the input data using the given interpolation method.
 
@@ -134,9 +130,9 @@ class Interpolator:
         ----------
         method
             interpolation method
-        output_resolution
+        resolution
             resolution of output grid
-        output_nodata
+        nodata
             value to set for no data in interpolated output
         plot
             whether to plot the interpolated result
@@ -146,14 +142,14 @@ class Interpolator:
             interpolated GDAL dataset
         """
 
-        if output_nodata is None:
-            output_nodata = self.default_nodata
+        if nodata is None:
+            nodata = self.nodata
 
         if self.is_raster:
             output_shape = self.dataset.RasterYSize, self.dataset.RasterXSize
             output_bounds = self.input_bounds
         else:
-            output_shape, output_bounds = shape_from_cell_size(output_resolution, self.input_bounds)
+            output_shape, output_bounds = fuse.utilities.shape_from_cell_size(resolution, self.input_bounds)
 
         start_time = datetime.now()
 
@@ -166,126 +162,72 @@ class Interpolator:
 
         if method == 'linear':
             # linear interpolation (`gdal.Grid`)
-            interpolated_dataset = self.__linear_gdal(output_shape, output_bounds, output_nodata)
+            interpolated_dataset = self.__linear_gdal(output_shape, output_bounds, nodata)
         elif method == 'linear_scipy':
             # linear interpolation (`scipy.interpolate.griddata`)
-            interpolated_dataset = self.__linear_scipy(output_shape, output_bounds, output_nodata)
+            interpolated_dataset = self.__linear_scipy(output_shape, output_bounds, nodata)
         elif method == 'invdist':
             # inverse distance interpolation (`gdal.Grid`)
-            interpolated_dataset = self.__invdist_gdal(output_shape, output_bounds, output_nodata)
+            interpolated_dataset = self.__invdist_gdal(output_shape, output_bounds, nodata)
         elif method == 'invdist_linear':
             # inverse distance interpolation (`gdal.Grid`) with linear interpolation (using `scipy.interpolate.griddata`)
-            interpolated_dataset = self.__invdist_gdal_linear_scipy(output_shape, output_bounds, output_nodata)
+            interpolated_dataset = self.__invdist_gdal_linear_scipy(output_shape, output_bounds, nodata)
         elif method == 'kriging':
             # interpolate using Ordinary Kriging (`pykrige`) by dividing data into smaller chunks
-            chunk_size = (100, 100)
+            chunk_size = (40, 40)
             method = f'{method}_{chunk_size}m'
-            interpolated_dataset = self.__kriging_pykrige(output_shape, output_bounds, chunk_size, output_nodata)
+            interpolated_dataset = self.__kriging_pykrige(output_shape, output_bounds, chunk_size, nodata, 1, 8)
         else:
             raise NotImplementedError(f'interpolation method "{method}" is not supported')
 
         print(f'{method} interpolation took {(datetime.now() - start_time).total_seconds()} s')
 
         # mask the interpolated data to the interpolation region
-        interpolation_mask = self.__get_mask_like(self.interpolation_region, interpolated_dataset)
-        interpolated_dataset = mask_raster(interpolated_dataset, interpolation_mask)
+        interpolation_mask = fuse.utilities.raster_mask_like(self.interpolation_region, interpolated_dataset)
+        interpolated_dataset = fuse.utilities.apply_raster_mask(interpolated_dataset, interpolation_mask)
 
         if plot:
             self.__plot(interpolated_dataset, method, show=True)
 
         return interpolated_dataset
 
-    def __get_mask(self, mask_polygon: Polygon, shape: (float, float), resolution: (float, float), origin: (float, float), nodata: float,
-                   crs_wkt: str = None) -> gdal.Dataset:
+    def __linear_gdal(self, shape: (int, int), bounds: (float, float, float, float), nodata: float = None) -> gdal.Dataset:
         """
-        Get a mask of the survey area with the given raster properties.
+        Create a regular raster grid from the given points, interpolating linearly.
 
         Parameters
         ----------
-        mask_polygon
-            Shapely polygon with which to create mask
         shape
-            shape of mask
-        resolution
-            cell size of mask
-        origin
-            northwest corner
-        crs_wkt
-            spatial reference of mask
+            shape (rows, cols) of output grid
+        bounds
+            bounds (min X, min Y, max X, max Y) of output grid
         nodata
-            value for no data in mask
+            value for no data in output grid
 
         Returns
         -------
-            GDAL raster dataset
+        gdal.Dataset
+            interpolated grid
+
         """
-
-        if type(origin) is not numpy.array:
-            origin = numpy.array(origin)
-
-        if crs_wkt is None or crs_wkt == '':
-            crs_wkt = self.crs_wkt
 
         if nodata is None:
-            nodata = self.default_nodata
+            nodata = self.nodata
 
-        with MemoryFile() as rasterio_memory_file:
-            with rasterio_memory_file.open(driver='GTiff', width=shape[1], height=shape[0], count=1, crs=rasterio.crs.CRS.from_wkt(crs_wkt),
-                                           transform=georeference_to_affine(origin, resolution), dtype=rasterio.float64,
-                                           nodata=numpy.array([nodata]).astype(rasterio.float64).item()) as memory_raster:
-                memory_raster.write(numpy.full(shape, 1, dtype=rasterio.float64), 1)
+        return gdal.Grid('', self.dataset, format='MEM', width=shape[1], height=shape[0], outputBounds=bounds,
+                         algorithm=f'linear:radius=0:nodata={int(nodata)}')
 
-            with rasterio_memory_file.open() as memory_raster:
-                masked_data, masked_transform = mask(memory_raster, [mask_polygon])
-
-        output_dataset = gdal.GetDriverByName('MEM').Create('', shape[1], shape[0], 1, gdal.GDT_Float32)
-        output_dataset.SetProjection(crs_wkt)
-        output_dataset.SetGeoTransform((masked_transform.c, masked_transform.a, masked_transform.b,
-                                        masked_transform.f, masked_transform.d, masked_transform.e))
-        output_band = output_dataset.GetRasterBand(1)
-        output_band.SetNoDataValue(nodata)
-        output_band.WriteArray(masked_data[0, :, :])
-
-        return output_dataset
-
-    def __get_mask_like(self, mask_region: Polygon, like_raster: gdal.Dataset,
-                        band_index: int = 1) -> gdal.Dataset:
-        """
-        Get a mask of the survey area with the same properties as the given raster.
-
-        Parameters
-        ----------
-        mask_region
-            Shapely polygon with which to create mask
-        like_raster
-            raster to copy
-        band_index
-            raster band (1-indexed)
-
-        Returns
-        -------
-        gdal.Dataset
-            mask
-        """
-
-        geotransform = like_raster.GetGeoTransform()
-        raster_band = like_raster.GetRasterBand(band_index)
-        return self.__get_mask(mask_polygon=mask_region, shape=(like_raster.RasterYSize, like_raster.RasterXSize),
-                               resolution=(geotransform[1], geotransform[5]), origin=(geotransform[0], geotransform[3]),
-                               nodata=raster_band.GetNoDataValue(), crs_wkt=gdal_crs_wkt(like_raster))
-
-    def __linear_gdal(self, output_shape: (int, int), output_bounds: (float, float, float, float),
-                      output_nodata: float = None) -> gdal.Dataset:
+    def __linear_scipy(self, shape: (int, int), bounds: (float, float, float, float), nodata: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating linearly.
 
         Parameters
         ----------
-        output_shape
+        shape
             shape (rows, cols) of output grid
-        output_bounds
+        bounds
             bounds (min X, min Y, max X, max Y) of output grid
-        output_nodata
+        nodata
             value for no data in output grid
 
         Returns
@@ -295,56 +237,29 @@ class Interpolator:
 
         """
 
-        if output_nodata is None:
-            output_nodata = self.default_nodata
+        if type(shape) is not numpy.array:
+            shape = numpy.array(shape)
 
-        return gdal.Grid('', self.dataset, format='MEM', width=output_shape[1], height=output_shape[0], outputBounds=output_bounds,
-                         algorithm=f'linear:radius=0:nodata={int(output_nodata)}')
+        if type(bounds) is not numpy.array:
+            bounds = numpy.array(bounds)
 
-    def __linear_scipy(self, output_shape: (int, int), output_bounds: (float, float, float, float),
-                       output_nodata: float = None) -> gdal.Dataset:
-        """
-        Create a regular raster grid from the given points, interpolating linearly.
+        if nodata is None:
+            nodata = self.nodata
 
-        Parameters
-        ----------
-        output_shape
-            shape (rows, cols) of output grid
-        output_bounds
-            bounds (min X, min Y, max X, max Y) of output grid
-        output_nodata
-            value for no data in output grid
-
-        Returns
-        -------
-        gdal.Dataset
-            interpolated grid
-
-        """
-
-        if type(output_shape) is not numpy.array:
-            output_shape = numpy.array(output_shape)
-
-        if type(output_bounds) is not numpy.array:
-            output_bounds = numpy.array(output_bounds)
-
-        if output_nodata is None:
-            output_nodata = self.default_nodata
-
-        output_resolution = (output_bounds[2:] - output_bounds[:2]) / numpy.flip(output_shape)
+        output_resolution = (bounds[2:] - bounds[:2]) / numpy.flip(shape)
 
         # interpolate using SciPy griddata
-        output_x, output_y = numpy.meshgrid(numpy.linspace(output_bounds[0], output_bounds[2], output_shape[1]),
-                                            numpy.linspace(output_bounds[1], output_bounds[3], output_shape[0]))
+        output_x, output_y = numpy.meshgrid(numpy.linspace(bounds[0], bounds[2], shape[1]),
+                                            numpy.linspace(bounds[1], bounds[3], shape[0]))
         interpolated_values = griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2], (output_x, output_y), method='linear',
-                                       fill_value=output_nodata)
+                                       fill_value=nodata)
 
-        output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 2, gdal.GDT_Float32)
-        output_raster.SetGeoTransform((output_bounds[0], output_resolution[0], 0.0, output_bounds[1], 0.0, output_resolution[1]))
+        output_raster = gdal.GetDriverByName('MEM').Create('', int(shape[1]), int(shape[0]), 2, gdal.GDT_Float32)
+        output_raster.SetGeoTransform((bounds[0], output_resolution[0], 0.0, bounds[1], 0.0, output_resolution[1]))
         output_raster.SetProjection(self.crs_wkt)
 
         band_1 = output_raster.GetRasterBand(1)
-        band_1.SetNoDataValue(output_nodata)
+        band_1.SetNoDataValue(nodata)
         band_1.WriteArray(interpolated_values)
         del band_1
 
@@ -354,32 +269,32 @@ class Interpolator:
             uncertainty_nodata = uncertainty_band.GetNoDataValue()
             del uncertainty_band
 
-            if uncertainty_nodata != output_nodata:
-                input_uncertainty[input_uncertainty == uncertainty_nodata] = output_nodata
+            if uncertainty_nodata != nodata:
+                input_uncertainty[input_uncertainty == uncertainty_nodata] = nodata
 
             input_uncertainty = numpy.flip(input_uncertainty, axis=0)
         else:
-            input_uncertainty = numpy.full(output_shape, output_nodata)
+            input_uncertainty = numpy.full(shape, nodata)
 
         band_2 = output_raster.GetRasterBand(2)
-        band_2.SetNoDataValue(output_nodata)
+        band_2.SetNoDataValue(nodata)
         band_2.WriteArray(input_uncertainty)
         del band_2
 
         return output_raster
 
-    def __invdist_gdal(self, output_shape: (int, int), output_bounds: (float, float, float, float), output_nodata: float = None,
+    def __invdist_gdal(self, shape: (int, int), bounds: (float, float, float, float), nodata: float = None,
                        radius: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via inverse distance.
 
         Parameters
         ----------
-        output_shape
+        shape
             shape (rows, cols) of output grid
-        output_bounds
+        bounds
             bounds (min X, min Y, max X, max Y) of output grid
-        output_nodata
+        nodata
             value for no data in output grid
         radius
             size of interpolation window
@@ -393,24 +308,24 @@ class Interpolator:
         if radius is None:
             radius = self.window_size
 
-        if output_nodata is None:
-            output_nodata = self.default_nodata
+        if nodata is None:
+            nodata = self.nodata
 
-        return gdal.Grid('', self.dataset, format='MEM', width=output_shape[1], height=output_shape[0], outputBounds=output_bounds,
-                         algorithm=f'invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}:nodata={int(output_nodata)}')
+        return gdal.Grid('', self.dataset, format='MEM', width=shape[1], height=shape[0], outputBounds=bounds,
+                         algorithm=f'invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}:nodata={int(nodata)}')
 
-    def __invdist_gdal_linear_scipy(self, output_shape: (int, int), output_bounds: (float, float, float, float),
-                                    output_nodata: float = None, radius: float = None) -> gdal.Dataset:
+    def __invdist_gdal_linear_scipy(self, shape: (int, int), bounds: (float, float, float, float), nodata: float = None,
+                                    radius: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via inverse distance and then linearly (using SciPy).
 
         Parameters
         ----------
-        output_shape
+        shape
             shape (rows, cols) of output grid
-        output_bounds
+        bounds
             bounds (min X, min Y, max X, max Y) of output grid
-        output_nodata
+        nodata
             value for no data in output grid
         radius
             size of interpolation window
@@ -424,46 +339,53 @@ class Interpolator:
         if radius is None:
             radius = self.window_size
 
-        if output_nodata is None:
-            output_nodata = self.default_nodata
+        if nodata is None:
+            nodata = self.nodata
 
         # interpolate using inverse distance in GDAL
-        interpolated_raster = self.__invdist_gdal(output_shape, output_bounds, output_nodata, radius)
+        interpolated_raster = self.__invdist_gdal(shape, bounds, nodata, radius)
         output_x, output_y = numpy.meshgrid(numpy.arange(interpolated_raster.RasterXSize), numpy.arange(interpolated_raster.RasterYSize))
 
         interpolated_data = interpolated_raster.ReadAsArray()
-        y_values, x_values = numpy.where(interpolated_data != output_nodata)
+        y_values, x_values = numpy.where(interpolated_data != nodata)
         z_values = interpolated_data[y_values, x_values]
         del interpolated_data
 
         # interpolate linearly in SciPy
-        interpolated_data = griddata((x_values, y_values), z_values, (output_x, output_y), method='linear', fill_value=output_nodata)
-        interpolated_data[numpy.isnan(interpolated_data)] = output_nodata
+        interpolated_data = griddata((x_values, y_values), z_values, (output_x, output_y), method='linear', fill_value=nodata)
+        interpolated_data[numpy.isnan(interpolated_data)] = nodata
 
         band_1 = interpolated_raster.GetRasterBand(1)
-        band_1.SetNoDataValue(output_nodata)
+        band_1.SetNoDataValue(nodata)
         band_1.WriteArray(interpolated_data)
         del band_1
 
         return interpolated_raster
 
-    def __kriging_pykrige(self, output_shape: (int, int), output_bounds: (float, float, float, float),
-                          chunk_size: (float, float), output_nodata: float = None) -> gdal.Dataset:
+    def __kriging_pykrige(self, shape: (int, int), bounds: (float, float, float, float), chunk: (float, float), nodata: float = None,
+                          expansion: float = 1, multiplier: int = 1) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating via kriging (using PyKrige).
 
         Parameters
         ----------
-        output_shape
+        shape
             shape (rows, cols) of output grid
-        output_bounds
+        bounds
             bounds (min X, min Y, max X, max Y) of output grid
         output_resolution
             resolution of output grid
-        chunk_size
-            size of each chunk with which to divide the interpolation task, in units; setting this value to less than 40x20 has adverse consequences on memory consumption
-        output_nodata
+        chunk
+            size of each chunk with which to divide the interpolation task, in units;
+            setting this value to less than 40x20 has adverse consequences on memory consumption
+        nodata
             value for no data in output grid
+        expansion
+            indices by which to expand the chunk size to its interpolation points catchment area;
+            a value of 1 means only the points within the chunk are considered in interpolation
+        multiplier
+            how many chunks to fit within a row / column in the chunk grid;
+            values above 1 will result in overlap
 
         Returns
         -------
@@ -471,48 +393,49 @@ class Interpolator:
             interpolated grid
         """
 
-        if type(output_shape) is not numpy.array:
-            output_shape = numpy.round(output_shape).astype(int)
+        if type(shape) is not numpy.array:
+            shape = numpy.round(shape).astype(int)
 
-        if type(output_bounds) is not numpy.array:
-            output_bounds = numpy.array(output_bounds)
+        if type(bounds) is not numpy.array:
+            bounds = numpy.array(bounds)
 
-        if type(chunk_size) is not numpy.array:
-            chunk_size = numpy.array(chunk_size)
+        if type(chunk) is not numpy.array:
+            chunk = numpy.array(chunk)
 
-        if output_nodata is None:
-            output_nodata = self.default_nodata
+        if nodata is None:
+            nodata = self.nodata
 
-        assert not numpy.any(chunk_size < numpy.array((20, 20))), 'a small chunk size may freeze your computer'
+        assert not numpy.any(chunk < numpy.array((20, 20))), 'a small chunk size may freeze your computer'
 
-        output_resolution = (output_bounds[2:] - output_bounds[:2]) / numpy.flip(output_shape)
+        output_resolution = (bounds[2:] - bounds[:2]) / numpy.flip(shape)
 
-        chunk_shape = numpy.array(numpy.round(chunk_size / output_resolution), numpy.int)
-        expansion_size = chunk_size
+        chunk_shape = numpy.array(numpy.round(chunk / output_resolution), numpy.int)
 
         input_points_sw = numpy.array(self.input_bounds[:2])
 
-        output_x = numpy.linspace(output_bounds[0], output_bounds[2], output_shape[1])
-        output_y = numpy.linspace(output_bounds[1], output_bounds[3], output_shape[0])
-        interpolated_values = numpy.full(output_shape, fill_value=numpy.nan)
-        interpolated_uncertainty = numpy.full(output_shape, fill_value=0)
-        interpolated_variance = numpy.full(output_shape, fill_value=numpy.nan)
+        output_x = numpy.linspace(bounds[0], bounds[2], shape[1])
+        output_y = numpy.linspace(bounds[1], bounds[3], shape[0])
 
-        chunk_grid_shape = numpy.array(numpy.floor(output_shape / chunk_shape), numpy.int)
+        interpolated_values = numpy.full(shape, fill_value=numpy.nan)
+        interpolated_uncertainty = numpy.full(shape, fill_value=0)
+        interpolated_variance = numpy.full(shape, fill_value=numpy.nan)
 
-        print(f'kriging {chunk_grid_shape} chunks ({chunk_shape} cells with catchment area expanded by {expansion_size} units)')
+        chunk_grid_shape = numpy.array(numpy.floor(shape / chunk_shape), numpy.int)
+
+        print(f'dividing output grid into {chunk_grid_shape * multiplier} chunks; ' +
+              f'{chunk_shape} chunk with {expansion * chunk_shape} catchment area')
 
         with futures.ProcessPoolExecutor() as concurrency_pool:
             running_futures = {}
             running_uncertainty_futures = {}
 
             # determine indices of the chunk bounds within the output grid, expanding the interpolation area past the edges of the chunk
-            for chunk_row in range(chunk_grid_shape[0] + 1):
-                start_row = chunk_row * chunk_shape[0]
+            for chunk_row in range((chunk_grid_shape[0] + 1) * multiplier):
+                start_row = int(chunk_row * chunk_shape[0] / multiplier)
                 end_row = start_row + chunk_shape[0]
 
-                interpolation_south = input_points_sw[1] + start_row * output_resolution[1] - expansion_size[0]
-                interpolation_north = input_points_sw[1] + end_row * output_resolution[1] + expansion_size[0]
+                interpolation_south = input_points_sw[1] + (start_row - int(expansion * chunk_shape[0] / 2)) * output_resolution[1]
+                interpolation_north = input_points_sw[1] + (end_row + int(expansion * chunk_shape[0] / 2)) * output_resolution[1]
 
                 row_indices = (self.points[:, 1] >= interpolation_south) & (self.points[:, 1] <= interpolation_north)
 
@@ -521,12 +444,13 @@ class Interpolator:
                 if self.is_raster:
                     row_uncertainty_points = self.uncertainty_points[row_indices]
 
-                for chunk_col in range(chunk_grid_shape[1] + 1):
-                    start_col = chunk_col * chunk_shape[1]
+                for chunk_col in range((chunk_grid_shape[1] + 1) * multiplier):
+                    start_col = int(chunk_col * chunk_shape[1] / multiplier)
                     end_col = start_col + chunk_shape[1]
 
-                    interpolation_west = input_points_sw[0] + start_col * output_resolution[0] - expansion_size[1]
-                    interpolation_east = input_points_sw[0] + end_col * output_resolution[0] + expansion_size[1]
+                    interpolation_west = input_points_sw[0] + (start_col - int(expansion * chunk_shape[1] / 2)) * output_resolution[
+                        0]
+                    interpolation_east = input_points_sw[0] + (end_col + int(expansion * chunk_shape[1] / 2)) * output_resolution[0]
 
                     col_indices = (row_points[:, 0] >= interpolation_west) & (row_points[:, 0] <= interpolation_east)
 
@@ -534,7 +458,7 @@ class Interpolator:
 
                     # only interpolate if there are points
                     if interpolation_points.shape[0] >= 3:
-                        grid_slice = (slice(start_row, end_row), slice(start_col, end_col))
+                        grid_slice = slice(start_row, end_row), slice(start_col, end_col)
 
                         current_future = concurrency_pool.submit(_krige_points_onto_grid, interpolation_points,
                                                                  output_x[grid_slice[1]], output_y[grid_slice[0]])
@@ -552,13 +476,14 @@ class Interpolator:
                 try:
                     chunk_interpolated_values, chunk_interpolated_variance = completed_future.result()
                     if type(chunk_interpolated_values) is numpy.ma.MaskedArray:
-                        chunk_interpolated_values = chunk_interpolated_values.filled(output_nodata)
+                        chunk_interpolated_values = chunk_interpolated_values.filled(nodata)
                     if type(chunk_interpolated_variance) is numpy.ma.MaskedArray:
-                        chunk_interpolated_variance = chunk_interpolated_variance.filled(output_nodata)
+                        chunk_interpolated_variance = chunk_interpolated_variance.filled(nodata)
+
                     interpolated_values[grid_slice] = chunk_interpolated_values
                     interpolated_variance[grid_slice] = chunk_interpolated_variance
                 except ValueError as error:
-                    print(f'malformed slice of {output_shape}: {grid_slice} ({error})')
+                    print(f'malformed slice of {shape}: {grid_slice} ({error})')
 
             if self.is_raster:
                 for completed_future in futures.as_completed(running_uncertainty_futures):
@@ -566,33 +491,37 @@ class Interpolator:
 
                     try:
                         chunk_interpolated_uncertainty, _ = completed_future.result()
-                        interpolated_uncertainty[grid_slice] = chunk_interpolated_uncertainty.filled(output_nodata)
+
+                        if type(chunk_interpolated_uncertainty) is numpy.ma.MaskedArray:
+                            chunk_interpolated_uncertainty = chunk_interpolated_uncertainty.filled(nodata)
+
+                        interpolated_uncertainty[grid_slice] = chunk_interpolated_uncertainty
                     except ValueError as error:
-                        print(f'malformed slice of {output_shape}: {grid_slice} ({error})')
+                        print(f'malformed slice of {shape}: {grid_slice} ({error})')
 
         interpolated_uncertainty = numpy.sqrt(interpolated_variance + interpolated_uncertainty ** 2)
         del interpolated_variance
 
-        interpolated_values[numpy.isnan(interpolated_values)] = output_nodata
-        interpolated_uncertainty[numpy.isnan(interpolated_uncertainty)] = output_nodata
+        interpolated_values[numpy.isnan(interpolated_values)] = nodata
+        interpolated_uncertainty[numpy.isnan(interpolated_uncertainty)] = nodata
 
-        output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 2, gdal.GDT_Float32)
-        output_raster.SetGeoTransform((output_bounds[0], output_resolution[0], 0.0, output_bounds[1], 0.0, output_resolution[1]))
+        output_raster = gdal.GetDriverByName('MEM').Create('', int(shape[1]), int(shape[0]), 2, gdal.GDT_Float32)
+        output_raster.SetGeoTransform((bounds[0], output_resolution[0], 0.0, bounds[1], 0.0, output_resolution[1]))
         output_raster.SetProjection(self.crs_wkt)
 
         band_1 = output_raster.GetRasterBand(1)
-        band_1.SetNoDataValue(output_nodata)
+        band_1.SetNoDataValue(nodata)
         band_1.WriteArray(interpolated_values)
         del band_1
 
         band_2 = output_raster.GetRasterBand(2)
-        band_2.SetNoDataValue(output_nodata)
+        band_2.SetNoDataValue(nodata)
         band_2.WriteArray(interpolated_uncertainty)
         del band_2
 
         return output_raster
 
-    def __plot(self, raster: gdal.Dataset, interpolation_method: str, nodata: float = None, band_index: int = 1, show: bool = False):
+    def __plot(self, raster: gdal.Dataset, method: str, nodata: float = None, band: int = 1, show: bool = False):
         """
         Plot preinterpolated points and an interpolated raster side-by-side on synchronized subplots.
 
@@ -600,21 +529,21 @@ class Interpolator:
         ----------
         raster
             array (or GDAL raster) of interpolated data
-        interpolation_method
+        method
             method of interpolation
         nodata
             value for no data in given data
-        band_index
+        band
             raster band (1-indexed)
         """
 
-        raster_band = raster.GetRasterBand(band_index)
+        raster_band = raster.GetRasterBand(band)
 
         if nodata is None:
             nodata = raster_band.GetNoDataValue()
 
         raster_data = raster_band.ReadAsArray()
-        input_data = self.dataset.GetRasterBand(band_index).ReadAsArray() if self.is_raster else self.points[:, 2]
+        input_data = self.dataset.GetRasterBand(band).ReadAsArray() if self.is_raster else self.points[:, 2]
 
         # replace `nodata` values with NaN
         input_data[input_data == nodata] = numpy.nan
@@ -630,15 +559,15 @@ class Interpolator:
         left_axis = figure.add_subplot(1, 2, 1)
         left_axis.set_title('survey data')
         right_axis = figure.add_subplot(1, 2, 2, sharex=left_axis, sharey=left_axis)
-        right_axis.set_title(f'{interpolation_method} interpolation to raster')
+        right_axis.set_title(f'{method} interpolation to raster')
 
         # plot data
         if self.is_raster:
-            plot_raster(self.dataset, self.index, left_axis, vmin=min_z, vmax=max_z)
+            fuse.utilities.plot_raster(self.dataset, self.index, left_axis, vmin=min_z, vmax=max_z)
         else:
             left_axis.scatter(self.points[:, 0], self.points[:, 1], c=self.points[:, 2], s=1, vmin=min_z, vmax=max_z)
 
-        plot_raster(raster, band_index, right_axis, vmin=min_z, vmax=max_z)
+        fuse.utilities.plot_raster(raster, band, right_axis, vmin=min_z, vmax=max_z)
         right_axis.axes.get_yaxis().set_visible(False)
 
         # create colorbar
@@ -649,20 +578,20 @@ class Interpolator:
             pyplot.show()
 
 
-def _combined_coverage_within_window(coverage_raster_filenames: [str], output_origin: (float, float), output_resolution: (float, float),
-                                     output_shape: (int, int)) -> numpy.array:
+def _combined_coverage_within_window(raster_filenames: [str], origin: (float, float), resolution: (float, float),
+                                     shape: (int, int)) -> numpy.array:
     """
     Return a boolean mask of the given rasters where data exists within the given window.
 
     Parameters
     ----------
-    coverage_raster_filenames
+    raster_filenames
         list of filenames of coverage rasters
-    output_origin
+    origin
         XY coordinates of northwest corner of output mask
-    output_resolution
+    resolution
         XY resolution of output mask
-    output_shape
+    shape
         shape of output mask
 
     Returns
@@ -670,24 +599,24 @@ def _combined_coverage_within_window(coverage_raster_filenames: [str], output_or
         boolean array indicating where data exists
     """
 
-    if type(output_origin) is not numpy.array:
-        output_origin = numpy.array(output_origin)
+    if type(origin) is not numpy.array:
+        origin = numpy.array(origin)
 
-    output_se_corner = output_origin + (output_resolution * numpy.flip(output_shape))
+    output_se_corner = origin + (resolution * numpy.flip(shape))
 
-    if type(output_resolution) is not numpy.array:
-        output_resolution = numpy.array(output_resolution)
+    if type(resolution) is not numpy.array:
+        resolution = numpy.array(resolution)
 
-    if type(output_shape) is not numpy.array:
-        output_shape = numpy.array(output_shape)
+    if type(shape) is not numpy.array:
+        shape = numpy.array(shape)
 
     output_coverage_masks = []
 
-    for coverage_raster_filename in coverage_raster_filenames:
+    for raster_filename in raster_filenames:
         try:
-            with rasterio.open(coverage_raster_filename) as coverage_raster:
-                coverage_transform = coverage_raster.transform
-                coverage_shape = coverage_raster.shape
+            with rasterio.open(raster_filename) as raster:
+                coverage_transform = raster.transform
+                coverage_shape = raster.shape
 
             coverage_resolution = numpy.array((coverage_transform.a, coverage_transform.e))
 
@@ -695,24 +624,24 @@ def _combined_coverage_within_window(coverage_raster_filenames: [str], output_or
             coverage_se_corner = coverage_origin + (coverage_resolution * numpy.flip(coverage_shape))
 
             # ensure the coverage array intersects the given window
-            if not (output_origin[0] > coverage_se_corner[0] or output_se_corner[0] < coverage_origin[0] or
-                    output_se_corner[1] > coverage_origin[1] or output_origin[1] < coverage_se_corner[1]):
-                with rasterio.open(coverage_raster_filename) as coverage_raster:
-                    coverage_data = coverage_raster.read()
+            if not (origin[0] > coverage_se_corner[0] or output_se_corner[0] < coverage_origin[0] or
+                    output_se_corner[1] > coverage_origin[1] or origin[1] < coverage_se_corner[1]):
+                with rasterio.open(raster_filename) as raster:
+                    coverage_data = raster.read()
 
                 # nodata for sidescan coverage is usually the maximum value
-                coverage_mask = numpy.where(array_coverage(coverage_data, numpy.max(coverage_data)), 1, 0)
+                coverage_mask = numpy.where(fuse.utilities.array_coverage(coverage_data, numpy.max(coverage_data)), 1, 0)
 
                 # resample coverage data to match BAG resolution
-                resolution_ratio = coverage_resolution / output_resolution
+                resolution_ratio = coverage_resolution / resolution
                 if numpy.any(resolution_ratio != 1):
                     coverage_mask = zoom(coverage_mask, zoom=resolution_ratio, order=3, prefilter=False)
 
                 # clip resampled coverage data to the bounds of the BAG
-                output_array = numpy.full(output_shape, 0)
+                output_array = numpy.full(shape, 0)
 
-                nw_index_delta = numpy.round((output_origin - coverage_origin) / output_resolution).astype(int)
-                se_index_delta = numpy.round((output_se_corner - coverage_origin) / output_resolution).astype(int)
+                nw_index_delta = numpy.round((origin - coverage_origin) / resolution).astype(int)
+                se_index_delta = numpy.round((output_se_corner - coverage_origin) / resolution).astype(int)
 
                 # indices to be written onto the output array
                 output_array_index_slices = [slice(0, None), slice(0, None)]
@@ -743,13 +672,13 @@ def _combined_coverage_within_window(coverage_raster_filenames: [str], output_or
                 output_array[output_array_index_slices[0], output_array_index_slices[1]] = coverage_mask
                 output_coverage_masks.append(output_array)
         except:
-            print(f'error opening file {coverage_raster_filename}')
+            print(f'error opening file {raster_filename}')
 
     # collapse coverage masks into single raster array
     return numpy.logical_or.reduce(output_coverage_masks)
 
 
-def _krige_points_onto_grid(points: numpy.array, grid_x: [float], grid_y: [float]) -> (numpy.array, numpy.array):
+def _krige_points_onto_grid(points: numpy.array, x: [float], y: [float], **kwargs) -> (numpy.array, numpy.array):
     """
     Perform kriging (using PyKrige) from the given points onto a regular grid.
 
@@ -757,9 +686,9 @@ def _krige_points_onto_grid(points: numpy.array, grid_x: [float], grid_y: [float
     ----------
     points
         N x 3 array of points to interpolate
-    grid_x
+    x
         X coordinates of output grid
-    grid_y
+    y
         Y coordinates of output grid
 
     Returns
@@ -767,5 +696,5 @@ def _krige_points_onto_grid(points: numpy.array, grid_x: [float], grid_y: [float
         interpolated values and uncertainty
     """
 
-    interpolator = OrdinaryKriging(points[:, 0], points[:, 1], points[:, 2], variogram_model='linear', verbose=False, enable_plotting=False)
-    return interpolator.execute('grid', grid_x, grid_y)
+    interpolator = OrdinaryKriging(points[:, 0], points[:, 1], points[:, 2], variogram_model='linear')
+    return interpolator.execute('grid', x, y, **kwargs)
