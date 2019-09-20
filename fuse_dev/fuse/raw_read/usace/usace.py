@@ -11,6 +11,7 @@ import pickle as _pickle
 import re as _re
 import sys as _sys
 from datetime import datetime as _datetime
+from glob import glob as _glob
 from typing import Union
 from xml.etree.ElementTree import parse as _parse
 
@@ -35,7 +36,7 @@ class USACERawReader:
             ch.setLevel(_logging.DEBUG)
             self._logger.addHandler(ch)
 
-    def read_metadata(self, filename: str) -> dict:
+    def read_metadata(self, survey_folder: str) -> dict:
         """
         Read all available meta data.
 
@@ -47,8 +48,8 @@ class USACERawReader:
 
         Parameters
         ----------
-        filename
-            File path of the input ``.xyz`` data
+        survey_folder
+            Folder path of the input ``.xyz`` data
 
         Returns
         -------
@@ -57,13 +58,13 @@ class USACERawReader:
         """
 
         meta_supplement = {}
+        meta_determine, filename = self._data_determination(meta_supplement, survey_folder)
         basexyzname, suffix = self.name_gen(filename, ext='.xyz')
         meta_xml = self._parse_usace_xml(filename)
         meta_xyz = self._parse_ehydro_xyz_header(basexyzname)
         meta_filename = self._parse_filename(filename)
         meta_pickle = self._parse_pickle(filename)
         meta_date = self._parse_start_date(filename, {**meta_pickle, **meta_xyz, **meta_xml})
-        meta_determine = self._data_determination(meta_supplement, filename)
         meta_supplement = {**meta_determine, **meta_date, **meta_supplement}
         return {**meta_pickle, **meta_xyz, **meta_filename, **meta_xml, **meta_supplement}
 
@@ -256,7 +257,24 @@ class USACERawReader:
         else:
             return base
 
-    def _data_determination(self, meta_dict: dict, infilename: str) -> dict:
+    def _xyz_precedence(self, file_list: [str]) -> str:
+        xyz_scores = {}
+        file_list = [xyz for xyz in file_list if _os.path.splitext(xyz)[1].lower() == '.xyz']
+        for xyz in file_list:
+            xyz_upper = xyz.upper()
+            if '_FULL' in xyz_upper:
+                xyz_scores[3] = xyz
+            elif '_A' in xyz_upper:
+                xyz_scores[2] = xyz
+            else:
+                xyz_scores[1] = xyz
+
+        max_score = max(list(xyz_scores.keys()))
+        interpolate = False if max_score in (3, 2) else True
+
+        return xyz_scores[max_score], interpolate
+
+    def _data_determination(self, meta_dict: dict, survey_folder: str) -> dict:
         """
         Determines cerain metadata values based on the known quality of the
         data.
@@ -269,7 +287,7 @@ class USACERawReader:
         ----------
         meta_dict
             Dictionary to add values to
-        infilename
+        survey_folder
             Complete filepath of the input data
 
         Returns
@@ -278,18 +296,13 @@ class USACERawReader:
             The metadata assigned via this method
         """
 
-        base, suffix = self.name_gen(infilename)
-        meta_dict['file_size'] = self._size_finder(infilename)
-        if suffix is not None and suffix.upper() == '_FULL':
-            meta_dict['interpolate'] = False
-            meta_dict['from_horiz_reolution'] = 3
-        elif suffix is not None and suffix.upper() == '_A':
-            self._check_grid(infilename)
-            meta_dict['interpolate'] = False
-        else:
-            meta_dict['interpolate'] = True
+        xyz_files = _glob(_os.path.join(survey_folder, '*xyz'))
+        filename, meta_dict['interpolate'] = self._xyz_precedence(xyz_files)
 
-        return meta_dict
+        meta_dict['file_size'] = self._size_finder(filename)
+        meta_dict['from_filename'] = filename
+
+        return meta_dict, filename
 
     def _size_finder(self, filepath: Union[str, _os.PathLike]) -> int:
         """
@@ -309,7 +322,7 @@ class USACERawReader:
         return int(_np.round(_os.path.getsize(filepath) / 1000))
 
     def _check_grid(self, infilename):
-        data = self._parse_ehydro_xyz_bathy(infilename)
+#        data = self._parse_ehydro_xyz_bathy(infilename)
         ...
 
     def _parse_ehydro_xyz_header(self, infilename: str, meta_source: str = 'xyz', default_meta: str = '') -> dict:
@@ -682,6 +695,7 @@ class USACERawReader:
                 fips = value.split(' ')
                 fips = [segment.strip() for segment in fips if _re.compile(r'[0-9]{4}').search(segment.strip())][0]
             try:
+                fips = _re.sub('/D', '', fips)
                 meta['from_horiz_key'] = fips
             except NameError:
                 _logging.debug(_logging.DEBUG, f"Unable to parse 'from_horiz_key' from: {value}")

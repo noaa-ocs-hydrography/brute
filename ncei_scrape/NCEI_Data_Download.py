@@ -400,8 +400,12 @@ def link_grab(source_url: str, extensions: list) -> list:
         links = [link.strip('"') for link in re.findall(f'".*{extension}"', page)]
         file_links.extend([f'{source_url}/{link}' for link in links if link != ''])
     for link in file_links:
+        basename, ext = os.path.splitext(link)
         if 'combined' in link.lower() or 'ellipsoid' in link.lower():
             file_links.remove(link)
+        elif ext.lower() in ('.gz') and os.path.splitext(basename)[1] not in extensions:
+            file_links.remove(link)
+
     return file_links
 
 
@@ -639,7 +643,6 @@ def main(pb=None):
     end = datetime.datetime.now()
     delta_time = end - start
     print(f'{end}\n{delta_time}')
-
 
 
 if __name__ == '__main__':
