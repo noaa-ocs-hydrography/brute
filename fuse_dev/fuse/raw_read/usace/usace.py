@@ -526,8 +526,10 @@ class USACERawReader:
             metadata['from_horiz_key'] = fips
             metadata['from_wkt'] = _usefips.fips2wkt(fips)
             horiz_units = horiz_datum.split(',')[1]
-            if horiz_units.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+            if horiz_units.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
                 metadata['from_horiz_units'] = 'US Survey Foot'
+            elif horiz_units.strip().upper() in ('INTL FOOT'):
+                metadata['from_horiz_units'] = 'Intl Foot'
             else:
                 metadata['from_horiz_units'] = horiz_units.strip()
             metadata['from_horiz_datum'] = horiz_datum
@@ -667,17 +669,32 @@ class USACERawReader:
             return meta
         if key == 'Horizontal_Datum':
             meta['from_horiz_datum'] = value.strip()
-            fips = value.split(',')[1]
-            fips = fips.strip().split()[0].split('-')[1]
-            meta['from_horiz_key'] = fips
+            if ',' in value and '-' in value:
+                fips = value.split(',')[1]
+                fips = fips.strip().split()[0].split('-')[1]
+            elif ',' not in value and '-' in value:
+                fips = value.split(' ')
+                fips = [segment.strip() for segment in fips if '-' in segment][0]
+                fips = fips.strip().split()[0].split('-')[1]
+            elif _re.compile(r'[0-9]{4}').search(value.strip()):
+                if ',' in value:
+                    value = _re.sub(',', '', value)
+                fips = value.split(' ')
+                fips = [segment.strip() for segment in fips if _re.compile(r'[0-9]{4}').search(segment.strip())][0]
+            try:
+                meta['from_horiz_key'] = fips
+            except NameError:
+                _logging.debug(_logging.DEBUG, f"Unable to parse 'from_horiz_key' from: {value}")
             try:
                 meta['from_wkt'] = _usefips.fips2wkt(int(fips))
             except ValueError as e:
                 _logging.debug(_logging.DEBUG, f'ValueError: {e}')
                 return meta
         elif key == 'Distance_Units':
-            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
                 meta['from_horiz_units'] = 'US Survey Foot'
+            elif value.strip().upper() in ('INTL FOOT'):
+                meta['from_horiz_units'] = 'Intl Foot'
             else:
                 meta['from_horiz_units'] = value.strip()
         elif key == 'Vertical_Datum':
@@ -687,7 +704,7 @@ class USACERawReader:
                 meta['from_vert_key'] = 'MLLW'
 
         elif key == 'Depth_Units':
-            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
                 meta['from_vert_units'] = 'US Survey Foot'
             else:
                 meta['from_vert_units'] = value.strip()

@@ -292,42 +292,42 @@ class XMLMetadata:
         my_etree_dict1 = {}
         len_root_name_to_remove = len(self.xml_tree.tag)
         for key in xml_path_to_baseattribute:
-            if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
-                if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is None:
-                    my_etree_dict1[xml_path_to_baseattribute[key]] = ''
-                elif len(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}')) > 0:
-                    my_etree_dict1[xml_path_to_baseattribute[key]] = \
-                        self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}')[0].text
-            # editing path to add ./ and then remove root name ('metadata'), the first 8 characters in this case.
-        for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
+            search_string = f'./{key[len_root_name_to_remove:]}'
+            findall_results = self.xml_tree.findall(search_string)
+            if findall_results is None:
+                my_etree_dict1[xml_path_to_baseattribute[key]] = ''
+            elif len(findall_results) > 0:
+                my_etree_dict1[xml_path_to_baseattribute[key]] = findall_results[0].text
+        attr_path = './eainfo/detailed/attr'
+        attrlabl_findall_results = self.xml_tree.findall(f'{attr_path}/attrlabl')
+        attrunit_find_result = self.xml_tree.find(f'{attr_path}/attrdomv/rdom/attrunit')
+        attrdef_find_result = self.xml_tree.find(f'{attr_path}/attrdef')
+        for x in attrlabl_findall_results:
             # pulling in Z units from attrs
             if x.text == 'Z_depth':
-                my_etree_dict1['Z_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-                # use to debug #print(f"{self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text} Z units")
+                my_etree_dict1['Z_units'] = attrunit_find_result.text
+                # use to debug #print(f"{attrunit_find_result.text} Z units")
                 if my_etree_dict1['Z_units'].upper() == 'usSurveyFoot'.upper():
                     my_etree_dict1['from_vert_units'] = 'US Survey Foot'
-        for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
+        for x in attrlabl_findall_results:
             if x.text == 'Z_use':
-                my_etree_dict1['Z_use_def'] = self.xml_tree.find('./eainfo/detailed/attr/attrdef').text
-                my_etree_dict1['Z_use_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
+                my_etree_dict1['Z_use_def'] = attrdef_find_result.text
+                my_etree_dict1['Z_use_units'] = attrunit_find_result.text
         if 'Horizontal_Units' in my_etree_dict1:  # check if Horizontal units already defined if not populate
             if len(my_etree_dict1['Horizontal_Units']) < 1:
-                for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
+                for x in attrlabl_findall_results:
                     if x.text == 'xLocation':
-                        my_etree_dict1['xLocation'] = self.xml_tree.find(
-                            './eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-                        my_etree_dict1['H_units'] = self.xml_tree.find(
-                            './eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-                        if my_etree_dict1['H_units'].upper() == 'usSurveyFoot'.upper():
-                            my_etree_dict1['Horizontal_Units'] = 'US Survey Foot'
+                        my_etree_dict1['xLocation'] = attrunit_find_result.text
+                        my_etree_dict1['H_units'] = attrunit_find_result.text
+                        if my_etree_dict1['H_units'].upper() in ('usSurveyFoot'.upper(), 'FEET'):
+                            my_etree_dict1['from_horiz_units'] = 'US Survey Foot'
         else:
-            for x in self.xml_tree.findall('.//eainfo/detailed/attr/attrlabl'):
+            for x in attrlabl_findall_results:
                 if x.text == 'xLocation':  # horizontal unit, yLocation should be the same
-                    my_etree_dict1['xLocation'] = self.xml_tree.find(
-                        './eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-                    my_etree_dict1['H_units'] = self.xml_tree.find('./eainfo/detailed/attr/attrdomv/rdom/attrunit').text
-                    if my_etree_dict1['H_units'].upper() == 'usSurveyFoot'.upper():
-                        my_etree_dict1['Horizontal_Units'] = 'US Survey Foot'
+                    my_etree_dict1['xLocation'] = attrunit_find_result.text
+                    my_etree_dict1['H_units'] = attrunit_find_result.text
+                    if my_etree_dict1['H_units'].upper() in ('usSurveyFoot'.upper(), 'FEET'):
+                        my_etree_dict1['from_horiz_units'] = 'US Survey Foot'
         # Location for END DATES in some files!
         # 'metadata/idinfo/timeperd/timeinfo/rngdates': 'rngdates',
         # 'metadata/dataqual/lineage/srcinfo/srctime/timeinfo/rngdates': 'rngdates',
@@ -361,42 +361,42 @@ class XMLMetadata:
         len_root_name_to_remove = len(self.xml_tree.tag)
         vertdatum = {'metadata/spref/vertdef/altsys/altdatum': 'altdatum'}
         for key in iso_xml_path_to_baseattribute:
-            if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
-                if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is None:
+            search_string = f'./{key[len_root_name_to_remove:]}'
+            findall_results = self.xml_tree.findall(search_string)
+            if self.xml_tree.findall(search_string):
+                if findall_results is None:
                     my_etree_dict1[iso_xml_path_to_baseattribute[key]] = ''
-                elif isinstance(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'),
-                                list) == True:  # check if list
-                    # self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:#commenting out this change AS IT HAD OPPOSITE EFFECT OF ORIGINAL SYNTAX
-                    if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:
-                        my_etree_dict1[iso_xml_path_to_baseattribute[key]] = \
-                            self.xml_tree.find('./' + key[len_root_name_to_remove:])[0].text
+                elif type(findall_results) is list:  # check if list
+                    find_result = self.xml_tree.find(search_string)
+
+                    if len(find_result) > 0:
+                        my_etree_dict1[iso_xml_path_to_baseattribute[key]] = find_result[0].text
                     else:
-                        my_etree_dict1[iso_xml_path_to_baseattribute[key]] = self.xml_tree.find(
-                            './' + key[len_root_name_to_remove:]).text
+                        my_etree_dict1[iso_xml_path_to_baseattribute[key]] = find_result.text
             else:
                 my_etree_dict1[iso_xml_path_to_baseattribute[key]] = ''
         for key in vertdatum:  #
-            if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
-                if isinstance(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'),
-                              list) == True:  # check if list
-                    # if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is list:#commenting out this change AS IT HAD OPPOSITE EFFECT OF ORIGINAL SYNTAX
-                    if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:
-                        if self.xml_tree.find(
-                                f'./{key[len_root_name_to_remove:]}') is None:  # Checks for NoneType object ('None')
+            search_string = f'./{key[len_root_name_to_remove:]}'
+            findall_results = self.xml_tree.findall(search_string)
+            if findall_results:
+                find_result = self.xml_tree.find(search_string)
+                if type(findall_results) is list:  # check if list
+                    if len(find_result) > 0:
+                        if find_result is None:  # Checks for NoneType object ('None')
                             my_etree_dict1['script: from_vert_key'] = ''
                             my_etree_dict1['from_vert_key'] = ''
                         else:
-                            my_etree_dict1[vertdatum[key]] = self.xml_tree.find(
-                                f'./{key[len_root_name_to_remove:]}').text
+                            my_etree_dict1[vertdatum[key]] = find_result.text
                             my_etree_dict1['from_vert_key'] = my_etree_dict1[vertdatum[key]]
                     else:
-                        my_etree_dict1['from_vert_key'] = self.xml_tree.find(f'./{key[len_root_name_to_remove:]}').text
+                        my_etree_dict1['from_vert_key'] = find_result.text
                 else:
-                    my_etree_dict1['from_vert_key'] = self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')
+                    my_etree_dict1['from_vert_key'] = find_result
             else:
                 my_etree_dict1['from_vert_key'] = ''
-        for x in self.xml_tree.findall('.//ellips'):
-            if self.xml_tree.findall('.//ellips') is None:
+        findall_results = self.xml_tree.findall('.//ellips')
+        for _ in findall_results:
+            if findall_results is None:
                 my_etree_dict1['ISO_ellips'] = ''
             else:
                 my_etree_dict1['ISO_ellips'] = 'Exists'
@@ -420,17 +420,17 @@ class XMLMetadata:
         my_etree_dict1 = {}
         len_root_name_to_remove = len(self.xml_tree.tag)
         for key in fgdc_additional_values:
-            if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'):
-                if self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}') is None:
+            search_string = f'./{key[len_root_name_to_remove:]}'
+            findall_results = self.xml_tree.findall(search_string)
+            if findall_results:
+                if findall_results is None:
                     my_etree_dict1[fgdc_additional_values[key]] = ''
-                elif isinstance(self.xml_tree.findall(f'./{key[len_root_name_to_remove:]}'),
-                                list) == True:  # check if list
-                    if len(self.xml_tree.find(f'./{key[len_root_name_to_remove:]}')) > 0:
-                        my_etree_dict1[fgdc_additional_values[key]] = \
-                            self.xml_tree.find('./' + key[len_root_name_to_remove:])[0].text
+                elif type(findall_results) is list:  # check if list
+                    find_result = self.xml_tree.find(search_string)
+                    if len(find_result) > 0:
+                        my_etree_dict1[fgdc_additional_values[key]] = find_result[0].text
                     else:
-                        my_etree_dict1[fgdc_additional_values[key]] = self.xml_tree.find(
-                            './' + key[len_root_name_to_remove:]).text
+                        my_etree_dict1[fgdc_additional_values[key]] = find_result.text
             else:
                 my_etree_dict1[fgdc_additional_values[key]] = ''
         self.my_etree_dict2 = my_etree_dict1
@@ -929,7 +929,7 @@ def parse_namespace(meta_str):
             if v[0] == ':':
                 tmp = v[1:]
                 tmp = tmp.split('>')[0]
-                name, info = tmp.split('=')
+                name, info = tmp.split('=', 1)
                 site = info.split('"')[1]
                 namespace[name] = site
         else:  # this handles most cases
@@ -1597,8 +1597,10 @@ def extract_from_iso_meta(xml_meta):
                 xml_meta['from_vert_datum'] = xml_meta['Vertical Datum Description']
     # horizontal units
     if 'Units' in xml_meta:
-        if xml_meta['Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+        if xml_meta['Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
             xml_meta['from_horiz_units'] = 'US Survey Foot'
+        elif xml_meta['Units'].strip().upper() in ('INTL FOOT'):
+            xml_meta['from_horiz_units'] = 'Intl Foot'
         else:
             xml_meta['from_horiz_units'] = xml_meta['Units'].strip()
     if 'Implied_Horizontal_Accuracy' in xml_meta:
@@ -1622,8 +1624,8 @@ def extract_from_iso_meta(xml_meta):
                 elif 'multi' in xml_meta[system].lower():
                     xml_meta['TECSOU'] = '3'
                 elif 'sweep' in xml_meta[system].lower():
-                    xml_meta[
-                        'TECSOU'] = '8'  # could also consider it just multiple single beams in this water depth range#Ross SmartSweep example modle
+                    # could also consider it just multiple single beams in this water depth range#Ross SmartSweep example modle
+                    xml_meta['TECSOU'] = '8'
                     # see _print_TECSOU_defs() for more TECSOU definitions
             except KeyError as e:
                 _logging.debug(_logging.ERROR, f"{system}: {e}")
@@ -1835,8 +1837,7 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 elif name.find('depths below National Geodetic Vertical Datum or 1929 (NGVD29)') >= 0:
                     m['VERTDAT'] = 'NGVD29'
                 if name.find('Soundings are shown in feet') >= 0:
-                    m['script: from_vert_units'] = 'Feet'
-                    m['script: from_vert_units'] = 'US Survey Foot'
+                    m['from_vert_units'] = 'US Survey Foot'
         except:
             # Other way to split abstract, in case format changed over time
             # print('issue parsing')
@@ -1891,18 +1892,19 @@ def parsing_xml_FGDC_attributes_s57(meta_xml):
                 # print may need qc check to see if this coming in correctly
     if 'Horizontal_Units' in m:
         if m['Horizontal_Units'] == '':
-            if meta_xml[
-                'plandu'].upper() == 'FOOT_US':  # plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
+            # plandu = #horizontal units#may need to add or meta_xml['plandu'] == 'Foot_US'
+            if meta_xml['plandu'].upper() == 'FOOT_US':
                 m['Horizontal_Units'] = 'US Survey Foot'
             elif meta_xml['plandu'].upper() == 'INTL FOOT':
-                m['from_horiz_units'] = 'ft'  # international feet code for vdatum
+                # international feet code for vdatum
+                m['from_horiz_units'] = 'Intl Foot'
     horizpar = meta_xml['horizpar']
     if horizpar.find('DGPS, 1 Meter') >= 0:
         m['horiz_uncert'] = '1'  # (POSACC) DGPS, 1 Meter
     elif horizpar.find('DGPS, +/-1.0 Meter (3.28 feet)') >= 0:
         m['horiz_uncert'] = '3.28'  # (POSACC) DGPS, 1 Meter
     elif horizpar.find('International Feet') >= 0:
-        m['from_horiz_units'] = 'ft'  # international feet code for vdatum
+        m['from_horiz_units'] = 'Intl Foot'  # international feet code for vdatum
     vertaccr = meta_xml['vertaccr']
     if vertaccr.find('Expected values 0.5 -1.0 Foot') >= 0:
         m['vert_acc'] = '1.0'  # 1 ft =   0.30480060960121924 m#'0.3'm
@@ -2019,14 +2021,15 @@ def convert_meta_to_input(m):
     elif 'from_vert_datum' not in m:
         if 'VERTDAT' in m:
             m['from_vert_datum'] = m['VERTDAT']
-    # m['script: from_vert_units'] = m['from_vert_units']#needs to be added
     if 'SPCS' in m and 'horizontal_datum_i' in m:
         m['from_horiz_datum'] = f"{m['horizontal_datum_i'].split('Vertical Datum:')[0]},{m['SPCS']}"
     elif 'horizontal_datum_i' in m:
         m['from_horiz_datum'] = m['horizontal_datum_i'].split('Vertical Datum:')[0]
     if 'Horizontal_Units' in m:
-        if m['Horizontal_Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+        if m['Horizontal_Units'].strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
             m['from_horiz_units'] = 'US Survey Foot'
+        elif m['Horizontal_Units'].strip().upper() in ('INTL FOOT'):
+            m['from_horiz_units'] = 'Intl Foot'
         else:
             # may need to enforce some kind of uniform spelling etc. here
             m['from_horiz_units'] = m['Horizontal_Units'].strip()

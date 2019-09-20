@@ -93,7 +93,8 @@ class FuseProcessor:
     _processing_info = [
         'logfilename',
         'version_reference',
-        'interpolate'
+        'interpolate',
+        'file_size'
     ]
 
     _scores = [
@@ -158,10 +159,12 @@ class FuseProcessor:
         config_file.read(configuration_file)
         sections = config_file.sections()
         for section in sections:
-            for key in config_file[section]:
+            config_file_section = config_file[section]
+            for key in config_file_section:
+                value = config_file_section[key]
                 if key == 'rawpaths':
                     rawpaths = []
-                    raw = config_file[section][key].split(';')
+                    raw = value.split(';')
                     for r in raw:
                         r = r.strip()
                         if _os.path.isdir(r):
@@ -170,12 +173,12 @@ class FuseProcessor:
                             raise ValueError(f'Invalid input path: {r}')
                     config[key] = rawpaths
                 elif key == 'outpath':
-                    if _os.path.isdir(config_file[section][key]):
-                        config[key] = config_file[section][key]
+                    if _os.path.isdir(value):
+                        config[key] = value
                     else:
-                        raise ValueError(f'Invalid input path: {config_file[section][key]}')
+                        raise ValueError(f'Invalid input path: {value}')
                 else:
-                    config[key] = config_file[section][key]
+                    config[key] = value
 
         if len(config) == 0:
             raise ValueError('Failed to read configuration file.')
@@ -258,13 +261,13 @@ class FuseProcessor:
     def _set_data_writer(self):
         """Set up the location and method to write tranformed and interpolated data."""
 
-        raster_extension = self._config['bathymetry_intermediate_file']
-        if raster_extension == 'bag':
-            point_extension = 'gpkg'
+        self._raster_extension = self._config['bathymetry_intermediate_file']
+        if self._raster_extension == 'bag':
+            self._point_extension = 'csar'
         else:
-            point_extension = raster_extension
-        self._raster_writer = ProcIO('gdal', raster_extension)
-        self._point_writer = ProcIO('point', point_extension)
+            self._point_extension = self._raster_extension
+        self._raster_writer = ProcIO('gdal', self._raster_extension)
+        self._point_writer = ProcIO('point', self._point_extension)
 
     def read(self, filename: str):
         """
@@ -305,8 +308,10 @@ class FuseProcessor:
         if 'from_fips' in meta:
             meta['from_horiz_key'] = meta['from_fips']
         if 'from_horiz_units' in meta:
-            if meta['from_horiz_units'].upper() == 'US SURVEY FOOT':
+            if meta['from_horiz_units'].upper() in ('US SURVEY FOOT'):
                 meta['from_horiz_units'] = 'us_ft'
+            elif meta['from_horiz_units'].upper() in ('INTL FOOT'):
+                meta['from_horiz_units'] = 'ft'
             else:
                 raise ValueError(f'Input datum units are unknown: {meta["from_horiz_units"]}')
         if 'from_vert_key' in meta:
@@ -415,7 +420,7 @@ class FuseProcessor:
             # convert the bathy for the original data
             input_directory = _os.path.splitext(_os.path.split(filename)[-1])[0]
             metadata['outpath'] = _os.path.join(self._config['outpath'], input_directory)
-            metadata['new_ext'] = self._config['bathymetry_intermediate_file']
+            metadata['new_ext'] = self._point_extension
 
             # oddly _transform becomes the bathymetry reader here...
             # return a GDAL dataset in the right datums to combine
@@ -425,8 +430,7 @@ class FuseProcessor:
                 outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                 self._point_writer.write(dataset, outfilename)
                 metadata['to_filename'] = outfilename
-
-            if self._read_type == 'bag':
+            elif self._read_type == 'bag':
                 metadata['to_filename'] = filename
 
             self._meta_obj.write_meta_record(metadata)
@@ -441,26 +445,25 @@ class FuseProcessor:
                     meta_interp['from_filename'] = f'{base}.interpolated'
 
                     if self._config['interpolation_engine'] == 'raster':
-                        output_filename = f"{_os.path.join(root, base)}_interp.{meta_interp['new_ext']}"
+                        output_filename = f"{_os.path.join(root, base)}_interp.{self._raster_extension}"
                     else:
                         resolution = float(self._config['to_resolution'])
                         resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
-                        output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{meta_interp["new_ext"]}'
+                        output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
 
                     meta_interp['to_filename'] = output_filename
                     method = self._config['interpolation_method']
 
-                    try:
-                        if self._config['interpolation_engine'] == 'raster':
-                            interpolator = _interp.RasterInterpolator(dataset, metadata['support_files'])
-                        else:
-                            interpolator = _interp.PointInterpolator(dataset)
+                    support_files = meta_interp['support_files'] if 'support_files' in meta_interp else None
 
+                    try:
+                        interpolator = _interp.Interpolator(dataset, sidescan_raster_filenames=support_files)
                         dataset = interpolator.interpolate(method, float(self._config['to_resolution']))
                         meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
-                    except _interp.ExtentError as error:
+                    except (ValueError, RuntimeError, IndexError) as error:
                         print(error)
+                        self.logger.warning(str(error))
                         meta_interp['interpolated'] = False
 
                     self._meta_obj.write_meta_record(meta_interp)
@@ -492,7 +495,7 @@ class FuseProcessor:
                 self._connect_to_db()
             procfile = metadata['to_filename']
             metadata['posted'] = True
-            s57_meta = self._get_meta_as_s57(metadata)
+            s57_meta = self._metadata_to_s57(metadata)
             self._db.write(procfile, 'new', s57_meta)
             # need to check for proper insertion...
             self._meta_obj.write_meta_record(metadata)
@@ -512,7 +515,7 @@ class FuseProcessor:
             if self._db == None:
                 self._connect_to_db()
             procfile = metadata['to_filename']
-            s57_meta = self._get_meta_as_s57(metadata)
+            s57_meta = self._metadata_to_s57(metadata)
             s57_meta['dcyscr'] = dscore
             self._db.write(procfile, 'metadata', s57_meta)
             log = f'Posting new decay score of {dscore} to database.'
@@ -577,6 +580,7 @@ class FuseProcessor:
 
     def _close_log(self):
         """ Close the object logging file. """
+
         # remove handlers
         for handler in self.logger.handlers:
             self.logger.removeHandler(handler)
@@ -605,7 +609,7 @@ class FuseProcessor:
         # need to catch if this file is not in the metadata record yet here.
         return self._meta
 
-    def _get_meta_as_s57(self, metadata) -> dict:
+    def _metadata_to_s57(self, metadata) -> dict:
         """
         The metadata is converted to an s57 version of the metadata.
 
@@ -619,8 +623,7 @@ class FuseProcessor:
             dictionary of metadata
         """
 
-        s57_meta = self._meta_obj.csv_to_s57(metadata)
-        return s57_meta
+        return self._meta_obj.csv_to_s57(metadata)
 
     def _datum_metadata_ready(self, metadata) -> bool:
         """
@@ -644,7 +647,7 @@ class FuseProcessor:
     def _quality_metadata_ready(self, metadata):
         """
         Check the metadata to see if the required fields are populated.
-        
+
         Parameters
         ----------
         metadata
@@ -681,7 +684,7 @@ class FuseProcessor:
     def _date_metadata_ready(self, metadata):
         """
         Check the metadata to see if the required fields are populated.
-        
+
         Parameters
         ----------
         metadata
