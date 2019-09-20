@@ -300,7 +300,8 @@ class USACERawReader:
         filename, meta_dict['interpolate'] = self._xyz_precedence(xyz_files)
 
         meta_dict['file_size'] = self._size_finder(filename)
-        meta_dict['from_filename'] = filename
+        meta_dict['from_filename'] = self.name_gen(_os.path.split(filename)[1], '', sfx=None)
+        meta_dict['from_path'] = filename
 
         return meta_dict, filename
 
