@@ -399,14 +399,23 @@ def link_grab(source_url: str, extensions: list) -> list:
     for extension in extensions:
         links = [link.strip('"') for link in re.findall(f'".*{extension}"', page)]
         file_links.extend([f'{source_url}/{link}' for link in links if link != ''])
+    valid_links = []
     for link in file_links:
         basename, ext = os.path.splitext(link)
-        if 'combined' in link.lower() or 'ellipsoid' in link.lower():
-            file_links.remove(link)
+        root, basename = os.path.split(basename)
+        add_link = True
+        if 'combined' in basename.lower() or 'ellipsoid' in basename.lower():
+            add_link = False
         elif ext.lower() in ('.gz') and os.path.splitext(basename)[1] not in extensions:
-            file_links.remove(link)
+            add_link = False
+        if '.bag' in extensions and re.compile(r'[a-z][0-9]{5}\_[a-z]{2}', re.IGNORECASE).search(basename) is None:
+            add_link = False
+        elif '.tif' in extensions and re.compile(r'[a-z][0-9]{5}(_SSSAB)', re.IGNORECASE).search(basename) is None:
+            add_link = False
+        if add_link:
+            valid_links.append(link)
 
-    return file_links
+    return valid_links
 
 
 def file_downloader(folder: str, download_links: list, saved_files: list) -> list:
