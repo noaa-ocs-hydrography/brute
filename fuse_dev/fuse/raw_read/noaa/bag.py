@@ -1464,14 +1464,14 @@ class BagToGDALConverter:
         self.out_verdat = out_verdat
         self.flip = flip
 
-    def bag2gdal(self, bag):
+    def bag2gdal(self, bag: BagFile):
         """
         Converts a :obj:`bag` object into a :obj:`gdal.Dataset`
 
         Parameters
         ----------
-        bag : :obj:`bag`
-            TODO write description
+        bag
+            BAG file object
         """
 
         arrays = [bag.elevation, bag.uncertainty]
@@ -1486,8 +1486,8 @@ class BagToGDALConverter:
         target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=bag.wkt)
-#        if not srs.IsCompound():
-#            srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
+        #        if not srs.IsCompound():
+        #            srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
         wkt = srs.ExportToWkt()
         target_ds.SetProjection(wkt)
         x = 1
@@ -1541,8 +1541,8 @@ class BagToGDALConverter:
         target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=prj)
-#        if not srs.IsCompound():
-#            srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
+        #        if not srs.IsCompound():
+        #            srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
         wkt = srs.ExportToWkt()
         target_ds.SetProjection(wkt)
         x = 1
