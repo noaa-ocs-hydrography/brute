@@ -297,6 +297,8 @@ class USACERawReader:
         """
 
         xyz_files = _glob(_os.path.join(survey_folder, '*xyz'))
+        if len(xyz_files) < 1:
+            raise RuntimeError('No files to process in {survey_folder}')
         filename, meta_dict['interpolate'] = self._xyz_precedence(xyz_files)
 
         meta_dict['file_size'] = self._size_finder(filename)

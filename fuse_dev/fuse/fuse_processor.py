@@ -281,7 +281,7 @@ class FuseProcessor:
 
         if self._read_type == 'ehydro':
             survey_folder = filename
-            self._read_ehydro(survey_folder)
+            return self._read_ehydro(survey_folder)
         elif self._read_type == 'bag':
             self._read_noaa_bag(filename)
         else:
@@ -301,7 +301,11 @@ class FuseProcessor:
 
         self._set_log(survey_folder)
         # get the metadata
-        raw_meta = self._reader.read_metadata(survey_folder)
+        try:
+            raw_meta = self._reader.read_metadata(survey_folder)
+        except RuntimeError as e:
+            self.logger.log(_logging.DEBUG, e)
+            return None
         meta = raw_meta.copy()
         meta['read_type'] = 'ehydro'
 
@@ -349,6 +353,7 @@ class FuseProcessor:
         # write the metadata
         self._meta_obj.write_meta_record(meta)
         self._close_log()
+        return meta['from_path']
 
     def _read_noaa_bag(self, filename: str):
         """
@@ -412,10 +417,14 @@ class FuseProcessor:
         TODO: need to add checks to make sure the metadata is ready.
             Perhaps this should be added to the metadata object?
         """
-
-        metadata = self._get_stored_meta(filename)
+        if self._read_type == 'ehydro':
+            meta_entry = self._reader.name_gen(_os.path.split(filename)[1], '', sfx=None)
+            metadata = self._get_stored_meta(meta_entry)
+            self._set_log(meta_entry)
+        else:
+            metadata = self._get_stored_meta(filename)
+            self._set_log(filename)
         metadata['read_type'] = self._read_type
-        self._set_log(filename)
 
         if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
