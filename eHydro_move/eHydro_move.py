@@ -28,7 +28,7 @@ config.read('config.ini')
 # sections = config.sections()
 downloads = config['Source']['downloads']
 destination = config['Destination']['destination']
-repo = _os.path.split(progLoc)[0]
+repo = _os.path.dirname(progLoc)
 method = config.getboolean('Method', 'method')
 
 
@@ -221,7 +221,7 @@ def fileCollect(path: str, bounds: str) -> list:
     x = 1
 
     for zfile in zips:
-        root = _os.path.split(zfile)[0]
+        root = _os.path.dirname(zfile)
         _os.chdir(root)
 
         try:

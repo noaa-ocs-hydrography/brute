@@ -418,7 +418,7 @@ class FuseProcessor:
             Perhaps this should be added to the metadata object?
         """
         if self._read_type == 'ehydro':
-            meta_entry = self._reader.name_gen(_os.path.split(filename)[1], '', sfx=None)
+            meta_entry = self._reader.name_gen(_os.path.basename(filename), '', sfx=None)
             metadata = self._get_stored_meta(meta_entry)
             self._set_log(meta_entry)
         else:
@@ -428,7 +428,7 @@ class FuseProcessor:
 
         if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
-            input_directory = _os.path.splitext(_os.path.split(filename)[-1])[0]
+            input_directory = _os.path.splitext(_os.path.basename(filename))[0]
             metadata['outpath'] = _os.path.join(self._config['outpath'], input_directory)
             metadata['new_ext'] = self._point_extension
 
@@ -574,7 +574,7 @@ class FuseProcessor:
         root, extension = _os.path.splitext(filename)
         if extension == '.interpolated':
             filename = root
-        log_filename = _os.path.join(_os.path.split(self._config['metapath'])[0],
+        log_filename = _os.path.join(_os.path.dirname(self._config['metapath']),
                                      f'{_os.path.splitext(_os.path.split(filename)[-1])[0]}.log')
         self._meta['logfilename'] = log_filename
 
@@ -611,7 +611,7 @@ class FuseProcessor:
         """
         try:
             # file name is the key rather than the path
-            path, f = _os.path.split(filename)
+            f = _os.path.basename(filename)
             if 'from_filename' not in self._meta:
                 self._meta = self._meta_obj.read_meta_record(f)
             elif self._meta['from_filename'] is not filename:

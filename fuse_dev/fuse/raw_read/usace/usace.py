@@ -296,6 +296,9 @@ class USACERawReader:
             The metadata assigned via this method
         """
 
+        if _os.path.isfile(survey_folder):
+            survey_folder = _os.path.dirname(survey_folder)
+
         xyz_files = _glob(_os.path.join(survey_folder, '*xyz'))
         if len(xyz_files) < 1:
             raise RuntimeError('No files to process in {survey_folder}')
@@ -325,7 +328,7 @@ class USACERawReader:
         return int(_np.round(_os.path.getsize(filepath) / 1000))
 
     def _check_grid(self, infilename):
-#        data = self._parse_ehydro_xyz_bathy(infilename)
+        #        data = self._parse_ehydro_xyz_bathy(infilename)
         ...
 
     def _parse_ehydro_xyz_header(self, infilename: str, meta_source: str = 'xyz', default_meta: str = '') -> dict:

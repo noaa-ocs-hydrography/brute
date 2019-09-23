@@ -325,7 +325,7 @@ class ProcIO:
             name of output layer
         """
 
-        write_geometry(filename, vectorize_raster(raster, band_index), crs_wkt, name=os.path.split(filename)[-1], layer=layer)
+        write_geometry(filename, vectorize_raster(raster, band_index), crs_wkt, name=os.path.basename(filename), layer=layer)
 
     def _gdal_raster_to_array(self, raster: gdal.Dataset) -> (np.array, dict):
         """
