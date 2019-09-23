@@ -262,9 +262,9 @@ class USACERawReader:
         file_list = [xyz for xyz in file_list if _os.path.splitext(xyz)[1].lower() == '.xyz']
         for xyz in file_list:
             xyz_upper = xyz.upper()
-            if '_FULL' in xyz_upper:
+            if '_FULL.' in xyz_upper:
                 xyz_scores[3] = xyz
-            elif '_A' in xyz_upper:
+            elif '_A.' in xyz_upper:
                 xyz_scores[2] = xyz
             else:
                 xyz_scores[1] = xyz
