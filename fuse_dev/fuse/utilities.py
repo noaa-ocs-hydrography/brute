@@ -35,7 +35,6 @@ def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> 
     Returns
     -------
     N x 3 array of XYZ points
-
     """
 
     if dataset.GetProjectionRef() == '':
@@ -70,7 +69,7 @@ def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> 
 
 def geoarray_to_points(grid: numpy.array, origin: (float, float), resolution: (float, float), nodata: float = None) -> numpy.array:
     """
-    Extract XYZ points from an array of data using the given geographic reference.
+    Extract XYZ points from an array of data using the given raster-like georeference (origin  and resolution).
 
     Parameters
     ----------
@@ -97,6 +96,40 @@ def geoarray_to_points(grid: numpy.array, origin: (float, float), resolution: (f
         grid = grid[grid != nodata]
 
     return numpy.stack((x_values, y_values, grid), axis=1)
+
+
+def raster_edge_points(data: numpy.array, origin: (float, float), resolution: (float, float), nodata: float) -> numpy.array:
+    """
+    Get the edge points of the array of data using the given raster-like georeference (origin  and resolution).
+
+    Parameters
+    ----------
+    data
+        array of raster data
+    origin
+        geographic origin of data
+    resolution
+        geographic resolution of data
+    nodata
+        value for no data in raster
+
+    Returns
+    -------
+    numpy.array
+        N x 3 array of points
+    """
+
+    elevation_coverage = array_coverage(data, nodata)
+
+    horizontal_difference = numpy.concatenate((numpy.full((elevation_coverage.shape[0], 1), 0),
+                                               numpy.diff(numpy.where(elevation_coverage, 1, 0), axis=1)), axis=1)
+    vertical_difference = numpy.concatenate((numpy.full((1, elevation_coverage.shape[1]), 0),
+                                             numpy.diff(numpy.where(elevation_coverage, 1, 0), axis=0)), axis=0)
+
+    horizontal_edges = (horizontal_difference == 1) | numpy.roll(horizontal_difference == -1, -1, axis=1)
+    vertical_edges = (vertical_difference == 1) | numpy.roll(vertical_difference == -1, -1, axis=0)
+
+    return geoarray_to_points(numpy.where(horizontal_edges | vertical_edges, data, nodata), origin, resolution, nodata)
 
 
 def alpha_hull(points: numpy.array, max_length: float = None) -> Polygon:
@@ -490,7 +523,7 @@ def georeference_to_affine(origin: (float, float), resolution: (float, float), r
 
 def raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
     """
-    Get the bounds of the given (unrotated) raster.
+    Get the bounds (grouped by dimension) of the given unrotated raster.
 
     Parameters
     ----------
@@ -521,38 +554,24 @@ def raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
     return numpy.array((west, south, east, north))
 
 
-def raster_edge_points(data: numpy.array, origin: (float, float), resolution: (float, float), nodata: float) -> numpy.array:
+def extent_from_bounds(bounds: (float, float, float, float)) -> (float, float, float, float):
     """
-    Get the edge points of the given georeferenced array.
+    Get the extent (grouped by min / max) of the given unrotated raster.
 
     Parameters
     ----------
-    data
-        array of raster data
-    origin
-        origin of raster
-    resolution
-        resolution of raster
-    nodata
-        value for no data in raster
+    bounds
+        min X, min Y, max X, max Y
 
     Returns
     -------
-    numpy.array
-        N x 3 array of points
+        min X, max X, min Y, max Y
     """
 
-    elevation_coverage = array_coverage(data, nodata)
+    if type(bounds) is not numpy.array:
+        bounds = numpy.array(bounds)
 
-    horizontal_difference = numpy.concatenate((numpy.full((elevation_coverage.shape[0], 1), 0),
-                                               numpy.diff(numpy.where(elevation_coverage, 1, 0), axis=1)), axis=1)
-    vertical_difference = numpy.concatenate((numpy.full((1, elevation_coverage.shape[1]), 0),
-                                             numpy.diff(numpy.where(elevation_coverage, 1, 0), axis=0)), axis=0)
-
-    horizontal_edges = (horizontal_difference == 1) | numpy.roll(horizontal_difference == -1, -1, axis=1)
-    vertical_edges = (vertical_difference == 1) | numpy.roll(vertical_difference == -1, -1, axis=0)
-
-    return geoarray_to_points(numpy.where(horizontal_edges | vertical_edges, data, nodata), origin, resolution, nodata)
+    return bounds[[0, 2, 1, 3]]
 
 
 def plot_region(region: Union[Polygon, MultiPolygon], axis: pyplot.Axes = None, show: bool = False, **kwargs):
