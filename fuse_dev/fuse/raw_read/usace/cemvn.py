@@ -429,6 +429,15 @@ class XYZMetaReader(object):
                          default_meta: str = '') -> dict:  # need to change version to None
         """
         Parse an USACE eHydro file for the available meta data.
+
+        Default metadata (values predetermined for the file but not in the file)
+        can be stored at the location defined by 'default_meta' as a pickled
+        dicitonary.  If no path is provided the dictionary in the same folder as
+        the data but in the file 'default.pkl' will be used.  If this file does
+        not exist no default metadata will be loaded.  If the same keyword for
+        the metadata exists both in the file metadata and in the default location,
+        the file metadata will take precidence.
+
         'CEMVN'
 
         Parameters
@@ -444,19 +453,10 @@ class XYZMetaReader(object):
         
         Returns
         -------
-        
+        dict
+            dictionary of metadata
         """
-        """
-        Parse an USACE eHydro file for the available meta data.
-        
-        Default metadata (values predetermined for the file but not in the file)
-        can be stored at the location defined by 'default_meta' as a pickled
-        dicitonary.  If no path is provided the dictionary in the same folder as
-        the data but in the file 'default.pkl' will be used.  If this file does
-        not exist no default metadata will be loaded.  If the same keyword for
-        the metadata exists both in the file metadata and in the default location,
-        the file metadata will take precidence.
-        """
+
         name_meta = self.parse_ehydro_filename(infilename)
         if 'start_date' in name_meta:
             name_meta['filename_date'] = name_meta['start_date']

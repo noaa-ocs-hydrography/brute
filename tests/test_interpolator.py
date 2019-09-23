@@ -137,6 +137,25 @@ class TestInterpolator(unittest.TestCase):
 
         assert os.path.exists(output_path)
 
+    def test_points_kriging_issues(self):
+        survey_name = 'BR_01_BRH_20190117_CS_4788_40X'
+
+        interpolation_method = 'kriging'
+        output_file_extension = 'bag'
+
+        config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
+        input_path = os.path.join(USACE_INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
+        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
+
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
+        fuse_processor = FuseProcessor(config_path)
+        fuse_processor.read(input_path)
+        fuse_processor.process(input_path)
+
+        assert os.path.exists(output_path)
+
 
 if __name__ == '__main__':
     unittest.main()

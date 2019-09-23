@@ -11,12 +11,9 @@ import gdal
 from fuse.datum_transform import use_vdatum as uv
 from fuse.raw_read.noaa.bag import BAGRawReader
 
-
 class DatumTransformer:
-    """
-    An object for abstracting the datum transformation API.  This should allow
-    for different transformation machines and versions.
-    """
+    """ An object for abstracting the datum transformation API.  This should allow for different transformation machines and versions. """
+
     _from_datum_info = [
         'from_horiz_frame',
         'from_horiz_type',

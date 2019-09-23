@@ -670,9 +670,22 @@ class USACERawReader(RawReader):
             return meta
         if key == 'Horizontal_Datum':
             meta['from_horiz_datum'] = value.strip()
-            fips = value.split(',')[1]
-            fips = fips.strip().split()[0].split('-')[1]
-            meta['from_horiz_key'] = fips
+            if ',' in value and '-' in value:
+                fips = value.split(',')[1]
+                fips = fips.strip().split()[0].split('-')[1]
+            elif ',' not in value and '-' in value:
+                fips = value.split(' ')
+                fips = [segment.strip() for segment in fips if '-' in segment][0]
+                fips = fips.strip().split()[0].split('-')[1]
+            elif _re.compile(r'[0-9]{4}').search(value.strip()):
+                if ',' in value:
+                    value = _re.sub(',', '', value)
+                fips = value.split(' ')
+                fips = [segment.strip() for segment in fips if _re.compile(r'[0-9]{4}').search(segment.strip())][0]
+            try:
+                meta['from_horiz_key'] = fips
+            except NameError:
+                _logging.debug(_logging.DEBUG, f"Unable to parse 'from_horiz_key' from: {value}")
             try:
                 meta['from_wkt'] = _usefips.fips2wkt(int(fips))
             except ValueError as e:

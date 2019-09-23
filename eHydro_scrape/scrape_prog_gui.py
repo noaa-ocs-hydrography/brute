@@ -5,14 +5,13 @@ Created on Thu Apr 25 13:48:02 2019
 @author: Casiano.Koprowski
 """
 
-import eHydro_scrape
 import scrape_prog
 import wx
 
+import eHydro_scrape
+
 
 class Form(scrape_prog.Form):
-    """ """
-
     def __init__(self, parent):
         scrape_prog.Form.__init__(self, parent)
 
