@@ -11,7 +11,7 @@ import os as _os
 import re as _re
 import shutil as _shutil
 import zipfile as _zf
-from typing import Union, Dict
+from typing import Union
 
 from osgeo import ogr as _ogr
 from osgeo import osr as _osr
@@ -28,7 +28,7 @@ config.read('config.ini')
 # sections = config.sections()
 downloads = config['Source']['downloads']
 destination = config['Destination']['destination']
-repo = _os.path.split(progLoc)[0]
+repo = _os.path.dirname(progLoc)
 method = config.getboolean('Method', 'method')
 
 
@@ -221,7 +221,7 @@ def fileCollect(path: str, bounds: str) -> list:
     x = 1
 
     for zfile in zips:
-        root = _os.path.split(zfile)[0]
+        root = _os.path.dirname(zfile)
         _os.chdir(root)
 
         try:
@@ -320,16 +320,15 @@ def contentSearch(filenames: [str], extensions: [str]) -> [str]:
 
     Parameters
     ----------
-    filenames: [str] :
+    filenames
         A list of file names
-    extensions: [str] :
+    extensions
         list of extensions to filter by
 
     Returns
     -------
-    type
+    [str]
         a list of files that met the correct conditions
-
     """
 
     return [filename for filename in filenames if
@@ -461,16 +460,15 @@ def _main(text_region=None, progressBar=None, text_output=None):
 
     Parameters
     ----------
-    text_region: wx.TextCtrl :
+    text_region
          (Default value = None) Optional text field used when run via the
          included GUI; displays the current region being copied
-    progressBar: wx.Guage :
+    progressBar
          (Default value = None) Optional guage used when run via the included
          GUI; displays the copy progress of the current region
-    text_output: wx.TextCtrl :
+    text_output
          (Default value = None) Optional text field used when run via the
          included GUI; displays the names of files copied
-
     """
 
     if progressBar is not None:

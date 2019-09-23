@@ -30,6 +30,7 @@ class RawReader(ABC):
 
         Returns
         -------
+        dict
             dictionary of metadata
         """
 
@@ -47,6 +48,7 @@ class RawReader(ABC):
 
         Returns
         -------
+        numpy.array
             N x 3 array of XYZ points
         """
 

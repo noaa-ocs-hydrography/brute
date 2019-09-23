@@ -1462,14 +1462,14 @@ class BagToGDALConverter:
         self.out_verdat = out_verdat
         self.flip = flip
 
-    def bag2gdal(self, bag):
+    def bag2gdal(self, bag: BagFile):
         """
         Converts a :obj:`bag` object into a :obj:`gdal.Dataset`
 
         Parameters
         ----------
-        bag : :obj:`bag`
-            TODO write description
+        bag
+            BAG file object
         """
 
         arrays = [bag.elevation, bag.uncertainty]

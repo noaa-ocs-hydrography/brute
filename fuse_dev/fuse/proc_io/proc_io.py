@@ -17,8 +17,9 @@ from tempfile import TemporaryDirectory as tempdir
 import fiona
 import fiona.crs
 import numpy as np
-from fuse.utilities import vectorize_raster, write_geometry
-from osgeo import gdal, ogr, osr
+from fuse.utilities import vectorize_raster, write_geometry, gdal_to_xyz
+from osgeo import gdal, osr
+from shapely.geometry import MultiPoint
 
 gdal.UseExceptions()
 from fuse.proc_io import caris
@@ -29,9 +30,8 @@ __version__ = 'Test'
 class ProcIO:
     """ A class to abstract the reading and writing of bathymetry data. """
 
-    def __init__(self, in_data_type: str, out_data_type: str, work_dir: str = None, z_up: bool = True,
-                 nodata: float = 1000000.0, caris_env_name: str = 'CARIS35', overwrite: bool = True,
-                 db_loc: str = None, db_name: str = None):
+    def __init__(self, in_data_type: str, out_data_type: str, work_dir: str = None, z_up: bool = True, nodata: float = 1000000.0,
+                 caris_env_name: str = 'CARIS35', overwrite: bool = True, db_loc: str = None, db_name: str = None):
         """
         Create a new bathymetric data input / output object, reading and writing in the given input and output formats.
 
@@ -60,7 +60,7 @@ class ProcIO:
         self._in_data_type = in_data_type
         self._out_data_type = out_data_type
         self._z_up = z_up
-        self._write_nodata = nodata
+        self._nodata = nodata
         self._caris_environment_name = caris_env_name
         self.overwrite = overwrite
 
@@ -228,7 +228,7 @@ class ProcIO:
         if self._in_data_type == 'gdal':
             raster = self._set_raster_nodata(raster)
         else:
-            raise ValueError(f'unknown input data type "{self._in_data_type}"')
+            raise NotImplementedError(f'BAG writing not supported for "{self._in_data_type}"')
 
         if metadata is not None:
             raise NotImplementedError('Writing XML metadata to a BAG has not yet been implemented in GDAL.')
@@ -241,19 +241,19 @@ class ProcIO:
             output_raster = bag_driver.CreateCopy(filename, raster)
             del output_raster
             self._logger.log(logging.DEBUG, 'BAG file created')
-        except RuntimeError as e:
-            self._logger.log(logging.DEBUG, f'Failed to create bag: {e}\n Attempting to pass correct wkt using OSR')
-            old_reference = raster.GetProjectionRef()
-            self._logger.log(logging.DEBUG, f'Old reference: {old_reference}')
-            spacial_reference = osr.SpatialReference(wkt=old_reference)
-            new_reference = spacial_reference.ExportToWkt()
-            self._logger.log(logging.DEBUG, f'New reference: {new_reference}')
-            raster.SetProjection(new_reference)
+        except RuntimeError as error:
+            self._logger.log(logging.DEBUG, f'Failed to create bag: {error}\n Attempting to pass correct well-known text using OSR')
+            old_crs_wkt = raster.GetProjectionRef()
+            self._logger.log(logging.DEBUG, f'Old reference: {old_crs_wkt}')
+            spatial_reference = osr.SpatialReference(wkt=old_crs_wkt)
+            new_crs_wkt = spatial_reference.ExportToWkt()
+            self._logger.log(logging.DEBUG, f'New reference: {new_crs_wkt}')
+            raster.SetProjection(new_crs_wkt)
             output_raster = bag_driver.CreateCopy(filename, raster)
             del output_raster
-            self._logger.log(logging.DEBUG, 'BAG file created')
+            self._logger.log(logging.DEBUG, f'Created BAG file at {filename}')
 
-    def _write_points(self, points: gdal.Dataset, filename: str, layer_index: int = 0, output_layer: str = 'Elevation'):
+    def _write_points(self, points: gdal.Dataset, filename: str, layer: int = 0, output_layer: str = 'Elevation'):
         """
         Write provided GDAL point cloud dataset to a geopackage file.
 
@@ -263,7 +263,7 @@ class ProcIO:
             GDAL point cloud dataset
         filename
             filename to write geopackage
-        layer_index
+        layer
             index of vector layer containing points
         output_layer
             name of layer to create
@@ -273,8 +273,12 @@ class ProcIO:
         if os.path.exists(filename):
             os.remove(filename)
 
-        points, meta = self._gdal_points_to_array(points, layer_index=layer_index)
-        projection = fiona.crs.from_string(meta['crs'])
+        point_layer = points.GetLayerByIndex(layer)
+        crs_wkt = point_layer.GetSpatialRef().ExportToWkt()
+        del point_layer
+
+        points = gdal_to_xyz(points, layer)
+        projection = fiona.crs.from_string(crs_wkt)
 
         layer_schema = {
             'geometry': 'Point',
@@ -321,7 +325,7 @@ class ProcIO:
             name of output layer
         """
 
-        write_geometry(filename, vectorize_raster(raster, band_index), crs_wkt, os.path.split(filename)[-1], layer)
+        write_geometry(filename, vectorize_raster(raster, band_index), crs_wkt, name=os.path.basename(filename), layer=layer)
 
     def _gdal_raster_to_array(self, raster: gdal.Dataset) -> (np.array, dict):
         """
@@ -340,10 +344,13 @@ class ProcIO:
         numpy.array
             array of raster data and a dictionary of metadata
         """
-        
-        
+
         geotransform = raster.GetGeoTransform()
+
         raster_band = raster.GetRasterBand(1)
+        nodata = raster_band.GetNoDataValue()
+        del raster_band
+
         metadata = {
             'resx': geotransform[1],
             'resy': geotransform[5],
@@ -352,21 +359,12 @@ class ProcIO:
             'dimx': raster.RasterXSize,
             'dimy': raster.RasterYSize,
             'crs': raster.GetProjection(),
-            'nodata': raster_band.GetNoDataValue()
+            'nodata': nodata
         }
-        del raster_band
-        
-        
-        grids = []
-        count = raster.RasterCount
-        for band_index in range(count):
-            band = raster.GetRasterBand(band_index + 1)
-            grids.append(band.ReadAsArray())
 
-        # return the gdal data raster and metadata
-        return grids, metadata
+        return raster.ReadAsArray(), metadata
 
-    def _gdal_points_to_array(self, points: gdal.Dataset, layer_index: int = 0) -> (np.array, dict):
+    def _gdal_points_to_array(self, points: gdal.Dataset, layer: int = 0) -> (np.array, dict):
         """
         Extract points and metadata from the given layer of a GDAL point cloud dataset.
         The dataset should have the `nodata` value set appropriately.
@@ -375,7 +373,7 @@ class ProcIO:
         ----------
         points
             GDAL point cloud dataset with `nodata` value set
-        layer_index
+        layer
             index of vector layer containing points
 
         Returns
@@ -384,19 +382,13 @@ class ProcIO:
             N x M array of points and a dictionary of metadata
         """
 
-        point_layer = points.GetLayerByIndex(layer_index)
-
+        point_layer = points.GetLayerByIndex(layer)
         metadata = {'crs': point_layer.GetSpatialRef().ExportToWkt()}
+        del point_layer
 
-        num_points = point_layer.GetFeatureCount()
-        output_points = np.empty((num_points, 3))
-        for point_index in range(num_points):
-            feature = point_layer.GetFeature(point_index)
-            output_points[point_index, :] = feature.geometry().GetPoint()
+        return gdal_to_xyz(points, layer), metadata
 
-        return output_points, metadata
-
-    def _gdal_points_to_wkt(self, points: gdal.Dataset, layer_index: int = 0) -> ([dict], dict):
+    def _gdal_points_to_wkt(self, points: gdal.Dataset, layer: int = 0) -> (str, dict):
         """
         Extract WKT and metadata from the given layer of a GDAL point cloud dataset.
         The dataset should have the `nodata` value set appropriately.
@@ -405,39 +397,19 @@ class ProcIO:
         ----------
         points
             GDAL point cloud dataset with `nodata` value set
-        layer_index
+        layer
             index of vector layer containing points
 
         Returns
         ----------
-        [dict], dict
-            list of dictionaries of point information and a dictionary of metadata
+        str, dict
+            well-known text of points and a dictionary of metadata
         """
 
-        output_points = []
-        # multipoint = ogr.Geometry(ogr.wkbMultiPoint)
-        point_layer = points.GetLayerByIndex(layer_index)
+        points, metadata = self._gdal_points_to_array(points, layer)
+        return MultiPoint(points.tolist()).wkt, metadata
 
-        metadata = {'crs': point_layer.GetSpatialRef().ExportToWkt()}
-
-        num_points = point_layer.GetFeatureCount()
-        for point_index in range(num_points):
-            feature = point_layer.GetFeature(point_index)
-            x, y, z = feature.geometry().GetPoint()
-
-            point = ogr.Geometry(ogr.wkbPoint)
-            point.AddPoint(x, y, z)
-            # multipoint.AddGeometry(point)
-
-            output_points.append({
-                'x': x, 'y': y, 'z': z,
-                'wkt': point.ExportToWkt()
-                # 'wkt': multipoint.ExportToWkt()
-            })
-
-        return output_points, metadata
-
-    def _set_raster_nodata(self, raster: gdal.Dataset, band_index: int = 1) -> gdal.Dataset:
+    def _set_raster_nodata(self, raster: gdal.Dataset, band: int = 1) -> gdal.Dataset:
         """
         Ensure the `nodata` value of the given GDAL raster dataset is equal to the set `nodata` value.
 
@@ -445,7 +417,7 @@ class ProcIO:
         ----------
         raster
             GDAL raster array with `nodata` value set
-        band_index
+        band
             raster band (1-indexed)
 
         Returns
@@ -454,13 +426,14 @@ class ProcIO:
             dataset with `nodata` value set
         """
 
-        raster_band = raster.GetRasterBand(band_index)
+        raster_band = raster.GetRasterBand(band)
 
         # check the no data value
         nodata = raster_band.GetNoDataValue()
-        if self._write_nodata != nodata:
+        if self._nodata != nodata:
             band_data = raster_band.ReadAsArray()
-            band_data[band_data == nodata] = self._write_nodata
-            raster.GetRasterBand(band_index).WriteArray(band_data)
+            band_data[band_data == nodata] = self._nodata
+            raster.GetRasterBand(band).WriteArray(band_data)
 
+        del raster_band
         return raster

@@ -40,35 +40,37 @@ class CEMVNRawReader(USACERawReader):
         
         Parameters
         ----------
-        filename: str :
-        
+        filename
+            file path to metadata
         
         Returns
         -------
         dict
-        
+            metadata
         """
+
         version = 'CEMVN'
         self.version = version
         return retrieve_meta_for_Ehydro_out_onefile(filename)
 
-    def read_bathymetry_dat(self, infilename: str) -> _np.array:
+    def read_bathymetry_dat(self, filename: str) -> _np.array:
         """
         Read the bathymetry from the .dat file. The dat file is less precise,
         but had no header and is in a standardized format
         
         Parameters
         ----------
-        infilename: str :
-        
+        filename
+            file path to bathymetry
         
         Returns
         -------
-        xyz
-        
+        numpy.array
+            N x 3 array of XYZ points
         """
+
         # get the dat file for CEMVN#New Orleans
-        stub, ext = os.path.splitext(infilename)
+        stub, ext = os.path.splitext(filename)
         bathyfilename = f'{stub}.dat'  # this is where fstrings are being used
         """
         F-strings provide a way to embed expressions inside string literals, using a minimal syntax.
@@ -93,11 +95,12 @@ class CEMVNRawReader(USACERawReader):
         
         Parameters
         ----------
-        filename: str :
+        filename
+            file path to bathymetry
         
         Returns
         -------
-        xyz
+        numpy.array
         
         """
         version = 'CEMVN'
@@ -124,25 +127,23 @@ class CEMVNRawReader(USACERawReader):
 
 # ------------------------------------------------------------------------------
 
-def return_surveyid(filenamepath: str, ex_string: str) -> str:
+def return_surveyid(filename: str) -> str:
     """
     strip end of filename off
     surveybasename =return_surveyid(filenamepath, ex_string)
     
     Parameters
     ----------
-    filenamepath: str :
-        param ex_string:
-    ex_string: str :
-    
+    filename
+        file path to survey
+
     Returns
     -------
-    surveybasename: str:
-    
+    str
+        survey ID
     """
-    basename = os.path.basename(filenamepath)
-    surveybasename = basename.rstrip(ex_string)
-    return surveybasename
+
+    return os.path.splitext(os.path.basename(filename))[0]
 
 
 # ------------------------------------------------------------------------------
@@ -156,13 +157,15 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     
     Parameters
     ----------
-    filename: str :
+    filename
+        file path to XYZ
     
     Returns
     -------
-    dict:
-    
+    dict
+        metadata
     """
+
     # next if pull the subset of the table in the dataframe related to the list of files passed to it.
     merged_meta = {}
     merge2 = {}
@@ -257,93 +260,80 @@ class EhydroPickleReader(object):
     and determining when /how to pass on metadata attributes 
     """
 
-    def __init__(self, infilename: str):
+    def __init__(self, filename: str):
         """
-        Pass filename that matches the pickle file you want to match 
-        but with any extension
+        Pass filename that matches the pickle file you want to match  but with any extension
         (Here we tend to pass the xmlfilename as it already has been matched
         in the cases of _A.xyz etc., but one could use a .xyz file)
         
         
         Parameters
         ----------
-        infilename: str:
-        
-        
-        Returns
-        -------
-        self.filename = infilename: str:
-        
+        filename
+            file path to pickle
         """
-        self.filename = infilename
+
+        self.filename = filename
 
     def _read_pickle(self) -> dict:
         """
         Read in picklefile that ehydro_move creates from the E-Hydro REST API
         table attributes.
-        
-        
-        Parameters
-        ----------
-        self.infilename: str:
-        
-        
+
         Returns
         -------
-        pickle_meta: dict:
-        
+        dict
+            metadata from pickle
         """
+
         print(f'reading in pickle based on: {self.filename}')  # making sure pickle passing is working
         pickle_meta = parse_usace_pickle.read_pickle(self.filename)
         self.meta_from_ehydro = pickle_meta
         return pickle_meta
 
-    def _Check_for_SPCSconflicts(self, meta_xml):
+    def _Check_for_SPCSconflicts(self, meta_xml: dict) -> (bool, bool, dict):
         """
         Checking to see if the SPCS codes conflict between sources
         
         Parameters
         ----------
-        meta_xml: dict:
-        self.meta_from_ehydro: dict
-        
+        meta_xml
+            metadata
+
         Returns
         -------
-        no_SPCS_conflict: str:
-        no_SPCS_conflict_withpickle: str:
-        meta_from_ehydro: dict:
-        
+        bool, bool, dict
+            whether there were conflicts with SPCS, whether there were conflicts with SPCS in the pickle, and metadata
         """
 
         meta_from_ehydro = self.meta_from_ehydro
 
-        no_SPCS_conflict = ''
-        no_SPCS_conflict_withpickle = ''
+        conflict = None
+        conflict_withpickle = None
         if 'SPCS_conflict_XML' in meta_from_ehydro:
             if meta_from_ehydro['SPCS_conflict_XML'] != '':
-                no_SPCS_conflict = 'False'
+                conflict = False
             else:
-                no_SPCS_conflict = 'True'
+                conflict = True
 
         if 'SOURCEPROJECTION' in meta_from_ehydro:
             if 'from_fips' in meta_xml:
-                meta_xml = parse_usace_xml.xml_SPCSconflict_otherspcs(meta_xml,
-                                                                      f"{parse_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']}")
-                if parse_usace_xml.convert_tofips(parse_usace_xml.SOURCEPROJECTION_dict,
-                                                  meta_from_ehydro['SOURCEPROJECTION']) == meta_xml['from_fips']:
-                    no_SPCS_conflict_withpickle = 'True'
+                meta_xml = p_usace_xml.xml_SPCSconflict_otherspcs(meta_xml,
+                                                                  f'{p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro["SOURCEPROJECTION"]}')
+                if p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
+                                              meta_from_ehydro['SOURCEPROJECTION']) == meta_xml['from_fips']:
+                    conflict_withpickle = True
                 else:
-                    no_SPCS_conflict_withpickle = 'False'
+                    conflict_withpickle = False
             if meta_xml['SPCS_conflict_XML_other'] != '':
-                no_SPCS_conflict = 'False'
+                conflict = False
                 # We know for CEMVN thath this will conflict with some of the SPCS values but have a method that works.
                 # this way we pass on that there are conflicts but do not raise a flag unless the final from_fips disagrees
 
-        meta_from_ehydro['no_SPCS_conflict_withpickle'] = no_SPCS_conflict_withpickle
-        self.meta_from_ehydro
-        return no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro
+        meta_from_ehydro['no_SPCS_conflict_withpickle'] = conflict_withpickle
+        return conflict, conflict_withpickle, meta_from_ehydro
 
-    def _when_use_pickle(self, meta_xml):
+    def _when_use_pickle(self, meta_xml: dict) -> dict:
         """
         If there is no SPCS code in the xml, use the pickle/ REST API SPCS code
         
@@ -353,44 +343,45 @@ class EhydroPickleReader(object):
         
         Parameters
         ----------
-        meta_xml: dict:
-        self.meta_from_ehydro : dict:
-        
-        
+        meta_xml
+            metadata
+
         Returns
         -------
-        meta_from_ehydro: dict:
-        
-        
+        dict
+            metadata
         """
+
         meta_from_ehydro = self.meta_from_ehydro
         if 'SOURCEPROJECTION' in meta_from_ehydro:
             if 'from_FIPS' in meta_xml:
                 # run check for conflict
-                no_SPCS_conflict, no_SPCS_conflict_withpickle = self._Check_for_SPCSconflicts(meta_xml,
-                                                                                              meta_from_ehydro)
-                if no_SPCS_conflict_withpickle == 'False':
-                    meta_from_ehydro['from_fips'] = parse_usace_xml.convert_tofips(parse_usace_xml.SOURCEPROJECTION_dict,
-                                                                                   meta_from_ehydro['SOURCEPROJECTION'])
+                conflict, conflict_withpickle, metadata = self._Check_for_SPCSconflicts(meta_xml, meta_from_ehydro)
+                if conflict_withpickle:
+                    meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
+                                                                               meta_from_ehydro['SOURCEPROJECTION'])
             else:
                 meta_from_ehydro['from_fips'] = parse_usace_xml.convert_tofips(parse_usace_xml.SOURCEPROJECTION_dict,
                                                                                meta_from_ehydro['SOURCEPROJECTION'])
         self.meta_from_ehydro = meta_from_ehydro
         return meta_from_ehydro
 
-    def _when_use_pickle_startdate(self, meta_xml):
+    def _when_use_pickle_startdate(self, meta_xml: dict) -> dict:
         """
         if xml_meta is blank and if meta does not have information use pickle data for date
         next: Check survey start & end date against filename and other locations
         
         Parameters
         ----------
-        meta_xml :
-        self: # uses meta_from_ehydro :
-        
-        
+        meta_xml
+            metadata
+
         Returns
+        -------
+        dict
+            metadata
         """
+
         meta_from_ehydro = self.meta_from_ehydro
         if meta_from_ehydro:  # check if dictionary empty
             if meta_xml:  # check if dictionary empty
@@ -416,6 +407,7 @@ class XYZMetaReader(object):
         version
         filename
         """
+
         self.filename = preloadeddata
         if filename != "" or None:
             self.filename_1 = filename

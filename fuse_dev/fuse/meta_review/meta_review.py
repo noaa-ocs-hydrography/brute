@@ -32,7 +32,7 @@ class MetaReviewer:
         'source_type': 's_ftyp',
         'complete_coverage': 'flcvrg',
         'complete_bathymetry': 'flbath',
-        'to_vert_datum': 'VERDAT',
+        'to_vert_key': 'VERDAT',
         'to_vert_units': 'DUNITS',
         'vert_uncert_fixed': 'vun_fx',
         'vert_uncert_vari': 'vun_vb',
@@ -305,15 +305,16 @@ class MetaReviewer:
                 database_key = MetaReviewer._database_keys[key]
 
                 if value in ('TRUE', 'True'):
-                    s57_row[database_key] = 0
-                elif value in ('FALSE', 'False'):
                     s57_row[database_key] = 1
+                elif value in ('FALSE', 'False'):
+                    s57_row[database_key] = 0
                 else:
                     s57_row[database_key] = value
 
         # enforce additional required formating
         if 'VERDAT' in s57_row:
-            s57_row['VERDAT'] = MetaReviewer._vertical_datums[s57_row['VERDAT']]
+            verdat = s57_row['VERDAT'].upper()
+            s57_row['VERDAT'] = MetaReviewer._vertical_datums[verdat]
         elif 'HORDAT' in s57_row:
             h_datum = s57_row['HORDAT']
             for name in MetaReviewer._horizontal_datums:
