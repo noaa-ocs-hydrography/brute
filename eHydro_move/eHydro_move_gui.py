@@ -5,14 +5,13 @@ Created on Mon Apr 22 11:01:24 2019
 @author: Casiano.Koprowski
 """
 
-import eHydro_move
 import eHydro_move_ui
 import wx
 
+import eHydro_move
+
 
 class Form(eHydro_move_ui.Form):
-    """ """
-
     def __init__(self, parent):
         eHydro_move_ui.Form.__init__(self, parent)
 
