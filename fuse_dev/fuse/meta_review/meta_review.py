@@ -305,9 +305,9 @@ class MetaReviewer:
                 database_key = MetaReviewer._database_keys[key]
 
                 if value in ('TRUE', 'True'):
-                    s57_row[database_key] = 0
-                elif value in ('FALSE', 'False'):
                     s57_row[database_key] = 1
+                elif value in ('FALSE', 'False'):
+                    s57_row[database_key] = 0
                 else:
                     s57_row[database_key] = value
 
