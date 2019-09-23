@@ -17,8 +17,6 @@ print(progLoc)
 
 
 class Form(ncei_ui.Form):
-    """ """
-
     def __init__(self, parent):
         ncei_ui.Form.__init__(self, parent)
 

@@ -11,13 +11,9 @@ import gdal
 from fuse.datum_transform import use_vdatum as uv
 
 
-
-
 class DatumTransformer:
-    """
-    An object for abstracting the datum transformation API.  This should allow
-    for different transformation machines and versions.
-    """
+    """ An object for abstracting the datum transformation API.  This should allow for different transformation machines and versions. """
+
     _from_datum_info = [
         'from_horiz_frame',
         'from_horiz_type',
@@ -66,7 +62,8 @@ class DatumTransformer:
             GDAL point cloud and whether data was reprojected (`True`) or projected (`False`)
         """
 
-        if False in [metadata[self._from_datum_info[key]] != metadata[self._to_datum_info[key]] for key in range(len(self._from_datum_info))]:
+        if False in [metadata[self._from_datum_info[key]] != metadata[self._to_datum_info[key]] for key in
+                     range(len(self._from_datum_info))]:
             if self._reader.version == 'BAG':
                 metadata['interpolate'] == 'False'
                 return self._engine.create(filename, metadata), metadata, False
