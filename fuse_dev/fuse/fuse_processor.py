@@ -433,10 +433,15 @@ class FuseProcessor:
         TODO: need to add checks to make sure the metadata is ready.
             Perhaps this should be added to the metadata object?
         """
-
-        metadata = self._get_stored_meta(filename)
+        if self._read_type == 'ehydro':
+            meta_entry = self._reader.name_gen(_os.path.split(filename)[1], '', sfx=None)
+            metadata = self._get_stored_meta(meta_entry)
+            self._set_log(meta_entry)
+        else:
+            metadata = self._get_stored_meta(filename)
+            self._set_log(filename)
         metadata['read_type'] = self._read_type
-        self._set_log(filename)
+
         if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
             outpath = self._config['outpath']
