@@ -59,7 +59,8 @@ class DatumTransformer:
 
         Returns
         -------
-            GDAL point cloud and whether data was reprojected (`True`) or projected (`False`)
+        gdal.Dataset, bool
+            GDAL point cloud and boolean of whether data was reprojected
         """
 
         if False in [metadata[self._from_datum_info[key]] != metadata[self._to_datum_info[key]] for key in

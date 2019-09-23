@@ -13,8 +13,7 @@ from osgeo import gdal, osr
 from rasterio import MemoryFile
 from rasterio.features import shapes as rasterio_shapes
 from rasterio.mask import mask
-from scipy.spatial.ckdtree import cKDTree
-from scipy.spatial.qhull import Delaunay
+from scipy.spatial import Delaunay, cKDTree
 from shapely.geometry import Polygon, MultiLineString, MultiPolygon, shape as shapely_shape, mapping
 from shapely.ops import unary_union, polygonize
 
@@ -34,7 +33,8 @@ def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> 
 
     Returns
     -------
-    N x 3 array of XYZ points
+    numpy.array
+        N x 3 array of XYZ points
     """
 
     if dataset.GetProjectionRef() == '':
@@ -43,8 +43,8 @@ def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> 
 
         point_layer = dataset.GetLayerByIndex(index)
         num_points = point_layer.GetFeatureCount()
-        output_points = numpy.empty((num_points, 3))
 
+        output_points = numpy.empty((num_points, 3))
         for point_index in range(num_points):
             feature = point_layer.GetFeature(point_index)
             output_point = feature.geometry().GetPoint()
@@ -55,7 +55,7 @@ def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> 
         return output_points
     else:
         if index < 1:
-            raise ValueError(f'invalid index for raster band "{index}"')
+            index += 1
 
         raster_band = dataset.GetRasterBand(index)
         geotransform = dataset.GetGeoTransform()
@@ -67,14 +67,14 @@ def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> 
                                   resolution=(geotransform[1], geotransform[5]), nodata=nodata)
 
 
-def geoarray_to_points(grid: numpy.array, origin: (float, float), resolution: (float, float), nodata: float = None) -> numpy.array:
+def geoarray_to_points(array: numpy.array, origin: (float, float), resolution: (float, float), nodata: float = None) -> numpy.array:
     """
     Extract XYZ points from an array of data using the given raster-like georeference (origin  and resolution).
 
     Parameters
     ----------
-    grid
-        array of gridded data
+    array
+        2D array of gridded data
     origin
         X, Y coordinates of northwest corner
     resolution
@@ -84,18 +84,19 @@ def geoarray_to_points(grid: numpy.array, origin: (float, float), resolution: (f
 
     Returns
     -------
+    numpy.array
         N x 3 array of XYZ points
     """
 
-    x_values, y_values = numpy.meshgrid(numpy.linspace(origin[0], origin[0] + resolution[0] * grid.shape[1], grid.shape[1]),
-                                        numpy.linspace(origin[1], origin[1] + resolution[1] * grid.shape[0], grid.shape[0]))
+    x_values, y_values = numpy.meshgrid(numpy.linspace(origin[0], origin[0] + resolution[0] * array.shape[1], array.shape[1]),
+                                        numpy.linspace(origin[1], origin[1] + resolution[1] * array.shape[0], array.shape[0]))
 
     if nodata is not None:
-        x_values = x_values[grid != nodata]
-        y_values = y_values[grid != nodata]
-        grid = grid[grid != nodata]
+        x_values = x_values[array != nodata]
+        y_values = y_values[array != nodata]
+        array = array[array != nodata]
 
-    return numpy.stack((x_values, y_values, grid), axis=1)
+    return numpy.stack((x_values, y_values, array), axis=1)
 
 
 def raster_edge_points(data: numpy.array, origin: (float, float), resolution: (float, float), nodata: float) -> numpy.array:

@@ -35,6 +35,7 @@ class RawReader:
 
         Returns
         -------
+        dict
             dictionary of metadata
         """
 
@@ -51,6 +52,7 @@ class RawReader:
 
         Returns
         -------
+        numpy.array
             array of XYZ points
         """
 

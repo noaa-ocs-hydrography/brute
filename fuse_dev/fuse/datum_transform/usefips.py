@@ -26,7 +26,8 @@ def fips2wkt(fips: int, units: str = 'FEET') -> str:
 
     Returns
     -------
-
+    str
+        well-known text of FIPS
     """
 
     # combine the fips code with units to get the ERSI code

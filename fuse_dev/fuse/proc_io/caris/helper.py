@@ -45,18 +45,18 @@ def retrieve_activate_batch() -> str:
 
 def retrieve_env_path(env_name: str) -> str:
     """
-    Given a conda environement name, find the environment.
+    Get an Anaconda environment from its name
+    The desired environment must be located in the same directory as the current one.
 
     Parameters
     ----------
-    env_name :
+    env_name
+        name of Anaconda environment
         
-    env_name: str :
-        
-
     Returns
     -------
-
+    str
+        name of environment
     """
 
     desired_env_loc = os.path.join(os.environ['conda_prefix'], os.pardir, env_name)

@@ -17,7 +17,7 @@ class CENAERawReader(usace.USACERawReader):
         """
         usace.USACERawReader.__init__(self, version='CENAE')
 
-    def read_metadata(self, filename: str):
+    def read_metadata(self, filename: str) -> dict:
         """
         Function overwite of :func:`usace.USACERawReader.read_metadata` based
         on where the best metadata is for this district
@@ -30,14 +30,13 @@ class CENAERawReader(usace.USACERawReader):
 
         Parameters
         ----------
-        filename : str
+        filename
             File path of the input ``.xyz`` data
 
         Returns
         -------
-        dict :
-            The complete metadata pulled from multiple sources
-
+        dict
+            complete metadata pulled from multiple sources
         """
 
         meta_supplement = {}
