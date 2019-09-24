@@ -12,6 +12,7 @@ a general sense, and also for specific S57 needs.
 
 """
 
+import csv as _csv
 import logging as _logging
 import os as _os
 import re as _re
@@ -27,6 +28,14 @@ from osgeo import osr as _osr
 try:
     import dateutil.parser as _parser
 except ModuleNotFoundError as e:
+    print(f"{e}")
+
+try:
+    prog_loc = _os.path.dirname(_os.path.abspath(__file__))
+    csv_loc = _os.path.join(prog_loc, r'additional_files\BAG_Metadata.csv')
+    csv_exists = _os.path.isfile(csv_loc)
+except FileNotFoundError as e:
+    csv_exists = False
     print(f"{e}")
 
 _gdal.UseExceptions()
@@ -81,6 +90,32 @@ _ns2 = {
 }
 
 
+csv_to_meta = {'Survey': 'survey',
+               'Bag File Name':  'bag_name',
+               'Reviewer': 'reviewer',
+               'Sensitive? Y/N': 'sensitive',
+               'Survey Start Date': 'start_date',
+               'Survey End Date': 'end_date',
+               'Source data type (MB)': 'mb_data',
+               'Source data type (SSS)': 'sss_data',
+               'Source data type (VB)': 'vb_data',
+               'Feature Detection Capability (Y/N)': 'feat_detect',
+               'Features Delivered (Y/N)': 'feat_delivered',
+               'Least depth of features detected(Y/N)': 'feat_least_depth',
+               'Size of features detected (m)': 'feat_size',
+               'Full Coverage achieved (Y/N)': 'complete_coverage',
+               'Full bathymetric coverage achieved (Y/N)': 'bathymetry',
+               'Temporal variability (1-5)': 'temp_vari',
+               'Data Assessment (1-3)': 'data_assess',
+               'Horizontal position uncertainty (fixed)': 'horiz_uncert_fixed',
+               'Horizontal position uncertainty (variable)': 'horiz_uncert_vari',
+               'Vertical Uncertainty (Fixed)': 'vert_uncert_fixed',
+               'Vertical Uncertainty (variable)': 'vert_uncert_vari',
+               'Horizontal datum': 'from_horiz_datum',
+               'Vertical datum': 'from_vert_datum',
+               }
+
+
 def parse_namespace(meta_str):
     """
     Catch the xml and read the second line assuming it is the namespace
@@ -129,6 +164,8 @@ class BAGRawReader:
             ch = _logging.StreamHandler(_sys.stdout)
             ch.setLevel(_logging.DEBUG)
             self._logger.addHandler(ch)
+
+        self.csv_data = self._from_csv()
 
     def read_metadata(self, filename: str) -> dict:
         """
@@ -293,8 +330,72 @@ class BAGRawReader:
         meta['from_filename'] = name
         meta['from_path'] = infilename
         meta['file_size'] = self._size_finder(infilename)
+        if csv_exists:
+            for survey in self.csv_data:
+                if 'bag_name' in survey:
+                    if survey['bag_name'] == name:
+                        meta = {**survey, **meta}
 
         return {**coverage, **meta}
+
+    def _from_csv(self) -> dict:
+        """
+        Identifies known metadata from a csv and returns them as a dict
+
+        Returns
+        -------
+        dict
+            A dictionary object containing found metadata
+
+        """
+        meta = []
+        if csv_exists:
+            opened = open(csv_loc, 'r', newline='')
+            read = _csv.reader(opened)
+            fields = []
+            index = 0
+            for line in read:
+                if index == 0:
+                    fields.extend(line)
+                else:
+                    bag_meta = {}
+                    for assignment in range(len(fields)):
+                        if line[assignment] != '':
+                            meta_field = csv_to_meta[fields[assignment].strip()]
+                            if meta_field in ('sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect', 'feat_delivered', 'feat_least_depth', 'complete_coverage', 'bathymetry'):
+                                if line[assignment].lower() in ('n/a', 'no', 'n'):
+                                    bag_meta[meta_field] = False
+                                elif line[assignment].lower() in ('y', 'yes'):
+                                    bag_meta[meta_field] = True
+                            elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
+                                if 'cm' in line[assignment]:
+                                    bag_meta[meta_field]= float(_re.sub(r'\D', '', line[assignment]))/100
+                                elif 'm' in line[assignment]:
+                                    bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
+                            elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
+                                bag_meta[meta_field]= float(_re.sub(r'\D', '', line[assignment]))/100
+                            elif meta_field in ('from_horiz_datum'):
+                                splits = line[assignment].split(' ')
+                                datum_info = {}
+                                try:
+                                    datum_info['from_horiz_frame'] = splits[0]
+                                    datum_info['from_horiz_type'] = splits[1]
+                                    datum_info['from_horiz_key'] = _re.sub('\D', '', splits[2])
+                                    bag_meta = {**bag_meta, **datum_info}
+                                except IndexError:
+                                    print(f'Unable to add datum information due to incorrect formatting: {line[1]}, {line[assignment]}')
+#                                    raise RuntimeError(f'Unable to add datum information due to incorrect formatting: {line[2]}')
+                            elif meta_field in ('from_vert_datum'):
+                                if line[assignment] in vert_datum.keys():
+                                    datum_info['from_vert_key'] = line[assignment]
+                            else:
+                                bag_meta[meta_field] = line[assignment]
+                    if 'bathymetry' in bag_meta:
+                        bag_meta['interpolate'] = False if bag_meta['bathymetry'] else True
+                    meta.append(bag_meta)
+                index += 1
+            opened.close()
+        return meta
 
     def _size_finder(self, filepath: str) -> int:
         """
