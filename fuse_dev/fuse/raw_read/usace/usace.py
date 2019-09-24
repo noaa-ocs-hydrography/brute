@@ -702,7 +702,7 @@ class USACERawReader(RawReader):
                 fips = value.split(' ')
                 fips = [segment.strip() for segment in fips if _re.compile(r'[0-9]{4}').search(segment.strip())][0]
             try:
-                fips = _re.sub('/D', '', fips)
+                fips = _re.sub(r'\D', '', fips)
                 meta['from_horiz_key'] = fips
             except NameError:
                 _logging.debug(_logging.DEBUG, f"Unable to parse 'from_horiz_key' from: {value}")
