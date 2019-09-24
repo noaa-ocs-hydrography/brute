@@ -5,17 +5,12 @@ Created on Tue Jul 16 13:36:08 2019
 @author: Casiano.Koprowski
 """
 
-from . import usace
+from fuse.raw_read.usace.usace import USACERawReader
 
 
-class CENAERawReader(usace.USACERawReader):
-    """An abstract raw data reader."""
-
+class CENAERawReader(USACERawReader):
     def __init__(self):
-        """
-        No init needed?
-        """
-        usace.USACERawReader.__init__(self, version='CENAE')
+        super().__init__('CENAE')
 
     def read_metadata(self, survey_folder: str) -> dict:
         """

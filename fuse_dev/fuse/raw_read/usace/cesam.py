@@ -13,46 +13,34 @@ update 4/5/19
 major update April 2, 2019
 update July 12,2019 adding in call to pickle reader
 """
-__version__ = 'FUSE'
-import os as os
+
+import os
 import pickle as _pickle
 import re as _re
 from datetime import datetime
 
-# _ussft2m = 0.30480060960121924  # US survey feet to meters
-import dateutil.parser as parser
 import numpy as _np
+from dateutil import parser
+from fuse.raw_read.usace import parse_usace_pickle
+from fuse.raw_read.usace.usace import USACERawReader
 
-try:
-    import fuse.raw_read.usace.parse_usace_xml as p_usace_xml
-except:
-    try:
-        from . import parse_usace_xml as p_usace_xml
-    except:
-        print('importing fuse.raw_read.usace.parse_usace_xml as p_usace_xml did not work')
-try:
-    import fuse.raw_read.usace.parse_usace_pickle as parse_usace_pickle
-except:
-    try:
-        from . import parse_usace_pickle as parse_usace_pickle
-    except:
-        print('importing fuse.raw_read.usace.parse_usace_pickle as parse_usace_pickle  did not work')
+__version__ = 'FUSE'
 
 
-##-----------------------------------------------------------------------------
+class CESAMRawReader(USACERawReader):
+    """ This class passes back bathymetry & a metadata dictionary from the e-Hydro files """
 
+    def __init__(self):
+        super().__init__('CESAM')
 
-class CESAMRawReader:
-    """This class passes back bathymetry & a metadata dictionary from the e-Hydro files"""
-
-    def read_metadata(self, infilename: str) -> dict:
+    def read_metadata(self, filename: str) -> dict:
         """
         Read all available meta data.
         returns dictionary
         
         Parameters
         ----------
-        infilename: str :
+        filename: str :
         
         
         Returns
@@ -62,7 +50,7 @@ class CESAMRawReader:
         """
         version = 'CESAJ'
         self.version = version
-        return retrieve_meta_for_Ehydro_out_onefile(infilename)
+        return retrieve_meta_for_Ehydro_out_onefile(filename)
 
     def read_bathymetry_dat(self, infilename: str) -> _np.array:
         """
@@ -96,7 +84,7 @@ class CESAMRawReader:
         self.xy  # remove later using still during debugging
         return xyz
 
-    def read_bathymetry(self, infilename: str) -> _np.array:
+    def read_bathymetry(self, filename: str) -> _np.array:
         """
         Read the bathymetry from the xyz files, this tells it to not include
         the header when reading the file
@@ -105,7 +93,7 @@ class CESAMRawReader:
         
         Parameters
         ----------
-        infilename: str :
+        filename: str :
         
         Returns
         -------
@@ -114,22 +102,22 @@ class CESAMRawReader:
         """
         version = 'CESAM'
         self.version = version
-        first_instance, commas_present = _start_xyz(infilename)
-        print(infilename)  # remove debugging
+        first_instance, commas_present = _start_xyz(filename)
+        print(filename)  # remove debugging
         if first_instance != '':
             if commas_present == ',':
-                xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
             elif commas_present == 'tab_instead':
-                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
             else:
-                xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
         else:
             if commas_present == ',':
-                xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter=',', usecols=(0, 1, 2))
             elif commas_present == 'tab_instead':
-                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
             else:
-                xyz = _np.loadtxt(infilename, delimiter=' ', usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter=' ', usecols=(0, 1, 2))
         return xyz
 
     def read_bathymetry_by_point(self, infilename):

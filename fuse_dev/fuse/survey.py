@@ -250,7 +250,7 @@ class FuseProcessor:
     def _set_data_transform(self):
         """Set up the datum transformation engine."""
 
-        self._transform = _trans.DatumTransformer(self._config['vdatum_path'], self._config['java_path'], self._reader)
+        self._transform = _trans.DatumTransformer(self._config, self._reader)
 
     def _set_data_writer(self):
         """Set up the location and method to write tranformed and interpolated data."""
@@ -274,14 +274,13 @@ class FuseProcessor:
         """
 
         if self._read_type == 'ehydro':
-            survey_folder = filename
-            return self._read_ehydro(survey_folder)
+            self._read_ehydro(filename)
         elif self._read_type == 'bag':
             self._read_noaa_bag(filename)
         else:
             raise ValueError('Reader type not implemented')
 
-    def _read_ehydro(self, survey_folder: str):
+    def _read_ehydro(self, filename: str):
         """
         Extract metadata from the provided eHydro file path and write the metadata
         to the specified metadata file.  The bathymetry will be interpolated and
@@ -289,17 +288,13 @@ class FuseProcessor:
 
         Parameters
         ----------
-        survey_folder
-            path to eHydro XYZ folder
+        filename
+            path to eHydro XYZ file
         """
 
-        self._set_log(survey_folder)
+        self._set_log(filename)
         # get the metadata
-        try:
-            raw_meta = self._reader.read_metadata(survey_folder)
-        except RuntimeError as e:
-            self.logger.log(_logging.DEBUG, e)
-            return None
+        raw_meta = self._reader.read_metadata(filename)
         meta = raw_meta.copy()
         meta['read_type'] = 'ehydro'
 
@@ -347,7 +342,6 @@ class FuseProcessor:
         # write the metadata
         self._meta_obj.write_meta_record(meta)
         self._close_log()
-        return meta['from_path']
 
     def _read_noaa_bag(self, filename: str):
         """
@@ -411,18 +405,14 @@ class FuseProcessor:
         TODO: need to add checks to make sure the metadata is ready.
             Perhaps this should be added to the metadata object?
         """
-        if self._read_type == 'ehydro':
-            meta_entry = self._reader.name_gen(_os.path.basename(filename), '', sfx=None)
-            metadata = self._get_stored_meta(meta_entry)
-            self._set_log(meta_entry)
-        else:
-            metadata = self._get_stored_meta(filename)
-            self._set_log(filename)
+
+        metadata = self._get_stored_meta(filename)
         metadata['read_type'] = self._read_type
+        self._set_log(filename)
 
         if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
-            input_directory = _os.path.splitext(_os.path.basename(filename))[0]
+            input_directory = _os.path.splitext(_os.path.split(filename)[-1])[0]
             metadata['outpath'] = _os.path.join(self._config['outpath'], input_directory)
             metadata['new_ext'] = self._point_extension
 
@@ -461,7 +451,7 @@ class FuseProcessor:
                     support_files = meta_interp['support_files'] if 'support_files' in meta_interp else None
 
                     try:
-                        interpolator = _interp.Interpolator(dataset, sidescan_rasters=support_files)
+                        interpolator = _interp.Interpolator(dataset, sidescan_raster_filenames=support_files)
                         dataset = interpolator.interpolate(method, float(self._config['to_resolution']))
                         meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
@@ -568,7 +558,7 @@ class FuseProcessor:
         root, extension = _os.path.splitext(filename)
         if extension == '.interpolated':
             filename = root
-        log_filename = _os.path.join(_os.path.dirname(self._config['metapath']),
+        log_filename = _os.path.join(_os.path.split(self._config['metapath'])[0],
                                      f'{_os.path.splitext(_os.path.split(filename)[-1])[0]}.log')
         self._meta['logfilename'] = log_filename
 
@@ -603,19 +593,15 @@ class FuseProcessor:
         -------
             dictionary of metadata
         """
-        try:
-            # file name is the key rather than the path
-            f = _os.path.basename(filename)
-            if 'from_filename' not in self._meta:
-                self._meta = self._meta_obj.read_meta_record(f)
-            elif self._meta['from_filename'] is not filename:
-                self._meta = self._meta_obj.read_meta_record(f)
-            else:
-                # need to catch if this file is not in the metadata record yet here.
-                raise KeyError(f'File not referenced in stored metadata: {f}')
-            return self._meta
-        except KeyError as e:
-            return None
+
+        # file name is the key rather than the path
+        path, f = _os.path.split(filename)
+        if 'from_filename' not in self._meta:
+            self._meta = self._meta_obj.read_meta_record(f)
+        elif self._meta['from_filename'] is not filename:
+            self._meta = self._meta_obj.read_meta_record(f)
+        # need to catch if this file is not in the metadata record yet here.
+        return self._meta
 
     def _metadata_to_s57(self, metadata) -> dict:
         """

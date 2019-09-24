@@ -22,6 +22,7 @@ import sys as _sys
 import lxml.etree as _et
 import numpy as _np
 import tables as _tb
+from fuse.raw_read.raw_read import RawReader
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
 
@@ -39,8 +40,6 @@ except FileNotFoundError as e:
     print(f"{e}")
 
 _gdal.UseExceptions()
-
-__version__ = 'BAG'
 
 vert_datum = {
     'MLWS': '1',
@@ -139,7 +138,7 @@ def parse_namespace(meta_str):
     return namespace
 
 
-class BAGRawReader:
+class BAGRawReader(RawReader):
     """
     Helper class to manage BAG xml metadata. This class takes an xml string and
     parses the string based on a dictionary (named 'source') with keys that
@@ -149,16 +148,15 @@ class BAGRawReader:
     (named 'data').
     """
 
-    def __init__(self, version=__version__):
+    def __init__(self):
         """
         Provided a BAG xml string for parsing, a tree will be created and the
         name speace parsed from the second line.  Values are then extracted
         based on the source dictionary.  If this dictionary
         """
-        self.data = {}
-        self.version = version
 
-        self._logger = _logging.getLogger(f'fuse')
+        self.data = {}
+        self._logger = _logging.getLogger('fuse')
 
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)
@@ -190,7 +188,7 @@ class BAGRawReader:
             print(error)
             return {}
 
-    def read_bathy_data(self, infilename: str, out_verdat: str) -> _gdal.Dataset:
+    def read_bathymetry(self, infilename: str, out_verdat: str) -> _gdal.Dataset:
         """
         Returns a BagFile data object
 

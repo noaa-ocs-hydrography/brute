@@ -13,47 +13,25 @@ update 4/5/19
 major update April 2, 2019
 update July 12,2019 adding in call to pickle reader
 """
-__version__ = 'FUSE'
-import os as os
+
+import os
 import pickle as _pickle
 import re as _re
 from datetime import datetime
 
-# _ussft2m = 0.30480060960121924  # US survey feet to meters
-import dateutil.parser as parser
 import numpy as _np
+from dateutil import parser
+from fuse.raw_read.usace import parse_usace_pickle, parse_usace_xml
+from fuse.raw_read.usace.usace import USACERawReader
 
-try:
-    import fuse.raw_read.usace.parse_usace_xml as p_usace_xml
-except:
-    try:
-        from . import parse_usace_xml as p_usace_xml
-    except:
-        print('importing fuse.raw_read.usace.parse_usace_xml as p_usace_xml did not work')
-try:
-    import fuse.raw_read.usace.parse_usace_pickle as parse_usace_pickle
-except:
-    try:
-        from . import parse_usace_pickle as parse_usace_pickle
-    except:
-        print('importing fuse.raw_read.usace.parse_usace_pickle as parse_usace_pickle  did not work')
+__version__ = 'FUSE'
 
 
-##-----------------------------------------------------------------------------
+class CEMVNRawReader(USACERawReader):
+    """ This class passes back bathymetry & a metadata dictionary from the e-Hydro files """
 
-
-class CEMVNRawReader:
-    """
-    This class passes back bathymetry
-    & a metadata dictionary from the e-Hydro files
-    
-    Parameters
-    ----------
-    
-    Returns
-    -------
-    
-    """
+    def __init__(self):
+        super().__init__('CEMVN')
 
     def read_metadata(self, filename: str) -> dict:
         """
@@ -200,7 +178,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
         with open(xmlfilename, 'r') as xml_file:
             xml_txt = xml_file.read()
         xmlbasename = os.path.basename(xmlfilename)
-        xml_data = p_usace_xml.XMLMetadata(xml_txt, filename=xmlbasename)
+        xml_data = parse_usace_xml.XMLMetadata(xml_txt, filename=xmlbasename)
         if xml_data.version == 'USACE_FGDC':
             meta_xml = xml_data._extract_meta_USACE_FGDC()
         elif xml_data.version == 'ISO-8859-1':
@@ -211,8 +189,8 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
         else:
             meta_xml = xml_data.convert_xml_to_dict2()
         ext_dict = xml_data.extended_xml_fgdc()
-        ext_dict = p_usace_xml.ext_xml_map_enddate(ext_dict)
-        meta_xml = p_usace_xml.xml_SPCSconflict_flag(meta_xml)
+        ext_dict = parse_usace_xml.ext_xml_map_enddate(ext_dict)
+        meta_xml = parse_usace_xml.xml_SPCSconflict_flag(meta_xml)
     else:
         ext_dict = {}
         meta_xml = {}
@@ -301,7 +279,7 @@ class EhydroPickleReader(object):
         """
         Read in picklefile that ehydro_move creates from the E-Hydro REST API
         table attributes.
-        
+
         Returns
         -------
         dict
@@ -383,8 +361,8 @@ class EhydroPickleReader(object):
                     meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
                                                                                meta_from_ehydro['SOURCEPROJECTION'])
             else:
-                meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
-                                                                           meta_from_ehydro['SOURCEPROJECTION'])
+                meta_from_ehydro['from_fips'] = parse_usace_xml.convert_tofips(parse_usace_xml.SOURCEPROJECTION_dict,
+                                                                               meta_from_ehydro['SOURCEPROJECTION'])
         self.meta_from_ehydro = meta_from_ehydro
         return meta_from_ehydro
 
