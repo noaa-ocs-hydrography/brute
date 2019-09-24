@@ -62,7 +62,7 @@ class DatumTransformer:
         if all(metadata[self._from_datum_info[index]] == metadata[self._to_datum_info[index]] for index in
                range(len(self._from_datum_info))):
             if type(self._reader) is BAGRawReader:
-                metadata['interpolate'] == 'False'
+                metadata['interpolate'] = 'False'
                 return self._engine.create(filename, metadata), metadata, False
             else:
                 return self._engine.translate(filename, metadata), metadata, True
