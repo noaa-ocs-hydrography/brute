@@ -133,7 +133,7 @@ def raster_edge_points(data: numpy.array, origin: (float, float), resolution: (f
     return geoarray_to_points(numpy.where(horizontal_edges | vertical_edges, data, nodata), origin, resolution, nodata)
 
 
-def alpha_hull(points: numpy.array, max_length: float = None) -> Polygon:
+def alpha_hull(points: numpy.array, max_length: float = None) -> MultiPolygon:
     """
     Calculate the alpha shape (concave hull) of the given points.
     inspired by https://sgillies.net/2012/10/13/the-fading-shape-of-alpha.html
@@ -144,6 +144,11 @@ def alpha_hull(points: numpy.array, max_length: float = None) -> Polygon:
         N x 3 array of XYZ points
     max_length
         maximum length to include in the convex boundary
+
+    Returns
+    ----------
+    MultiPolygon
+        multipolygon of alpha hull
     """
 
     if points.shape[0] < 4:
