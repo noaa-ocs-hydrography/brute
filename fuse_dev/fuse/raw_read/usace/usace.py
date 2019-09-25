@@ -891,18 +891,22 @@ class USACERawReader(RawReader):
         # get the header
         with open(filename, 'r') as input_file:
             message = f'{filename}: parser '
+            comma = False
             for line in input_file.readlines():
                 if line not in ('\n', '\x1a', '') and not self._is_header(line):
                     if ',' in line:
-                        message += f'found comma-delimited file "{filename}"'
+                        comma = True
                         row = [float(entry.strip()) for entry in line.split(',')]
                         if len(row) == 3:
                             points.append(row)
                     else:
-                        message += f'found whitespace-delimited file (tab or space) "{filename}"'
                         row = [float(entry) for entry in line.split()]
                         if len(row) == 3:
                             points.append(row)
+            if comma:
+                message += f'found comma-delimited file "{filename}"'
+            else:
+                message += f'found whitespace-delimited file (tab or space) "{filename}"'
             self._logger.log(_logging.DEBUG, message)
 
         points = _np.asarray(points)
