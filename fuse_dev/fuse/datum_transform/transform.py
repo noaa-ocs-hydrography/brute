@@ -11,6 +11,7 @@ import gdal
 from fuse.datum_transform import use_vdatum as uv
 from fuse.raw_read.noaa.bag import BAGRawReader
 
+
 class DatumTransformer:
     """ An object for abstracting the datum transformation API.  This should allow for different transformation machines and versions. """
 
@@ -59,7 +60,7 @@ class DatumTransformer:
             GDAL point cloud and boolean of whether data was reprojected
         """
 
-        if all(metadata[self._from_datum_info[index]] == metadata[self._to_datum_info[index]] for index in
+        if any(metadata[self._from_datum_info[index]] != metadata[self._to_datum_info[index]] for index in
                range(len(self._from_datum_info))):
             if type(self._reader) is BAGRawReader:
                 metadata['interpolate'] = 'False'
