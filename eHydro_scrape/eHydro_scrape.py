@@ -597,7 +597,6 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
         agency = meta['SURVEYAGENCY']
         spcs = 4326
         # spcs = row[5]
-        poly = meta['poly']
         name = link.split('/')[-1]
 
         if not os.path.exists(os.path.join(holding, agency)):
@@ -608,7 +607,8 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
         if os.path.exists(saved):
             os.remove(saved)
 
-        if poly in meta:
+        if 'poly' in meta:
+            poly = meta['poly']
             shpfilename = os.path.join(holding, agency, f'{surname}.gpkg')
             meta['poly_name'] = f'{surname}.gpkg'
             geojson = write_geopackage(shpfilename, surname, poly, spcs)
@@ -662,7 +662,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                     zipped.write(pfile)
                     os.remove(pfile)
 
-                    if poly in meta:
+                    if 'poly' in meta:
                         zipped.write(sfile)
                         os.remove(sfile)
 
@@ -695,7 +695,7 @@ def downloadAndCheck(rows: list, pb=None, to=None) -> Tuple[list, int]:
                     zipped.write(pfile)
                     os.remove(pfile)
 
-                    if poly in meta:
+                    if 'poly' in meta:
                         zipped.write(sfile)
                         os.remove(sfile)
 

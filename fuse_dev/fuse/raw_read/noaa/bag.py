@@ -381,7 +381,7 @@ class BAGRawReader(RawReader):
                                     datum_info['from_horiz_key'] = _re.sub('\D', '', splits[2])
                                     bag_meta = {**bag_meta, **datum_info}
                                 except IndexError:
-                                    print(f'Unable to add datum information due to incorrect formatting: {line[1]}, {line[assignment]}')
+                                    _logging.warning(f'Unable to add datum information due to incorrect formatting: {line[1]}, {line[assignment]}')
 #                                    raise RuntimeError(f'Unable to add datum information due to incorrect formatting: {line[2]}')
                             elif meta_field in ('from_vert_datum'):
                                 if line[assignment] in vert_datum.keys():
