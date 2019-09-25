@@ -37,7 +37,7 @@ class Interpolator:
     """Interpolator for bathymetric surveys."""
 
     def __init__(self, dataset: gdal.Dataset, nodata: float = None, window_scalar: float = 1.5, band: int = 0,
-                 sidescan_rasters: [str] = None):
+                 sidescan_rasters: [str] = None, catzoc: str = 'B'):
         """
         Create a new point interpolator object for the given GDAL point cloud dataset.
 
@@ -56,6 +56,8 @@ class Interpolator:
         self.dataset = dataset
         self.is_raster = dataset.GetProjectionRef() != ''
         self.index = band
+        self.catzoc = catzoc.upper()
+        assert self.catzoc in CATZOC, f'CATZOC score "{self.catzoc}" not supported'
 
         if self.is_raster:
             self.index += 1
@@ -242,7 +244,7 @@ class Interpolator:
         band_1.WriteArray(interpolated_values)
         del band_1
 
-        uncertainty = self.__uncertainty(numpy.where(interpolated_values != nodata, interpolated_values, numpy.nan), 'B')
+        uncertainty = self.__uncertainty(numpy.where(interpolated_values != nodata, interpolated_values, numpy.nan), self.catzoc)
 
         if self.is_raster:
             uncertainty_band = self.dataset.GetRasterBand(self.index + 1)
@@ -313,7 +315,7 @@ class Interpolator:
         band_1.WriteArray(interpolated_values)
         del band_1
 
-        uncertainty = self.__uncertainty(numpy.where(interpolated_values != nodata, interpolated_values, numpy.nan), 'B')
+        uncertainty = self.__uncertainty(numpy.where(interpolated_values != nodata, interpolated_values, numpy.nan), self.catzoc)
 
         if self.is_raster:
             uncertainty_band = self.dataset.GetRasterBand(self.index + 1)
