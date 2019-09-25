@@ -171,7 +171,7 @@ def alpha_hull(points: numpy.array, max_length: float = None) -> MultiPolygon:
         boundary_edge_indices = numpy.unique(numpy.sort(indices, axis=1), axis=0)
         return unary_union(list(polygonize(MultiLineString(points[boundary_edge_indices].tolist()))))
     else:
-        print('no edges were found to be shorter than the specified length; reverting to maximum nearest-neighbor distance')
+        print(f'no edges were found to be shorter than the specified length {max_length}; reverting to maximum nearest-neighbor distance')
         return alpha_hull(points)
 
 
@@ -306,8 +306,11 @@ def shape_from_cell_size(resolution: (float, float), bounds: (float, float, floa
     if type(resolution) is not numpy.array:
         resolution = numpy.array(resolution)
 
-    sw_corner = numpy.array(bounds[:2])
-    ne_corner = numpy.array(bounds[2:])
+    if type(bounds) is not numpy.array:
+        bounds = numpy.array(bounds)
+
+    sw_corner = bounds[:2]
+    ne_corner = bounds[2:]
 
     cell_remainder = (ne_corner - sw_corner) % resolution
     ne_corner -= cell_remainder

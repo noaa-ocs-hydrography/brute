@@ -25,6 +25,13 @@ from scipy.interpolate import griddata
 from scipy.ndimage.interpolation import zoom
 from scipy.spatial import cKDTree
 
+CATZOC = {
+    'A1': [.01, .5],
+    'A2': [.02, 1],
+    'B': [.02, 1],
+    'C': [.05, 2]
+}
+
 
 class Interpolator:
     """Interpolator for bathymetric surveys."""
@@ -154,18 +161,12 @@ class Interpolator:
         start_time = datetime.now()
 
         if self.is_raster:
-            if method not in ('linear', 'linear_scipy', 'kriging'):
+            if method not in ('linear', 'kriging'):
                 raise NotImplementedError(f'raster interpolation method "{method}" is not supported')
-
-            if method == 'linear':
-                method = f'{method}_scipy'
 
         if method == 'linear':
             # linear interpolation (`gdal.Grid`)
-            interpolated_dataset = self.__linear_gdal(output_shape, output_bounds, nodata)
-        elif method == 'linear_scipy':
-            # linear interpolation (`scipy.interpolate.griddata`)
-            interpolated_dataset = self.__linear_scipy(output_shape, output_bounds, nodata)
+            interpolated_dataset = self.__linear(output_shape, output_bounds, nodata)
         elif method == 'invdist':
             # inverse distance interpolation (`gdal.Grid`)
             interpolated_dataset = self.__invdist_gdal(output_shape, output_bounds, nodata)
@@ -189,33 +190,7 @@ class Interpolator:
 
         return interpolated_dataset
 
-    def __linear_gdal(self, shape: (int, int), bounds: (float, float, float, float), nodata: float = None) -> gdal.Dataset:
-        """
-        Create a regular raster grid from the given points, interpolating linearly.
-
-        Parameters
-        ----------
-        shape
-            shape (rows, cols) of output grid
-        bounds
-            bounds (min X, min Y, max X, max Y) of output grid
-        nodata
-            value for no data in output grid
-
-        Returns
-        -------
-        gdal.Dataset
-            interpolated grid
-
-        """
-
-        if nodata is None:
-            nodata = self.nodata
-
-        return gdal.Grid('', self.dataset, format='MEM', width=shape[1], height=shape[0], outputBounds=bounds,
-                         algorithm=f'linear:radius=0:nodata={int(nodata)}')
-
-    def __linear_scipy(self, shape: (int, int), bounds: (float, float, float, float), nodata: float = None) -> gdal.Dataset:
+    def __linear(self, shape: (int, int), bounds: (float, float, float, float), nodata: float = None) -> gdal.Dataset:
         """
         Create a regular raster grid from the given points, interpolating linearly.
 
@@ -244,13 +219,19 @@ class Interpolator:
         if nodata is None:
             nodata = self.nodata
 
-        output_resolution = (bounds[2:] - bounds[:2]) / numpy.flip(shape)
+        if self.is_raster:
+            # interpolate using SciPy griddata
+            output_x, output_y = numpy.meshgrid(numpy.linspace(bounds[0], bounds[2], shape[1]),
+                                                numpy.linspace(bounds[1], bounds[3], shape[0]))
+            interpolated_values = griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2], (output_x, output_y), method='linear',
+                                           fill_value=nodata)
+        else:
+            interpolated_raster = gdal.Grid('', self.dataset, format='MEM', width=shape[1], height=shape[0], outputBounds=bounds,
+                                            algorithm=f'linear:radius=0:nodata={int(nodata)}')
+            interpolated_band = interpolated_raster.GetRasterBand(1)
+            interpolated_values = interpolated_band.ReadAsArray()
 
-        # interpolate using SciPy griddata
-        output_x, output_y = numpy.meshgrid(numpy.linspace(bounds[0], bounds[2], shape[1]),
-                                            numpy.linspace(bounds[1], bounds[3], shape[0]))
-        interpolated_values = griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2], (output_x, output_y), method='linear',
-                                       fill_value=nodata)
+        output_resolution = (bounds[2:] - bounds[:2]) / numpy.flip(shape)
 
         output_raster = gdal.GetDriverByName('MEM').Create('', int(shape[1]), int(shape[0]), 2, gdal.GDT_Float32)
         output_raster.SetGeoTransform((bounds[0], output_resolution[0], 0.0, bounds[1], 0.0, output_resolution[1]))
@@ -261,22 +242,23 @@ class Interpolator:
         band_1.WriteArray(interpolated_values)
         del band_1
 
+        uncertainty = self.__uncertainty(numpy.where(interpolated_values != nodata, interpolated_values, numpy.nan), 'B')
+
         if self.is_raster:
             uncertainty_band = self.dataset.GetRasterBand(self.index + 1)
             input_uncertainty = uncertainty_band.ReadAsArray()
             uncertainty_nodata = uncertainty_band.GetNoDataValue()
             del uncertainty_band
 
-            if uncertainty_nodata != nodata:
-                input_uncertainty[input_uncertainty == uncertainty_nodata] = nodata
-
+            input_uncertainty[input_uncertainty == uncertainty_nodata] = numpy.nan
             input_uncertainty = numpy.flip(input_uncertainty, axis=0)
-        else:
-            input_uncertainty = numpy.full(shape, nodata)
+            uncertainty = numpy.sqrt(input_uncertainty ** 2 + uncertainty ** 2)
+
+        uncertainty[numpy.isnan(uncertainty)] = nodata
 
         band_2 = output_raster.GetRasterBand(2)
         band_2.SetNoDataValue(nodata)
-        band_2.WriteArray(input_uncertainty)
+        band_2.WriteArray(uncertainty)
         del band_2
 
         return output_raster
@@ -303,36 +285,11 @@ class Interpolator:
             interpolated grid
         """
 
-        if radius is None:
-            radius = self.window_size
+        if type(shape) is not numpy.array:
+            shape = numpy.array(shape)
 
-        if nodata is None:
-            nodata = self.nodata
-
-        return gdal.Grid('', self.dataset, format='MEM', width=shape[1], height=shape[0], outputBounds=bounds,
-                         algorithm=f'invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}:nodata={int(nodata)}')
-
-    def __invdist_gdal_linear_scipy(self, shape: (int, int), bounds: (float, float, float, float), nodata: float = None,
-                                    radius: float = None) -> gdal.Dataset:
-        """
-        Create a regular raster grid from the given points, interpolating via inverse distance and then linearly (using SciPy).
-
-        Parameters
-        ----------
-        shape
-            shape (rows, cols) of output grid
-        bounds
-            bounds (min X, min Y, max X, max Y) of output grid
-        nodata
-            value for no data in output grid
-        radius
-            size of interpolation window
-
-        Returns
-        -------
-        gdal.Dataset
-            interpolated grid
-        """
+        if type(bounds) is not numpy.array:
+            bounds = numpy.array(bounds)
 
         if radius is None:
             radius = self.window_size
@@ -340,25 +297,42 @@ class Interpolator:
         if nodata is None:
             nodata = self.nodata
 
-        # interpolate using inverse distance in GDAL
-        interpolated_raster = self.__invdist_gdal(shape, bounds, nodata, radius)
-        output_x, output_y = numpy.meshgrid(numpy.arange(interpolated_raster.RasterXSize), numpy.arange(interpolated_raster.RasterYSize))
+        interpolated_raster = gdal.Grid('', self.dataset, format='MEM', width=shape[1], height=shape[0], outputBounds=bounds,
+                                        algorithm=f'invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}:nodata={int(nodata)}')
+        interpolated_band = interpolated_raster.GetRasterBand(1)
+        interpolated_values = interpolated_band.ReadAsArray()
 
-        interpolated_data = interpolated_raster.ReadAsArray()
-        y_values, x_values = numpy.where(interpolated_data != nodata)
-        z_values = interpolated_data[y_values, x_values]
-        del interpolated_data
+        output_resolution = (bounds[2:] - bounds[:2]) / numpy.flip(shape)
 
-        # interpolate linearly in SciPy
-        interpolated_data = griddata((x_values, y_values), z_values, (output_x, output_y), method='linear', fill_value=nodata)
-        interpolated_data[numpy.isnan(interpolated_data)] = nodata
+        output_raster = gdal.GetDriverByName('MEM').Create('', int(shape[1]), int(shape[0]), 2, gdal.GDT_Float32)
+        output_raster.SetGeoTransform((bounds[0], output_resolution[0], 0.0, bounds[1], 0.0, output_resolution[1]))
+        output_raster.SetProjection(self.crs_wkt)
 
-        band_1 = interpolated_raster.GetRasterBand(1)
+        band_1 = output_raster.GetRasterBand(1)
         band_1.SetNoDataValue(nodata)
-        band_1.WriteArray(interpolated_data)
+        band_1.WriteArray(interpolated_values)
         del band_1
 
-        return interpolated_raster
+        uncertainty = self.__uncertainty(numpy.where(interpolated_values != nodata, interpolated_values, numpy.nan), 'B')
+
+        if self.is_raster:
+            uncertainty_band = self.dataset.GetRasterBand(self.index + 1)
+            input_uncertainty = uncertainty_band.ReadAsArray()
+            uncertainty_nodata = uncertainty_band.GetNoDataValue()
+            del uncertainty_band
+
+            input_uncertainty[input_uncertainty == uncertainty_nodata] = numpy.nan
+            input_uncertainty = numpy.flip(input_uncertainty, axis=0)
+            uncertainty = numpy.sqrt(input_uncertainty ** 2 + uncertainty ** 2)
+
+        uncertainty[numpy.isnan(uncertainty)] = nodata
+
+        band_2 = output_raster.GetRasterBand(2)
+        band_2.SetNoDataValue(nodata)
+        band_2.WriteArray(uncertainty)
+        del band_2
+
+        return output_raster
 
     def __kriging_pykrige(self, shape: (int, int), bounds: (float, float, float, float), chunk: (float, float), nodata: float = None,
                           expansion: float = 1, multiplier: int = 1) -> gdal.Dataset:
@@ -521,6 +495,26 @@ class Interpolator:
         del band_2
 
         return output_raster
+
+    def __uncertainty(self, values: numpy.array, catzoc: str) -> numpy.array:
+        """
+        Calculate the uncertainty from the given interpolated values.
+
+        Parameters
+        ----------
+        values
+            array of data
+        catzoc
+            CATZOC score
+
+        Returns
+        -------
+        numpy.array
+            array of uncertainty values
+        """
+
+        m, b = CATZOC[catzoc]
+        return (values * m) + b
 
     def plot(self, raster: gdal.Dataset, method: str, nodata: float = None, band: int = 1, show: bool = False):
         """
