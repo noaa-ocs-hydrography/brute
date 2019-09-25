@@ -17,9 +17,9 @@ from osgeo import ogr as _ogr
 from osgeo import osr as _osr
 
 """Known global constants"""
-progLoc = _os.getcwd()
+progLoc = _os.path.dirname(_os.path.abspath(__file__))
 """progLoc is the program's own file location / current working directory (cwd)
-obtained by :func:`os.getcwd()`"""
+obtained by :func:`os.path.dirname(os.path.abspath(__file__))`"""
 
 zreg = _re.compile(r'.zip', _re.IGNORECASE)
 config = _cp.ConfigParser(interpolation=_cp.ExtendedInterpolation())
@@ -203,10 +203,8 @@ def fileCollect(path: str, bounds: str) -> list:
     """
 
     zips = []
-    bfile = _os.path.join(progLoc, bounds)
-    bpath = _os.path.join(progLoc, bounds.split('\\')[0])
+    bfile = _os.path.join(repo, bounds)
     bname = _os.path.splitext(bounds.split('\\')[1])[0]
-    spath = _os.path.join(bpath, bname)
     print(f'\n\n{bname}')
     meta_geom, meta_proj = open_ogr(bfile)
 

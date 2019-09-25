@@ -26,10 +26,10 @@ from osgeo import osr
 
 
 """Known global constants"""
-progLoc = os.getcwd()
+progLoc = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.split(progLoc)[0]
 config = configparser.ConfigParser()
 config.read('config.ini')
-
 
 if config['Destination']['Folder'] == '':
     downloads = os.path.join(progLoc, 'downloads')
@@ -635,7 +635,7 @@ def main(pb=None):
     survey_history = survey_list()
 
     for region in regions:
-        region_poly = os.path.join(progLoc, region['Shape'])
+        region_poly = os.path.join(parent_dir, region['Shape'])
         bounds = region_bounds(region_poly)
         objectIDs, bagNum = survey_objectID_query(bounds, 0)
         if bagNum > 0:
