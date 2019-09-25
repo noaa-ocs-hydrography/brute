@@ -207,7 +207,7 @@ def fileCollect(path: str, bounds: str) -> list:
     bpath = _os.path.join(progLoc, bounds.split('\\')[0])
     bname = _os.path.splitext(bounds.split('\\')[1])[0]
     spath = _os.path.join(bpath, bname)
-    print(bname)
+    print(f'\n\n{bname}')
     meta_geom, meta_proj = open_ogr(bfile)
 
     if _os.path.exists(path):
@@ -217,9 +217,9 @@ def fileCollect(path: str, bounds: str) -> list:
                     zips.append(_os.path.join(root, item))
 
     slen = len(zips)
-    print(zips, slen)
+    print(f'downloaded zips: {slen}')
     x = 1
-
+    verified_zips = []
     for zfile in zips:
         root = _os.path.dirname(zfile)
         _os.chdir(root)
@@ -230,7 +230,7 @@ def fileCollect(path: str, bounds: str) -> list:
             for name in contents:
                 if _re.compile(r'\.gpkg$', _re.IGNORECASE).search(name):
                     path = _os.path.join(root, name)
-                    print(x, path)
+#                    print(x, path)
                     zipped.extract(name)
 
                     try:
@@ -247,27 +247,25 @@ def fileCollect(path: str, bounds: str) -> list:
                         flag = 'GEOMETRYCOLLECTION EMPTY'
 
                     if flag != 'GEOMETRYCOLLECTION EMPTY':
-                        print('They did Intersect')
-                        pass
-                    else:
-                        print('They did not Intersect')
-                        zips.remove(zfile)
+#                        print('They did Intersect')
+                        verified_zips.append(zfile)
+#                    else:
+#                        print('They did not Intersect')
 
                     _os.remove(path)
         except _zf.BadZipfile:
             print('BadZip')
-            zips.remove(zfile)
 
         zipped.close()
         _os.chdir(progLoc)
         x += 1
-    print(zips, slen, len(zips))
+    print(f'verified zips: {len(verified_zips)}')
 
-    if len(zips) > 0:
-        return zips
+    if len(verified_zips) > 0:
+        return verified_zips
     else:
-        zips.append(None)
-        return zips
+        verified_zips.append(None)
+        return verified_zips
 
 
 def eHydroZIPs(regions: {str: [str]}) -> {str: [str]}:
