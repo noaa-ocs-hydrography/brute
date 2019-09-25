@@ -369,7 +369,7 @@ def gdal_crs_wkt(dataset: gdal.Dataset, layer: int = 0) -> str:
     return crs_wkt
 
 
-def array_coverage(array: numpy.array, nodata: float = None):
+def array_coverage(array: numpy.array, nodata: float = None) -> numpy.array:
     """
     Return a boolean array of where data exists in the given array.
 
