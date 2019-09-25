@@ -151,8 +151,8 @@ def write_cloud(dataset, m: dict):
 
     print(m['z_up'], type(m['z_up']))
 
-    d_min = np.amax(dataset[:, 2])
-    d_max = np.amin(dataset[:, 2])
+    d_min = np.nanmax(dataset[:, 2])
+    d_max = np.nanmin(dataset[:, 2])
     print(d_min, d_max)
     # build CSAR bands
     bandInfo = {}  # Define our bands below
@@ -160,7 +160,7 @@ def write_cloud(dataset, m: dict):
     layerName = "Elevation"
     print(m['z_up'], layerName, z_dir)
     bandInfo[layerName] = cc.BandInfo(type=cc.DataType.FLOAT64, tuple_length=1, name=layerName, direction=z_dir,
-                                      units='m', category=cc.Category.SCALAR, ndv=-1.0, minimum=d_max, maximum=d_min)
+                                      units='m', category=cc.Category.SCALAR, ndv=-1.0, minimum=d_min, maximum=d_max)
     bandInfo['Position'] = cc.BandInfo(type=cc.DataType.FLOAT64, tuple_length=3, name='Position',
                                        direction=cc.Direction.NAP, units='', category=cc.Category.SCALAR,
                                        ndv=(-1.0, -1.0, 0.0))
