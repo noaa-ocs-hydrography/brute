@@ -51,6 +51,10 @@ class Interpolator:
             multiplier to use to expand interpolation radius from minimum point spacing
         band
             index of layer / band to read from the given dataset
+        sidescan_rasters
+            filenames of sidescan rasters
+        catzoc
+            CATZOC score
         """
 
         self.dataset = dataset
