@@ -469,10 +469,10 @@ class USACERawReader(RawReader):
         # get the header
         with open(filename, 'r') as xyz_file:
             for line in xyz_file.readlines():
-                if line == '\n':
+                if len(line.strip()) == 0:
                     continue
                 elif self._is_header(line):
-                    header.append(line)
+                    header.append(line.strip())
                 else:
                     break
 
