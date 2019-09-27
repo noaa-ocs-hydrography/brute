@@ -184,7 +184,7 @@ class BAGRawReader(RawReader):
             meta_gdal, bag_version = self._parse_bag_gdal(filename)
             meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
             meta_support = self._known_meta(filename)
-            meta_csv = self._csv_meta(infilename)
+            meta_csv = self._csv_meta(filename)
             return {**meta_csv, **meta_xml, **meta_gdal, **meta_support}
         except ValueError as error:
             print(error)
@@ -410,7 +410,9 @@ class BAGRawReader(RawReader):
                             elif meta_field in ('start_date', 'end_date'):
                                 if len(line[assignment]) == 8:
                                     bag_meta[meta_field] = line[assignment]
-                                else:
+                                elif len(line[assignment]) == 11:
+                                    bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
+                                elif len(line[assignment]) == 15:
                                     bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
                             else:
                                 bag_meta[meta_field] = line[assignment]
