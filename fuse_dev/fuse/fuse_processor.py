@@ -413,11 +413,10 @@ class FuseProcessor:
         """
         if self._read_type == 'ehydro':
             meta_entry = self._reader.name_gen(_os.path.basename(filename), '', sfx=None)
-            metadata = self._get_stored_meta(meta_entry)
-            self._set_log(meta_entry)
         else:
-            metadata = self._get_stored_meta(filename)
-            self._set_log(filename)
+            meta_entry = _os.path.splitext(_os.path.basename(filename))[0]
+        metadata = self._get_stored_meta(meta_entry)
+        self._set_log(meta_entry)
         metadata['read_type'] = self._read_type
 
         if self._datum_metadata_ready(metadata):

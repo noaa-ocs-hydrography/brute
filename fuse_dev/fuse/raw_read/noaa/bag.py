@@ -326,9 +326,8 @@ class BAGRawReader(RawReader):
         """
         meta = {}
         coverage = self._find_coverage(infilename)
-        root, name = _os.path.split(infilename)
-        base, ext = _os.path.splitext(name)
-        meta['from_filename'] = name
+        basename = _os.path.splitext(_os.path.basename(infilename))[0]
+        meta['from_filename'] = basename
         meta['from_path'] = infilename
         meta['file_size'] = self._size_finder(infilename)
 
