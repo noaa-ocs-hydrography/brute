@@ -183,7 +183,8 @@ class BAGRawReader(RawReader):
             meta_gdal, bag_version = self._parse_bag_gdal(filename)
             meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
             meta_support = self._known_meta(filename)
-            return {**meta_xml, **meta_gdal, **meta_support}
+            meta_csv = self._csv_meta(infilename)
+            return {**meta_csv, **meta_xml, **meta_gdal, **meta_support}
         except ValueError as error:
             print(error)
             return {}
@@ -325,16 +326,36 @@ class BAGRawReader(RawReader):
         meta = {}
         coverage = self._find_coverage(infilename)
         root, name = _os.path.split(infilename)
+        base, ext = _os.path.splitext(name)
         meta['from_filename'] = name
         meta['from_path'] = infilename
         meta['file_size'] = self._size_finder(infilename)
+
+        return {**coverage, **meta}
+
+    def _csv_meta(self, infilename: str) -> dict:
+        """
+        Identifies known metadata and returns them as a dict
+
+        Parameters
+        ----------
+        infilename : str
+            Input file path
+
+        Returns
+        -------
+        dict
+            A dictionary object containing found metadata
+
+        """
+        meta = {}
+        root, name = _os.path.split(infilename)
         if csv_exists:
             for survey in self.csv_data:
                 if 'bag_name' in survey:
                     if survey['bag_name'] == name:
                         meta = {**survey, **meta}
-
-        return {**coverage, **meta}
+        return meta
 
     def _from_csv(self) -> dict:
         """
@@ -386,6 +407,8 @@ class BAGRawReader(RawReader):
                             elif meta_field in ('from_vert_datum'):
                                 if line[assignment] in vert_datum.keys():
                                     datum_info['from_vert_key'] = line[assignment]
+                            elif meta_field in ('start_date', 'end_date'):
+
                             else:
                                 bag_meta[meta_field] = line[assignment]
                     if 'bathymetry' in bag_meta:
