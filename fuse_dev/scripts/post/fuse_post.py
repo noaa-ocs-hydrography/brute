@@ -13,15 +13,18 @@ All configs in the local directory are run serially.
 """
 
 from glob import glob
-import fuse.fuse_ehydro as ffe
+import fuse.fuse_processor as ffp
 
 if __name__ == '__main__':
     config_list = glob('*.config')
-    for config in config_list:
-        poster = ffe.FuseProcessor_eHydro('cenan.config')
+    for n,config in enumerate(config_list):
+        poster = ffp.FuseProcessor_eHydro(config)
         flist = poster._meta_obj.read_metadata()
-        for f in flist:
+        db = poster._config['database_name']
+        print(f'working on {config}, posting to {db}')
+        for m,f in enumerate(flist):
             if 'to_filename' in f:
                 infilename = f['from_filename']
+                print('{n}.{m}:{infilename}')
                 poster.post(infilename)
         poster.disconnect()
