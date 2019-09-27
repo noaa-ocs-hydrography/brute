@@ -1036,7 +1036,7 @@ class BAGRawReader(RawReader):
         try:
             if val.lower() == 'unknown':
                 val = ''
-            elif val.lower() in ('mean_lower_low_water', 'mean lower low water', 'mllw'):
+            elif val.lower() in ('mean_lower_low_water', 'mean lower low water', 'mllw', 'mllw depth'):
                 self.data['from_vert_key'] = 'MLLW'
             self.data['from_vert_datum'] = val
         except (ValueError, IndexError, AttributeError) as e:
