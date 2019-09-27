@@ -383,7 +383,7 @@ class XMLMetadata:
                 if type(findall_results) is list:  # check if list
                     if len(find_result) > 0:
                         if find_result is None:  # Checks for NoneType object ('None')
-                            my_etree_dict1['script: from_vert_key'] = ''
+                            my_etree_dict1['from_vert_key'] = ''
                             my_etree_dict1['from_vert_key'] = ''
                         else:
                             my_etree_dict1[vertdatum[key]] = find_result.text
@@ -1456,12 +1456,12 @@ def parse_abstract_iso_ex(abstract):
         line = abstract.split(' Elevations are referenced to ')[-1]
         name = line.split('reported by the National Oceanic and Atmospheric Administration (NOAA).')[0]
         if name.find('Tidal Datum from the latest tidal epoch') > 0:
-            name = line.split('Tidal Datum from the latest tidal epoch')[0]
+            name = line.split('Tidal Datum from the latest tidal epoch')[0].strip()
             name = name.replace('\n', ' ')
             epoch = 'Tidal Datum from the latest tidal epoch '
             m['Vertical Datum Description'] = name + epoch
         else:
-            m['Vertical Datum Description'] = name
+            m['Vertical Datum Description'] = name.strip()
         if name.upper().find('MEAN LOWER LOW WATER') >= 0:
             m['VERTDAT'] = 'MLLW'
         elif name.find('MLLW') >= 0:  ## CESAM
@@ -1483,8 +1483,8 @@ def parse_abstract_iso_ex(abstract):
         if name.find('Soundings are shown in feet') >= 0:
             m['script: from_vert_units'] = 'US Survey Foot'
     if abstract.find('Elevations are in ') >= 0:
-        line = abstract.split('Elevations are in ')[-1]
-        name = line.split('Plane coordinates ')[0]
+        line = abstract.split('Elevations are in ')[-1].strip()
+        name = line.split('Plane coordinates ')[0].strip()
         m['Vertical Datum Description'] = name
         if name.upper().find('MEAN LOWER LOW WATER') >= 0:
             m['VERTDAT'] = 'MLLW'
@@ -1564,11 +1564,11 @@ def extract_from_iso_meta(xml_meta):
             # pull vertical datum information
             m = parse_abstract_iso_ex(xml_meta['abstract'])
             for k in m:
-                xml_meta[k] = m[k]
+                xml_meta[k] = m[k].strip()
             # date information
             m = date_iso_abstract(xml_meta['abstract'])
             for k in m:
-                xml_meta[k] = m[k]
+                xml_meta[k] = m[k].strip()
     # vertical units
     if 'altunits' in xml_meta:
         if xml_meta['altunits'] != '':
@@ -1632,18 +1632,19 @@ def extract_from_iso_meta(xml_meta):
                 pass
 
         horiz_datum_items = []
-        for key in ('Projected_Coordinate_System', 'Horizontal_Zone', 'Units'):
+        for key, value in {'Projected_Coordinate_System': 'from_hoirz_frame', 'Horizontal_Zone': 'from_horiz_datum', 'Units': 'from_horiz_units'}.items():
             try:
-                horiz_datum_items.append(xml_meta[key])
+                horiz_datum_items.append(xml_meta[key].strip())
+                xml_meta[value] = xml_meta[key].strip()
             except KeyError as e:
                 _logging.debug(_logging.ERROR, f"{key}: {e}")
                 pass
 
         if len(horiz_datum_items) < 0:
-            xml_meta['from_horiz_datum'] = ','.join(horiz_datum_items)
+            xml_meta['from_horiz_datum'] = ','.join(horiz_datum_items).strip()
 
         if len(xml_meta['Horizontal_Zone']) > 0:
-            code = xml_meta['Horizontal_Zone'].split(' ')[1]
+            code = xml_meta['Horizontal_Zone'].split(' ')[1].strip()
             # print(code)
             if '-' in code:
                 code = code.split('-')[1]

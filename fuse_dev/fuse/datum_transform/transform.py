@@ -9,15 +9,12 @@ Abstract datum transformation.
 
 import gdal
 from fuse.datum_transform import use_vdatum as uv
-
-
+from fuse.raw_read.noaa.bag import BAGRawReader
 
 
 class DatumTransformer:
-    """
-    An object for abstracting the datum transformation API.  This should allow
-    for different transformation machines and versions.
-    """
+    """ An object for abstracting the datum transformation API.  This should allow for different transformation machines and versions. """
+
     _from_datum_info = [
         'from_horiz_frame',
         'from_horiz_type',
@@ -37,17 +34,13 @@ class DatumTransformer:
         'to_vert_direction',
     ]
 
-    def __init__(self, config: dict, reader):
+    def __init__(self, vdatum_path: str, java_path: str, reader):
         """
         Set up and configure the transformation tools based on the information provided in the configruation file.
         """
 
         self._reader = reader
-
-        if 'vdatum_path' in config:
-            self._engine = uv.VDatum(config, self._reader)
-        else:
-            raise ValueError('no vdatum path provided')
+        self._engine = uv.VDatum(vdatum_path, java_path, self._reader)
 
     def translate(self, filename: str, metadata: dict) -> (gdal.Dataset, bool):
         """
@@ -63,10 +56,16 @@ class DatumTransformer:
 
         Returns
         -------
-            GDAL point cloud and whether data was reprojected (`True`) or projected (`False`)
+        gdal.Dataset, bool
+            GDAL point cloud and boolean of whether data was reprojected
         """
 
-        if False in [metadata[self._from_datum_info[key]] != metadata[self._to_datum_info[key]] for key in range(len(self._from_datum_info))]:
-            return self._engine.translate(filename, metadata, self._reader.version), metadata, True
+        if any(metadata[self._from_datum_info[index]] != metadata[self._to_datum_info[index]] for index in
+               range(len(self._from_datum_info))):
+            if type(self._reader) is BAGRawReader:
+                metadata['interpolate'] = 'False'
+                return self._engine.create(filename, metadata), metadata, False
+            else:
+                return self._engine.translate(filename, metadata), metadata, True
         else:
             return self._engine.create(filename, metadata), metadata, False

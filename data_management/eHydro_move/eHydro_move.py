@@ -11,15 +11,15 @@ import os as _os
 import re as _re
 import shutil as _shutil
 import zipfile as _zf
-from typing import Union, Dict
+from typing import Union
 
 from osgeo import ogr as _ogr
 from osgeo import osr as _osr
 
 """Known global constants"""
-progLoc = _os.getcwd()
+progLoc = _os.path.dirname(_os.path.abspath(__file__))
 """progLoc is the program's own file location / current working directory (cwd)
-obtained by :func:`os.getcwd()`"""
+obtained by :func:`os.path.dirname(os.path.abspath(__file__))`"""
 
 zreg = _re.compile(r'.zip', _re.IGNORECASE)
 config = _cp.ConfigParser(interpolation=_cp.ExtendedInterpolation())
@@ -28,7 +28,7 @@ config.read('config.ini')
 # sections = config.sections()
 downloads = config['Source']['downloads']
 destination = config['Destination']['destination']
-repo = _os.path.split(progLoc)[0]
+repo = _os.path.dirname(progLoc)
 method = config.getboolean('Method', 'method')
 
 
@@ -203,11 +203,9 @@ def fileCollect(path: str, bounds: str) -> list:
     """
 
     zips = []
-    bfile = _os.path.join(progLoc, bounds)
-    bpath = _os.path.join(progLoc, bounds.split('\\')[0])
+    bfile = _os.path.join(repo, bounds)
     bname = _os.path.splitext(bounds.split('\\')[1])[0]
-    spath = _os.path.join(bpath, bname)
-    print(bname)
+    print(f'\n\n{bname}')
     meta_geom, meta_proj = open_ogr(bfile)
 
     if _os.path.exists(path):
@@ -217,11 +215,11 @@ def fileCollect(path: str, bounds: str) -> list:
                     zips.append(_os.path.join(root, item))
 
     slen = len(zips)
-    print(zips, slen)
+    print(f'downloaded zips: {slen}')
     x = 1
-
+    verified_zips = []
     for zfile in zips:
-        root = _os.path.split(zfile)[0]
+        root = _os.path.dirname(zfile)
         _os.chdir(root)
 
         try:
@@ -230,7 +228,7 @@ def fileCollect(path: str, bounds: str) -> list:
             for name in contents:
                 if _re.compile(r'\.gpkg$', _re.IGNORECASE).search(name):
                     path = _os.path.join(root, name)
-                    print(x, path)
+#                    print(x, path)
                     zipped.extract(name)
 
                     try:
@@ -247,27 +245,25 @@ def fileCollect(path: str, bounds: str) -> list:
                         flag = 'GEOMETRYCOLLECTION EMPTY'
 
                     if flag != 'GEOMETRYCOLLECTION EMPTY':
-                        print('They did Intersect')
-                        pass
-                    else:
-                        print('They did not Intersect')
-                        zips.remove(zfile)
+#                        print('They did Intersect')
+                        verified_zips.append(zfile)
+#                    else:
+#                        print('They did not Intersect')
 
                     _os.remove(path)
         except _zf.BadZipfile:
             print('BadZip')
-            zips.remove(zfile)
 
         zipped.close()
         _os.chdir(progLoc)
         x += 1
-    print(zips, slen, len(zips))
+    print(f'verified zips: {len(verified_zips)}')
 
-    if len(zips) > 0:
-        return zips
+    if len(verified_zips) > 0:
+        return verified_zips
     else:
-        zips.append(None)
-        return zips
+        verified_zips.append(None)
+        return verified_zips
 
 
 def eHydroZIPs(regions: {str: [str]}) -> {str: [str]}:
@@ -320,16 +316,15 @@ def contentSearch(filenames: [str], extensions: [str]) -> [str]:
 
     Parameters
     ----------
-    filenames: [str] :
+    filenames
         A list of file names
-    extensions: [str] :
+    extensions
         list of extensions to filter by
 
     Returns
     -------
-    type
+    [str]
         a list of files that met the correct conditions
-
     """
 
     return [filename for filename in filenames if
@@ -461,16 +456,15 @@ def _main(text_region=None, progressBar=None, text_output=None):
 
     Parameters
     ----------
-    text_region: wx.TextCtrl :
+    text_region
          (Default value = None) Optional text field used when run via the
          included GUI; displays the current region being copied
-    progressBar: wx.Guage :
+    progressBar
          (Default value = None) Optional guage used when run via the included
          GUI; displays the copy progress of the current region
-    text_output: wx.TextCtrl :
+    text_output
          (Default value = None) Optional text field used when run via the
          included GUI; displays the names of files copied
-
     """
 
     if progressBar is not None:

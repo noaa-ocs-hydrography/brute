@@ -26,10 +26,10 @@ from osgeo import osr
 
 
 """Known global constants"""
-progLoc = os.getcwd()
+progLoc = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.split(progLoc)[0]
 config = configparser.ConfigParser()
 config.read('config.ini')
-
 
 if config['Destination']['Folder'] == '':
     downloads = os.path.join(progLoc, 'downloads')
@@ -399,10 +399,23 @@ def link_grab(source_url: str, extensions: list) -> list:
     for extension in extensions:
         links = [link.strip('"') for link in re.findall(f'".*{extension}"', page)]
         file_links.extend([f'{source_url}/{link}' for link in links if link != ''])
+    valid_links = []
     for link in file_links:
-        if 'combined' in link.lower() or 'ellipsoid' in link.lower():
-            file_links.remove(link)
-    return file_links
+        basename, ext = os.path.splitext(link)
+        root, basename = os.path.split(basename)
+        add_link = True
+        if 'combined' in basename.lower() or 'ellipsoid' in basename.lower():
+            add_link = False
+        elif ext.lower() in ('.gz') and os.path.splitext(basename)[1] not in extensions:
+            add_link = False
+        if '.bag' in extensions and re.compile(r'[a-z][0-9]{5}\_[a-z]{2}', re.IGNORECASE).search(basename) is None:
+            add_link = False
+        elif '.tif' in extensions and re.compile(r'[a-z][0-9]{5}(_SSSAB)', re.IGNORECASE).search(basename) is None:
+            add_link = False
+        if add_link:
+            valid_links.append(link)
+
+    return valid_links
 
 
 def file_downloader(folder: str, download_links: list, saved_files: list) -> list:
@@ -622,7 +635,8 @@ def main(pb=None):
     survey_history = survey_list()
 
     for region in regions:
-        region_poly = os.path.join(progLoc, region['Shape'])
+        print(f"{region['Processing Branch']}_{region['Region']}")
+        region_poly = os.path.join(parent_dir, region['Shape'])
         bounds = region_bounds(region_poly)
         objectIDs, bagNum = survey_objectID_query(bounds, 0)
         if bagNum > 0:
@@ -639,7 +653,6 @@ def main(pb=None):
     end = datetime.datetime.now()
     delta_time = end - start
     print(f'{end}\n{delta_time}')
-
 
 
 if __name__ == '__main__':

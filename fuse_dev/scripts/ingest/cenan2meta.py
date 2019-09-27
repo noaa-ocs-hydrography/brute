@@ -11,27 +11,35 @@ into the metadata file for qualification.
 
 import os
 from glob import glob
+import logging as _logging
+
+import datetime
 
 import fuse.fuse_processor as ffp
+import fuse.wx_helper.process_title as wx_window
 
 if __name__ == '__main__':
+    start = datetime.datetime.now()
+    print(start)
+    wx_frame = wx_window.Open_Frame('CENAN')
     cenan = ffp.FuseProcessor('cenan.config')  # this config is local for testing
-    for path in cenan.rawdata_path:
-        print(f'Begin working in {path}:')
-        c = 1
-        flist = glob(os.path.join(path, '*.xyz'))
-        for f in flist:
-            p,fname = os.path.split(f)
-            print(f'{c}:Reading {fname}', end = ', ')
-            cenan.read(f)
-            try:
-                print(f'processing', end = ', ')
-                cenan.process(f)
-                print(f'done.')
-                c += 1
-            except ValueError as e:
-                print('\n')
-                print(e)
-                print('\n')
-            if c > 3:
-                break
+    c = 1
+    root = cenan.rawdata_path[0]
+    top = [os.path.join(root, name) for name in os.listdir(root)]
+    for path in top:
+        print(f'{c} - Begin working in {path}:')
+        f = cenan.read(path)
+        try:
+            print(f'processing {f}', end = ', ')
+            cenan.process(f)
+            print(f'done.')
+            c += 1
+        except Exception as e:
+            print('\n')
+            print(e)
+            cenan.logger.log(_logging.DEBUG, e)
+            print('\n')
+    end = datetime.datetime.now()
+    time_delta = end - start
+    wx_frame.close()
+    print(f'{end}\n{time_delta}')

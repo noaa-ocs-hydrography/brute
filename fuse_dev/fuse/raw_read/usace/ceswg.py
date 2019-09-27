@@ -17,53 +17,33 @@ major update April 2, 2019
 update July 12,2019 adding in call to pickle reader
 update July 22, 2019 adding in vertical datum read from filename
 """
-__version__ = 'FUSE'
-import os as os
+
+import os
 import pickle as _pickle
 import re as _re
-
-#_ussft2m = 0.30480060960121924  # US survey feet to meters
 from datetime import datetime
+
 import numpy as _np
+from fuse.raw_read.usace import parse_usace_pickle
+from fuse.raw_read.usace.usace import USACERawReader
 
-try:
-    import fuse.raw_read.usace.parse_usace_xml as p_usace_xml
-except:
-    try:
-        from . import parse_usace_xml as p_usace_xml
-    except:
-        print('importing fuse.raw_read.usace.parse_usace_xml as p_usace_xml did not work')
-try:
-    import fuse.raw_read.usace.parse_usace_pickle as parse_usace_pickle
-except:
-    try:
-        from . import parse_usace_pickle as parse_usace_pickle
-    except:
-        print('importing fuse.raw_read.usace.parse_usace_pickle as parse_usace_pickle  did not work')
-##-----------------------------------------------------------------------------
+__version__ = 'FUSE'
 
 
-class CESWGRawReader:
-    """
-    This class passes back bathymetry
-    & a metadata dictionary from the e-Hydro files
-    
-    Parameters
-    ----------
-    
-    Returns
-    -------
-    
-    """
+class CESWGRawReader(USACERawReader):
+    """ This class passes back bathymetry & a metadata dictionary from the e-Hydro files """
 
-    def read_metadata(self, infilename: str):
+    def __init__(self):
+        super().__init__('CESWG')
+
+    def read_metadata(self, filename: str):
         """
         Read all available meta data.
         returns dictionary
         
         Parameters
         ----------
-        infilename : str :
+        filename : str :
         
         
         Returns
@@ -73,7 +53,7 @@ class CESWGRawReader:
         """
         version = 'CESWG'
         self.version = version
-        return retrieve_meta_for_Ehydro_out_onefile(infilename)#
+        return retrieve_meta_for_Ehydro_out_onefile(filename)  #
 
     def read_bathymetry_dat(self, infilename):
         """
@@ -102,12 +82,12 @@ class CESWGRawReader:
         one can also include expressions within the quoted strings, The expressions in an f-string are evaluated in left-to-right order. This is detectable only if the expressions have side effects:
         https://www.python.org/dev/peps/pep-0498/
         """
-        
+
         xyz = _np.loadtxt(bathyfilename, delimiter=' ')
-        self.xy#remove later using still during debugging
+        self.xy  # remove later using still during debugging
         return xyz
 
-    def read_bathymetry(self, infilename):
+    def read_bathymetry(self, filename):
         """
         Read the bathymetry from the xyz files, this tells it to not include
         the header when reading the file
@@ -116,7 +96,7 @@ class CESWGRawReader:
         
         Parameters
         ----------
-        infilename: str :
+        filename: str :
         
         Returns
         -------
@@ -125,22 +105,23 @@ class CESWGRawReader:
         """
         version = 'CESWG'
         self.version = version
-        first_instance, commas_present = _start_xyz(infilename)
+        first_instance, commas_present = _start_xyz(filename)
         if first_instance != '':
             if commas_present == ',':
-                xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
             elif commas_present == 'tab_instead':
-                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
             else:
-                xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
         else:
             if commas_present == ',':
-                xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter=',', usecols=(0, 1, 2))
             elif commas_present == 'tab_instead':
-                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
             else:
-                xyz = _np.loadtxt(infilename, delimiter=' ', usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter=' ', usecols=(0, 1, 2))
         return xyz
+
 
 # ------------------------------------------------------------------------------
 
@@ -214,21 +195,21 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESWG', default_meta='')  #
     meta['special_handling'] = _check_special_handling(basename)
-    #special handling is saved with text meta as it has to do with the text file
+    # special handling is saved with text meta as it has to do with the text file
     if meta['special_handling'] == 'FullRES':
-        meta['interpolate']= False
-    #elif meta['special_handling'] == '.ppxyz':
+        meta['interpolate'] = False
+    # elif meta['special_handling'] == '.ppxyz':
     #    meta['interpolate']= False
     else:
-        meta['interpolate']= True
+        meta['interpolate'] = True
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
 
     e_pick = EhydroPickleReader(xmlfilename)
-    meta_from_ehydro = e_pick._read_pickle()#to handle files
+    meta_from_ehydro = e_pick._read_pickle()  # to handle files
     meta_from_ehydro = e_pick._when_use_pickle(meta_xml)
     meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
-    
+
     list_keys_empty = []
     combined_row = {}
     subset_row = {}
@@ -270,11 +251,12 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     merged_meta = check_date_order(merged_meta, merged_meta)
     return merged_meta
 
+
 ###----------------------------------------------------------------------------
 class EhydroPickleReader(object):
-    
+
     def __init__(self, infilename):
-        
+
         """
         Pass filename that matches the pickle file you want to match 
         but with any extension
@@ -292,7 +274,7 @@ class EhydroPickleReader(object):
         self.filename = infilename
         """
         self.filename = infilename
-        
+
     def _read_pickle(self):
         """
         Read in picklefile that ehydro_move creates from the E-Hydro REST API
@@ -307,16 +289,16 @@ class EhydroPickleReader(object):
         Returns
         -------
     
-        """ 
-        print(f'reading in pickle based on: {self.filename}')#making sure pickle passing is working
+        """
+        print(f'reading in pickle based on: {self.filename}')  # making sure pickle passing is working
         pickle_meta = parse_usace_pickle.read_pickle(self.filename)
         self.meta_from_ehydro = pickle_meta
-        #pickle = parse_usace_pickle.pickle_file(infilename)
-        #self.pickle_meta = pickle.pickle_meta
-        #self.meta_from_ehydro = self.pickle_meta#separating while debugging to track original
+        # pickle = parse_usace_pickle.pickle_file(infilename)
+        # self.pickle_meta = pickle.pickle_meta
+        # self.meta_from_ehydro = self.pickle_meta#separating while debugging to track original
         return pickle_meta
-    
-    def _Check_for_SPCSconflicts(self, meta_xml):#, meta_from_ehydro = None
+
+    def _Check_for_SPCSconflicts(self, meta_xml):  # , meta_from_ehydro = None
         """
         Cheacking to see if the SPCS codes conflict between sources
         
@@ -329,9 +311,9 @@ class EhydroPickleReader(object):
         Returns
         -------
         """
-        #if meta_from_ehydro == None:
+        # if meta_from_ehydro == None:
         meta_from_ehydro = self.meta_from_ehydro
-               
+
         no_SPCS_conflict = ''
         no_SPCS_conflict_withpickle = ''
         if 'SPCS_conflict_XML' in meta_from_ehydro:
@@ -339,24 +321,26 @@ class EhydroPickleReader(object):
                 no_SPCS_conflict = 'False'
             else:
                 no_SPCS_conflict = 'True'
-                
+
         if 'SOURCEPROJECTION' in meta_from_ehydro:
             if 'from_fips' in meta_xml:
-                meta_xml = p_usace_xml.xml_SPCSconflict_otherspcs(meta_xml, f"{p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']}")
-                if p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']) == meta_xml['from_fips']:
+                meta_xml = p_usace_xml.xml_SPCSconflict_otherspcs(meta_xml,
+                                                                  f"{p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']}")
+                if p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION']) == meta_xml[
+                    'from_fips']:
                     no_SPCS_conflict_withpickle = 'True'
                 else:
                     no_SPCS_conflict_withpickle = 'False'
             if meta_xml['SPCS_conflict_XML_other'] != '':
                 no_SPCS_conflict = 'False'
-                #We know for CEMVN thath this will conflict with some of the SPCS values but have a method that works.
-                #this way we pass on that there are conflicts but do not raise a flag unless the final from_fips disagrees
-                
+                # We know for CEMVN thath this will conflict with some of the SPCS values but have a method that works.
+                # this way we pass on that there are conflicts but do not raise a flag unless the final from_fips disagrees
+
         meta_from_ehydro['no_SPCS_conflict_withpickle'] = no_SPCS_conflict_withpickle
         self.meta_from_ehydro
         return no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro
-    
-    def _when_use_pickle(self, meta_xml):#, meta_from_ehydro
+
+    def _when_use_pickle(self, meta_xml):  # , meta_from_ehydro
         """
         If there is no SPCS code in the xml, use the pickle/ REST API SPCS code
         
@@ -377,16 +361,18 @@ class EhydroPickleReader(object):
         meta_from_ehydro = self.meta_from_ehydro
         if 'SOURCEPROJECTION' in meta_from_ehydro:
             if 'from_FIPS' in meta_xml:
-                #run check for conflict
+                # run check for conflict
                 no_SPCS_conflict, no_SPCS_conflict_withpickle = self._Check_for_SPCSconflicts(meta_xml, meta_from_ehydro)
                 if no_SPCS_conflict_withpickle == 'False':
-                    #test
-                    meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION'])
+                    # test
+                    meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
+                                                                               meta_from_ehydro['SOURCEPROJECTION'])
             else:
-                meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict, meta_from_ehydro['SOURCEPROJECTION'])
+                meta_from_ehydro['from_fips'] = p_usace_xml.convert_tofips(p_usace_xml.SOURCEPROJECTION_dict,
+                                                                           meta_from_ehydro['SOURCEPROJECTION'])
         self.meta_from_ehydro = meta_from_ehydro
         return meta_from_ehydro
-    
+
     def _when_use_pickle_startdate(self, meta_xml):
         """
         if xml_meta is blank and if meta does not have information use pickle data for date
@@ -401,16 +387,17 @@ class EhydroPickleReader(object):
         Returns
         """
         meta_from_ehydro = self.meta_from_ehydro
-        if meta_from_ehydro:#check if dictionary empty
-            if meta_xml:#check if dictionary empty
+        if meta_from_ehydro:  # check if dictionary empty
+            if meta_xml:  # check if dictionary empty
                 print(meta_from_ehydro['SURVEYDATEEND'])
-                #Check survey start & end date against filename and other locations
-            else:#if xml_meta is blank and if meta does not have information use pickle data:
+                # Check survey start & end date against filename and other locations
+            else:  # if xml_meta is blank and if meta does not have information use pickle data:
                 meta_from_ehydro['start_date'] = meta_from_ehydro['SURVEYDATESTART']
-                #"SURVEYDATESTART"
-                #"SURVEYDATEEND"
+                # "SURVEYDATESTART"
+                # "SURVEYDATEEND"
         return meta_from_ehydro
-    
+
+
 ###----------------------------------------------------------------------------
 class XYZMetaReader(object):
     """Extract both information from the filename as well as from the text file's header"""
@@ -437,6 +424,14 @@ class XYZMetaReader(object):
                          default_meta=''):  # need to change version to None
         """
         Parse an USACE eHydro file for the available meta data.
+
+        Default metadata (values predetermined for the file but not in the file)
+        can be stored at the location defined by 'default_meta' as a pickled
+        dicitonary.  If no path is provided the dictionary in the same folder as
+        the data but in the file 'default.pkl' will be used.  If this file does
+        not exist no default metadata will be loaded.  If the same keyword for
+        the metadata exists both in the file metadata and in the default location,
+        the file metadata will take precidence.
         'CESWG'
 
         Parameters
@@ -452,19 +447,10 @@ class XYZMetaReader(object):
 
         Returns
         -------
+        dict
+            dictionary of metadata
+        """
 
-        """
-        """
-        Parse an USACE eHydro file for the available meta data.
-        
-        Default metadata (values predetermined for the file but not in the file)
-        can be stored at the location defined by 'default_meta' as a pickled
-        dicitonary.  If no path is provided the dictionary in the same folder as
-        the data but in the file 'default.pkl' will be used.  If this file does
-        not exist no default metadata will be loaded.  If the same keyword for
-        the metadata exists both in the file metadata and in the default location,
-        the file metadata will take precidence.
-        """
         name_meta = self.parse_ehydro_filename(infilename)
         if 'start_date' in name_meta:
             name_meta['filename_date'] = name_meta['start_date']
@@ -487,7 +473,7 @@ class XYZMetaReader(object):
                  f"{name_meta['statuscode']}"
         merged_meta['source_indicator'] = f'US,US,graph,{sorind}'
         merged_meta['script_version'] = __version__
-        merged_meta = get_vertdat_ceswg(merged_meta)#pulls in vertical datum from filename
+        merged_meta = get_vertdat_ceswg(merged_meta)  # pulls in vertical datum from filename
         return merged_meta
 
     def parse_ehydro_filename(self, infilename):
@@ -697,17 +683,18 @@ def get_xml_match(f):
     -------
 
     """
-    xmlfilename=''
+    xmlfilename = ''
     ext_list = ['_FULL.XYZ', '_A.XYZ', '.PPXYZ']
     for extension in ext_list:
-        if f.upper().find(extension)>0:
+        if f.upper().find(extension) > 0:
             xmlfilename = get_xml_xt(f, extension)
     if xmlfilename == '':
         xmlfilename = get_xml(f)
     return xmlfilename
 
+
 ##-----------------------------------------------------------------------------
-def get_vertdat_ceswg(meta: dict):# -> dict:
+def get_vertdat_ceswg(meta: dict):  # -> dict:
     """
     pass the meta dict of the filename broken up
     returns the vertical datum found in the filename back to the meta dict
@@ -740,13 +727,14 @@ def get_vertdat_ceswg(meta: dict):# -> dict:
 
     """
     CESWG_datums_list = ['MLLW', 'LWD', 'MLT']
-    
+
     for ceswg_datum in CESWG_datums_list:
-        if meta['optional'].find(ceswg_datum)>0:
+        if meta['optional'].find(ceswg_datum) > 0:
             meta['VERDAT_from_filename'] = ceswg_datum
             meta['from_vert_datum'] = ceswg_datum
             meta['from_vert_key'] = ceswg_datum
     return meta
+
 
 ##-----------------------------------------------------------------------------
 def _check_special_handling(basename):
@@ -765,12 +753,13 @@ def _check_special_handling(basename):
     special_handling = ''
     if basename.find('.ppxyz') > 0:
         special_handling = 'ppxyz'
-    full_res = [ '_A.XYZ', '_FULL.XYZ']#_A.xyz, _FULL.xyz
+    full_res = ['_A.XYZ', '_FULL.XYZ']  # _A.xyz, _FULL.xyz
     for ext_full in full_res:
         if basename.upper().find(ext_full) > 0:
             special_handling = 'FullRES'
     return special_handling
-    
+
+
 ##-----------------------------------------------------------------------------
 
 def _start_xyz(infilename):

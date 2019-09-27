@@ -47,7 +47,7 @@ to_vdatum = [
 class VDatum:
     """An object for working with VDatum."""
 
-    def __init__(self, config: dict, reader):
+    def __init__(self, vdatum_path: str, java_path: str, reader):
         """
         Create a new object for using VDatum.
 
@@ -61,22 +61,15 @@ class VDatum:
 
         self._reader = reader
 
-        if 'vdatum_path' in config:
-            vdatum_path = config['vdatum_path']
-            if _os.path.isfile(_os.path.join(vdatum_path, 'vdatum.jar')):
-                self._vdatum_path = vdatum_path
-            else:
-                raise ValueError(f'Invalid vdatum folder: {vdatum_path}')
+        if _os.path.isfile(_os.path.join(vdatum_path, 'vdatum.jar')):
+            self._vdatum_path = vdatum_path
         else:
-            raise ValueError('No VDatum path provided')
-        if 'java_path' in config:
-            java_path = config['java_path']
-            if _os.path.isfile(_os.path.join(java_path, 'java.exe')):
-                self._java_path = java_path
-            else:
-                raise ValueError(f'Invalid java path: {java_path}')
+            raise ValueError(f'Invalid vdatum folder: {vdatum_path}')
+
+        if _os.path.isfile(_os.path.join(java_path, 'java.exe')):
+            self._java_path = java_path
         else:
-            raise ValueError('No java path provided')
+            raise ValueError(f'Invalid java path: {java_path}')
 
         self._logger = _logging.getLogger('fuse')
 
@@ -155,7 +148,7 @@ class VDatum:
         points = self._reader.read_bathymetry(filename)
 
         if 'to_horiz_key' in instructions:
-            utm_zone = instructions['from_horiz_key']
+            utm_zone = int(instructions['from_horiz_key'])
         if 'from_vert_key' in instructions:
             vertical_datum = instructions['from_vert_key']
 
