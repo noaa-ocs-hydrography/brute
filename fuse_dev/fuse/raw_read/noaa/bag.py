@@ -349,12 +349,19 @@ class BAGRawReader(RawReader):
 
         """
         meta = {}
+        found = False
         root, name = _os.path.split(infilename)
         if csv_exists:
             for survey in self.csv_data:
                 if 'bag_name' in survey:
                     if survey['bag_name'] == name:
+                        found = True
                         meta = {**survey, **meta}
+            if not found:
+                meta['interpolate'] = False
+        else:
+            _logging.warning(f'No CSV Metadata available for: {name}')
+            meta['interpolate'] = False
         return meta
 
     def _from_csv(self) -> dict:
@@ -416,9 +423,9 @@ class BAGRawReader(RawReader):
                                     bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
                             else:
                                 bag_meta[meta_field] = line[assignment]
-                    if 'bathymetry' in bag_meta and 'coverage' in bag_meta:
+                    if 'bathymetry' in bag_meta and 'complete_coverage' in bag_meta:
                         bathymetry = bag_meta['bathymetry']
-                        coverage = bag_meta['coverage']
+                        coverage = bag_meta['complete_coverage']
                         if bathymetry and coverage:
                             interpolate = False
                         elif bathymetry and not coverage:

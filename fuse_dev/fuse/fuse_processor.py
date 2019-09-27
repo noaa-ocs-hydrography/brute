@@ -244,7 +244,7 @@ class FuseProcessor:
                 self._read_type = 'bag'
             else:
                 raise ValueError('reader type not implemented')
-        except:
+        except ValueError:
             raise ValueError("No reader type found in the configuration file.")
 
     def _set_data_transform(self):
@@ -344,6 +344,9 @@ class FuseProcessor:
             msg = f'Not all quality metadata was found.  Using default values: {default}'
             self.logger.log(_logging.DEBUG, msg)
             meta = {**default, **meta}
+        else:
+            msg = f'All quality metadata was found.'
+            self.logger.log(_logging.DEBUG, msg)
         # write the metadata
         self._meta_obj.write_meta_record(meta)
         self._close_log()
@@ -675,6 +678,8 @@ class FuseProcessor:
 
         if not feature_ready:
             self.logger.log(_logging.DEBUG, 'Quality metadata for features is not yet available.')
+        else:
+            self.logger.log(_logging.DEBUG, 'Quality metadata for features was found')
 
         # check the uncertainty metadata
         vert_uncert_ready = 'vert_uncert_fixed' in metadata and 'vert_uncert_vari' in metadata
@@ -682,6 +687,8 @@ class FuseProcessor:
 
         if not vert_uncert_ready or not horiz_uncert_ready:
             self.logger.log(_logging.DEBUG, 'Quality metadata for uncertainty is not yet available.')
+        else:
+            self.logger.log(_logging.DEBUG, 'Quality metadata for uncertainty was found')
 
         # check the coverage
         coverage_ready = 'complete_coverage' in metadata and 'bathymetry' in metadata
