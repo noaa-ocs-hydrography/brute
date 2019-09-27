@@ -412,7 +412,7 @@ class BAGRawReader(RawReader):
                                     bag_meta[meta_field] = line[assignment]
                                 elif len(line[assignment]) == 11:
                                     bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
-                                elif len(line[assignment]) == 15:
+                                elif len(line[assignment]) == 13:
                                     bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
                             else:
                                 bag_meta[meta_field] = line[assignment]
