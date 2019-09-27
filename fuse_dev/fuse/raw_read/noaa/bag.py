@@ -13,6 +13,7 @@ a general sense, and also for specific S57 needs.
 """
 
 import csv as _csv
+import datetime as _datetime
 import logging as _logging
 import os as _os
 import re as _re
@@ -408,11 +409,26 @@ class BAGRawReader(RawReader):
                                 if line[assignment] in vert_datum.keys():
                                     datum_info['from_vert_key'] = line[assignment]
                             elif meta_field in ('start_date', 'end_date'):
-
+                                if len(line[assignment]) == 8:
+                                    bag_meta[meta_field] = line[assignment]
+                                else:
+                                    bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
                             else:
                                 bag_meta[meta_field] = line[assignment]
-                    if 'bathymetry' in bag_meta:
-                        bag_meta['interpolate'] = False if bag_meta['bathymetry'] else True
+                    if 'bathymetry' in bag_meta and 'coverage' in bag_meta:
+                        bathymetry = bag_meta['bathymetry']
+                        coverage = bag_meta['coverage']
+                        if bathymetry and coverage:
+                            interpolate = False
+                        elif bathymetry and not coverage:
+                            interpolate = False
+                        elif not bathymetry and coverage:
+                            interpolate = True
+                        elif not bathymetry and not coverage:
+                            interpolate = True
+                        bag_meta['interpolate'] = interpolate
+                    else:
+                        bag_meta['interpolate'] = False
                     meta.append(bag_meta)
                 index += 1
             opened.close()
@@ -460,7 +476,7 @@ class BAGRawReader(RawReader):
                                  _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.tfw', '.gpkg')]
         exts = [_os.path.splitext(support_file)[1].lower() for support_file in dir_files if
                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
-        meta['interpolate'] = len(exts) > 0
+#        meta['interpolate'] = len(exts) > 0
         print(meta['support_files'])
         return meta
 
