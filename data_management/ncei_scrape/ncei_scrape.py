@@ -635,6 +635,7 @@ def main(pb=None):
     survey_history = survey_list()
 
     for region in regions:
+        print(f"{region['Processing Branch']}_{region['Region']}")
         region_poly = os.path.join(parent_dir, region['Shape'])
         bounds = region_bounds(region_poly)
         objectIDs, bagNum = survey_objectID_query(bounds, 0)
