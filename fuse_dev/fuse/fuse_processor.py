@@ -669,7 +669,7 @@ class FuseProcessor:
 
         # check the feature metadata
         if 'feat_detect' in metadata:
-            if metadata['feat_detect']:
+            if metadata['feat_detect'].upper() == 'TRUE':
                 feature_ready = 'feat_least_depth' in metadata and 'feat_size' in metadata
             else:
                 feature_ready = True
@@ -692,7 +692,12 @@ class FuseProcessor:
 
         # check the coverage
         coverage_ready = 'complete_coverage' in metadata and 'bathymetry' in metadata
-
+        
+        if not coverage_ready:
+            self.logger.log(_logging.DEBUG, 'Coverage metadata is not yet available.')
+        else:
+            self.logger.log(_logging.DEBUG, 'Coverage metadata was found')
+        
         return feature_ready and vert_uncert_ready and horiz_uncert_ready and coverage_ready
 
     def _date_metadata_ready(self, metadata):
