@@ -96,11 +96,15 @@ csv_to_meta = {'Survey': 'survey',
                'Bag File Name':  'bag_name',
                'Reviewer': 'reviewer',
                'Sensitive? Y/N': 'sensitive',
+               'Sensitive? (Y/N)': 'sensitive',
                'Survey Start Date': 'start_date',
                'Survey End Date': 'end_date',
+               'Processing Branch': 'branch',
                'Source data type (MB)': 'mb_data',
+               'Source data type (MBES)': 'mb_data',
                'Source data type (SSS)': 'sss_data',
                'Source data type (VB)': 'vb_data',
+               'Source data type (SB)': 'sb_data',
                'Feature Detection Capability (Y/N)': 'feat_detect',
                'Features Delivered (Y/N)': 'feat_delivered',
                'Least depth of features detected(Y/N)': 'feat_least_depth',
@@ -112,6 +116,7 @@ csv_to_meta = {'Survey': 'survey',
                'Horizontal position uncertainty (fixed)': 'horiz_uncert_fixed',
                'Horizontal position uncertainty (variable)': 'horiz_uncert_vari',
                'Vertical Uncertainty (Fixed)': 'vert_uncert_fixed',
+               'Vertical Uncertainty (fixed)': 'vert_uncert_fixed',
                'Vertical Uncertainty (variable)': 'vert_uncert_vari',
                'Horizontal datum': 'from_horiz_datum',
                'Vertical datum': 'from_vert_datum',
@@ -385,24 +390,36 @@ class BAGRawReader(RawReader):
                 index = 0
                 for line in read:
                     if index == 0:
-                        fields.extend(line)
+                        fields.extend(field for field in line if field != '')
                     else:
                         bag_meta = {}
                         for assignment in range(len(fields)):
                             if line[assignment] != '':
-                                meta_field = csv_to_meta[fields[assignment].strip()]
+                                try:
+                                    meta_field = csv_to_meta[fields[assignment].strip()]
+                                except KeyError:
+                                    _logging.warning(f'Unable to parse {fields[assignment]}')
+                                    index += 1
+                                    continue
                                 if meta_field in ('sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect', 'feat_delivered', 'feat_least_depth', 'complete_coverage', 'bathymetry'):
                                     if line[assignment].lower() in ('n/a', 'na', 'no', 'n'):
                                         bag_meta[meta_field] = 'False'
                                     elif line[assignment].lower() in ('y', 'yes'):
                                         bag_meta[meta_field] = 'True'
                                 elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
-                                    if 'cm' in line[assignment]:
-                                        bag_meta[meta_field]= float(_re.sub(r'\D', '', line[assignment]))/100
-                                    elif 'm' in line[assignment]:
-                                        bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
+                                    try:
+                                        if 'cm' in line[assignment]:
+                                            bag_meta[meta_field]= float(_re.sub(r'\D', '', line[assignment]))/100
+                                        elif 'm' in line[assignment]:
+                                            bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
+                                    except ValueError:
+                                        _logging.warning(f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
                                 elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
-                                    bag_meta[meta_field]= float(_re.sub(r'\D', '', line[assignment]))/100
+                                    try:
+                                        bag_meta[meta_field]= float(_re.sub(r'\D', '', line[assignment]))/100
+                                    except ValueError:
+
+                                        _logging.warning(f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
                                 elif meta_field in ('from_horiz_datum'):
                                     splits = line[assignment].split(' ')
                                     datum_info = {}
@@ -412,7 +429,7 @@ class BAGRawReader(RawReader):
                                         datum_info['from_horiz_key'] = _re.sub('\D', '', splits[2])
                                         bag_meta = {**bag_meta, **datum_info}
                                     except IndexError:
-                                        _logging.warning(f'Unable to add datum information due to incorrect formatting: {line[1]}, {line[assignment]}')
+                                        _logging.warning(f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
     #                                    raise RuntimeError(f'Unable to add datum information due to incorrect formatting: {line[2]}')
                                 elif meta_field in ('from_vert_datum'):
                                     if line[assignment] in vert_datum.keys():
