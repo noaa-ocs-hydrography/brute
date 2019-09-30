@@ -125,7 +125,7 @@ class VDatum:
         if instructions['read_type'] == 'ehydro':
             return self.__read_points(filename, instructions)
         elif instructions['read_type'] == 'bag':
-            return self.read_bathymetry(filename, instructions)
+            return self.__read_bag_bathy(filename, instructions)
         else:
             raise ValueError('Reader type not implemented')
 
