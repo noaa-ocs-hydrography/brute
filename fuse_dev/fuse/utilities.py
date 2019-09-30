@@ -540,7 +540,7 @@ def georeference_to_affine(origin: (float, float), resolution: (float, float), r
 
 def bounds_from_opposite_corners(corner_1: (float, float), corner_2: (float, float)) -> (float, float, float, float):
     """
-    Get bounds from two opposite XY points at the corners of the bounding box.
+    Get bounds from two opposite XY points.
 
     Parameters
     ----------
