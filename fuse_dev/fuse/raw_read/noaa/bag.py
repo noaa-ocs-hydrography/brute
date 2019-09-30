@@ -12,8 +12,10 @@ a general sense, and also for specific S57 needs.
 
 """
 
+import ast as _ast
 import csv as _csv
 import datetime as _datetime
+import glob
 import logging as _logging
 import os as _os
 import re as _re
@@ -34,8 +36,8 @@ except ModuleNotFoundError as e:
 
 try:
     prog_loc = _os.path.dirname(_os.path.abspath(__file__))
-    csv_loc = _os.path.join(prog_loc, r'additional_files\BAG_Metadata.csv')
-    csv_exists = _os.path.isfile(csv_loc)
+    csv_files = glob(_os.path.join(prog_loc, 'additional_files', '*.csv'))
+    csv_exists = True if len(csv_files) > 0 else False
 except FileNotFoundError as e:
     csv_exists = False
     print(f"{e}")
@@ -376,70 +378,74 @@ class BAGRawReader(RawReader):
         """
         meta = []
         if csv_exists:
-            opened = open(csv_loc, 'r', newline='')
-            read = _csv.reader(opened)
-            fields = []
-            index = 0
-            for line in read:
-                if index == 0:
-                    fields.extend(line)
-                else:
-                    bag_meta = {}
-                    for assignment in range(len(fields)):
-                        if line[assignment] != '':
-                            meta_field = csv_to_meta[fields[assignment].strip()]
-                            if meta_field in ('sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect', 'feat_delivered', 'feat_least_depth', 'complete_coverage', 'bathymetry'):
-                                if line[assignment].lower() in ('n/a', 'no', 'n'):
-                                    bag_meta[meta_field] = False
-                                elif line[assignment].lower() in ('y', 'yes'):
-                                    bag_meta[meta_field] = True
-                            elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
-                                if 'cm' in line[assignment]:
-                                    bag_meta[meta_field]= float(_re.sub(r'\D', '', line[assignment]))/100
-                                elif 'm' in line[assignment]:
-                                    bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
-                            elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
-                                bag_meta[meta_field]= float(_re.sub(r'\D', '', line[assignment]))/100
-                            elif meta_field in ('from_horiz_datum'):
-                                splits = line[assignment].split(' ')
-                                datum_info = {}
-                                try:
-                                    datum_info['from_horiz_frame'] = splits[0]
-                                    datum_info['from_horiz_type'] = splits[1]
-                                    datum_info['from_horiz_key'] = _re.sub('\D', '', splits[2])
-                                    bag_meta = {**bag_meta, **datum_info}
-                                except IndexError:
-                                    _logging.warning(f'Unable to add datum information due to incorrect formatting: {line[1]}, {line[assignment]}')
-#                                    raise RuntimeError(f'Unable to add datum information due to incorrect formatting: {line[2]}')
-                            elif meta_field in ('from_vert_datum'):
-                                if line[assignment] in vert_datum.keys():
-                                    datum_info['from_vert_key'] = line[assignment]
-                            elif meta_field in ('start_date', 'end_date'):
-                                if len(line[assignment]) == 8:
-                                    bag_meta[meta_field] = line[assignment]
-                                elif len(line[assignment]) == 11:
-                                    bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
-                                elif len(line[assignment]) == 13:
-                                    bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
-                            else:
-                                bag_meta[meta_field] = line[assignment]
-                    if 'bathymetry' in bag_meta and 'complete_coverage' in bag_meta:
-                        bathymetry = bag_meta['bathymetry']
-                        coverage = bag_meta['complete_coverage']
-                        if bathymetry and coverage:
-                            interpolate = False
-                        elif bathymetry and not coverage:
-                            interpolate = False
-                        elif not bathymetry and coverage:
-                            interpolate = True
-                        elif not bathymetry and not coverage:
-                            interpolate = True
-                        bag_meta['interpolate'] = interpolate
+            for csv_file in csv_files:
+                opened = open(csv_file, 'r', newline='')
+                read = _csv.reader(opened)
+                fields = []
+                index = 0
+                for line in read:
+                    if index == 0:
+                        fields.extend(line)
                     else:
-                        bag_meta['interpolate'] = False
-                    meta.append(bag_meta)
-                index += 1
-            opened.close()
+                        bag_meta = {}
+                        for assignment in range(len(fields)):
+                            if line[assignment] != '':
+                                meta_field = csv_to_meta[fields[assignment].strip()]
+                                if meta_field in ('sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect', 'feat_delivered', 'feat_least_depth', 'complete_coverage', 'bathymetry'):
+                                    if line[assignment].lower() in ('n/a', 'na', 'no', 'n'):
+                                        bag_meta[meta_field] = 'False'
+                                    elif line[assignment].lower() in ('y', 'yes'):
+                                        bag_meta[meta_field] = 'True'
+                                elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
+                                    if 'cm' in line[assignment]:
+                                        bag_meta[meta_field]= float(_re.sub(r'\D', '', line[assignment]))/100
+                                    elif 'm' in line[assignment]:
+                                        bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
+                                elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
+                                    bag_meta[meta_field]= float(_re.sub(r'\D', '', line[assignment]))/100
+                                elif meta_field in ('from_horiz_datum'):
+                                    splits = line[assignment].split(' ')
+                                    datum_info = {}
+                                    try:
+                                        datum_info['from_horiz_frame'] = splits[0]
+                                        datum_info['from_horiz_type'] = splits[1]
+                                        datum_info['from_horiz_key'] = _re.sub('\D', '', splits[2])
+                                        bag_meta = {**bag_meta, **datum_info}
+                                    except IndexError:
+                                        _logging.warning(f'Unable to add datum information due to incorrect formatting: {line[1]}, {line[assignment]}')
+    #                                    raise RuntimeError(f'Unable to add datum information due to incorrect formatting: {line[2]}')
+                                elif meta_field in ('from_vert_datum'):
+                                    if line[assignment] in vert_datum.keys():
+                                        datum_info['from_vert_key'] = line[assignment]
+                                elif meta_field in ('start_date', 'end_date'):
+                                    if len(line[assignment]) == 8:
+                                        bag_meta[meta_field] = line[assignment]
+                                    elif len(line[assignment]) == 11:
+                                        bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
+                                    elif len(line[assignment]) == 13:
+                                        bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
+                                else:
+                                    bag_meta[meta_field] = line[assignment]
+                        if 'bathymetry' in bag_meta and 'complete_coverage' in bag_meta:
+                            bathymetry = _ast.literal_eval(bag_meta['bathymetry'])
+                            coverage = _ast.literal_eval(bag_meta['complete_coverage'])
+                            if bathymetry and coverage:
+                                interpolate = False
+                            elif bathymetry and not coverage:
+                                interpolate = False
+                            elif not bathymetry and coverage:
+                                interpolate = True
+                            elif not bathymetry and not coverage:
+                                if 'sss_data' in bag_meta:
+                                    interpolate = True if _ast.literal_eval(bag_meta['sss_data']) else False
+                                else:
+                                    interpolate = False
+                            bag_meta['interpolate'] = interpolate
+                        else:
+                            bag_meta['interpolate'] = False
+                        meta.append(bag_meta)
+                    index += 1
+                opened.close()
         return meta
 
     def _size_finder(self, filepath: str) -> int:

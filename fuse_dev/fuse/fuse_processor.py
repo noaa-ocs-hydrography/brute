@@ -475,8 +475,10 @@ class FuseProcessor:
                     self._meta_obj.write_meta_record(meta_interp)
 
                 elif interpolate == 'False':
-                    print(f'{input_directory} - No interpolation required')
+                    self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
+                    del dataset
             else:
+                del dataset
                 raise ValueError('metadata has no "interpolate" value')
         else:
             self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
@@ -692,12 +694,12 @@ class FuseProcessor:
 
         # check the coverage
         coverage_ready = 'complete_coverage' in metadata and 'bathymetry' in metadata
-        
+
         if not coverage_ready:
             self.logger.log(_logging.DEBUG, 'Coverage metadata is not yet available.')
         else:
             self.logger.log(_logging.DEBUG, 'Coverage metadata was found')
-        
+
         return feature_ready and vert_uncert_ready and horiz_uncert_ready and coverage_ready
 
     def _date_metadata_ready(self, metadata):
