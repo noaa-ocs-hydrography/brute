@@ -15,7 +15,7 @@ a general sense, and also for specific S57 needs.
 import ast as _ast
 import csv as _csv
 import datetime as _datetime
-import glob
+from glob import glob as _glob
 import logging as _logging
 import os as _os
 import re as _re
@@ -36,7 +36,7 @@ except ModuleNotFoundError as e:
 
 try:
     prog_loc = _os.path.dirname(_os.path.abspath(__file__))
-    csv_files = glob(_os.path.join(prog_loc, 'additional_files', '*.csv'))
+    csv_files = _glob(_os.path.join(prog_loc, 'additional_files', '*.csv'))
     csv_exists = True if len(csv_files) > 0 else False
 except FileNotFoundError as e:
     csv_exists = False
