@@ -59,9 +59,7 @@ class DatumTransformer:
         gdal.Dataset, bool
             GDAL point cloud and boolean of whether data was reprojected
         """
-
-        if any(metadata[self._from_datum_info[index]] != metadata[self._to_datum_info[index]] for index in
-               range(len(self._from_datum_info))):
+        if any(metadata[self._from_datum_info[index]].lower() != metadata[self._to_datum_info[index]].lower() for index in range(len(self._from_datum_info))):
             if type(self._reader) is BAGRawReader:
                 metadata['interpolate'] = 'False'
                 return self._engine.create(filename, metadata), metadata, False
