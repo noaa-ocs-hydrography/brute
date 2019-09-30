@@ -17,7 +17,7 @@ import rasterio
 import rasterio.crs
 from fuse.utilities import bounds_from_opposite_corners, gdal_crs_wkt, raster_bounds, array_coverage, georeference_to_affine, alpha_hull, \
     raster_edge_points, vectorize_geoarray, geoarray_to_points, gdal_to_xyz, shape_from_cell_size, raster_mask_like, apply_raster_mask, \
-    plot_raster, raster_mask
+    plot_raster, raster_mask, overwrite_raster
 from matplotlib import pyplot
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
@@ -109,6 +109,7 @@ class Interpolator:
 
             elevation_region = alpha_hull(raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)[:, :2],
                                           self.window_size)
+            # elevation_region = alpha_hull(vertices(elevation_region))
             sidescan_region = vectorize_geoarray(sidescan_coverage, transform, False)
 
             if not sidescan_region.is_valid:
@@ -189,6 +190,9 @@ class Interpolator:
         # mask the interpolated data to the interpolation region
         interpolation_mask = raster_mask_like(self.interpolation_region, interpolated_dataset)
         interpolated_dataset = apply_raster_mask(interpolated_dataset, interpolation_mask)
+
+        if self.is_raster:
+            overwrite_raster(self.dataset, interpolated_dataset)
 
         if plot:
             self.plot(interpolated_dataset, method, show=True)
@@ -614,7 +618,6 @@ def _combined_coverage_within_window(raster_filenames: [str], origin: (float, fl
     ne_corner = bounds[2:]
 
     output_coverage_masks = []
-
     for raster_filename in raster_filenames:
         try:
             with rasterio.open(raster_filename) as raster:
@@ -640,9 +643,6 @@ def _combined_coverage_within_window(raster_filenames: [str], origin: (float, fl
                 resolution_ratio = coverage_resolution / resolution
                 if numpy.any(resolution_ratio != 1):
                     coverage_mask = zoom(coverage_mask, zoom=resolution_ratio, order=3, prefilter=False)
-
-                # clip resampled coverage data to the bounds of the BAG
-                output_array = numpy.full(shape, 0)
 
                 origin_index_delta = numpy.round((origin - coverage_origin) / resolution).astype(int)
                 opposite_origin_index_delta = numpy.round((opposite_origin - coverage_origin) / resolution).astype(int)
@@ -673,6 +673,7 @@ def _combined_coverage_within_window(raster_filenames: [str], origin: (float, fl
                     opposite_origin_index_delta[1] = coverage_mask.shape[0]
 
                 # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
+                output_array = numpy.full(shape, 0)
                 output_array[output_array_index_slices[0], output_array_index_slices[1]] = coverage_mask[origin_index_delta[1]:
                                                                                                          opposite_origin_index_delta[1],
                                                                                            origin_index_delta[0]:

@@ -133,6 +133,17 @@ def raster_edge_points(data: numpy.array, origin: (float, float), resolution: (f
     return geoarray_to_points(numpy.where(horizontal_edges | vertical_edges, data, nodata), origin, resolution, nodata)
 
 
+def vertices(region: MultiPolygon):
+    if type(region) is Polygon:
+        return numpy.stack(region.exterior.xy, axis=1)
+    else:
+        points = []
+        for polygon in region:
+            points.append(numpy.stack(polygon.exterior.xy, axis=1))
+
+        return numpy.concatenate(points, axis=0)
+
+
 def alpha_hull(points: numpy.array, max_length: float = None) -> MultiPolygon:
     """
     Calculate the alpha shape (concave hull) of the given points.
@@ -285,6 +296,23 @@ def apply_raster_mask(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: floa
         raster_band.WriteArray(raster_array)
 
     return raster
+
+
+def overwrite_raster(from_raster: gdal.Dataset, onto_raster: gdal.Dataset):
+    for band_index in range(1, from_raster.RasterCount + 1):
+        from_band = from_raster.GetRasterBand(band_index)
+        onto_band = onto_raster.GetRasterBand(band_index)
+
+        from_nodata = from_band.GetNoDataValue()
+        onto_nodata = onto_band.GetNoDataValue()
+
+        from_values = from_band.ReadAsArray()
+        onto_values = onto_band.ReadAsArray()
+
+        onto_band.WriteArray(numpy.where(from_values != from_nodata, from_values, onto_values))
+        del from_band, onto_band
+
+    return onto_raster
 
 
 def shape_from_cell_size(resolution: (float, float), bounds: (float, float, float, float)) -> ((int, int), (float, float, float, float)):
