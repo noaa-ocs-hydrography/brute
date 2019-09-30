@@ -468,8 +468,9 @@ class FuseProcessor:
                         meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
-                        print(error)
-                        self.logger.warning(str(error))
+                        message = f'interpolation error {error}'
+                        print(message)
+                        self.logger.warning(message)
                         meta_interp['interpolated'] = False
 
                     self._meta_obj.write_meta_record(meta_interp)
@@ -648,11 +649,7 @@ class FuseProcessor:
             whether metadata has all datum fields
         """
 
-        for key in [entry for entry in FuseProcessor._datums if entry != 'to_horiz_key']:
-            if key not in metadata:
-                return False
-        else:
-            return True
+        return all(key in metadata for key in FuseProcessor._datums if key != 'to_horiz_key')
 
     def _quality_metadata_ready(self, metadata):
         """
@@ -669,7 +666,7 @@ class FuseProcessor:
 
         # check the feature metadata
         if 'feat_detect' in metadata:
-            if metadata['feat_detect'].upper() == 'TRUE':
+            if metadata['feat_detect']:
                 feature_ready = 'feat_least_depth' in metadata and 'feat_size' in metadata
             else:
                 feature_ready = True
