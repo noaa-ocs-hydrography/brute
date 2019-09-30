@@ -73,7 +73,7 @@ class VDatum:
 
         self._logger = _logging.getLogger('fuse')
 
-    def translate(self, filename: str, instructions: dict, reader: str) -> gdal.Dataset:
+    def translate(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
         Translate the provided filename from the provided in datums to the out
         datums and return a gdal object.
@@ -96,7 +96,7 @@ class VDatum:
         if not _has_required_instructions(instructions):
             instructions['interpolate'] = 'False'
             raise ValueError('The required fields for transforming datums are not available')
-        if reader.upper() == 'BAG':
+        if instructions['read_type'].upper() == 'BAG':
             dataset, utm_zone = self.__translate_bag(filename, instructions)
         else:
             points, utm_zone = self.__translate_xyz(filename, instructions)
