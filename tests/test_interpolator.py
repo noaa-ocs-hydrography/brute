@@ -75,8 +75,12 @@ class TestRasterLinear(unittest.TestCase):
         output_path = process_NOAA_raster('H12525', 'linear', 'bag')
         assert os.path.exists(output_path)
 
-    def test_issue_survey(self):
+    def test_issue_1(self):
         output_path = process_NOAA_raster('F00521', 'linear', 'bag')
+        assert os.path.exists(output_path)
+
+    def test_issue_2(self):
+        output_path = process_NOAA_raster('D00223', 'linear', 'bag')
         assert os.path.exists(output_path)
 
 
