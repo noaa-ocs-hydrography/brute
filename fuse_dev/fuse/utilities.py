@@ -197,6 +197,7 @@ def raster_mask(region: Polygon, shape: (float, float), resolution: (float, floa
 
     Returns
     -------
+    gdal.Dataset
         GDAL raster dataset
     """
 
@@ -267,6 +268,7 @@ def apply_raster_mask(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: floa
 
     Returns
     -------
+    gdal.Dataset
         GDAL raster dataset with mask applied
     """
 
@@ -300,6 +302,7 @@ def shape_from_cell_size(resolution: (float, float), bounds: (float, float, floa
 
     Returns
     -------
+    (int, int), (float, float, float, float)
         shape and bounds (rounded to cell)
     """
 
@@ -331,6 +334,7 @@ def epsg_to_wkt(epsg: int) -> str:
 
     Returns
     -------
+    str
         well-known text of CRS
     """
 
@@ -352,6 +356,7 @@ def gdal_crs_wkt(dataset: gdal.Dataset, layer: int = 0) -> str:
 
     Returns
     -------
+    str
         well-known text of CRS
     """
 
@@ -382,6 +387,7 @@ def array_coverage(array: numpy.array, nodata: float = None) -> numpy.array:
 
     Returns
     -------
+    numpy.array
         array of booleans indicating where data exists
     """
 
@@ -416,6 +422,7 @@ def vectorize_geoarray(array: numpy.array, transform: Affine, nodata: float = No
 
     Returns
     -------
+    MultiPolygon
         Shapely polygon or multipolygon of coverage extent
     """
 
@@ -437,6 +444,7 @@ def vectorize_raster(raster: Union[gdal.Dataset, str], band: int = 1) -> MultiPo
 
     Returns
     -------
+    MultiPolygon
         Shapely multipolygon of coverage extent
     """
 
@@ -530,6 +538,26 @@ def georeference_to_affine(origin: (float, float), resolution: (float, float), r
     return Affine.translation(*origin) * Affine.scale(*resolution) * Affine.rotation(rotation[0])
 
 
+def bounds_from_opposite_corners(corner_1: (float, float), corner_2: (float, float)) -> (float, float, float, float):
+    """
+    Get bounds from two opposite XY points at the corners of the bounding box.
+
+    Parameters
+    ----------
+    corner_1
+        XY point
+    corner_2
+        XY point
+
+    Returns
+    -------
+    float, float, float, float
+        min X, min Y, max X, max Y
+    """
+
+    return numpy.ravel(numpy.sort(numpy.stack((corner_1, corner_2), axis=0), axis=0))
+
+
 def raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
     """
     Get the bounds (grouped by dimension) of the given unrotated raster.
@@ -541,6 +569,7 @@ def raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
 
     Returns
     -------
+    float, float, float, float
         min X, min Y, max X, max Y
     """
 
@@ -553,14 +582,7 @@ def raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
     if numpy.any(rotation != 0):
         raise NotImplementedError('rotated rasters not supported')
 
-    opposite_origin = origin + numpy.flip(shape) * resolution
-
-    west = origin[0] if resolution[0] > 0 else opposite_origin[0]
-    south = origin[1] if resolution[1] > 0 else opposite_origin[1]
-    east = opposite_origin[0] if resolution[0] > 0 else origin[0]
-    north = opposite_origin[1] if resolution[1] > 0 else origin[1]
-
-    return numpy.array((west, south, east, north))
+    return bounds_from_opposite_corners(origin, origin + numpy.flip(shape) * resolution)
 
 
 def extent_from_bounds(bounds: (float, float, float, float)) -> (float, float, float, float):
@@ -574,6 +596,7 @@ def extent_from_bounds(bounds: (float, float, float, float)) -> (float, float, f
 
     Returns
     -------
+    float, float, float, float
         min X, max X, min Y, max Y
     """
 
