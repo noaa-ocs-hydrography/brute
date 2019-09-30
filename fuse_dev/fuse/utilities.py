@@ -304,10 +304,8 @@ def overwrite_raster(from_raster: gdal.Dataset, onto_raster: gdal.Dataset):
         onto_band = onto_raster.GetRasterBand(band_index)
 
         from_nodata = from_band.GetNoDataValue()
-        onto_nodata = onto_band.GetNoDataValue()
-
-        from_values = from_band.ReadAsArray()
-        onto_values = onto_band.ReadAsArray()
+        from_values = numpy.flip(from_band.ReadAsArray(), axis=0)
+        onto_values = numpy.flip(onto_band.ReadAsArray(), axis=0)
 
         onto_band.WriteArray(numpy.where(from_values != from_nodata, from_values, onto_values))
         del from_band, onto_band

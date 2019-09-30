@@ -192,7 +192,7 @@ class Interpolator:
         interpolated_dataset = apply_raster_mask(interpolated_dataset, interpolation_mask)
 
         if self.is_raster:
-            overwrite_raster(self.dataset, interpolated_dataset)
+            interpolated_dataset = overwrite_raster(self.dataset, interpolated_dataset)
 
         if plot:
             self.plot(interpolated_dataset, method, show=True)
