@@ -398,7 +398,7 @@ class FuseProcessor:
         self._meta_obj.write_meta_record(metadata)
         self._close_log()
 
-    def process(self, filename: str):
+    def process(self, filename: str) -> str:
         """
         Do the datum transformtion and interpolation.
 
@@ -407,12 +407,18 @@ class FuseProcessor:
         the data reader since there will be cases where we get full res data
         from the reader and interlation is not necessary.
 
+
+        TODO: need to add checks to make sure the metadata is ready. Perhaps this should be added to the metadata object?
+
         Parameters
         ----------
         filename
+            filename to process
 
-        TODO: need to add checks to make sure the metadata is ready.
-            Perhaps this should be added to the metadata object?
+        Returns
+        ----------
+        str
+            output filename
         """
         if self._read_type == 'ehydro':
             meta_entry = self._reader.name_gen(_os.path.basename(filename), '', sfx=None)
@@ -474,7 +480,7 @@ class FuseProcessor:
                         meta_interp['interpolated'] = False
 
                     self._meta_obj.write_meta_record(meta_interp)
-
+                    metadata.update(meta_interp)
                 elif interpolate == 'False':
                     print(f'{input_directory} - No interpolation required')
             else:
@@ -483,6 +489,8 @@ class FuseProcessor:
             self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
 
         self._close_log()
+
+        return metadata['to_filename']
 
     def post(self, filename):
         """
