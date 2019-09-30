@@ -98,8 +98,8 @@ class Interpolator:
 
             self.window_size = numpy.mean(window_scalar * numpy.abs(raster_resolution)) * 20
 
-            sidescan_coverage = _combined_coverage_within_window([raster_filename for raster_filename in sidescan_rasters if
-                                                                  '.tif' in raster_filename or '.gpkg' in raster_filename],
+            sidescan_coverage = _combined_coverage_within_window((raster_filename for raster_filename in sidescan_rasters if
+                                                                  '.tif' in raster_filename or '.gpkg' in raster_filename),
                                                                  raster_origin, raster_resolution, raster_shape)
             elevation_coverage = fuse.utilities.array_coverage(elevation_data, elevation_nodata)
 
