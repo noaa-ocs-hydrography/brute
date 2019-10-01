@@ -229,12 +229,22 @@ class Interpolator:
             nodata = self.nodata
 
         if self.is_raster:
+            elevation_band = self.dataset.GetRasterBand(self.index)
+            elevation_data = elevation_band.ReadAsArray()
+            elevation_nodata = elevation_band.GetNoDataValue()
+            del elevation_band
+
+            geotransform = self.dataset.GetGeoTransform()
+            origin = numpy.array((geotransform[0], geotransform[3]))
+            resolution = numpy.array((geotransform[1], geotransform[5]))
+
+            points = raster_edge_points(elevation_data, origin, resolution, elevation_nodata)
+
             # interpolate using SciPy griddata
             output_x, output_y = numpy.meshgrid(numpy.linspace(bounds[0], bounds[2], shape[1]),
                                                 numpy.linspace(bounds[1], bounds[3], shape[0]))
-            interpolated_values = numpy.flip(griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2], (output_x, output_y),
-                                                      method='linear', fill_value=nodata), axis=0)
-            geotransform = self.dataset.GetGeoTransform()
+            interpolated_values = numpy.flip(griddata((points[:, 0], points[:, 1]), points[:, 2], (output_x, output_y), method='linear',
+                                                      fill_value=nodata), axis=0)
         else:
             interpolated_raster = gdal.Grid('', self.dataset, format='MEM', width=shape[1], height=shape[0], outputBounds=bounds,
                                             algorithm=f'linear:radius=0:nodata={int(nodata)}')
