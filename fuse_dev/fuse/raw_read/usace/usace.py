@@ -60,9 +60,8 @@ class USACERawReader(RawReader):
 
         meta_supplement = {}
         meta_determine, filename = self._data_determination(meta_supplement, survey_folder)
-        basexyzname, suffix = self.name_gen(filename, ext='.xyz')
         meta_xml = self._parse_usace_xml(filename)
-        meta_xyz = self._parse_ehydro_xyz_header(basexyzname)
+        meta_xyz = self._parse_ehydro_xyz_header(filename)
         meta_filename = self._parse_filename(filename)
         meta_pickle = self._parse_pickle(filename)
         meta_date = self._parse_start_date(filename, {**meta_pickle, **meta_xyz, **meta_xml})
@@ -72,7 +71,7 @@ class USACERawReader(RawReader):
     def read_bathymetry(self, filename: str) -> _np.array:
         """
         Read the bathymetry and return an array of the xyz points.
-        
+
         If the z value is found to be 95% positive the z direction is reversed,
         making the assumption that we are dealing with bathymetry.
 
@@ -87,10 +86,10 @@ class USACERawReader(RawReader):
             A 2D array containing the complete list of points found in the
             input file
         """
-        
+
         bathy = self._parse_ehydro_xyz_bathy(filename)
         numpts = len(bathy)
-        # get the number that are 
+        # get the number that are
         idx = _np.nonzero(bathy[:,2] < 0)[0]
         numneg = float(len(idx))
         if numneg/numpts < 0.05:
@@ -348,7 +347,7 @@ class USACERawReader(RawReader):
         #        data = self._parse_ehydro_xyz_bathy(infilename)
         ...
 
-    def _parse_ehydro_xyz_header(self, infilename: str, meta_source: str = 'xyz', default_meta: str = '') -> dict:
+    def _parse_ehydro_xyz_header(self, filename: str, meta_source: str = 'xyz', default_meta: str = '') -> dict:
         """
         Parse an USACE eHydro file for the available meta data.
 
@@ -375,29 +374,34 @@ class USACERawReader(RawReader):
         dict
             The metadata found via this method
         """
-
-        name_sections = ('projid', 'uniqueid', 'subprojid', 'start_date',
-                         'statuscode', 'optional')
-        name_meta = self._parse_filename(infilename)
-        if meta_source == 'xyz':
-            file_meta = self._parse_xyz_header(infilename, mode=self.district)
-        elif meta_source == 'xml':
-            file_meta = self._parse_ehydro_xml(infilename)
-        default_meta = self._load_default_metadata(infilename, default_meta)
-        merged_meta = {**default_meta, **name_meta, **file_meta}
-        if 'from_horiz_unc' in merged_meta:
-            if merged_meta['from_horiz_units'] == 'US Survey Foot':
-                val = self.survey_feet_per_meter * float(merged_meta['from_horiz_unc'])
-                merged_meta['horiz_uncert'] = val
-        if 'from_vert_unc' in merged_meta:
-            if merged_meta['from_vert_units'] == 'US Survey Foot':
-                val = self.survey_feet_per_meter * float(merged_meta['from_vert_unc'])
-                merged_meta['vert_uncert_fixed'] = val
-                merged_meta['vert_uncert_vari'] = 0
-        sorind = '_'.join([name_meta[key] for key in name_sections if key in name_meta])
-        merged_meta['source_indicator'] = f'US,US,graph,{sorind}'
-        # merged_meta['script_version'] = __version__
-        return merged_meta
+        meta = {}
+        for file_ext in ('.xyz', '_A.xyz', '_FULL.xyz'):
+            infilename, suffix = self.name_gen(filename, ext=file_ext)
+            if not _os.path.isfile(infilename):
+                continue
+            name_sections = ('projid', 'uniqueid', 'subprojid', 'start_date',
+                             'statuscode', 'optional')
+            name_meta = self._parse_filename(infilename)
+            sorind = '_'.join([name_meta[key] for key in name_sections if key in name_meta])
+            name_meta['source_indicator'] = f'US,US,graph,{sorind}'
+            if meta_source == 'xyz':
+                file_meta = self._parse_xyz_header(infilename, mode=self.district)
+            elif meta_source == 'xml':
+                file_meta = self._parse_ehydro_xml(infilename)
+            default_meta = self._load_default_metadata(infilename, default_meta)
+            merged_meta = {**default_meta, **name_meta, **file_meta}
+            if 'from_horiz_unc' in merged_meta:
+                if merged_meta['from_horiz_units'] == 'US Survey Foot':
+                    val = self.survey_feet_per_meter * float(merged_meta['from_horiz_unc'])
+                    merged_meta['horiz_uncert'] = val
+            if 'from_vert_unc' in merged_meta:
+                if merged_meta['from_vert_units'] == 'US Survey Foot':
+                    val = self.survey_feet_per_meter * float(merged_meta['from_vert_unc'])
+                    merged_meta['vert_uncert_fixed'] = val
+                    merged_meta['vert_uncert_vari'] = 0
+            # merged_meta['script_version'] = __version__
+            meta = {**meta, **merged_meta}
+        return meta
 
     def _parse_filename(self, infilename: str) -> dict:
         """
