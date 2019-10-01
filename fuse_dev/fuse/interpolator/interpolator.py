@@ -111,7 +111,6 @@ class Interpolator:
 
             elevation_region = alpha_hull(raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)[:, :2],
                                           self.window_size)
-            # elevation_region = alpha_hull(vertices(elevation_region))
             sidescan_region = vectorize_geoarray(sidescan_coverage, transform, False)
 
             if not sidescan_region.is_valid:
@@ -119,7 +118,6 @@ class Interpolator:
 
             self.interpolation_region = elevation_region.intersection(sidescan_region)
 
-            # self.interpolation_region = _vectorize_geoarray(sidescan_coverage | elevation_coverage, transform, False)
             self.points = geoarray_to_points(numpy.where(sidescan_coverage, elevation_data, elevation_nodata), raster_origin,
                                              raster_resolution, elevation_nodata)
             self.uncertainty_points = geoarray_to_points(numpy.where(sidescan_coverage, uncertainty_data, elevation_nodata), raster_origin,
