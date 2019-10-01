@@ -90,13 +90,13 @@ class USACERawReader(RawReader):
         bathy = self._parse_ehydro_xyz_bathy(filename)
         numpts = len(bathy)
         # get the number that are
-        idx = _np.nonzero(bathy[:,2] < 0)[0]
+        idx = _np.nonzero(bathy[:, 2] < 0)[0]
         numneg = float(len(idx))
-        if numneg/numpts < 0.05:
-            bathy[:,2] *= -1
+        if numneg / numpts < 0.05:
+            bathy[:, 2] *= -1
             msg = f'{filename} appears to be positive down, changing orientation'
             self._logger.log(_logging.DEBUG, msg)
-        elif numneg/numpts > 0.95:
+        elif numneg / numpts > 0.95:
             pass
         else:
             raise ValueError(f'The sense of positive vertical direction for {filename} is ambiguous!')
@@ -273,7 +273,7 @@ class USACERawReader(RawReader):
         else:
             return base
 
-    def _xyz_precedence(self, file_list: [str]) -> str:
+    def _xyz_precedence(self, file_list: [str]) -> (str, bool):
         xyz_scores = {}
         file_list = [xyz for xyz in file_list if _os.path.splitext(xyz)[1].lower() == '.xyz']
         for xyz in file_list:
@@ -286,9 +286,7 @@ class USACERawReader(RawReader):
                 xyz_scores[1] = xyz
 
         max_score = max(list(xyz_scores.keys()))
-        interpolate = False if max_score in (3, 2) else True
-
-        return xyz_scores[max_score], interpolate
+        return xyz_scores[max_score], max_score not in (3, 2)
 
     def _data_determination(self, meta_dict: dict, survey_folder: str) -> dict:
         """
