@@ -1,4 +1,4 @@
-Survey,Bag File Name,Reviewer,Sensitive? Y/N ,Survey Start Date,Survey End Date,Source data type (MB),Source data type (SSS),Source data type (VB),Feature Detection Capability (Y/N),Features Delivered (Y/N),Least depth of features detected(Y/N),Size of features detected (m),Full Coverage achieved (Y/N),Full bathymetric coverage achieved (Y/N),Temporal variability (1-5),Data Assessment (1-3),Horizontal position uncertainty (fixed),Horizontal position uncertainty (variable),Vertical Uncertainty (Fixed),Vertical Uncertainty (variable),Horizontal datum,Vertical datum
+Survey,Bag File Name,Reviewer,Sensitive? (Y/N) ,Survey Start Date,Survey End Date,Source data type (MBES),Source data type (SSS),Source data type (SB),Feature Detection Capability (Y/N),Features Delivered (Y/N),Least depth of features detected(Y/N),Size of features detected (m),Full Coverage achieved (Y/N),Full bathymetric coverage achieved (Y/N),Temporal variability (1-5),Data Assessment (1-3),Horizontal position uncertainty (fixed),Horizontal position uncertainty (variable),Vertical Uncertainty (fixed),Vertical Uncertainty (variable),Horizontal datum,Vertical datum
 D00149,D00149_1m_MLLW_1of1.bag,"kr, robert.short",no,20090930,20090930,MB,n/a,n/a,Y,Y,Y,2m,Y,N,4,1,5m,5%d,50cm,1%d,WGS84 UTM 19N,MLLW
 D00177,D00177_MB_50cm_MLLW_1of1.bag,kr,no,20130408,20130408,MB,n/a,n/a,Y,Y,n,1m,Y,y,1,1,1m,,2m,1%d,NAD83 UTM 18N,MLLW
 D00185,D00185_MB_16m_MLLW_3of3.bag,"kr, robert.short",no,20130821,20130913,MB,n/a,n/a,Y,N,Y,32m,Y,Y,4,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
@@ -180,46 +180,20 @@ H11765,H11765_50cm_MLLW_2of3,hollis.europe,no,04/02/2008,05/01/2009,MB,SSS,VB,Y,
 H11765,H11765_5m_MLLW_3of3,hollis.europe,no,04/02/2008,05/01/2009,n/a,SSS,VB,Y,Y,Y,1.5m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 16N,MLLW
 H11808,H11808_MB_VR_MLLW.bag,adrian.biesel,no,02/25/2008,03/08/2008,MB,n/a,n/a,Y,Y,Y,1m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
 H11809,H11809_MB_VR_MLLW.bag,adrian.biesel,no,02/25/2008,03/08/2008,MB,n/a,n/a,Y,Y,Y,1m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
-H11872,H11872_MB_1m_MLLW_1of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_2of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_3of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_4of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_5of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_6of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_7of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_8of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_9of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_10of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_11of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_12of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_13of13,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11872,H11872_MB_1m_MLLW_combined,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,,,,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_1of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_2of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_3of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_4of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_5of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_6of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_7of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_8of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_9of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_10of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_11of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_12of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_1m_MLLW_13of13,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11873,H11873_MB_2m_MLLW_combined,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,4m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11874,H11874_MB_1m_MLLW_1of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11874,H11874_MB_1m_MLLW_2of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11874,H11874_MB_1m_MLLW_3of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11874,H11874_MB_1m_MLLW_4of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11874,H11874_MB_1m_MLLW_5of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11874,H11874_MB_1m_MLLW_6of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11874,H11874_MB_1m_MLLW_7of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11874,H11874_MB_1m_MLLW_8of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11874,H11874_MB_1m_MLLW_9of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11874,H11874_MB_1m_MLLW_10of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11874,H11874_MB_1m_MLLW_11of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H11874,H11874_MB_1m_MLLW_combined.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11872,H11872_MB_1m_MLLW_1of1.bag,jaime.liljegren,no,07/16/2008,12/19/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11873,H11873_MB_1m_MLLW_1of1.bag,jaime.liljegren,no,10/13/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11874,H11874_MB_1m_MLLW_1of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11874,H11874_MB_1m_MLLW_2of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11874,H11874_MB_1m_MLLW_3of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11874,H11874_MB_1m_MLLW_4of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11874,H11874_MB_1m_MLLW_5of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11874,H11874_MB_1m_MLLW_6of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11874,H11874_MB_1m_MLLW_7of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11874,H11874_MB_1m_MLLW_8of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11874,H11874_MB_1m_MLLW_9of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11874,H11874_MB_1m_MLLW_10of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11874,H11874_MB_1m_MLLW_11of11.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H11874,H11874_MB_1m_MLLW_combined.bag,jaime.liljegren,no,08/10/2008,12/18/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
 H11920,H11920_MB_VR_MLLW,adam.argento,no,07/15/2008,09/08/2008,MB,SSS,n/a,Y,Y,Y,1m,Y,n,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
 H11921,H11921_MB_1m_MLLW_1of2,tyanne.faulkes,no,8/6/2008,9/8/2008,MB,SSS,n/a,Y,Y,Y,2m,Y,N,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
 H11921,H11921_MB_2m_MLLW_2of2,tyanne.faulkes,no,8/6/2008,9/8/2008,MB,SSS,n/a,Y,Y,Y,4m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
@@ -732,8 +706,8 @@ W00302,W00302_LI_3m_MLLW_1of1.bag,james.w.burkitt,no,11/25/2013,7/20/2014,LI,n/a
 W00313,W00313_LI_5m_MLLW_1of1,robert.short,no,05/26/2015,05/27/2015,LI,n/a,n/a,N,N,N,10m,N,N,3,1,5m,5%d,1m,2%d,NAD83 UTM 19N,MLLW
 W00328,,,,,,,,,,,,,,,,,,,,,,
 W00348,,,,,,,,,,,,,,,,,,,,,,
-W00351,W00351_LI_3m_MLLW_1of1.bag,peter.holmberg,no,9/25/19,9/25/19,LI,n/a,n/a,N,N,N,6m,N,N,,,5m,5%d,1m,2%d,NAD83 UTM 18N,MLLW
-W00352,,,,,,,,,,,,,,,,,,,,,,
+W00351,W00351_LI_3m_MLLW_1of1.bag,peter.holmberg,no,11/25/13,7/20/14,LI,n/a,n/a,N,N,N,6m,N,N,,,5m,5%d,1m,2%d,NAD83 UTM 18N,MLLW
+W00352,W00352_LI_3m_MLLW_1of1.bag,peter.holmberg,no,11/25/13,7/20/14,LI,n/a,n/a,N,N,N,6m,N,N,,,5m,5%d,1m,2%d,NAD83 UTM 18N,MLLW
 W00355,,,,,,,,,,,,,,,,,,,,,,
 W00405,,,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,
@@ -749,21 +723,21 @@ H11512,H11512_MB_2m_MLLW_8of9.bag,kolleen.mortimer,no,09/09/2005,09/20/2005,MB,S
 H11512,H11512_MB_2m_MLLW_9of9.bag,kolleen.mortimer,no,09/09/2005,09/20/2005,MB,SSS,n/a,Y,Y,Y,4m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 16N,MLLW
 H12617,H12617_MB_1m_MLLW_1of2,jaime.liljegren,no,09/13/2013,11/3/2019,MB,N/A,N/A,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H12617,H12617_MB_2m_MLLW_2of2,jaime.liljegren,no,09/13/2013,11/3/2019,MB,N/A,N/A,Y,Y,Y,4m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
-H12617,H12617_MB_2m_MLLW_combined,jaime.liljegren,no,09/13/2013,11/3/2019,MB,N/A,N/A,Y,Y,Y,,,,,,,,,,,
+H12617,H12617_MB_2m_MLLW_combined,jaime.liljegren,no,09/13/2013,11/3/2019,MB,N/A,N/A,Y,Y,Y,4m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H12618,H12618_MB_50cm_MLLW_1of3,jaime.liljegren,no,9/26/13,11/4/13,MB,N/A,N/A,Y,Y,Y,1m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H12618,H12618_MB_1m_MLLW_2of3,jaime.liljegren,no,9/26/13,11/4/13,MB,N/A,N/A,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H12618,H12618_MB_2m_MLLW_3of3,jaime.liljegren,no,9/26/13,11/4/13,MB,N/A,N/A,Y,Y,Y,4m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
-H12618,H12618_MB_2m_MLLW_combined,,,,,,,,,,,,,Y,,,,,,,,
+H12618,H12618_MB_2m_MLLW_combined,jaime.liljegren,no,9/26/13,11/4/13,MB,N/A,N/A,Y,Y,Y,4m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H12619,H12619_MB_1m_MLLW_1of5,jaime.liljegren,no,9/19/13,11/3/13,MB,N/A,N/A,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H12619,H12619_MB_2m_MLLW_2of5,jaime.liljegren,no,9/19/13,11/3/13,MB,N/A,N/A,Y,Y,Y,4m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H12619,H12619_MB_4m_MLLW_3of5,jaime.liljegren,no,9/19/13,11/3/13,MB,N/A,N/A,Y,Y,Y,8m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H12619,H12619_MB_8m_MLLW_4of5,jaime.liljegren,no,9/19/13,11/3/13,MB,N/A,N/A,Y,Y,Y,16m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H12619,H12619_MB_16m_MLLW_5of5,jaime.liljegren,no,9/19/13,11/3/13,MB,N/A,N/A,Y,Y,Y,32m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
-H12619,H12619_MB_16m_MLLW_combined,,,,,,,,,,,,,,,,,,,,,
+H12619,H12619_MB_16m_MLLW_combined,jaime.liljegren,no,9/19/13,11/3/13,MB,N/A,N/A,Y,Y,Y,32m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H12620,H12620_MB_1m_MLLW_1of3,jaime.liljegren,no,11/2/2013,11/11/13,MB,N/A,N/A,Y,Y,Y,2m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H12620,H12620_MB_2m_MLLW_2of3,jaime.liljegren,no,11/2/2013,11/11/13,MB,N/A,N/A,Y,Y,Y,4m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H12620,H12620_MB_4m_MLLW_3of3,jaime.liljegren,no,11/2/2013,11/11/13,MB,N/A,N/A,Y,Y,Y,8m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
-H12620,H12620_MB_4m_MLLW_combined,,,,,,,,,,,,,,,,,,,,,
+H12620,H12620_MB_4m_MLLW_combined,jaime.liljegren,no,11/2/2013,11/11/13,MB,N/A,N/A,Y,Y,Y,8m,Y,Y,,,5m,5%d,50cm,1%d,NAD83 UTM 11N,MLLW
 H11613,H11613_1m_MLLW_1of3,kolleen.mortimer,no,02/20/2007,06/02/2007,N/A,SSS,VB,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 16N,MLLW
 H11613,H11613_1m_MLLW_2of3,kolleen.mortimer,no,02/20/2007,06/02/2007,N/A,SSS,VB,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 16N,MLLW
 H11613,H11613_1m_MLLW_3of3,kolleen.mortimer,no,02/20/2007,06/02/2007,N/A,SSS,VB,Y,Y,Y,2m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 16N,MLLW
