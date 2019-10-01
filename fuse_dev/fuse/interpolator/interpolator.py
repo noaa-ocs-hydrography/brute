@@ -98,7 +98,9 @@ class Interpolator:
             if self.nodata is None:
                 self.nodata = elevation_nodata
 
-            self.window_size = numpy.mean(window_scalar * numpy.abs(raster_resolution)) * 20
+            # multiplier cannot be too low or it segments the hull, nor too high lest the hull not respect survey concavity
+            # TODO maybe make multiplier dynamic?
+            self.window_size = numpy.mean(numpy.abs(raster_resolution)) * window_scalar * 30
 
             sidescan_coverage = _combined_coverage_within_window((raster_filename for raster_filename in sidescan_rasters if
                                                                   '.tif' in raster_filename or '.gpkg' in raster_filename),
@@ -232,18 +234,18 @@ class Interpolator:
             # interpolate using SciPy griddata
             output_x, output_y = numpy.meshgrid(numpy.linspace(bounds[0], bounds[2], shape[1]),
                                                 numpy.linspace(bounds[1], bounds[3], shape[0]))
-            interpolated_values = griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2], (output_x, output_y), method='linear',
-                                           fill_value=nodata)
+            interpolated_values = numpy.flip(griddata((self.points[:, 0], self.points[:, 1]), self.points[:, 2], (output_x, output_y),
+                                                      method='linear', fill_value=nodata), axis=0)
+            geotransform = self.dataset.GetGeoTransform()
         else:
             interpolated_raster = gdal.Grid('', self.dataset, format='MEM', width=shape[1], height=shape[0], outputBounds=bounds,
                                             algorithm=f'linear:radius=0:nodata={int(nodata)}')
             interpolated_band = interpolated_raster.GetRasterBand(1)
             interpolated_values = interpolated_band.ReadAsArray()
-
-        output_resolution = (bounds[2:] - bounds[:2]) / numpy.flip(shape)
+            geotransform = interpolated_raster.GetGeoTransform()
 
         output_raster = gdal.GetDriverByName('MEM').Create('', int(shape[1]), int(shape[0]), 2, gdal.GDT_Float32)
-        output_raster.SetGeoTransform((bounds[0], output_resolution[0], 0.0, bounds[1], 0.0, output_resolution[1]))
+        output_raster.SetGeoTransform(geotransform)
         output_raster.SetProjection(self.crs_wkt)
 
         band_1 = output_raster.GetRasterBand(1)
