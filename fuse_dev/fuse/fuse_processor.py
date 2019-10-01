@@ -448,8 +448,7 @@ class FuseProcessor:
             self._meta_obj.write_meta_record(metadata)
 
             if 'interpolate' in metadata:
-                interpolate = metadata['interpolate'].upper()
-                if interpolate == 'TRUE':
+                if metadata['interpolate']:
                     meta_interp = metadata.copy()
 
                     root, filename = _os.path.split(meta_interp['outpath'])
@@ -481,7 +480,7 @@ class FuseProcessor:
 
                     self._meta_obj.write_meta_record(meta_interp)
                     metadata.update(meta_interp)
-                elif interpolate == 'False':
+                else:
                     self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
                     del dataset
             else:
@@ -491,7 +490,6 @@ class FuseProcessor:
             self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
 
         self._close_log()
-
         return metadata['to_filename']
 
     def post(self, filename):

@@ -100,7 +100,7 @@ class Interpolator:
 
             # multiplier cannot be too low or it segments the hull, nor too high lest the hull not respect survey concavity
             # TODO maybe make multiplier dynamic?
-            self.window_size = numpy.mean(numpy.abs(raster_resolution)) * window_scalar * 30
+            self.window_size = numpy.mean(numpy.abs(raster_resolution)) * window_scalar * 25
 
             sidescan_coverage = _combined_coverage_within_window((raster_filename for raster_filename in sidescan_rasters if
                                                                   '.tif' in raster_filename or '.gpkg' in raster_filename),

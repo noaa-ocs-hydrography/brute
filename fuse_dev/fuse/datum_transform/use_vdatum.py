@@ -94,7 +94,7 @@ class VDatum:
 
         self._logger.log(_logging.DEBUG, 'Begin datum transformation')
         if not _has_required_instructions(instructions):
-            instructions['interpolate'] = 'False'
+            instructions['interpolate'] = False
             raise ValueError('The required fields for transforming datums are not available')
         if instructions['read_type'].upper() == 'BAG':
             dataset, utm_zone = self.__translate_bag(filename, instructions)
