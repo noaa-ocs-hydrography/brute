@@ -1,5 +1,6 @@
 import os
 import unittest
+from glob import glob
 
 from fuse.fuse_processor import FuseProcessor
 
@@ -14,6 +15,9 @@ NOAA_CONFIG_ROOT = os.path.join('data', 'NOAA')
 
 
 def process_USACE_points(survey_name: str, interpolation_method: str, output_type: str) -> str:
+    for filename in glob(os.path.join(OUTPUT_ROOT, f'{survey_name}*')):
+        os.remove(filename)
+
     config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_type}.config')
     input_path = os.path.join(USACE_INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
 
@@ -23,6 +27,9 @@ def process_USACE_points(survey_name: str, interpolation_method: str, output_typ
 
 
 def process_NOAA_raster(survey_name: str, interpolation_method: str, output_type: str) -> [str]:
+    for filename in glob(os.path.join(OUTPUT_ROOT, f'{survey_name}.*')):
+        os.remove(filename)
+
     config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_type}.config')
     input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
     bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
@@ -40,6 +47,14 @@ def process_NOAA_raster(survey_name: str, interpolation_method: str, output_type
 class TestPointLinear(unittest.TestCase):
     def test_small(self):
         output_path = process_USACE_points('NY_05_RHF_20181227_CS_4787_45X', 'linear', 'bag')
+        assert os.path.exists(output_path)
+
+    def test_issue_survey(self):
+        output_path = process_USACE_points('BR_01_BRH_20190117_CS_4788_40X', 'linear', 'bag')
+        assert os.path.exists(output_path)
+
+    def test_holes(self):
+        output_path = process_USACE_points('NB_01_MAI_20170131_CS_4571_30X', 'linear', 'bag')
         assert os.path.exists(output_path)
 
 
@@ -80,6 +95,16 @@ class TestRasterLinear(unittest.TestCase):
 
     def test_issue_3(self):
         output_paths = process_NOAA_raster('H11709', 'linear', 'bag')
+        for output_path in output_paths:
+            assert os.path.exists(output_path)
+
+    def test_separated_areas(self):
+        output_paths = process_NOAA_raster('F00626', 'linear', 'bag')
+        for output_path in output_paths:
+            assert os.path.exists(output_path)
+
+    def test_singlebeam(self):
+        output_paths = process_NOAA_raster('F00623', 'linear', 'bag')
         for output_path in output_paths:
             assert os.path.exists(output_path)
 
