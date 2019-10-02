@@ -448,7 +448,8 @@ class FuseProcessor:
             self._meta_obj.write_meta_record(metadata)
 
             if 'interpolate' in metadata:
-                if metadata['interpolate']:
+                interpolate = metadata['interpolate'].lower()
+                if interpolate == 'true':
                     meta_interp = metadata.copy()
 
                     root, filename = _os.path.split(meta_interp['outpath'])
@@ -480,7 +481,7 @@ class FuseProcessor:
 
                     self._meta_obj.write_meta_record(meta_interp)
                     metadata.update(meta_interp)
-                else:
+                elif interpolate == 'false':
                     self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
                     del dataset
             else:
