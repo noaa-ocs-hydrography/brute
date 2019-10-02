@@ -17,7 +17,7 @@ import rasterio
 import rasterio.crs
 from fuse.utilities import bounds_from_opposite_corners, gdal_crs_wkt, raster_bounds, array_coverage, georeference_to_affine, alpha_hull, \
     raster_edge_points, vectorize_geoarray, geoarray_to_points, gdal_to_xyz, shape_from_cell_size, raster_mask_like, apply_raster_mask, \
-    plot_raster, raster_mask, overwrite_raster, maximum_nearest_neighbor_distance
+    plot_raster, raster_mask, overwrite_raster, maximum_nearest_neighbor_distance, consolidate_disparate_polygons
 from matplotlib import pyplot
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
@@ -25,6 +25,7 @@ from osgeo import gdal
 from pykrige.ok import OrdinaryKriging
 from scipy.interpolate import griddata
 from scipy.ndimage.interpolation import zoom
+from shapely.geometry import GeometryCollection
 
 CATZOC = {
     'A1': [.01, .5],
@@ -108,14 +109,21 @@ class Interpolator:
 
             transform = georeference_to_affine(raster_origin, raster_resolution)
 
-            elevation_region = alpha_hull(raster_edge_points(elevation_coverage, raster_origin, raster_resolution, False)[:, :2],
-                                          self.window_size)
+            elevation_region = consolidate_disparate_polygons(polygon.buffer(1) for
+                                                              polygon in vectorize_geoarray(elevation_coverage, transform, False))
+
             sidescan_region = vectorize_geoarray(sidescan_coverage, transform, False)
+
+            if not elevation_region.is_valid:
+                elevation_region = elevation_region.buffer(0)
 
             if not sidescan_region.is_valid:
                 sidescan_region = sidescan_region.buffer(0)
 
             self.interpolation_region = elevation_region.intersection(sidescan_region)
+
+            if type(self.interpolation_region) is GeometryCollection:
+                self.interpolation_region = self.interpolation_region[-1]
 
             self.points = geoarray_to_points(numpy.where(sidescan_coverage, elevation_data, elevation_nodata), raster_origin,
                                              raster_resolution, elevation_nodata)
@@ -154,6 +162,7 @@ class Interpolator:
 
         Returns
         -------
+        gdal.Dataset
             interpolated GDAL dataset
         """
 
@@ -215,7 +224,6 @@ class Interpolator:
         -------
         gdal.Dataset
             interpolated grid
-
         """
 
         if type(shape) is not numpy.array:
@@ -609,6 +617,7 @@ def _combined_coverage_within_window(raster_filenames: [str], origin: (float, fl
 
     Returns
     -------
+    numpy.array
         boolean array indicating where data exists
     """
 
@@ -710,7 +719,8 @@ def _krige_points_onto_grid(points: numpy.array, x: [float], y: [float], **kwarg
 
     Returns
     -------
-        interpolated values and uncertainty
+    numpy.array, numpy.array
+        interpolated values, interpolated variance
     """
 
     interpolator = OrdinaryKriging(points[:, 0], points[:, 1], points[:, 2], variogram_model='linear')

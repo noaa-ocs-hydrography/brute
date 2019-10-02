@@ -14,6 +14,7 @@ from rasterio import MemoryFile
 from rasterio.features import shapes as rasterio_shapes
 from rasterio.mask import mask
 from scipy.spatial import Delaunay, cKDTree
+from shapely import geometry
 from shapely.geometry import Polygon, MultiLineString, MultiPolygon, shape as shapely_shape, mapping
 from shapely.ops import polygonize
 
@@ -186,6 +187,18 @@ def alpha_hull(points: numpy.array, max_length: float = None) -> MultiPolygon:
     else:
         print(f'no edges were found to be shorter than the specified length {max_length}; reverting to maximum nearest-neighbor distance')
         return alpha_hull(points)
+
+
+def largest_geometry(geometries: [geometry]) -> geometry:
+    max_area = 0
+    largest_geometry = None
+
+    for geometry in geometries:
+        if geometry.area > max_area:
+            max_area = geometry.area
+            largest_geometry = geometry
+
+    return largest_geometry
 
 
 def consolidate_disparate_polygons(polygons: [Polygon]) -> MultiPolygon:
