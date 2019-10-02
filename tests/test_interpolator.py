@@ -98,6 +98,16 @@ class TestRasterLinear(unittest.TestCase):
         for output_path in output_paths:
             assert os.path.exists(output_path)
 
+    def test_separated_areas(self):
+        output_paths = process_NOAA_raster('F00626', 'linear', 'bag')
+        for output_path in output_paths:
+            assert os.path.exists(output_path)
+
+    def test_singlebeam(self):
+        output_paths = process_NOAA_raster('F00623', 'linear', 'bag')
+        for output_path in output_paths:
+            assert os.path.exists(output_path)
+
 
 class TestRasterKriging(unittest.TestCase):
     def test_small(self):
