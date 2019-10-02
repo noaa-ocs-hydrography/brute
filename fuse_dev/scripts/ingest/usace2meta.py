@@ -24,7 +24,7 @@ if __name__ == '__main__':
     start = datetime.datetime.now()
     print(start)
     wx_frame = wx_window.Open_Frame('USACE')
-    config_list = glob('*.config')
+    config_list = glob('ce*.config')
     for n,config in enumerate(config_list):
         usace = ffp.FuseProcessor(config)
         root = usace.rawdata_path[0]
