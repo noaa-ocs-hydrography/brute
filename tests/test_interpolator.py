@@ -42,6 +42,14 @@ class TestPointLinear(unittest.TestCase):
         output_path = process_USACE_points('NY_05_RHF_20181227_CS_4787_45X', 'linear', 'bag')
         assert os.path.exists(output_path)
 
+    def test_issue_survey(self):
+        output_path = process_USACE_points('BR_01_BRH_20190117_CS_4788_40X', 'linear', 'bag')
+        assert os.path.exists(output_path)
+
+    def test_holes(self):
+        output_path = process_USACE_points('NB_01_MAI_20170131_CS_4571_30X', 'linear', 'bag')
+        assert os.path.exists(output_path)
+
 
 class TestPointKriging(unittest.TestCase):
     def test_small(self):
