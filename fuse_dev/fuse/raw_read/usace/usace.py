@@ -72,9 +72,6 @@ class USACERawReader(RawReader):
         """
         Read the bathymetry and return an array of the xyz points.
 
-        If the z value is found to be 95% positive the z direction is reversed,
-        making the assumption that we are dealing with bathymetry.
-
         Parameters
         ----------
         filename
@@ -88,18 +85,6 @@ class USACERawReader(RawReader):
         """
 
         bathy = self._parse_ehydro_xyz_bathy(filename)
-        numpts = len(bathy)
-        # get the number that are
-        idx = _np.nonzero(bathy[:, 2] < 0)[0]
-        numneg = float(len(idx))
-        if numneg / numpts < 0.05:
-            bathy[:, 2] *= -1
-            msg = f'{filename} appears to be positive down, changing orientation'
-            self._logger.log(_logging.DEBUG, msg)
-        elif numneg / numpts > 0.95:
-            pass
-        else:
-            raise ValueError(f'The sense of positive vertical direction for {filename} is ambiguous!')
         return bathy
 
     def read_bathymetry_by_point(self, filename: str) -> _np.array:
