@@ -182,13 +182,27 @@ def alpha_hull(points: numpy.array, max_length: float = None) -> MultiPolygon:
         indices = numpy.sort(numpy.reshape(indices, (indices.shape[0] * indices.shape[1], indices.shape[2])), axis=1)
         boundary_edge_indices, counts = numpy.unique(indices, axis=0, return_counts=True)
         boundary_edge_indices = boundary_edge_indices[counts == 1]
-        return consolidate_multipolygon(polygonize(MultiLineString(points[boundary_edge_indices].tolist())))
+        return consolidate_disparate_polygons(polygonize(MultiLineString(points[boundary_edge_indices].tolist())))
     else:
         print(f'no edges were found to be shorter than the specified length {max_length}; reverting to maximum nearest-neighbor distance')
         return alpha_hull(points)
 
 
-def consolidate_multipolygon(polygons: [Polygon]) -> MultiPolygon:
+def consolidate_disparate_polygons(polygons: [Polygon]) -> MultiPolygon:
+    """
+    Create a MultiPolygon from the given polygons, assuming interior polygons are holes.
+
+    Parameters
+    ----------
+    polygons
+        list of Shapely polygons
+
+    Returns
+    -------
+    MultiPolygon
+        Shapely multipolygon of all polygons with holes included
+    """
+
     if type(polygons) is not list:
         polygons = list(polygons)
 

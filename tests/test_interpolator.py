@@ -1,5 +1,6 @@
 import os
 import unittest
+from glob import glob
 
 from fuse.fuse_processor import FuseProcessor
 
@@ -14,6 +15,9 @@ NOAA_CONFIG_ROOT = os.path.join('data', 'NOAA')
 
 
 def process_USACE_points(survey_name: str, interpolation_method: str, output_type: str) -> str:
+    for filename in glob(os.path.join(OUTPUT_ROOT, f'{survey_name}*')):
+        os.remove(filename)
+
     config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_type}.config')
     input_path = os.path.join(USACE_INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
 
@@ -23,6 +27,9 @@ def process_USACE_points(survey_name: str, interpolation_method: str, output_typ
 
 
 def process_NOAA_raster(survey_name: str, interpolation_method: str, output_type: str) -> [str]:
+    for filename in glob(os.path.join(OUTPUT_ROOT, f'{survey_name}.*')):
+        os.remove(filename)
+
     config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_type}.config')
     input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
     bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
