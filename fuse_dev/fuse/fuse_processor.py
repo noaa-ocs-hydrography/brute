@@ -242,6 +242,8 @@ class FuseProcessor:
             elif reader_type == 'bag':
                 self._reader = _noaa.bag.BAGRawReader()
                 self._read_type = 'bag'
+            elif reader_type == 'bps':
+                self._reader = _noaa.bps.BPSRawReader()
             else:
                 raise ValueError('reader type not implemented')
         except ValueError:
@@ -278,6 +280,8 @@ class FuseProcessor:
             return self._read_ehydro(survey_folder)
         elif self._read_type == 'bag':
             self._read_noaa_bag(filename)
+        elif self._read_type == 'bps':
+            self._read_noaa_bps(filename)
         else:
             raise ValueError('Reader type not implemented')
 
@@ -389,10 +393,45 @@ class FuseProcessor:
         metadata['posted'] = False
 
         if not self._quality_metadata_ready(metadata):
-            default = _ehydro_quality_metrics
-            msg = f'Not all quality metadata was found.  Using default values: {default}'
+            msg = f'Not all quality metadata was found.'
             self.logger.log(_logging.DEBUG, msg)
-            metadata = {**default, **metadata}
+
+        # write the metadata
+        self._meta_obj.write_meta_record(metadata)
+        self._close_log()
+        
+    def _read_noaa_bps(self, filename: str):
+        """
+        Extract metadata from the provided bps file path and write the metadata
+        to the specified metadata file.
+
+        Parameters
+        ----------
+        filename
+            path to NOAA BPS file
+        """
+        self._set_log(filename)
+        # get the metadata
+        metadata = self._reader.read_metadata(filename).copy()
+        metadata['read_type'] = 'bps'
+
+        # translate from the reader to common metadata keys for datum transformations
+        # get the rest from the config file
+        metadata['to_horiz_frame'] = self._config['to_horiz_frame']
+        metadata['to_horiz_type'] = self._config['to_horiz_type']
+        metadata['to_horiz_units'] = self._config['to_horiz_units']
+        if 'to_horiz_key' in self._config:
+            metadata['to_horiz_key'] = self._config['to_horiz_key']
+        metadata['to_vert_key'] = self._config['to_vert_key']
+        metadata['to_vert_units'] = self._config['to_vert_units']
+        metadata['to_vert_direction'] = self._config['to_vert_direction']
+        metadata['to_vert_datum'] = self._config['to_vert_datum']
+        metadata['interpolated'] = 'False'
+        metadata['posted'] = False
+
+        if not self._quality_metadata_ready(metadata):
+            msg = f'Not all quality metadata was found.'
+            self.logger.log(_logging.DEBUG, msg)
 
         # write the metadata
         self._meta_obj.write_meta_record(metadata)
