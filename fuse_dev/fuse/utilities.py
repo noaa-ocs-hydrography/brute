@@ -15,7 +15,7 @@ from rasterio.features import shapes as rasterio_shapes
 from rasterio.mask import mask
 from scipy.spatial import Delaunay, cKDTree
 from shapely.geometry import Polygon, MultiLineString, MultiPolygon, shape as shapely_shape, mapping
-from shapely.ops import unary_union, polygonize
+from shapely.ops import polygonize
 
 
 def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> numpy.array:
@@ -176,14 +176,64 @@ def alpha_hull(points: numpy.array, max_length: float = None) -> MultiPolygon:
     edges = points[indices]
     vectors = numpy.squeeze(numpy.diff(edges, axis=2))
     lengths = numpy.hypot(vectors[:, :, 0], vectors[:, :, 1])
-    indices = indices[lengths < max_length]
+    indices = indices[numpy.all(lengths <= max_length, axis=1)]
 
     if indices.shape[0] > 0:
-        boundary_edge_indices = numpy.unique(numpy.sort(indices, axis=1), axis=0)
-        return unary_union(list(polygonize(MultiLineString(points[boundary_edge_indices].tolist()))))
+        indices = numpy.sort(numpy.reshape(indices, (indices.shape[0] * indices.shape[1], indices.shape[2])), axis=1)
+        boundary_edge_indices, counts = numpy.unique(indices, axis=0, return_counts=True)
+        boundary_edge_indices = boundary_edge_indices[counts == 1]
+        return consolidate_disparate_polygons(polygonize(MultiLineString(points[boundary_edge_indices].tolist())))
     else:
         print(f'no edges were found to be shorter than the specified length {max_length}; reverting to maximum nearest-neighbor distance')
         return alpha_hull(points)
+
+
+def consolidate_disparate_polygons(polygons: [Polygon]) -> MultiPolygon:
+    """
+    Create a MultiPolygon from the given polygons, assuming interior polygons are holes.
+
+    Parameters
+    ----------
+    polygons
+        list of Shapely polygons
+
+    Returns
+    -------
+    MultiPolygon
+        Shapely multipolygon of all polygons with holes included
+    """
+
+    if type(polygons) is not list:
+        polygons = list(polygons)
+
+    outer_rings = []
+    inner_rings = []
+
+    for polygon_1 in polygons:
+        for polygon_2 in polygons:
+            if polygon_1 is not polygon_2 and polygon_1.intersects(polygon_2):
+                if polygon_1.area > polygon_2.area:
+                    outer_polygon = polygon_1
+                    inner_polygon = polygon_2
+                else:
+                    outer_polygon = polygon_2
+                    inner_polygon = polygon_1
+
+                if outer_polygon not in outer_rings:
+                    outer_rings.append(outer_polygon)
+                    inner_rings.append([inner_polygon])
+                else:
+                    for index, outer_ring in enumerate(outer_rings):
+                        if outer_ring is outer_polygon:
+                            if inner_polygon not in inner_rings[index]:
+                                inner_rings[index].append(inner_polygon)
+
+        if polygon_1 not in outer_rings and polygon_1 not in [inner_ring for outer_ring in inner_rings for inner_ring in outer_ring]:
+            outer_rings.append(polygon_1)
+            inner_rings.append([])
+
+    return MultiPolygon(Polygon(outer_ring.exterior.coords, [inner_ring.exterior.coords for inner_ring in inner_rings[index]])
+                        for index, outer_ring in enumerate(outer_rings))
 
 
 def raster_mask(region: Polygon, shape: (float, float), resolution: (float, float), origin: (float, float), nodata: float,
@@ -298,7 +348,23 @@ def apply_raster_mask(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: floa
     return raster
 
 
-def overwrite_raster(from_raster: gdal.Dataset, onto_raster: gdal.Dataset):
+def overwrite_raster(from_raster: gdal.Dataset, onto_raster: gdal.Dataset) -> gdal.Dataset:
+    """
+    Overwrite the "onto" raster with data values (non-nodata) from the "from" raster.
+
+    Parameters
+    ----------
+    from_raster
+        raster to apply values from
+    onto_raster
+        raster to write onto
+
+    Returns
+    -------
+    gdal.Dataset
+        the "onto" raster after being overwritten with values from the "from" raster
+    """
+
     assert (from_raster.RasterYSize, from_raster.RasterXSize) == \
            (onto_raster.RasterYSize, onto_raster.RasterXSize), 'rasters must be the same shape'
 
@@ -566,6 +632,24 @@ def georeference_to_affine(origin: (float, float), resolution: (float, float), r
     return Affine.translation(*origin) * Affine.scale(*resolution) * Affine.rotation(rotation[0])
 
 
+def maximum_nearest_neighbor_distance(points: numpy.array) -> float:
+    """
+    Get the maximum of all closest neighbor distances within the given set of points.
+
+    Parameters
+    ----------
+    points
+        N x M array of points
+
+    Returns
+    -------
+    float
+        maximum nearest neighbor distance
+    """
+
+    return numpy.max(cKDTree(points).query(points, k=2)[0][:, 1])
+
+
 def bounds_from_opposite_corners(corner_1: (float, float), corner_2: (float, float)) -> (float, float, float, float):
     """
     Get bounds from two opposite XY points.
@@ -651,18 +735,22 @@ def plot_region(region: Union[Polygon, MultiPolygon], axis: pyplot.Axes = None, 
     if axis is None:
         axis = pyplot.gca()
 
+    if 'c' not in kwargs:
+        try:
+            color = next(axis._get_lines.color_cycle)
+        except AttributeError:
+            color = 'r'
+        kwargs['c'] = color
+
     if type(region) is Polygon:
         axis.plot(*region.exterior.xy, **kwargs)
+        for interior in region.interiors:
+            axis.plot(*interior.xy, **kwargs)
     else:
-        if 'c' not in kwargs:
-            try:
-                color = next(axis._get_lines.color_cycle)
-            except AttributeError:
-                color = 'r'
-            kwargs['c'] = color
-
         for geometry in region:
             axis.plot(*geometry.exterior.xy, **kwargs)
+            for interior in geometry.interiors:
+                axis.plot(*interior.xy, **kwargs)
 
     if show:
         pyplot.show()
