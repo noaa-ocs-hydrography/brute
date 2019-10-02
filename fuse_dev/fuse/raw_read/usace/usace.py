@@ -271,7 +271,7 @@ class USACERawReader(RawReader):
                 xyz_scores[1] = xyz
 
         max_score = max(list(xyz_scores.keys()))
-        return xyz_scores[max_score], max_score not in (3, 2)
+        return xyz_scores[max_score], True if max_score != 3 else False
 
     def _data_determination(self, meta_dict: dict, survey_folder: str) -> dict:
         """
