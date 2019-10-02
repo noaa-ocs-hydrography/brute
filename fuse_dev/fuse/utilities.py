@@ -214,8 +214,11 @@ def consolidate_multipolygon(polygons: [Polygon]) -> MultiPolygon:
                             if inner_polygon not in inner_rings[index]:
                                 inner_rings[index].append(inner_polygon)
 
-    return MultiPolygon(Polygon(outer_ring.exterior.coords, [inner_ring.exterior.coords
-                                                             for inner_ring in inner_rings[index]])
+        if polygon_1 not in outer_rings and polygon_1 not in [inner_ring for outer_ring in inner_rings for inner_ring in outer_ring]:
+            outer_rings.append(polygon_1)
+            inner_rings.append([])
+
+    return MultiPolygon(Polygon(outer_ring.exterior.coords, [inner_ring.exterior.coords for inner_ring in inner_rings[index]])
                         for index, outer_ring in enumerate(outer_rings))
 
 
