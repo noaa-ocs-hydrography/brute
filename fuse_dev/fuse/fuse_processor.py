@@ -398,7 +398,7 @@ class FuseProcessor:
         self._meta_obj.write_meta_record(metadata)
         self._close_log()
 
-    def process(self, filename: str):
+    def process(self, filename: str) -> str:
         """
         Do the datum transformtion and interpolation.
 
@@ -407,12 +407,18 @@ class FuseProcessor:
         the data reader since there will be cases where we get full res data
         from the reader and interlation is not necessary.
 
+
+        TODO: need to add checks to make sure the metadata is ready. Perhaps this should be added to the metadata object?
+
         Parameters
         ----------
         filename
+            filename to process
 
-        TODO: need to add checks to make sure the metadata is ready.
-            Perhaps this should be added to the metadata object?
+        Returns
+        ----------
+        str
+            output filename
         """
         if self._read_type == 'ehydro':
             meta_entry = self._reader.name_gen(_os.path.basename(filename), '', sfx=None)
@@ -442,8 +448,7 @@ class FuseProcessor:
             self._meta_obj.write_meta_record(metadata)
 
             if 'interpolate' in metadata:
-                interpolate = metadata['interpolate'].upper()
-                if interpolate == 'TRUE':
+                if metadata['interpolate']:
                     meta_interp = metadata.copy()
 
                     root, filename = _os.path.split(meta_interp['outpath'])
@@ -468,20 +473,24 @@ class FuseProcessor:
                         meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
-                        print(error)
-                        self.logger.warning(str(error))
+                        message = f'interpolation error {error}'
+                        print(message)
+                        self.logger.warning(message)
                         meta_interp['interpolated'] = False
 
                     self._meta_obj.write_meta_record(meta_interp)
-
-                elif interpolate == 'False':
-                    print(f'{input_directory} - No interpolation required')
+                    metadata.update(meta_interp)
+                else:
+                    self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
+                    del dataset
             else:
+                del dataset
                 raise ValueError('metadata has no "interpolate" value')
         else:
             self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
 
         self._close_log()
+        return metadata['to_filename']
 
     def post(self, filename):
         """
@@ -648,11 +657,7 @@ class FuseProcessor:
             whether metadata has all datum fields
         """
 
-        for key in [entry for entry in FuseProcessor._datums if entry != 'to_horiz_key']:
-            if key not in metadata:
-                return False
-        else:
-            return True
+        return all(key in metadata for key in FuseProcessor._datums if key != 'to_horiz_key')
 
     def _quality_metadata_ready(self, metadata):
         """
@@ -669,7 +674,7 @@ class FuseProcessor:
 
         # check the feature metadata
         if 'feat_detect' in metadata:
-            if metadata['feat_detect'].upper() == 'TRUE':
+            if metadata['feat_detect']:
                 feature_ready = 'feat_least_depth' in metadata and 'feat_size' in metadata
             else:
                 feature_ready = True
@@ -692,12 +697,12 @@ class FuseProcessor:
 
         # check the coverage
         coverage_ready = 'complete_coverage' in metadata and 'bathymetry' in metadata
-        
+
         if not coverage_ready:
             self.logger.log(_logging.DEBUG, 'Coverage metadata is not yet available.')
         else:
             self.logger.log(_logging.DEBUG, 'Coverage metadata was found')
-        
+
         return feature_ready and vert_uncert_ready and horiz_uncert_ready and coverage_ready
 
     def _date_metadata_ready(self, metadata):

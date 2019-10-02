@@ -13,148 +13,82 @@ USACE_CONFIG_ROOT = os.path.join('data', 'USACE')
 NOAA_CONFIG_ROOT = os.path.join('data', 'NOAA')
 
 
-class TestInterpolator(unittest.TestCase):
-    def test_points_linear(self):
-        survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
+def process_USACE_points(survey_name: str, interpolation_method: str, output_type: str) -> str:
+    config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_type}.config')
+    input_path = os.path.join(USACE_INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
 
-        interpolation_method = 'linear'
-        output_file_extension = 'bag'
+    fuse_processor = FuseProcessor(config_path)
+    fuse_processor.read(input_path)
+    return fuse_processor.process(input_path)
 
-        config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
-        input_path = os.path.join(USACE_INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
 
-        if os.path.exists(output_path):
-            os.remove(output_path)
+def process_NOAA_raster(survey_name: str, interpolation_method: str, output_type: str) -> [str]:
+    config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_type}.config')
+    input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
+    bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
 
-        fuse_processor = FuseProcessor(config_path)
-        fuse_processor.read(input_path)
-        fuse_processor.process(input_path)
+    output_paths = []
+    fuse_processor = FuseProcessor(config_path)
+    for bag_filename in bag_paths:
+        if 'INTERP' not in bag_filename:
+            fuse_processor.read(bag_filename)
+            output_paths.append(fuse_processor.process(bag_filename))
 
+    return output_paths
+
+
+class TestPointLinear(unittest.TestCase):
+    def test_small(self):
+        output_path = process_USACE_points('NY_05_RHF_20181227_CS_4787_45X', 'linear', 'bag')
         assert os.path.exists(output_path)
 
-    def test_raster_linear(self):
-        survey_name = 'H12607'
 
-        interpolation_method = 'linear'
-        output_file_extension = 'bag'
-
-        config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
-        input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
-        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
-
-        if os.path.exists(output_path):
-            os.remove(output_path)
-
-        fuse_processor = FuseProcessor(config_path)
-        for bag_filename in bag_paths:
-            if 'INTERP' not in bag_filename:
-                fuse_processor.read(bag_filename)
-                fuse_processor.process(bag_filename)
-
+class TestPointKriging(unittest.TestCase):
+    def test_small(self):
+        output_path = process_USACE_points('NY_05_RHF_20181227_CS_4787_45X', 'kriging', 'bag')
         assert os.path.exists(output_path)
 
-    def test_raster_linear_larger(self):
-        survey_name = 'H12525'
-
-        interpolation_method = 'linear'
-        output_file_extension = 'bag'
-
-        config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
-        input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
-        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_4m_interp.{output_file_extension}')
-
-        if os.path.exists(output_path):
-            os.remove(output_path)
-
-        fuse_processor = FuseProcessor(config_path)
-        for bag_filename in bag_paths:
-            if 'INTERP' not in bag_filename:
-                fuse_processor.read(bag_filename)
-                fuse_processor.process(bag_filename)
-
+    def test_bounds_error(self):
+        output_path = process_USACE_points('BR_01_BRH_20130821_BD_4041_30X', 'kriging', 'bag')
         assert os.path.exists(output_path)
 
-    def test_points_kriging(self):
-        survey_name = 'NY_05_RHF_20181227_CS_4787_45X'
-
-        interpolation_method = 'kriging'
-        output_file_extension = 'bag'
-
-        config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
-        input_path = os.path.join(USACE_INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
-
-        if os.path.exists(output_path):
-            os.remove(output_path)
-
-        fuse_processor = FuseProcessor(config_path)
-        fuse_processor.read(input_path)
-        fuse_processor.process(input_path)
-
+    def test_issue_survey(self):
+        output_path = process_USACE_points('BR_01_BRH_20190117_CS_4788_40X', 'kriging', 'bag')
         assert os.path.exists(output_path)
 
-    def test_raster_kriging(self):
-        survey_name = 'H12607'
 
-        interpolation_method = 'kriging'
-        output_file_extension = 'bag'
+class TestRasterLinear(unittest.TestCase):
+    def test_small(self):
+        output_paths = process_NOAA_raster('H12607', 'linear', 'bag')
+        for output_path in output_paths:
+            assert os.path.exists(output_path)
 
-        config_path = os.path.join(NOAA_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
-        input_directory = os.path.join(NOAA_INPUT_ROOT, survey_name)
-        bag_paths = [os.path.join(input_directory, name) for name in os.listdir(input_directory) if name[-4:] == '.bag']
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
+    def test_large(self):
+        output_paths = process_NOAA_raster('H12525', 'linear', 'bag')
+        for output_path in output_paths:
+            assert os.path.exists(output_path)
 
-        if os.path.exists(output_path):
-            os.remove(output_path)
+    def test_issue_1(self):
+        output_paths = process_NOAA_raster('F00521', 'linear', 'bag')
+        for output_path in output_paths:
+            assert os.path.exists(output_path)
 
-        fuse_processor = FuseProcessor(config_path)
-        for bag_filename in bag_paths:
-            if 'INTERP' not in bag_filename:
-                fuse_processor.read(bag_filename)
-                fuse_processor.process(bag_filename)
+    def test_issue_2(self):
+        output_paths = process_NOAA_raster('D00223', 'linear', 'bag')
+        for output_path in output_paths:
+            assert os.path.exists(output_path)
 
-        assert os.path.exists(output_path)
+    def test_issue_3(self):
+        output_paths = process_NOAA_raster('H11709', 'linear', 'bag')
+        for output_path in output_paths:
+            assert os.path.exists(output_path)
 
-    def test_points_kriging_bounds_error(self):
-        survey_name = 'BR_01_BRH_20130821_BD_4041_30X'
 
-        interpolation_method = 'kriging'
-        output_file_extension = 'bag'
-
-        config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
-        input_path = os.path.join(USACE_INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
-
-        if os.path.exists(output_path):
-            os.remove(output_path)
-
-        fuse_processor = FuseProcessor(config_path)
-        fuse_processor.read(input_path)
-        fuse_processor.process(input_path)
-
-        assert os.path.exists(output_path)
-
-    def test_points_kriging_issues(self):
-        survey_name = 'BR_01_BRH_20190117_CS_4788_40X'
-
-        interpolation_method = 'kriging'
-        output_file_extension = 'bag'
-
-        config_path = os.path.join(USACE_CONFIG_ROOT, f'{survey_name}_{interpolation_method}_{output_file_extension}.config')
-        input_path = os.path.join(USACE_INPUT_ROOT, survey_name, f'{survey_name}.XYZ')
-        output_path = os.path.join(OUTPUT_ROOT, f'{survey_name}_5m_interp.{output_file_extension}')
-
-        if os.path.exists(output_path):
-            os.remove(output_path)
-
-        fuse_processor = FuseProcessor(config_path)
-        fuse_processor.read(input_path)
-        fuse_processor.process(input_path)
-
-        assert os.path.exists(output_path)
+class TestRasterKriging(unittest.TestCase):
+    def test_small(self):
+        output_paths = process_NOAA_raster('H12607', 'kriging', 'bag')
+        for output_path in output_paths:
+            assert os.path.exists(output_path)
 
 
 if __name__ == '__main__':

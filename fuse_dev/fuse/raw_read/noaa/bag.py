@@ -12,12 +12,15 @@ a general sense, and also for specific S57 needs.
 
 """
 
+import ast as _ast
 import csv as _csv
 import datetime as _datetime
 import logging as _logging
 import os as _os
+import re
 import re as _re
 import sys as _sys
+from glob import glob as _glob
 
 # from xml.etree import ElementTree as _et
 import lxml.etree as _et
@@ -34,8 +37,8 @@ except ModuleNotFoundError as e:
 
 try:
     prog_loc = _os.path.dirname(_os.path.abspath(__file__))
-    csv_loc = _os.path.join(prog_loc, r'additional_files\BAG_Metadata.csv')
-    csv_exists = _os.path.isfile(csv_loc)
+    csv_files = _glob(_os.path.join(prog_loc, 'additional_files', '*.csv'))
+    csv_exists = True if len(csv_files) > 0 else False
 except FileNotFoundError as e:
     csv_exists = False
     print(f"{e}")
@@ -89,16 +92,19 @@ _ns2 = {
     'smXML': 'http://metadata.dgiwg.org/smXML',
 }
 
-
 csv_to_meta = {'Survey': 'survey',
-               'Bag File Name':  'bag_name',
+               'Bag File Name': 'bag_name',
                'Reviewer': 'reviewer',
                'Sensitive? Y/N': 'sensitive',
+               'Sensitive? (Y/N)': 'sensitive',
                'Survey Start Date': 'start_date',
                'Survey End Date': 'end_date',
+               'Processing Branch': 'branch',
                'Source data type (MB)': 'mb_data',
+               'Source data type (MBES)': 'mb_data',
                'Source data type (SSS)': 'sss_data',
                'Source data type (VB)': 'vb_data',
+               'Source data type (SB)': 'sb_data',
                'Feature Detection Capability (Y/N)': 'feat_detect',
                'Features Delivered (Y/N)': 'feat_delivered',
                'Least depth of features detected(Y/N)': 'feat_least_depth',
@@ -110,6 +116,7 @@ csv_to_meta = {'Survey': 'survey',
                'Horizontal position uncertainty (fixed)': 'horiz_uncert_fixed',
                'Horizontal position uncertainty (variable)': 'horiz_uncert_vari',
                'Vertical Uncertainty (Fixed)': 'vert_uncert_fixed',
+               'Vertical Uncertainty (fixed)': 'vert_uncert_fixed',
                'Vertical Uncertainty (variable)': 'vert_uncert_vari',
                'Horizontal datum': 'from_horiz_datum',
                'Vertical datum': 'from_vert_datum',
@@ -254,9 +261,9 @@ class BAGRawReader(RawReader):
             elif spacial_ref.GetAttrValue('unit').lower() in ('feet', 'ft'):
                 metadata['from_horiz_units'] = 'f'
 
-            #            metadata['elevation'] = self._read_gdal_array(bag_file, 1)
-            #            metadata['uncertainty'] = self._read_gdal_array(bag_file, 2)
-            #            metadata['nodata'] = 1000000.0
+            # metadata['elevation'] = self._read_gdal_array(bag_file, 1)
+            # metadata['uncertainty'] = self._read_gdal_array(bag_file, 2)
+            # metadata['nodata'] = 1000000.0
 
             del bag_file
         except RuntimeError as e:
@@ -376,70 +383,92 @@ class BAGRawReader(RawReader):
         """
         meta = []
         if csv_exists:
-            opened = open(csv_loc, 'r', newline='')
-            read = _csv.reader(opened)
-            fields = []
-            index = 0
-            for line in read:
-                if index == 0:
-                    fields.extend(line)
-                else:
-                    bag_meta = {}
-                    for assignment in range(len(fields)):
-                        if line[assignment] != '':
-                            meta_field = csv_to_meta[fields[assignment].strip()]
-                            if meta_field in ('sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect', 'feat_delivered', 'feat_least_depth', 'complete_coverage', 'bathymetry'):
-                                if line[assignment].lower() in ('n/a', 'no', 'n'):
-                                    bag_meta[meta_field] = False
-                                elif line[assignment].lower() in ('y', 'yes'):
-                                    bag_meta[meta_field] = True
-                            elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
-                                if 'cm' in line[assignment]:
-                                    bag_meta[meta_field]= float(_re.sub(r'\D', '', line[assignment]))/100
-                                elif 'm' in line[assignment]:
-                                    bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
-                            elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
-                                bag_meta[meta_field]= float(_re.sub(r'\D', '', line[assignment]))/100
-                            elif meta_field in ('from_horiz_datum'):
-                                splits = line[assignment].split(' ')
-                                datum_info = {}
-                                try:
-                                    datum_info['from_horiz_frame'] = splits[0]
-                                    datum_info['from_horiz_type'] = splits[1]
-                                    datum_info['from_horiz_key'] = _re.sub('\D', '', splits[2])
-                                    bag_meta = {**bag_meta, **datum_info}
-                                except IndexError:
-                                    _logging.warning(f'Unable to add datum information due to incorrect formatting: {line[1]}, {line[assignment]}')
-#                                    raise RuntimeError(f'Unable to add datum information due to incorrect formatting: {line[2]}')
-                            elif meta_field in ('from_vert_datum'):
-                                if line[assignment] in vert_datum.keys():
-                                    datum_info['from_vert_key'] = line[assignment]
-                            elif meta_field in ('start_date', 'end_date'):
-                                if len(line[assignment]) == 8:
-                                    bag_meta[meta_field] = line[assignment]
-                                elif len(line[assignment]) == 11:
-                                    bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
-                                elif len(line[assignment]) == 13:
-                                    bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
-                            else:
-                                bag_meta[meta_field] = line[assignment]
-                    if 'bathymetry' in bag_meta and 'complete_coverage' in bag_meta:
-                        bathymetry = bag_meta['bathymetry']
-                        coverage = bag_meta['complete_coverage']
-                        if bathymetry and coverage:
-                            interpolate = False
-                        elif bathymetry and not coverage:
-                            interpolate = False
-                        elif not bathymetry and coverage:
-                            interpolate = True
-                        elif not bathymetry and not coverage:
-                            interpolate = True
-                        bag_meta['interpolate'] = interpolate
+            for csv_file in csv_files:
+                opened = open(csv_file, 'r', newline='')
+                read = _csv.reader(opened)
+                fields = []
+                index = 0
+                for line in read:
+                    if index == 0:
+                        fields.extend(field for field in line if field != '')
                     else:
-                        bag_meta['interpolate'] = False
-                    meta.append(bag_meta)
-                index += 1
-            opened.close()
+                        bag_meta = {}
+                        for assignment in range(len(fields)):
+                            if line[assignment] != '':
+                                try:
+                                    meta_field = csv_to_meta[fields[assignment].strip()]
+                                except KeyError:
+                                    _logging.warning(f'Unable to parse {fields[assignment]}')
+                                    index += 1
+                                    continue
+                                if meta_field in (
+                                        'sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect', 'feat_delivered', 'feat_least_depth',
+                                        'complete_coverage', 'bathymetry'):
+                                    if line[assignment].lower() in ('n/a', 'na', 'no', 'n'):
+                                        bag_meta[meta_field] = 'False'
+                                    elif line[assignment].lower() in ('y', 'yes'):
+                                        bag_meta[meta_field] = 'True'
+                                elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
+                                    try:
+                                        if 'cm' in line[assignment]:
+                                            bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment])) / 100
+                                        elif 'm' in line[assignment]:
+                                            bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
+                                    except ValueError:
+                                        _logging.warning(
+                                            f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
+                                elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
+                                    try:
+                                        bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment])) / 100
+                                    except ValueError:
+
+                                        _logging.warning(
+                                            f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
+                                elif meta_field in ('from_horiz_datum'):
+                                    splits = line[assignment].split(' ')
+                                    datum_info = {}
+                                    try:
+                                        datum_info['from_horiz_frame'] = splits[0]
+                                        datum_info['from_horiz_type'] = splits[1]
+                                        datum_info['from_horiz_key'] = _re.sub('\D', '', splits[2])
+                                        bag_meta = {**bag_meta, **datum_info}
+                                    except IndexError:
+                                        _logging.warning(
+                                            f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
+                                #                                    raise RuntimeError(f'Unable to add datum information due to incorrect formatting: {line[2]}')
+                                elif meta_field in ('from_vert_datum'):
+                                    if line[assignment] in vert_datum.keys():
+                                        datum_info['from_vert_key'] = line[assignment]
+                                elif meta_field in ('start_date', 'end_date'):
+                                    if len(line[assignment]) == 8:
+                                        bag_meta[meta_field] = line[assignment]
+                                    elif len(line[assignment]) == 11:
+                                        bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
+                                    elif len(line[assignment]) == 13:
+                                        bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
+                                else:
+                                    bag_meta[meta_field] = line[assignment]
+                        if 'bathymetry' in bag_meta and 'complete_coverage' in bag_meta:
+                            bathymetry = _ast.literal_eval(bag_meta['bathymetry'])
+                            coverage = _ast.literal_eval(bag_meta['complete_coverage'])
+
+                            if bathymetry:
+                                interpolate = False
+                            else:
+                                if coverage:
+                                    interpolate = True
+                                else:
+                                    if 'sss_data' in bag_meta:
+                                        interpolate = _ast.literal_eval(bag_meta['sss_data'])
+                                    else:
+                                        interpolate = False
+
+                            bag_meta['interpolate'] = interpolate
+                        else:
+                            bag_meta['interpolate'] = False
+                        meta.append(bag_meta)
+                    index += 1
+                opened.close()
         return meta
 
     def _size_finder(self, filepath: str) -> int:
@@ -484,7 +513,7 @@ class BAGRawReader(RawReader):
                                  _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.tfw', '.gpkg')]
         exts = [_os.path.splitext(support_file)[1].lower() for support_file in dir_files if
                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
-#        meta['interpolate'] = len(exts) > 0
+        #        meta['interpolate'] = len(exts) > 0
         print(meta['support_files'])
         return meta
 
@@ -1194,7 +1223,7 @@ class BagFile:
         self.shape = None
         self.bounds = None
         self.resolution = None
-        self.wkt = None
+        self.crs_wkt = None
         self.size = None
         self.outfilename = None
         self.version = None
@@ -1243,7 +1272,7 @@ class BagFile:
         self.shape = self.elevation.shape
         print(dataset.GetGeoTransform())
         self.bounds, self.resolution = self._gt2bounds(dataset.GetGeoTransform(), self.shape)
-        self.wkt = dataset.GetProjectionRef()
+        self.crs_wkt = dataset.GetProjectionRef()
         self.version = dataset.GetMetadata()
 
         print(self.bounds)
@@ -1268,7 +1297,7 @@ class BagFile:
         self.shape = self.elevation.shape
         print(bag_obj.GetGeoTransform())
         self.bounds, self.resolution = self._gt2bounds(bag_obj.GetGeoTransform(), self.shape)
-        self.wkt = bag_obj.GetProjectionRef()
+        self.crs_wkt = bag_obj.GetProjectionRef()
         self.version = bag_obj.GetMetadata()
 
         print(self.bounds)
@@ -1293,32 +1322,13 @@ class BagFile:
             self.elevation = _np.flipud(bagfile.root.BAG_root.elevation.read())
             self.uncertainty = _np.flipud(bagfile.root.BAG_root.uncertainty.read())
             self.shape = self.elevation.shape
-            meta_read = [str(x, 'utf-8', 'ignore') for x in bagfile.root.BAG_root.metadata.read()]
-            # print (meta_read)
-            meta_xml = ''.join(meta_read)
-            # print (meta_xml)
-            encodeVal = 0
+            meta_xml = ''.join(str(line, 'utf-8', 'ignore') for line in bagfile.root.BAG_root.metadata.read())
+            xml_tree = _et.XML(re.sub(r'<\?.+\?>', '', meta_xml))
 
-            for x in meta_xml:
-                if meta_xml[encodeVal] == '>':
-                    meta_xml = meta_xml[encodeVal:]
-                    break
-                else:
-                    encodeVal += 1
-            startVal = 0
+            self.crs_wkt = self._read_wkt_prj(xml_tree)
+            if self.crs_wkt is None:
+                self.crs_wkt = BAGRawReader().read_metadata(filepath)['from_horiz_datum']
 
-            for x in meta_xml:
-                if meta_xml[startVal] == '<':
-                    meta_xml = meta_xml[startVal:]
-                    break
-                else:
-                    startVal += 1
-
-            xml_tree = _et.XML(meta_xml)
-            self.wkt = self._read_wkt_prj(xml_tree)
-            if self.wkt is None:
-                meta_dict = BAGRawReader()
-                self.wkt = meta_dict.read_metadata(filepath)['from_horiz_datum']
             self.resolution = self._read_res_x_and_y(xml_tree)
             sw, ne = self._read_corners_sw_and_ne(xml_tree)
             sx, sy = sw
@@ -1633,16 +1643,15 @@ class BagToGDALConverter:
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
         target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
-        srs = _osr.SpatialReference(wkt=bag.wkt)
+        srs = _osr.SpatialReference(wkt=bag.crs_wkt)
         #        if not srs.IsCompound():
         #            srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
         wkt = srs.ExportToWkt()
         target_ds.SetProjection(wkt)
-        x = 1
 
-        for item in arrays:
-            band = target_ds.GetRasterBand(x)
-            band.SetDescription(self._descriptions[x - 1])
+        for index, item in enumerate(arrays):
+            band = target_ds.GetRasterBand(index + 1)
+            band.SetDescription(self._descriptions[index])
             band.SetNoDataValue(bag.nodata)
 
             if self.flip:
@@ -1650,7 +1659,6 @@ class BagToGDALConverter:
 
             band.WriteArray(item)
             del band
-            x += 1
 
         self.dataset = target_ds
         del target_ds

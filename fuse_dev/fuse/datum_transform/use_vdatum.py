@@ -73,7 +73,7 @@ class VDatum:
 
         self._logger = _logging.getLogger('fuse')
 
-    def translate(self, filename: str, instructions: dict, reader: str) -> gdal.Dataset:
+    def translate(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
         Translate the provided filename from the provided in datums to the out
         datums and return a gdal object.
@@ -94,9 +94,9 @@ class VDatum:
 
         self._logger.log(_logging.DEBUG, 'Begin datum transformation')
         if not _has_required_instructions(instructions):
-            instructions['interpolate'] = 'False'
+            instructions['interpolate'] = False
             raise ValueError('The required fields for transforming datums are not available')
-        if reader.upper() == 'BAG':
+        if instructions['read_type'].upper() == 'BAG':
             dataset, utm_zone = self.__translate_bag(filename, instructions)
         else:
             points, utm_zone = self.__translate_xyz(filename, instructions)
@@ -125,7 +125,7 @@ class VDatum:
         if instructions['read_type'] == 'ehydro':
             return self.__read_points(filename, instructions)
         elif instructions['read_type'] == 'bag':
-            return self.read_bathymetry(filename, instructions)
+            return self.__read_bag_bathy(filename, instructions)
         else:
             raise ValueError('Reader type not implemented')
 

@@ -42,7 +42,7 @@ class DatumTransformer:
         self._reader = reader
         self._engine = uv.VDatum(vdatum_path, java_path, self._reader)
 
-    def translate(self, filename: str, metadata: dict) -> (gdal.Dataset, bool):
+    def translate(self, filename: str, metadata: dict) -> (gdal.Dataset, dict, bool):
         """
         Run the specified transformation engine to translate the provided
         dataset.
@@ -57,13 +57,13 @@ class DatumTransformer:
         Returns
         -------
         gdal.Dataset, bool
-            GDAL point cloud and boolean of whether data was reprojected
+            GDAL point cloud, metadata, and boolean value of whether data was reprojected
         """
 
-        if any(metadata[self._from_datum_info[index]] != metadata[self._to_datum_info[index]] for index in
+        if any(metadata[self._from_datum_info[index]].lower() != metadata[self._to_datum_info[index]].lower() for index in
                range(len(self._from_datum_info))):
             if type(self._reader) is BAGRawReader:
-                metadata['interpolate'] = 'False'
+                metadata['interpolate'] = False
                 return self._engine.create(filename, metadata), metadata, False
             else:
                 return self._engine.translate(filename, metadata), metadata, True
