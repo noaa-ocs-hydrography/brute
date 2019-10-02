@@ -311,6 +311,11 @@ class BAGRawReader(RawReader):
             self.namespace = self._assign_namspace(bag_version=bag_version)
             self.bag_format = self._set_format(infilename, bag_version)
             self.get_fields()
+            if 'from_vert_datum' not in self.data or 'from_vert_key' not in self.data:
+                for datum in vert_datum.keys():
+                    if datum in infilename:
+                        self.data['from_vert_datum'], self.data['from_vert_key'] = datum, datum
+                        break
 
             return self.data
         except _tb.HDF5ExtError as e:
