@@ -94,7 +94,7 @@ class FuseProcessor:
         'logfilename',
         'version_reference',
         'interpolate',
-        'file_size'
+        'file_size',
     ]
 
     _scores = [
@@ -102,32 +102,39 @@ class FuseProcessor:
         'supersession_score',
     ]
 
-    def __init__(self, config_filename: str = 'generic.config'):
+    def __init__(self, configfilename: str = 'generic.config'):
         """
         Initialize with the metadata file to use and the horizontal and
         vertical datums of the workflow.
 
         Parameters
         ----------
-        config_filename
+        configfilename
             path to file with configuration
         """
 
-        self._config_filename = config_filename
-        self._config = self._read_configfile(config_filename)
+        self._configfilename = configfilename
+        self._config = self._read_configfile(configfilename)
         self.rawdata_path = self._config['rawpaths']
         self.procdata_path = self._config['outpath']
-        self._cols = FuseProcessor._paths + FuseProcessor._dates + FuseProcessor._datums + FuseProcessor._quality_metrics + FuseProcessor._scores + FuseProcessor._source_info + FuseProcessor._processing_info
+        self._cols = FuseProcessor._paths + \
+                     FuseProcessor._dates + \
+                     FuseProcessor._datums + \
+                     FuseProcessor._quality_metrics + \
+                     FuseProcessor._scores + \
+                     FuseProcessor._source_info + \
+                     FuseProcessor._processing_info
         self._meta_obj = _mr.MetaReviewer(self._config['metapath'], self._cols)
         self._set_data_reader()
         self._set_data_transform()
+        self._set_data_interpolator()
         self._set_data_writer()
         self._db = None
         self._meta = {}  # initialize the metadata holder
         self.logger = _logging.getLogger('fuse')
         self.logger.setLevel(_logging.DEBUG)
 
-    def _read_configfile(self, configuration_file: str):
+    def _read_configfile(self, confile: str):
         """
         Read, parse, and return the configuration information in the provided
         file.  The actual format of this file is ....
@@ -167,12 +174,12 @@ class FuseProcessor:
                             raise ValueError(f'Invalid input path: {r}')
                     config[key] = rawpaths
                 elif key == 'outpath':
-                    if _os.path.isdir(value):
-                        config[key] = value
+                    if _os.path.isdir(config_file[section][key]):
+                        config[key] = config_file[section][key]
                     else:
-                        raise ValueError(f'Invalid input path: {value}')
+                        raise ValueError(f'Invalid input path: {config_file[section][key]}')
                 else:
-                    config[key] = value
+                    config[key] = config_file[section][key]
 
         if len(config) == 0:
             raise ValueError('Failed to read configuration file.')
@@ -244,24 +251,32 @@ class FuseProcessor:
                 self._read_type = 'bag'
             else:
                 raise ValueError('reader type not implemented')
-        except ValueError:
+        except:
             raise ValueError("No reader type found in the configuration file.")
 
     def _set_data_transform(self):
         """Set up the datum transformation engine."""
 
-        self._transform = _trans.DatumTransformer(self._config['vdatum_path'], self._config['java_path'], self._reader)
+        self._transform = _trans.DatumTransformer(self._config, self._reader)
+
+    def _set_data_interpolator(self):
+        """Set up the interpolator engine."""
+
+        engine = self._config['interpolation_engine']
+        res = float(self._config['to_resolution'])
+        method = self._config['interpolation_method']
+        self._interpolator = _interp.Interpolator(engine, method, res)
 
     def _set_data_writer(self):
         """Set up the location and method to write tranformed and interpolated data."""
 
-        self._raster_extension = self._config['bathymetry_intermediate_file']
-        if self._raster_extension == 'bag':
-            self._point_extension = 'csar'
+        raster_extension = self._config['bathymetry_intermediate_file']
+        if raster_extension == 'bag':
+            point_extension = 'gpkg'
         else:
-            self._point_extension = self._raster_extension
-        self._raster_writer = ProcIO('gdal', self._raster_extension)
-        self._point_writer = ProcIO('point', self._point_extension)
+            point_extension = raster_extension
+        self._raster_writer = ProcIO('gdal', raster_extension)
+        self._point_writer = ProcIO('point', point_extension)
 
     def read(self, filename: str):
         """
@@ -407,102 +422,64 @@ class FuseProcessor:
         the data reader since there will be cases where we get full res data
         from the reader and interlation is not necessary.
 
-
-        TODO: need to add checks to make sure the metadata is ready. Perhaps this should be added to the metadata object?
-
         Parameters
         ----------
-        filename
-            filename to process
+        infilename
+        interpolate
 
         Returns
-        ----------
-        str
-            output filename
-        """
-        if self._read_type == 'ehydro':
-            meta_entry = self._reader.name_gen(_os.path.basename(filename), '', sfx=None)
-        else:
-            meta_entry = _os.path.splitext(_os.path.basename(filename))[0]
-        metadata = self._get_stored_meta(meta_entry)
-        self._set_log(meta_entry)
-        metadata['read_type'] = self._read_type
+        -------
 
+        TODO: need to add checks to make sure the metadata is ready.
+            Perhaps this should be added to the metadata object?
+        """
+
+        metadata = self._get_stored_meta(infilename)
+        metadata['read_type'] = self._read_type
+        self._set_log(infilename)
         if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
-            input_directory = _os.path.splitext(_os.path.basename(filename))[0]
-            metadata['outpath'] = _os.path.join(self._config['outpath'], input_directory)
-            metadata['new_ext'] = self._point_extension
-
+            outpath = self._config['outpath']
+            infilepath, infilebase = _os.path.split(infilename)
+            infileroot, ext = _os.path.splitext(infilebase)
+            metadata['outpath'] = _os.path.join(outpath, infileroot)
+            metadata['new_ext'] = self._config['bathymetry_intermediate_file']
             # oddly _transform becomes the bathymetry reader here...
-            # return a GDAL dataset in the right datums to combine
-            dataset, metadata, transformed = self._transform.translate(filename, metadata)
-
+            # return a gdal dataset in the right datums for combine
+            dataset, metadata, transformed = self._transform.translate(infilename, metadata)
             if self._read_type == 'ehydro':
                 outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                 self._point_writer.write(dataset, outfilename)
                 metadata['to_filename'] = outfilename
-            elif self._read_type == 'bag':
-                metadata['to_filename'] = filename
-
+            if self._read_type == 'bag':
+                metadata['to_filename'] = infilename
             self._meta_obj.write_meta_record(metadata)
-
             if 'interpolate' in metadata:
-                interpolate = metadata['interpolate'].lower()
-                if interpolate == 'true':
+                interpolate = metadata['interpolate'].upper()
+                if interpolate == 'TRUE':
                     meta_interp = metadata.copy()
-
-                    root, filename = _os.path.split(meta_interp['outpath'])
-                    base = _os.path.splitext(filename)[0]
-                    meta_interp['from_filename'] = f'{base}.interpolated'
-
-                    if self._config['interpolation_engine'] == 'raster':
-                        output_filename = f"{_os.path.join(root, base)}_interp.{self._raster_extension}"
-                    else:
-                        resolution = float(self._config['to_resolution'])
-                        resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
-                        output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
-
-                    meta_interp['to_filename'] = output_filename
-                    method = self._config['interpolation_method']
-
-                    support_files = meta_interp['support_files'] if 'support_files' in meta_interp else None
-
-                    try:
-                        interpolator = _interp.Interpolator(dataset, sidescan_rasters=support_files)
-                        dataset = interpolator.interpolate(method, float(self._config['to_resolution']), plot=True)
-                        meta_interp['interpolated'] = True
-                        self._raster_writer.write(dataset, meta_interp['to_filename'])
-                    except (ValueError, RuntimeError, IndexError) as error:
-                        message = f'interpolation error {error}'
-                        print(message)
-                        self.logger.warning(message)
-                        meta_interp['interpolated'] = False
-
+                    dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
+                    self._raster_writer.write(dataset, meta_interp['to_filename'])
                     self._meta_obj.write_meta_record(meta_interp)
-                    metadata.update(meta_interp)
-                elif interpolate == 'false':
-                    self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
-                    del dataset
+
+                elif interpolate == 'False':
+                    print(f'{infileroot} - No interpolation required')
             else:
-                del dataset
-                raise ValueError('metadata has no "interpolate" value')
+                raise ValueError('metadata has no >interpolate< value')
         else:
-            self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
-
+            msg = 'All metadata for datum transformation not avaiable.'
+            self.logger.log(_logging.DEBUG, msg)
         self._close_log()
-        return metadata['to_filename']
 
-    def post(self, filename):
+    def post(self, infilename):
         """
         Make the data available for amalgamation.
 
         TODO: need to add checks to make sure the metadata is ready.
             Perhaps this should be added to the metadata object?
         """
-
-        metadata = self._get_stored_meta(filename)
-        self._set_log(filename)
+        metadata = self._get_stored_meta(infilename)
+        self._set_log(infilename)
         if self._quality_metadata_ready(metadata):
             if not self._score_metadata_ready(metadata):
                 metadata['catzoc'] = score.catzoc(metadata)
