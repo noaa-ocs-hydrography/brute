@@ -52,6 +52,7 @@ class RasterInterpolator:
 
         uval = _catZones.get(catzoc)
         bag = _bag.Open(dataset)
+        del dataset
 
         if size is not None:
             bag.size = int(size)
@@ -103,7 +104,7 @@ class RasterInterpolator:
         bag.elevation, bag.uncertainty, coverage.array = _itp.rePrint(bag.elevation, bag.uncertainty, coverage.array,
                                                                       ugrids, bag.nodata, io)
 
-        save = _bag.BagToGDALConverter('MLLW')
+        save = _bag.BagToGDALConverter()
         save.bag2gdal(bag)
 
         del coverage, bag, ugrids
