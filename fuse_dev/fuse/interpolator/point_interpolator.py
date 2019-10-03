@@ -34,6 +34,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 from osgeo import gdal, ogr, osr
+from fuse.utilities import gdal_to_xyz, maximum_nearest_neighbor_distance
 
 
 def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, float]:
@@ -122,21 +123,24 @@ class PointInterpolator:
         else:
             raise ValueError('interpolation type not implemented.')
 
-        data_array = self._gdal2vector(dataset)
-        minrad, meanrad, maxrad = self._get_point_spacing(data_array)
-        window = maxrad * self.window_scale
+        data_array = gdal_to_xyz(dataset)[:, :2]
+        # get the bounds (min X, min Y, max X, max Y)
+        input_bounds = np.concatenate((np.min(data_array, axis=0), np.max(data_array, axis=0)))
+
+        # set the size of the interpolation window size to be the minimum of all nearest neighbor distances
+        window = self.window_scale * maximum_nearest_neighbor_distance(data_array)
 
         if linear:
             # do the triangulation interpolation
-            ds2 = self._gdal_linear_interp_points(dataset, resolution)
+            ds2 = self._gdal_linear_interp_points(dataset, resolution, input_bounds)
         elif invlin:
             ds2 = self._gdal_invdist_scilin_interp_points(dataset, resolution,
-                                                          window)
+                                                          input_bounds, window)
             if shrink:
                 ds4 = self._shrink_coverage(ds2, resolution, window)
         elif invdist:
             # do the inverse distance interpolation
-            ds3 = self._gdal_invdist_interp_points(dataset, resolution, window)
+            ds3 = self._gdal_invdist_interp_points(dataset, resolution, input_bounds, window)
             # shrink the coverage back on the edges and in the holidays on the
             # inv dist
             if shrink:
@@ -147,7 +151,7 @@ class PointInterpolator:
         if linear:
             # trim the triangulated interpolation back using the inv dist as a
             # mask
-            ds3 = self._get_mask(dataset, resolution, window)
+            ds3 = self._get_mask(dataset, resolution, input_bounds, window)
             ds5 = self._mask_with_raster(ds2, ds3)
         elif invlin:
             ds3 = self._get_shape_mask(ds2, shapefile, resolution)
@@ -227,7 +231,7 @@ class PointInterpolator:
 
         return min_dist.min(), min_dist.mean(), min_dist.max()
 
-    def _get_mask(self, dataset: gdal.Dataset, resolution: float, window: float) -> gdal.Dataset:
+    def _get_mask(self, dataset: gdal.Dataset, resolution: float, input_bounds: (float, float, float, float), window: float) -> gdal.Dataset:
         """
         Currently using the shrunk invdist method as a mask.
 
@@ -247,7 +251,7 @@ class PointInterpolator:
 
         """
 
-        data = self._gdal_invdist_interp_points(dataset, resolution, window)
+        data = self._gdal_invdist_interp_points(dataset, resolution, input_bounds, window)
         mask = self._shrink_coverage(data, resolution, window)
         return mask
 
@@ -429,7 +433,7 @@ class PointInterpolator:
         print('transformed', shape_gt)
         return shape_ds
 
-    def _gdal_linear_interp_points(self, dataset: gdal.Dataset, resolution: float,
+    def _gdal_linear_interp_points(self, dataset: gdal.Dataset, resolution: float, input_bounds: (float, float, float, float),
                                    nodata: float = 1000000) -> gdal.Grid:
         """
         Interpolate the provided gdal vector points and return the interpolated
@@ -451,24 +455,13 @@ class PointInterpolator:
 
         """
 
-        # Find the bounds of the provided data
-        xmin, xmax, ymin, ymax = np.nan, np.nan, np.nan, np.nan
-        lyr = dataset.GetLayerByIndex(0)
-        count = lyr.GetFeatureCount()
-
-        for n in np.arange(count):
-            f = lyr.GetFeature(n)
-            x, y, z = f.geometry().GetPoint()
-            xmin, xmax = _compare_vals(x, xmin, xmax)
-            ymin, ymax = _compare_vals(y, ymin, ymax)
-
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, input_bounds)
         algorithm = f"linear:radius=0:nodata={int(nodata)}"
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
                                 algorithm=algorithm)
         return interp_data
 
-    def _gdal_invdist_scilin_interp_points(self, dataset: gdal.Dataset, resolution: float, radius: float,
+    def _gdal_invdist_scilin_interp_points(self, dataset: gdal.Dataset, resolution: float, input_bounds: (float, float, float, float), radius: float,
                                            nodata: float = 1000000) -> gdal.Dataset:
         """
         Interpolate the provided gdal vector points and return the interpolated
@@ -493,18 +486,7 @@ class PointInterpolator:
         """
 
         print('_gdal_invdist_scilin_interp_points')
-        # Find the bounds of the provided data
-        xmin, xmax, ymin, ymax = np.nan, np.nan, np.nan, np.nan
-        lyr = dataset.GetLayerByIndex(0)
-        count = lyr.GetFeatureCount()
-
-        for n in np.arange(count):
-            f = lyr.GetFeature(n)
-            x, y, z = f.geometry().GetPoint()
-            xmin, xmax = _compare_vals(x, xmin, xmax)
-            ymin, ymax = _compare_vals(y, ymin, ymax)
-
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, input_bounds)
         algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}" + \
                     f":angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
@@ -532,7 +514,7 @@ class PointInterpolator:
 
         return interp_data
 
-    def _gdal_invdist_interp_points(self, dataset: gdal.Dataset, resolution: float, radius: float,
+    def _gdal_invdist_interp_points(self, dataset: gdal.Dataset, resolution: float, input_bounds: (float, float, float, float), radius: float,
                                     nodata: float = 1000000) -> gdal.Dataset:
         """
         Interpolate the provided gdal vector points and return the interpolated
@@ -556,18 +538,7 @@ class PointInterpolator:
 
         """
 
-        # Find the bounds of the provided data
-        xmin, xmax, ymin, ymax = np.nan, np.nan, np.nan, np.nan
-        lyr = dataset.GetLayerByIndex(0)
-        count = lyr.GetFeatureCount()
-
-        for n in np.arange(count):
-            f = lyr.GetFeature(n)
-            x, y, z = f.geometry().GetPoint()
-            xmin, xmax = _compare_vals(x, xmin, xmax)
-            ymin, ymax = _compare_vals(y, ymin, ymax)
-
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, (xmin, ymin, xmax, ymax))
+        numrows, numcolumns, bounds = self._get_nodes3(resolution, input_bounds)
         algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}" + \
                     f":angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
