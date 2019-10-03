@@ -463,7 +463,7 @@ def geometryToShape(coordinates: list):
     return multipoly
 
 
-def survey_compile(objectIDs: list, num: int, history: [dict], qId=0, pb=None) -> (list, [dict]):
+def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0, pb=None) -> (list, [dict]):
     """
     Queries and compiles the data from the input objectIDs and checks against
     the history of past queries to mark them for updates
@@ -495,6 +495,14 @@ def survey_compile(objectIDs: list, num: int, history: [dict], qId=0, pb=None) -
     data_type = config_data_type()
 
     id_chunks = list(list_chunks([str(objectID) for objectID in objectIDs]))
+
+    region_ds = ogr.Open(poly)
+    region_layer = region_ds.GetLayer()
+
+    for feature in region_layer:
+        if feature is not None:
+            region_geom = feature.GetGeometryRef()
+            break
 
     for chunk in id_chunks:
         id_string = ','.join(chunk)
@@ -532,8 +540,24 @@ def survey_compile(objectIDs: list, num: int, history: [dict], qId=0, pb=None) -
                 coords = page['features'][object_num]['geometry']['rings']
                 row['poly'] = geometryToShape(coords)
             except KeyError as e:
-                print(e, 'geometry')
-            rows.append(row)
+                print(e, 'invalid geometry')
+
+            if 'poly' in row:
+                try:
+                    survey_geom = ogr.CreateGeometryFromWkt(row['poly'])
+                    try:
+                        intersection = region_geom.Intersection(survey_geom)
+                        flag = intersection.ExportToWkt()
+                    except AttributeError as e:
+                        flag = 'GEOMETRYCOLLECTION EMPTY'
+                except TypeError as e:
+                    flag = 'GEOMETRYCOLLECTION EMPTY'
+
+                if flag != 'GEOMETRYCOLLECTION EMPTY':
+                    rows.append(row)
+
+            else:
+                rows.append(row)
             if pb is not None:
                 pb.SetValue(object_num + 1)
             object_num += 1
@@ -794,6 +818,11 @@ def survey_download(rows: [dict], region: dict, meta=None) -> [dict]:
                 row['SURVEY_FILES'].extend(file_downloader(survey_folder, download_links, row['SURVEY_FILES']))
 
         if os.path.isdir(survey_folder):
+            if 'poly' in row:
+                geopackage_name = os.path.join(survey_folder, f'{survey}.gpkg')
+                geojson = write_geopackage(geopackage_name, survey, row[poly], 4362)
+                row['SURVEY_FILES'].append(geopackage_name)
+
             if len(row['SURVEY_FILES']) > 0:
                 bag_files = [bag for bag in row['SURVEY_FILES'] if os.path.splitext(bag)[1] == '.bag']
                 for bag in bag_files:
@@ -1038,13 +1067,13 @@ def main(pb=None):
         bounds = region_bounds(region_poly)
         objectIDs, bagNum = survey_objectID_query(bounds, 0)
         if bagNum > 0:
-            attr_list, rows = survey_compile(objectIDs, bagNum, survey_history, pb=pb)
-            if len(rows) > 0:
-                rows = survey_download(rows, region, meta=csv_meta)
-                survey_history.extend(rows)
-                info_save(survey_history)
-            else:
-                print(f'No changes in bag data')
+            attr_list, rows = survey_compile(objectIDs, bagNum, survey_history, region_poly, pb=pb)
+#            if len(rows) > 0:
+#                rows = survey_download(rows, region, meta=csv_meta)
+#                survey_history.extend(rows)
+#                info_save(survey_history)
+#            else:
+#                print(f'No changes in bag data')
         else:
             print(f'No new items were found within: {region}.')
 
