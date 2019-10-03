@@ -10,6 +10,7 @@ import configparser
 import datetime
 import gzip
 import json
+import numpy as np
 import os
 import pickle
 import re
@@ -149,6 +150,7 @@ def region_bounds(region_file: str) -> [dict]:
 
     return return_bounds
 
+
 def survey_objectID_query(bounds: [dict], qId=0) -> ([int], int):
     """
     Queries the ObjectIDs for the surveys within the geographic bounds given.
@@ -285,7 +287,122 @@ def date_eval(row: dict, stored: dict) -> bool:
         return False
 
 
-def survey_compile(objectIDs: list, num: int, history: [dict], qId=0, pb=None) -> (list, [dict]):
+def create_polygon(coords: [(float, float)]) -> ogr.Geometry:
+    """
+    Creates an ogr.Geometry/wkbLinearRing object from a list of coordinates.
+
+    with considerations from:
+    https://gis.stackexchange.com/q/217165
+
+    Parameters
+    ----------
+    coords :
+        A list of [x, y] points to be made into an ogr.Geometry/wkbLinearRing object
+
+    Returns
+    -------
+    type
+        ogr.Geometry/wkbLinearRing object
+
+    """
+
+    ring = ogr.Geometry(ogr.wkbLinearRing)
+
+    for coord in coords:
+        ring.AddPoint(coord[0], coord[1], 1)
+
+    # Create polygon
+    poly = ogr.Geometry(ogr.wkbPolygon)
+    poly.AddGeometry(ring)
+    return poly
+
+
+def create_multipolygon(polys: [ogr.Geometry]) -> str:
+    """
+    Creates an ogr.Geometry/wkbMultiPolygon object from a list of
+    ogr.Geometry/wkbLinearRing objects.  The ogr.Geometry/wkbMultiPolygon is
+    transelated and returned as a WTK Multipolygon object.
+
+    with considerations from:
+    https://gis.stackexchange.com/q/217165
+    and:
+    https://pcjericks.github.io/py-gdalogr-cookbook/geometry.html#create-a-multipolygon
+
+    Parameters
+    ----------
+    polys :
+        A list of ogr.Geometry/wkbLinearRing objects
+    polys: List[ogr.Geometry] :
+
+
+    Returns
+    -------
+    type
+        WTK Multipolygon object
+
+    """
+
+    multipolygon = ogr.Geometry(ogr.wkbMultiPolygon)
+
+    for poly in polys:
+        multipolygon.AddGeometry(poly)
+
+    return multipolygon.ExportToWkt()
+
+
+def geometryToShape(coordinates: list):
+    """
+    Uses a list of coordinate point 'rings' and creates a WTK Multipolygon
+    object from them.  This object represents the survey outline.
+
+    eHydro data object geometries are returned as a list of lists/'rings'
+    meaning that a survey may have one or many polygons included in it's
+    geometry.
+
+    This function takes each 'ring' and determines it's extents and creates a
+    ogr.Geometry object for it using :func:`create_polygon`
+
+    The polygons for each 'ring' are then combined into a single WTK
+    Multipolygon object using :func:`create_multipolygon`
+
+    The total extent of the geometry and the WTK Multipolygon object are
+    returned
+
+    Parameters
+    ----------
+    coordinates :
+        A list of coordinate point 'rings' returned by an eHydro survey query
+        in the Geometry attribute
+
+
+    Returns
+    -------
+    type
+        A WTK Multipolygon object representing the survey outline
+
+    """
+
+    polys = []
+    bounds = []
+
+    for ring in coordinates:
+        ring = np.array(ring)
+        x = ring[:, 0]
+        y = ring[:, 1]
+        bound = [[np.amin(x), np.amax(y)], [np.amax(x), np.amin(y)]]
+        bounds.extend(bound)
+        poly = create_polygon(ring)
+        polys.append(poly)
+
+    multipoly = create_multipolygon(polys)
+    bounds = np.array(bounds)
+    xb = bounds[:, 0]
+    yb = bounds[:, 1]
+    bounds = (np.amin(xb), np.amax(yb)), (np.amax(xb), np.amin(yb))
+    return multipoly
+
+
+def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0, pb=None) -> (list, [dict]):
     """
     Queries and compiles the data from the input objectIDs and checks against
     the history of past queries to mark them for updates
@@ -318,10 +435,18 @@ def survey_compile(objectIDs: list, num: int, history: [dict], qId=0, pb=None) -
 
     id_chunks = list(list_chunks([str(objectID) for objectID in objectIDs]))
 
+    region_ds = ogr.Open(poly)
+    region_layer = region_ds.GetLayer()
+
+    for feature in region_layer:
+        if feature is not None:
+            region_geom = feature.GetGeometryRef()
+            break
+
     for chunk in id_chunks:
         id_string = ','.join(chunk)
         query = f'https://gis.ngdc.noaa.gov/arcgis/rest/services/web_mercator/{data_type}/MapServer/{qId}/query' + \
-                f'?where=&text=&objectIds={id_string}&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields={opts}&returnGeometry=false&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
+                f'?where=&text=&objectIds={id_string}&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields={opts}&returnGeometry=true&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=4326&having=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&f=json'
         response = requests.get(query)
         page = response.json()
 
@@ -348,9 +473,30 @@ def survey_compile(objectIDs: list, num: int, history: [dict], qId=0, pb=None) -
                                 print(e, date)
                     elif page['features'][object_num]['attributes'][attribute] is not None:
                         row[attribute] = str(page['features'][object_num]['attributes'][attribute])
-                rows.append(row)
             except KeyError as e:
                 print(e, page)
+            try:
+                coords = page['features'][object_num]['geometry']['rings']
+                row['poly'] = geometryToShape(coords)
+            except KeyError as e:
+                print(e, 'invalid geometry')
+
+            if 'poly' in row:
+                try:
+                    survey_geom = ogr.CreateGeometryFromWkt(row['poly'])
+                    try:
+                        intersection = region_geom.Intersection(survey_geom)
+                        flag = intersection.ExportToWkt()
+                    except AttributeError as e:
+                        flag = 'GEOMETRYCOLLECTION EMPTY'
+                except TypeError as e:
+                    flag = 'GEOMETRYCOLLECTION EMPTY'
+
+                if flag != 'GEOMETRYCOLLECTION EMPTY':
+                    rows.append(row)
+
+            else:
+                rows.append(row)
             if pb is not None:
                 pb.SetValue(object_num + 1)
             object_num += 1
@@ -366,6 +512,68 @@ def survey_compile(objectIDs: list, num: int, history: [dict], qId=0, pb=None) -
                             row['SURVEY_FILES'] = stored['SURVEY_FILES']
     print('rows complete')
     return attr_list, rows
+
+
+def write_geopackage(out_path: str, name: str, poly: str,
+                     spcs: Union[str, int]):
+    """
+    Writes out a geopackage containing the bounding geometry of
+    of the given query.
+
+    Derived from:
+    https://gis.stackexchange.com/a/52708/8104
+    via
+    https://gis.stackexchange.com/q/217165
+
+    Parameters
+    ----------
+    out_path :
+        String representing the complete file path for the output geopackage
+    name :
+        String representing the name of the survey; Used to name the layer
+    poly :
+        The WTK Multipolygon object that holds the survey's bounding data
+    spcs :
+        The ESPG code for the data
+
+    """
+    # Reference
+    if type(spcs) == str:
+        proj = osr.SpatialReference(wkt=spcs)
+        proj.MorphFromESRI()
+    else:
+        proj = osr.SpatialReference()
+        proj.ImportFromEPSG(spcs)
+
+    # Now convert it to a geopackage with OGR
+    driver = ogr.GetDriverByName('GPKG')
+    ds = driver.CreateDataSource(out_path)
+    layer = ds.CreateLayer(name, proj, ogr.wkbMultiPolygon)
+    #    layer = ds.CreateLayer(name, None, ogr.wkbMultiPolygon)
+    # Add one attribute
+    layer.CreateField(ogr.FieldDefn('Survey', ogr.OFTString))
+    defn = layer.GetLayerDefn()
+
+    # If there are multiple geometries, put the "for" loop here
+
+    # Create a new feature (attribute and geometry)
+    feat = ogr.Feature(defn)
+    feat.SetField('Survey', name)
+
+    # Make a geometry, from wkt object
+    geom = ogr.CreateGeometryFromWkt(poly)
+
+    feat.SetGeometry(geom)
+
+    layer.CreateFeature(feat)
+
+    linear_geom = geom.GetLinearGeometry()
+    geojson = linear_geom.ExportToJson()
+
+    # Save and close everything
+    del ds, layer, feat, geom
+
+    return geojson
 
 
 def link_grab(source_url: str, extensions: list) -> list:
@@ -450,10 +658,14 @@ def file_downloader(folder: str, download_links: list, saved_files: list) -> lis
                     save_obj = open(basename, 'wb')
                     shutil.copyfileobj(unzip, save_obj)
                     unzip.close(), save_obj.close()
-                    saved_links.extend([saved, basename])
-                else:
+                    os.remove(saved)
+                    saved_links.append(basename)
                     print(link)
+                elif ext in ('.gz') and os.path.exists(basename):
+                    pass
+                else:
                     saved_links.append(saved)
+                    print(link)
                 break
             elif not os.path.exists(saved):
                 try:
@@ -537,7 +749,7 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
                                    'TIFF': ['.tif', '.tiff', '.tfw', '.gz'],
                                    'multibeam/data/version1/products': ['.xyz', '.gz']}.items():
             source_url = f'{ncei_head}/{ncei_sub}/{folder}'
-            download_links = link_grab(source_url, extensions)
+            download_links.extend(link_grab(source_url, extensions))
 
             if len(download_links) > 0:
                 if not os.path.isdir(survey_folder):
@@ -545,12 +757,22 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
                 row['SURVEY_FILES'].extend(file_downloader(survey_folder, download_links, row['SURVEY_FILES']))
 
         if os.path.isdir(survey_folder):
-            pickle_name = f'{os.path.join(survey_folder, survey)}.pickle'
-            row['SURVEY_FILES'].extend([pickle_name])
+#            if 'poly' in row:
+#                geopackage_name = os.path.join(survey_folder, f'{survey}.gpkg')
+#                write_geopackage(geopackage_name, survey, row[poly], 4362)
+#                row['SURVEY_FILES'].append(geopackage_name)
 
-            with open(pickle_name, 'wb') as metafile:
-                pickle.dump(row, metafile)
-                metafile.close()
+            if len(row['SURVEY_FILES']) > 0:
+                bag_files = [bag for bag in row['SURVEY_FILES'] if os.path.splitext(bag)[1] == '.bag']
+                for bag in bag_files:
+                    base = os.path.basename(bag)
+                    name, ext = os.path.splitext(base)
+                    pickle_name = f'{os.path.join(survey_folder, name)}.pickle'
+                    row['SURVEY_FILES'].extend([pickle_name])
+
+                    with open(pickle_name, 'wb') as metafile:
+                        pickle.dump(row, metafile)
+                        metafile.close()
 
     return rows
 
@@ -640,7 +862,7 @@ def main(pb=None):
         bounds = region_bounds(region_poly)
         objectIDs, bagNum = survey_objectID_query(bounds, 0)
         if bagNum > 0:
-            attr_list, rows = survey_compile(objectIDs, bagNum, survey_history, pb=pb)
+            attr_list, rows = survey_compile(objectIDs, bagNum, survey_history, region_poly, pb=pb)
             if len(rows) > 0:
                 rows = survey_download(rows, region)
                 survey_history.extend(rows)
