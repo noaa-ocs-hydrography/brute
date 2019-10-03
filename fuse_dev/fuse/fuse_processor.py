@@ -121,6 +121,7 @@ class FuseProcessor:
         self._meta_obj = _mr.MetaReviewer(self._config['metapath'], self._cols)
         self._set_data_reader()
         self._set_data_transform()
+        self._set_data_interpolator()
         self._set_data_writer()
         self._db = None
         self._meta = {}  # initialize the metadata holder
@@ -251,6 +252,13 @@ class FuseProcessor:
         """Set up the datum transformation engine."""
 
         self._transform = _trans.DatumTransformer(self._config['vdatum_path'], self._config['java_path'], self._reader)
+
+    def _set_data_interpolator(self):
+        """Set up the interpolator engine."""
+        engine = self._config['interpolation_engine']
+        res = float(self._config['to_resolution'])
+        method = self._config['interpolation_method']
+        self._interpolator = _interp.Interpolator(engine, method, res)
 
     def _set_data_writer(self):
         """Set up the location and method to write tranformed and interpolated data."""
@@ -468,14 +476,14 @@ class FuseProcessor:
                         output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
 
                     meta_interp['to_filename'] = output_filename
-                    method = self._config['interpolation_method']
+                    # method = self._config['interpolation_method']
 
-                    support_files = meta_interp['support_files'] if 'support_files' in meta_interp else None
+                    # support_files = meta_interp['support_files'] if 'support_files' in meta_interp else None
 
                     try:
-                        interpolator = _interp.Interpolator(dataset, sidescan_rasters=support_files)
-                        dataset = interpolator.interpolate(method, float(self._config['to_resolution']), plot=True)
-                        meta_interp['interpolated'] = True
+                        # interpolator = _interp.Interpolator(dataset, sidescan_rasters=support_files)
+                        # dataset = interpolator.interpolate(method, float(self._config['to_resolution']), plot=True)
+                        dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
                         message = f' Interpolation error: {error}'
