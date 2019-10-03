@@ -39,14 +39,14 @@ class Interpolator:
         else:
             raise ValueError('No interpolation engine type specified')
 
-    def interpolate(self, points: gdal.Dataset, metadata: dict) -> (gdal.Dataset, dict):
+    def interpolate(self, dataset: gdal.Dataset, metadata: dict) -> (gdal.Dataset, dict):
         """
         Take a gdal dataset and run the interpolation, returning a gdal raster.
 
         Parameters
         ----------
-        points
-            GDAL point cloud dataset
+        dataset
+            GDAL dataset
         metadata
             dictionary of metadata
 
@@ -71,33 +71,23 @@ class Interpolator:
 
         # Point Interpolation
         if self._interp_engine == 'point':
-            if not support_files:
-                interpolated_dataset = self._engine.interpolate(points, self._interp_type, self._resolution)
-            else:
-                interpolated_dataset = self._engine.interpolate(points, self._interp_type, self._resolution,
-                                                                support_files[0])
-
-            dataset_resolution = interpolated_dataset.GetGeoTransform()[1]
-            if dataset_resolution < 1:
-                resolution = f'{int(dataset_resolution * 100)}cm'
-            elif dataset_resolution >= 1:
-                resolution = f'{int(dataset_resolution)}m'
-
-            metadata['to_filename'] = f"{_os.path.join(root, base)}_{resolution}_interp.{metadata['new_ext']}"
+#            if not support_files:
+            interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution)
+#            else:
+#                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution,
+#                                                                support_files[0])
 
         # Raster Interpolation
         elif self._interp_engine == 'raster':
             if not support_files:
                 raise ValueError("No coverage files provided; no interpolation can occur")
             else:
-                interpolated_dataset = self._engine.interpolate(points, self._interp_type, support_files, file_size)
-
-            metadata['to_filename'] = f"{_os.path.join(root, base)}_interp.{metadata['new_ext']}"
+                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, support_files, file_size)
 
         metadata['interpolated'] = True
 
         return interpolated_dataset, metadata
-    
+
     def gettag(self, from_name: str) -> str:
         """
         Return the tag for the interpolated dataset given the original filename.
