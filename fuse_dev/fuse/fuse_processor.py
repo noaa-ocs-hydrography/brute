@@ -434,16 +434,20 @@ class FuseProcessor:
             metadata['outpath'] = _os.path.join(self._config['outpath'], input_directory)
             metadata['new_ext'] = self._point_extension
 
-            # oddly _transform becomes the bathymetry reader here...
-            # return a GDAL dataset in the right datums to combine
-            dataset, metadata, transformed = self._transform.translate(filename, metadata)
-
-            if self._read_type == 'ehydro':
-                outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
-                self._point_writer.write(dataset, outfilename)
-                metadata['to_filename'] = outfilename
-            elif self._read_type == 'bag':
-                metadata['to_filename'] = filename
+            try:
+                # oddly _transform becomes the bathymetry reader here...
+                # return a GDAL dataset in the right datums to combine
+                dataset, metadata, transformed = self._transform.translate(filename, metadata)
+                if self._read_type == 'ehydro':
+                    outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
+                    self._point_writer.write(dataset, outfilename)
+                    metadata['to_filename'] = outfilename
+                elif self._read_type == 'bag':
+                    metadata['to_filename'] = filename
+            except (ValueError, RuntimeError, IndexError) as error:
+                    message = f' Transformation error: {error}'
+                    self.logger.warning(message)
+                    metadata['interpolate'] = 'False'
 
             self._meta_obj.write_meta_record(metadata)
 
@@ -474,7 +478,7 @@ class FuseProcessor:
                         meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
-                        message = f'interpolation error {error}'
+                        message = f' Interpolation error: {error}'
                         print(message)
                         self.logger.warning(message)
                         meta_interp['interpolated'] = False
@@ -483,7 +487,6 @@ class FuseProcessor:
                     metadata.update(meta_interp)
                 elif interpolate == 'false':
                     self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
-                    del dataset
             else:
                 del dataset
                 raise ValueError('metadata has no "interpolate" value')
@@ -491,7 +494,6 @@ class FuseProcessor:
             self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
 
         self._close_log()
-        return metadata['to_filename']
 
     def post(self, filename):
         """
