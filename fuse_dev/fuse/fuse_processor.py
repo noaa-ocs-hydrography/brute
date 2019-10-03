@@ -134,7 +134,7 @@ class FuseProcessor:
         self.logger = _logging.getLogger('fuse')
         self.logger.setLevel(_logging.DEBUG)
 
-    def _read_configfile(self, confile: str):
+    def _read_configfile(self, configuration_file: str):
         """
         Read, parse, and return the configuration information in the provided
         file.  The actual format of this file is ....
@@ -434,25 +434,25 @@ class FuseProcessor:
             Perhaps this should be added to the metadata object?
         """
 
-        metadata = self._get_stored_meta(infilename)
+        metadata = self._get_stored_meta(filename)
         metadata['read_type'] = self._read_type
-        self._set_log(infilename)
+        self._set_log(filename)
         if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
             outpath = self._config['outpath']
-            infilepath, infilebase = _os.path.split(infilename)
+            infilepath, infilebase = _os.path.split(filename)
             infileroot, ext = _os.path.splitext(infilebase)
             metadata['outpath'] = _os.path.join(outpath, infileroot)
             metadata['new_ext'] = self._config['bathymetry_intermediate_file']
             # oddly _transform becomes the bathymetry reader here...
             # return a gdal dataset in the right datums for combine
-            dataset, metadata, transformed = self._transform.translate(infilename, metadata)
+            dataset, metadata, transformed = self._transform.translate(filename, metadata)
             if self._read_type == 'ehydro':
                 outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                 self._point_writer.write(dataset, outfilename)
                 metadata['to_filename'] = outfilename
             if self._read_type == 'bag':
-                metadata['to_filename'] = infilename
+                metadata['to_filename'] = filename
             self._meta_obj.write_meta_record(metadata)
             if 'interpolate' in metadata:
                 interpolate = metadata['interpolate'].upper()
