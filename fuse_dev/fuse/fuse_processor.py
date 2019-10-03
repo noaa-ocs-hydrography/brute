@@ -257,7 +257,7 @@ class FuseProcessor:
     def _set_data_transform(self):
         """Set up the datum transformation engine."""
 
-        self._transform = _trans.DatumTransformer(self._config, self._reader)
+        self._transform = _trans.DatumTransformer(self._config['vdatum_path'], self._config['java_path'], self._reader)
 
     def _set_data_interpolator(self):
         """Set up the interpolator engine."""
@@ -544,7 +544,7 @@ class FuseProcessor:
             else:
                 raise ValueError('No database location defined in the configuration file.')
 
-    def _set_log(self, filename: str):
+    def _set_log(self, path: str):
         """
         Set the global logger to the given filename.
 
@@ -553,12 +553,16 @@ class FuseProcessor:
         filename
             filename to set logger to
         """
-
-        root, extension = _os.path.splitext(filename)
-        if extension == '.interpolated':
-            filename = root
+        if _os.path.isdir(path):
+            head, tail = _os.path.split(path)
+        elif _os.path.isfile(path):
+            root, extension = _os.path.splitext(path)
+            if extension == '.interpolated':
+                base = root
+                root, ext = _os.path.splitext(base)
+            head, tail = _os.path.split(root)
         log_filename = _os.path.join(_os.path.dirname(self._config['metapath']),
-                                     f'{_os.path.splitext(_os.path.split(filename)[-1])[0]}.log')
+                                     f'{tail}.log')
         self._meta['logfilename'] = log_filename
 
         # remove handlers that might have existed from previous files
