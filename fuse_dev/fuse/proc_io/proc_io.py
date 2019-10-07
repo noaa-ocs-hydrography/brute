@@ -147,8 +147,10 @@ class ProcIO:
         if self._in_data_type == 'gdal':
             raster = self._set_raster_nodata(raster)
             data, metadata = self._gdal_raster_to_array(raster)
+            show = '/K'
         elif self._in_data_type == 'point':
             data, metadata = self._gdal_points_to_array(raster)
+            show = '/C'
         else:
             raise ValueError(f'input data type unknown: {self._in_data_type}')
         metadata['outfilename'] = filename
@@ -170,7 +172,7 @@ class ProcIO:
         if os.path.exists(write_csar):
             argument_string = ' '.join((
                 # setup the commandline
-                'cmd.exe', '/C', 'set pythonpath= &&',
+                'cmd.exe', show, 'set pythonpath= &&',
                 # activate the Python 3.5 environment with access to CARIS
                 activate_file, self._caris_environment_name, '&&',
                 # call the script
@@ -185,7 +187,11 @@ class ProcIO:
             self._logger.log(logging.DEBUG, argument_string)
 
             try:
-                caris_process = subprocess.Popen(argument_string, creationflags=subprocess.CREATE_NEW_CONSOLE if show_console else 0)
+                if self._in_data_type == 'gdal':
+                    hi = 'hi'
+                    caris_process = subprocess.Popen(argument_string, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                else:
+                    caris_process = subprocess.Popen(argument_string)
             except Exception as error:
                 self._logger.log(logging.DEBUG, f'Error when executing "{argument_string}"\n{error}')
 

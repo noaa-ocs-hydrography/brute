@@ -1228,7 +1228,7 @@ class BagFile:
         self.shape = None
         self.bounds = None
         self.resolution = None
-        self.crs_wkt = None
+        self.wkt = None
         self.size = None
         self.outfilename = None
         self.version = None
@@ -1277,7 +1277,7 @@ class BagFile:
         self.shape = self.elevation.shape
         print(dataset.GetGeoTransform())
         self.bounds, self.resolution = self._gt2bounds(dataset.GetGeoTransform(), self.shape)
-        self.crs_wkt = dataset.GetProjectionRef()
+        self.wkt = dataset.GetProjectionRef()
         self.version = dataset.GetMetadata()
 
         print(self.bounds)
@@ -1302,7 +1302,7 @@ class BagFile:
         self.shape = self.elevation.shape
         print(bag_obj.GetGeoTransform())
         self.bounds, self.resolution = self._gt2bounds(bag_obj.GetGeoTransform(), self.shape)
-        self.crs_wkt = bag_obj.GetProjectionRef()
+        self.wkt = bag_obj.GetProjectionRef()
         self.version = bag_obj.GetMetadata()
 
         print(self.bounds)
@@ -1330,9 +1330,9 @@ class BagFile:
             meta_xml = ''.join(str(line, 'utf-8', 'ignore') for line in bagfile.root.BAG_root.metadata.read())
             xml_tree = _et.XML(re.sub(r'<\?.+\?>', '', meta_xml))
 
-            self.crs_wkt = self._read_wkt_prj(xml_tree)
-            if self.crs_wkt is None:
-                self.crs_wkt = BAGRawReader().read_metadata(filepath)['from_horiz_datum']
+            self.wkt = self._read_wkt_prj(xml_tree)
+            if self.wkt is None:
+                self.wkt = BAGRawReader().read_metadata(filepath)['from_horiz_datum']
 
             self.resolution = self._read_res_x_and_y(xml_tree)
             sw, ne = self._read_corners_sw_and_ne(xml_tree)
@@ -1648,7 +1648,7 @@ class BagToGDALConverter:
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
         target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
-        srs = _osr.SpatialReference(wkt=bag.crs_wkt)
+        srs = _osr.SpatialReference(wkt=bag.wkt)
         #        if not srs.IsCompound():
         #            srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
         wkt = srs.ExportToWkt()

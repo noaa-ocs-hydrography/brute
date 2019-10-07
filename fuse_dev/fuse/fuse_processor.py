@@ -311,6 +311,12 @@ class FuseProcessor:
         meta = raw_meta.copy()
         meta['read_type'] = 'ehydro'
 
+        if 'end_date' not in meta and 'start_date' in meta:
+            meta['end_date'] = meta['start_date']
+        elif ('end_date' in meta and meta['end_date'] == '') and 'start_date' in meta:
+            meta['end_date'] = meta['start_date']
+
+
         # translate from the reader to common metadata keys for datum transformations
         if 'from_fips' in meta:
             meta['from_horiz_key'] = meta['from_fips']

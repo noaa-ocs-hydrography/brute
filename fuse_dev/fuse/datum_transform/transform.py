@@ -64,8 +64,14 @@ class DatumTransformer:
                range(len(self._from_datum_info))):
             if type(self._reader) is BAGRawReader:
                 metadata['interpolate'] = 'False'
-                return self._engine.create(filename, metadata), metadata, False
+                return 'None', metadata, False
             else:
                 return self._engine.translate(filename, metadata), metadata, True
-        else:
+        elif metadata['interpolate'].lower() != 'false':
             return self._engine.create(filename, metadata), metadata, False
+        else:
+            if type(self._reader) is BAGRawReader:
+                return 'None', metadata, False
+            else:
+                return self._engine.create(filename, metadata), metadata, False
+

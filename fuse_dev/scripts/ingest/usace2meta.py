@@ -33,7 +33,7 @@ if __name__ == '__main__':
             print(f'{n}.{m} - Begin working in {path}:')
             f = usace.read(path)
             try:
-                print(f'processing {f}', end = ', ')
+                print(f'processing {f} @ {datetime.datetime.now()}', end = ', ')
                 usace.process(f)
                 print(f'done.')
             except Exception as e:
@@ -41,8 +41,6 @@ if __name__ == '__main__':
                 print(e)
                 usace.logger.log(_logging.DEBUG, e)
                 print('\n')
-            if m > 3:
-                break
     end = datetime.datetime.now()
     time_delta = end - start
     # wx_frame.close()
