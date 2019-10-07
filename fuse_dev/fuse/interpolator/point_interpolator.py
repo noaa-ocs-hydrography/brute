@@ -34,7 +34,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 from osgeo import gdal, ogr, osr
-from fuse.utilities import gdal_to_xyz, maximum_nearest_neighbor_distance
+from fuse.utilities import gdal_to_xyz, maximum_nearest_neighbor_distance, shape_from_cell_size
 
 
 def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, float]:
@@ -124,6 +124,7 @@ class PointInterpolator:
             raise ValueError('interpolation type not implemented.')
 
         data_array = gdal_to_xyz(dataset)[:, :2]
+
         # get the bounds (min X, min Y, max X, max Y)
         input_bounds = np.concatenate((np.min(data_array, axis=0), np.max(data_array, axis=0)))
 
@@ -455,10 +456,13 @@ class PointInterpolator:
 
         """
 
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, input_bounds)
+
+        (numrows, numcolumns), bounds = shape_from_cell_size(resolution, input_bounds)
         algorithm = f"linear:radius=0:nodata={int(nodata)}"
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
                                 algorithm=algorithm)
+
+        print(interp_data.GetGeoTransform())
         return interp_data
 
     def _gdal_invdist_scilin_interp_points(self, dataset: gdal.Dataset, resolution: float, input_bounds: (float, float, float, float), radius: float,
@@ -486,7 +490,7 @@ class PointInterpolator:
         """
 
         print('_gdal_invdist_scilin_interp_points')
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, input_bounds)
+        (numrows, numcolumns), bounds = shape_from_cell_size(resolution, input_bounds)
         algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}" + \
                     f":angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
@@ -538,7 +542,7 @@ class PointInterpolator:
 
         """
 
-        numrows, numcolumns, bounds = self._get_nodes3(resolution, input_bounds)
+        (numrows, numcolumns), bounds = shape_from_cell_size(resolution, input_bounds)
         algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}" + \
                     f":angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
         interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,

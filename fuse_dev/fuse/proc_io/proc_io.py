@@ -17,7 +17,7 @@ from tempfile import TemporaryDirectory as tempdir
 import fiona
 import fiona.crs
 import numpy as np
-from fuse.utilities import vectorize_raster, write_geometry, gdal_to_xyz
+from fuse.utilities import vectorize_raster, gdal_to_xyz
 from osgeo import gdal, osr
 from shapely.geometry import MultiPoint
 
@@ -147,10 +147,8 @@ class ProcIO:
         if self._in_data_type == 'gdal':
             raster = self._set_raster_nodata(raster)
             data, metadata = self._gdal_raster_to_array(raster)
-            show = '/K'
         elif self._in_data_type == 'point':
             data, metadata = self._gdal_points_to_array(raster)
-            show = '/C'
         else:
             raise ValueError(f'input data type unknown: {self._in_data_type}')
         metadata['outfilename'] = filename
@@ -172,7 +170,7 @@ class ProcIO:
         if os.path.exists(write_csar):
             argument_string = ' '.join((
                 # setup the commandline
-                'cmd.exe', show, 'set pythonpath= &&',
+                'cmd.exe', '/C', 'set pythonpath= &&',
                 # activate the Python 3.5 environment with access to CARIS
                 activate_file, self._caris_environment_name, '&&',
                 # call the script
@@ -187,11 +185,7 @@ class ProcIO:
             self._logger.log(logging.DEBUG, argument_string)
 
             try:
-                if self._in_data_type == 'gdal':
-                    hi = 'hi'
-                    caris_process = subprocess.Popen(argument_string, creationflags=subprocess.CREATE_NEW_CONSOLE)
-                else:
-                    caris_process = subprocess.Popen(argument_string)
+                caris_process = subprocess.Popen(argument_string, creationflags=subprocess.CREATE_NEW_CONSOLE if show_console else 0)
             except Exception as error:
                 self._logger.log(logging.DEBUG, f'Error when executing "{argument_string}"\n{error}')
 
