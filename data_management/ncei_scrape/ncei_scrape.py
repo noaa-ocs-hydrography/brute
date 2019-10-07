@@ -511,7 +511,7 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
             download_to = os.path.join(downloads, branch_path)
             if not os.path.isdir(download_to):
                 os.makedirs(download_to)
-        else:
+        elif rows.index(row) == 0 and config['Destination']['Structure'] != 'NBS':
             download_to = downloads
 
         if 'SURVEY_FILES' not in row:
