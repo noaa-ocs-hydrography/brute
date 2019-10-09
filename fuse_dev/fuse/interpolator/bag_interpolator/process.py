@@ -78,7 +78,7 @@ class RasterInterpolator:
                     bathTile = _itp.chunk(bag.elevation, tile, mode='a')
                     uncrTile = _itp.chunk(bag.uncertainty, tile, mode='a')
                     print('interp is next')
-                    interp = _itp.Interpolate(method, bathTile, uncrTile, covgTile, catzoc=uval)
+                    interp = _itp.Interpolate(method, bathTile, uncrTile, covgTile, catzoc=uval, origin=bag.bounds[0], resolution=bag.resolution)
                     del covgTile, bathTile, uncrTile
                     unitedBag = _itp.chunk(interp.bathy, tile, mode='c', copy=unitedBag)
                     unitedUnc = _itp.chunk(interp.uncrt, tile, mode='c', copy=unitedUnc)
@@ -94,7 +94,7 @@ class RasterInterpolator:
             ts = _dt.now()
             print('\nTile 1 of 1 -', ts)
             print('interp is next')
-            interp = _itp.Interpolate(method, bag.elevation, bag.uncertainty, coverage.array, uval)
+            interp = _itp.Interpolate(method, bag.elevation, bag.uncertainty, coverage.array, catzoc=uval, origin=bag.bounds[0], resolution=bag.resolution)
             ugrids = [interp.bathy, interp.uncrt, interp.unint]
             del interp
             td = _dt.now()
