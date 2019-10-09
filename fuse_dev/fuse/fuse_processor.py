@@ -309,39 +309,6 @@ class FuseProcessor:
             self.logger.log(_logging.DEBUG, e)
             return None
         meta = raw_meta.copy()
-        meta['read_type'] = 'ehydro'
-
-        if 'end_date' not in meta and 'start_date' in meta:
-            meta['end_date'] = meta['start_date']
-        elif ('end_date' in meta and meta['end_date'] == '') and 'start_date' in meta:
-            meta['end_date'] = meta['start_date']
-
-
-        # translate from the reader to common metadata keys for datum transformations
-        if 'from_fips' in meta:
-            meta['from_horiz_key'] = meta['from_fips']
-        if 'from_horiz_units' in meta:
-            if meta['from_horiz_units'].upper() in ('US SURVEY FOOT'):
-                meta['from_horiz_units'] = 'us_ft'
-            elif meta['from_horiz_units'].upper() in ('INTL FOOT'):
-                meta['from_horiz_units'] = 'ft'
-            else:
-                raise ValueError(f'Input datum units are unknown: {meta["from_horiz_units"]}')
-        if 'from_vert_key' in meta:
-            meta['from_vert_key'] = meta['from_vert_key'].lower()
-        if 'from_vert_units' in meta:
-            if meta['from_vert_units'].upper() == 'US SURVEY FOOT':
-                meta['from_vert_units'] = 'us_ft'
-            else:
-                raise ValueError(f'Input datum units are unknown: {meta["from_vert_units"]}')
-        # insert a few default values for datum stuff if it isn't there already
-        if 'from_vert_direction' not in meta:
-            meta['from_vert_direction'] = 'height'
-        if 'from_horiz_frame' not in meta:
-            meta['from_horiz_frame'] = 'NAD83'
-        if 'from_horiz_type' not in meta:
-            meta['from_horiz_type'] = 'spc'
-        # get the rest from the config file
         meta['to_horiz_frame'] = self._config['to_horiz_frame']
         meta['to_horiz_type'] = self._config['to_horiz_type']
         meta['to_horiz_units'] = self._config['to_horiz_units']
@@ -351,8 +318,6 @@ class FuseProcessor:
         meta['to_vert_units'] = self._config['to_vert_units']
         meta['to_vert_direction'] = self._config['to_vert_direction']
         meta['to_vert_datum'] = self._config['to_vert_datum']
-        meta['interpolated'] = 'False'
-        meta['posted'] = False
         if not self._quality_metadata_ready(meta):
             default = _ehydro_quality_metrics
             msg = f'Not all quality metadata was found.  Using default values: {default}'
