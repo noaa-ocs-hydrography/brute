@@ -1337,10 +1337,15 @@ class BagFile:
             self.resolution = self._read_res_x_and_y(xml_tree)
             sw, ne = self._read_corners_sw_and_ne(xml_tree)
             sx, sy = sw
-            nx = (sx + (self.resolution[0] * self.shape[1]))
-            ny = (sy + (self.resolution[0] * self.shape[0]))
+
+            # BAGs are a node-based convention; 1 cell is subtracted to account
+            nx = (sx + (self.resolution[0] * (self.shape[1] - 1)))
+            ny = (sy + (self.resolution[0] * (self.shape[0] - 1)))
             print(ne, (nx, ny))
-            self.bounds = ([sx, ny], [nx, sy])
+
+            # Convert to cell based-convention
+            half_cell = 0.5 * self.resolution[0]
+            self.bounds = ([sx - half_cell, ny + half_cell], [nx + half_cell, sy - half_cell])
 
     def _known_data(self, filepath: str):
         """
