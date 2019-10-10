@@ -19,17 +19,6 @@ import fuse.raw_read.usace as _usace
 from fuse import score
 from fuse.proc_io.proc_io import ProcIO
 
-_ehydro_quality_metrics = {
-    'complete_coverage': False,
-    'bathymetry': True,
-    'vert_uncert_fixed': 0.5,
-    'vert_uncert_vari': 0.1,
-    'horiz_uncert_fixed': 5.0,
-    'horiz_uncert_vari': 0.05,
-    'feat_detect': False,
-}
-
-
 class FuseProcessor:
     """Bathymetric survey object."""
 
@@ -296,6 +285,13 @@ class FuseProcessor:
             raise ValueError('Reader type not implemented')
         # get the config file information
         metadata = self._add_config_metadata(metadata)
+        # check to see if the quality metadata is available.
+        if not self._quality_metadata_ready(metadata):
+            msg = f'Not all quality metadata was found.'
+        else:
+            msg = f'All quality metadata was found.'
+        self.logger.log(_logging.DEBUG, msg)
+        # write out the metadata and close the log
         self._meta_obj.write_meta_record(metadata)
         self._close_log()
         return metadata['from_path']
@@ -311,15 +307,6 @@ class FuseProcessor:
         meta
             meta data dictionary from the reader
         """
-        if not self._quality_metadata_ready(meta):
-            default = _ehydro_quality_metrics
-            msg = f'Not all quality metadata was found.  Using default values: {default}'
-            self.logger.log(_logging.DEBUG, msg)
-            meta = {**default, **meta}
-        else:
-            msg = f'All quality metadata was found.'
-            self.logger.log(_logging.DEBUG, msg)
-        # write the metadata
         return meta
 
     def _read_noaa_bag(self, metadata: dict):
@@ -332,6 +319,7 @@ class FuseProcessor:
         metadata
             The metadata dictionary provided by the reader
         """
+        # this should be moved to the reader.
         metadata['read_type'] = 'bag'
         # translate from the reader to common metadata keys for datum transformations
         if 'from_vert_direction' not in metadata:
@@ -341,10 +329,6 @@ class FuseProcessor:
         metadata['interpolated'] = 'False'
         metadata['posted'] = False
 
-        if not self._quality_metadata_ready(metadata):
-            msg = f'Not all quality metadata was found.'
-            self.logger.log(_logging.DEBUG, msg)
-        
     def _add_config_metadata(self, metadata):
         """
         Add the metadata contained in the config file to the dictionary.

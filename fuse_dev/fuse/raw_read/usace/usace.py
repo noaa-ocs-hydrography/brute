@@ -22,6 +22,15 @@ from fuse.raw_read.raw_read import RawReader
 from . import parse_usace_pickle
 from . import parse_usace_xml
 
+_ehydro_quality_metrics = {
+    'complete_coverage': False,
+    'bathymetry': True,
+    'vert_uncert_fixed': 0.5,
+    'vert_uncert_vari': 0.1,
+    'horiz_uncert_fixed': 5.0,
+    'horiz_uncert_vari': 0.05,
+    'feat_detect': False,
+}
 
 class USACERawReader(RawReader):
     def __init__(self, district: str = None):
@@ -916,7 +925,9 @@ class USACERawReader(RawReader):
                 meta['from_vert_units'] = 'us_ft'
             else:
                 raise ValueError(f'Input datum units are unknown: {meta["from_vert_units"]}')
-        return meta
+        # add the default quality metrics
+        final_meta = {**_ehydro_quality_metrics, **meta}
+        return final_meta
 
     def _parse_ehydro_xyz_bathy(self, filename: str) -> _np.array:
         """
