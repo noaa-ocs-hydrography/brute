@@ -192,7 +192,9 @@ class BAGRawReader(RawReader):
             meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
             meta_support = self._known_meta(filename)
             meta_csv = self._csv_meta(filename)
-            return {**meta_csv, **meta_xml, **meta_gdal, **meta_support}
+            meta_combined = {**meta_csv, **meta_xml, **meta_gdal, **meta_support}
+            meta_final = self._finalize_meta(meta_combined)
+            return meta_final
         except ValueError as error:
             print(error)
             return {}
@@ -1215,6 +1217,18 @@ class BAGRawReader(RawReader):
         except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the sensor name attribute: {e}")
             return
+
+    def _finalize_meta(self, meta):
+        # this should be moved to the reader.
+        meta['read_type'] = 'bag'
+        # translate from the reader to common metadata keys for datum transformations
+        if 'from_vert_direction' not in meta:
+            meta['from_vert_direction'] = 'height'
+        if 'from_vert_units' not in meta:
+            meta['from_vert_units'] = 'm'
+        meta['interpolated'] = 'False'
+        meta['posted'] = False
+        return meta
 
 
 class BagFile:
