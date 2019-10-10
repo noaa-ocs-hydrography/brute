@@ -173,19 +173,24 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
     rows, cols = bag.shape
     # 1
     tpoly = _np.nan_to_num(poly)
+    del poly
     tpoly = (tpoly < maxVal).astype(_np.int)
     # 2
     bpoly = (bag < maxVal).astype(_np.int)
     # 3
     cpoly = _np.logical_or(bpoly, tpoly)
+    del tpoly
     # 4
     dpoly = _np.logical_xor(bpoly, cpoly)
+    del cpoly, bpoly
     # 5
     ibag = _np.where(dpoly, pbag, bag)
     # 6
     npoly = (ibag < maxVal).astype(_np.int)
+    del ibag
     # 7
     fpoly = _np.logical_and(dpoly, npoly)
+    del dpoly, npoly
     # 8
     if not ioVal:
         nbag = _np.where(fpoly, interp, bag)
@@ -193,14 +198,9 @@ def rePrint(bag_elev: _np.array, bag_uncr: _np.array, cov_array: _np.array, ugri
     elif ioVal:
         nbag = _np.where(fpoly, interp, maxVal)
         nunc = _np.where(fpoly, iuncrt, maxVal)
+    del fpoly
     print('done', _dt.now())
-    polyList = [tpoly, bpoly, cpoly, dpoly, npoly, fpoly, ibag]
-    #    plt.figure()
-    #    for rast in polyList:
-    #        plt.imshow(rast)
-    #        plt.show()
-    # polyList = [fpoly, cpoly]
-    return nbag, nunc, polyList if debug else cpoly.astype(_np.int)
+    return nbag, nunc
 
 
 class Interpolate:
