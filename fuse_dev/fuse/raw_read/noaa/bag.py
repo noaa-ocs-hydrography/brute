@@ -1651,7 +1651,6 @@ class BagToGDALConverter:
         res_x, res_y = bag.resolution[0], bag.resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
-        target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=bag.wkt)
         #        if not srs.IsCompound():
@@ -1704,7 +1703,6 @@ class BagToGDALConverter:
         res_x, res_y = resolution[0], resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
-        target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=prj)
         #        if not srs.IsCompound():
@@ -1727,9 +1725,3 @@ class BagToGDALConverter:
 
         self.dataset = target_ds
         del target_ds
-
-    def translate_bag2gdal_extents(self, geotransform: (float, float, float, float, float, float)):
-        orig_x, res_x, skew_x, orig_y, skew_y, res_y = geotransform
-        new_x = orig_x - (res_x / 2)
-        new_y = orig_y + (res_y / 2)
-        return new_x, res_x, skew_x, new_y, skew_y, res_y
