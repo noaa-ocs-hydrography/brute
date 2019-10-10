@@ -271,25 +271,35 @@ class FuseProcessor:
         self._raster_writer = ProcIO('gdal', self._raster_extension)
         self._point_writer = ProcIO('point', self._point_extension)
 
-    def read(self, filename: str):
+    def read(self, dataid: str):
         """
         Read survey bathymetry and metadata into useable forms.
 
         Parameters
         ----------
-        filename
+        dataid
             Filename of survey bathymetry.
         """
-
+        self._set_log(dataid)
+        # get the metadata
+        try:
+            raw_meta = self._reader.read_metadata(dataid)
+            metadata = raw_meta.copy()
+        except RuntimeError as e:
+            self.logger.log(_logging.DEBUG, e)
+            return None
         if self._read_type == 'ehydro':
-            survey_folder = filename
-            return self._read_ehydro(survey_folder)
+            metadata = self._read_ehydro(metadata)
         elif self._read_type == 'bag':
-            self._read_noaa_bag(filename)
+            metadata = self._read_noaa_bag(metadata)
         else:
             raise ValueError('Reader type not implemented')
+        # get the config file information
+        metadata = self._add_config_metadata(metadata)
+        self._meta_obj.write_meta_record(metadata)
+        self._close_log()
 
-    def _read_ehydro(self, survey_folder: str):
+    def _read_ehydro(self, meta: dict):
         """
         Extract metadata from the provided eHydro file path and write the metadata
         to the specified metadata file.  The bathymetry will be interpolated and
@@ -297,27 +307,9 @@ class FuseProcessor:
 
         Parameters
         ----------
-        survey_folder
-            path to eHydro XYZ folder
+        meta
+            meta data dictionary from the reader
         """
-
-        self._set_log(survey_folder)
-        # get the metadata
-        try:
-            raw_meta = self._reader.read_metadata(survey_folder)
-        except RuntimeError as e:
-            self.logger.log(_logging.DEBUG, e)
-            return None
-        meta = raw_meta.copy()
-        meta['to_horiz_frame'] = self._config['to_horiz_frame']
-        meta['to_horiz_type'] = self._config['to_horiz_type']
-        meta['to_horiz_units'] = self._config['to_horiz_units']
-        if 'to_horiz_key' in self._config:
-            meta['to_horiz_key'] = self._config['to_horiz_key']
-        meta['to_vert_key'] = self._config['to_vert_key']
-        meta['to_vert_units'] = self._config['to_vert_units']
-        meta['to_vert_direction'] = self._config['to_vert_direction']
-        meta['to_vert_datum'] = self._config['to_vert_datum']
         if not self._quality_metadata_ready(meta):
             default = _ehydro_quality_metrics
             msg = f'Not all quality metadata was found.  Using default values: {default}'
@@ -327,34 +319,46 @@ class FuseProcessor:
             msg = f'All quality metadata was found.'
             self.logger.log(_logging.DEBUG, msg)
         # write the metadata
-        self._meta_obj.write_meta_record(meta)
-        self._close_log()
-        return meta['from_path']
+        return meta
 
-    def _read_noaa_bag(self, filename: str):
+    def _read_noaa_bag(self, metadata: dict):
         """
         Extract metadata from the provided bag file path and write the metadata
         to the specified metadata file.
 
         Parameters
         ----------
-        filename
-            path to NOAA BAG file
+        metadata
+            The metadata dictionary provided by the reader
         """
-
-        self._set_log(filename)
-
-        # get the metadata
-        metadata = self._reader.read_metadata(filename).copy()
         metadata['read_type'] = 'bag'
-
         # translate from the reader to common metadata keys for datum transformations
         if 'from_vert_direction' not in metadata:
             metadata['from_vert_direction'] = 'height'
         if 'from_vert_units' not in metadata:
             metadata['from_vert_units'] = 'm'
+        metadata['interpolated'] = 'False'
+        metadata['posted'] = False
 
-        # get the rest from the config file
+        if not self._quality_metadata_ready(metadata):
+            msg = f'Not all quality metadata was found.'
+            self.logger.log(_logging.DEBUG, msg)
+        
+    def _add_config_metadata(self, metadata):
+        """
+        Add the metadata contained in the config file to the dictionary.
+        
+        Parameters
+        ----------
+        metadata
+            metadata dictionary from the reader.
+            
+        Returns
+        -------
+        dict
+            the provided metadata dictionary with the addition of the config
+            file metadata.
+        """
         metadata['to_horiz_frame'] = self._config['to_horiz_frame']
         metadata['to_horiz_type'] = self._config['to_horiz_type']
         metadata['to_horiz_units'] = self._config['to_horiz_units']
@@ -364,19 +368,8 @@ class FuseProcessor:
         metadata['to_vert_units'] = self._config['to_vert_units']
         metadata['to_vert_direction'] = self._config['to_vert_direction']
         metadata['to_vert_datum'] = self._config['to_vert_datum']
-        metadata['interpolated'] = 'False'
-        metadata['posted'] = False
-
-        if not self._quality_metadata_ready(metadata):
-            default = _ehydro_quality_metrics
-            msg = f'Not all quality metadata was found.  Using default values: {default}'
-            self.logger.log(_logging.DEBUG, msg)
-            metadata = {**default, **metadata}
-
-        # write the metadata
-        self._meta_obj.write_meta_record(metadata)
-        self._close_log()
-
+        return metadata
+        
     def process(self, filename: str) -> str:
         """
         Do the datum transformtion and interpolation.
