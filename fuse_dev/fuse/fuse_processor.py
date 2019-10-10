@@ -298,6 +298,7 @@ class FuseProcessor:
         metadata = self._add_config_metadata(metadata)
         self._meta_obj.write_meta_record(metadata)
         self._close_log()
+        return metadata['from_path']
 
     def _read_ehydro(self, meta: dict):
         """

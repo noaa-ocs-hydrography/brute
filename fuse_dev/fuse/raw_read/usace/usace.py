@@ -894,6 +894,8 @@ class USACERawReader(RawReader):
         meta['read_type'] = 'ehydro'
         meta['posted'] = False
         meta['interpolated'] = 'False'
+        meta['from_horiz_frame'] = 'NAD83'
+        meta['from_horiz_type'] = 'spc'
         # make sure the dates are useful
         if 'end_date' not in meta and 'start_date' in meta:
             meta['end_date'] = meta['start_date']

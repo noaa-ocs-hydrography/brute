@@ -48,7 +48,7 @@ class CENAERawReader(USACERawReader):
         meta_final = self._finalize_meta(meta_combined)
         return meta_final
 
-    def _ceanae_defaults(self):
+    def _cenae_defaults(self):
         """
         Return default expectations for this disctrict.
         
@@ -66,7 +66,5 @@ class CENAERawReader(USACERawReader):
         """
         meta = {}
         meta['from_vert_direction'] = 'sounding'
-        meta['from_horiz_frame'] = 'NAD83'
-        meta['from_horiz_type'] = 'spc'
         return meta
         
