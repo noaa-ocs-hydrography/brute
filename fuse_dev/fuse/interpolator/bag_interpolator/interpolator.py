@@ -440,14 +440,16 @@ def sliceFinder(size: int, shape: (int, int), res: float, var: int = 5000):
            [24, 25, 26, 27, 28, 29],
            [30, 31, 32, 33, 34, 35]])
     # 36 Total Tiles
-    # Tile 3 is index [0,3] and has a value of 2
+    # Tile 3 is index [0, 2] and has a value of 2
     """
 
     print('sliceFinder')
-    if res <= 1 and size <= 100000:
-        size /= res
+    if res < 1 and size <= 100000:
+        size /= res if size > 50000 else res/2
+    if res == 1 and size <= 100000:
+        size += res
     elif res > 1 and res < 4 and size <= 100000:
-        size *= (res * 2)
+        size *= res
 
     if res < 1:
         b = int(25 / res)
@@ -572,7 +574,7 @@ class BagTile:
                [18, 19, 20, 21, 22, 23],
                [24, 25, 26, 27, 28, 29],
                [30, 31, 32, 33, 34, 35]])
-        # Tile 3 is index [0,3] and has a value of 2
+        # Tile 3 is index [0, 2] and has a value of 2
         >>> print(sliceInfo)
         [40.0, 4285, 5835]
 
