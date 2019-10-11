@@ -90,6 +90,30 @@ def geoarray_to_xyz(data: numpy.array, origin: (float, float), resolution: (floa
 
     return numpy.stack((x_values[data != nodata], y_values[data != nodata], data[data != nodata]), axis=1)
 
+def regulararray_to_xyz(data: numpy.array, nodata: float = None) -> numpy.array:
+    """
+    Extract XYZ points from an array of data
+
+    Parameters
+    ----------
+    data
+        2D array of gridded data
+    nodata
+        value to exclude from point creation from the input grid
+
+    Returns
+    -------
+    numpy.array
+        N x 3 array of XYZ points
+    """
+
+    if nodata is None:
+        nodata = numpy.nan
+
+    x_values, y_values = numpy.meshgrid(numpy.arange(data.shape[1]), numpy.arange(data.shape[0]))
+
+    return numpy.stack((x_values[data != nodata], y_values[data != nodata], data[data != nodata]), axis=1)
+
 
 def xyz_to_gdal(points: numpy.array, spatial_reference: osr.SpatialReference) -> gdal.Dataset:
     """
@@ -175,6 +199,26 @@ def raster_edge_points(data: numpy.array, origin: (float, float), resolution: (f
     """
 
     return geoarray_to_xyz(numpy.where(raster_edge(data, nodata), data, nodata), origin, resolution, nodata)
+
+
+def array_edge_points(data: numpy.array, nodata: float) -> numpy.array:
+    """
+    Get the points bordering `nodata` in the given array.
+
+    Parameters
+    ----------
+    data
+        array of raster data
+    nodata
+        value for no data in raster
+
+    Returns
+    -------
+    numpy.array
+        N x 3 array of points
+    """
+
+    return regulararray_to_xyz(numpy.where(raster_edge(data, nodata), data, nodata), nodata)
 
 
 def shrink_array(data: numpy.array, nodata: float, cells: int = 1) -> numpy.array:

@@ -12,7 +12,7 @@ import astropy.convolution as _apc
 import numpy as _np
 import scipy as _scipy
 
-from fuse.utilities import raster_edge_points
+#from fuse.utilities import array_edge_points
 
 
 def tupleGrid(grid: _np.array, nodata: int):
@@ -67,6 +67,113 @@ def tupleGrid(grid: _np.array, nodata: int):
     return _np.array(points)
 
 
+def regulararray_to_xyz(data: _np.array, nodata: float = None) -> _np.array:
+    """
+    Extract XYZ points from an array of data
+
+    Parameters
+    ----------
+    data
+        2D array of gridded data
+    nodata
+        value to exclude from point creation from the input grid
+
+    Returns
+    -------
+    numpy.array
+        N x 3 array of XYZ points
+    """
+
+    if nodata is None:
+        nodata = _np.nan
+
+    x_values, y_values = _np.meshgrid(_np.arange(data.shape[1]), _np.arange(data.shape[0]))
+
+    return _np.stack((x_values[data != nodata], y_values[data != nodata], data[data != nodata]), axis=1)
+
+
+def array_coverage(array: _np.array, nodata: float = None) -> _np.array:
+    """
+    Get a boolean array of where data exists in the given array.
+
+    Parameters
+    ----------
+    array
+        array of gridded data with dimensions (Z)YX
+    nodata
+        value where there is no data in the given array
+
+    Returns
+    -------
+    numpy.array
+        array of booleans indicating where data exists
+    """
+
+    if len(array.shape) > 2:
+        array = _np.squeeze(array)
+
+    if nodata is None:
+        nodata = _np.nan
+
+    # TODO find reduced generalization of band coverage
+    if array.shape[0] == 3:
+        coverage = (array[0, :, :] != nodata) | (array[1, :, :] != nodata) | (array[2, :, :] != nodata)
+    else:
+        coverage = array != nodata
+
+    return coverage
+
+
+def raster_edge(data: _np.array, nodata: float) -> _np.array:
+    """
+    Get the cells of the array bordering `nodata`.
+
+    Parameters
+    ----------
+    data
+        array of raster data
+    nodata
+        value for no data in raster
+
+    Returns
+    -------
+    numpy.array
+        boolean array of edge cells
+    """
+
+    elevation_coverage = array_coverage(data, nodata)
+
+    horizontal_difference = _np.concatenate((_np.full((elevation_coverage.shape[0], 1), 0),
+                                               _np.diff(_np.where(elevation_coverage, 1, 0), axis=1)), axis=1)
+    vertical_difference = _np.concatenate((_np.full((1, elevation_coverage.shape[1]), 0),
+                                             _np.diff(_np.where(elevation_coverage, 1, 0), axis=0)), axis=0)
+
+    horizontal_edges = (horizontal_difference == 1) | _np.roll(horizontal_difference == -1, -1, axis=1)
+    vertical_edges = (vertical_difference == 1) | _np.roll(vertical_difference == -1, -1, axis=0)
+
+    return horizontal_edges | vertical_edges
+
+
+def array_edge_points(data: _np.array, nodata: float) -> _np.array:
+    """
+    Get the points bordering `nodata` in the given array.
+
+    Parameters
+    ----------
+    data
+        array of raster data
+    nodata
+        value for no data in raster
+
+    Returns
+    -------
+    numpy.array
+        N x 3 array of points
+    """
+
+    return regulararray_to_xyz(_np.where(raster_edge(data, nodata), data, nodata), nodata)
+
+
 def concatGrid(arr_1, arr_2, nodata: int, no_nan: bool = False, split: bool = True,
                origin: tuple = None, resolution: tuple = None):
     """
@@ -95,8 +202,8 @@ def concatGrid(arr_1, arr_2, nodata: int, no_nan: bool = False, split: bool = Tr
     """
     if arr_1[arr_1 != nodata].size != 0 and arr_2[arr_2 != nodata].size != 0:
         if not no_nan and None not in (origin, resolution):
-            points_1 = raster_edge_points(arr_1, origin, resolution, nodata)
-            points_2 = raster_edge_points(arr_2, origin, resolution, nodata)
+            points_1 = array_edge_points(arr_1, nodata)
+            points_2 = array_edge_points(arr_2, nodata)
             comb = _np.concatenate([points_1, points_2])
         elif not no_nan and None in (origin, resolution):
             points_1 = tupleGrid(arr_1, nodata)
@@ -104,7 +211,7 @@ def concatGrid(arr_1, arr_2, nodata: int, no_nan: bool = False, split: bool = Tr
             comb = _np.concatenate([points_1, points_2])
         else:
             if None in (origin, resolution):
-                comb = raster_edge_points(arr_1, origin, resolution, nodata)
+                comb = array_edge_points(arr_1, nodata)
             else:
                 comb = tupleGrid(arr_1, nodata)
         comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
