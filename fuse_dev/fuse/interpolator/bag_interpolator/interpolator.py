@@ -174,8 +174,7 @@ def array_edge_points(data: _np.array, nodata: float) -> _np.array:
     return regulararray_to_xyz(_np.where(raster_edge(data, nodata), data, nodata), nodata)
 
 
-def concatGrid(arr_1, arr_2, nodata: int, no_nan: bool = False, split: bool = True,
-               origin: tuple = None, resolution: tuple = None):
+def concatGrid(arr_1, arr_2, nodata: int, no_nan: bool = False, split: bool = True):
     """
     Takes an input of an array of grid objects and the assumed nodata value
     Passes the assumed nodata value and the arrays held within each of the
@@ -201,19 +200,12 @@ def concatGrid(arr_1, arr_2, nodata: int, no_nan: bool = False, split: bool = Tr
 
     """
     if arr_1[arr_1 != nodata].size != 0 and arr_2[arr_2 != nodata].size != 0:
-        if not no_nan and None not in (origin, resolution):
+        if not no_nan:
             points_1 = array_edge_points(arr_1, nodata)
             points_2 = array_edge_points(arr_2, nodata)
             comb = _np.concatenate([points_1, points_2])
-        elif not no_nan and None in (origin, resolution):
-            points_1 = tupleGrid(arr_1, nodata)
-            points_2 = tupleGrid(arr_2, nodata)
-            comb = _np.concatenate([points_1, points_2])
         else:
-            if None in (origin, resolution):
-                comb = array_edge_points(arr_1, nodata)
-            else:
-                comb = tupleGrid(arr_1, nodata)
+            comb = array_edge_points(arr_1, nodata)
         comb.view('i8,i8,i8').sort(order=['f0', 'f1'], axis=0)
         grid = _np.hsplit(comb, [2, 4])
         if split:
@@ -326,7 +318,7 @@ class Interpolate:
     """
 
     def __init__(self, method: str, bathy: _np.array, uncrt: _np.array, covrg: _np.array, catzoc: tuple = None,
-                 nodata: float = 1000000.0, origin: (float, float) = None, resolution: (float, float) = None):
+                 nodata: float = 1000000.0):
         """
         Takes input bathy and coverage arrays (tile or complete data) as well as
         the uncertainty array.  This data is used to inform the shape/size of the
@@ -357,7 +349,7 @@ class Interpolate:
 
         xi, yi = _np.meshgrid(_np.arange(bathy.shape[1]), _np.arange(bathy.shape[0]))
         if method == 'linear':
-            xy, z = concatGrid(bathy, covrg, nodata, origin=origin, resolution=resolution)
+            xy, z = concatGrid(bathy, covrg, nodata)
             print(xy, z)
             if len(xy) != 0:
                 self.bathy, self.uncrt, self.unint = self._linear(xy, z, xi, yi, catzoc, nodata)
