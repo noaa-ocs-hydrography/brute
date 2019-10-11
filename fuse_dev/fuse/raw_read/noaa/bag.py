@@ -1218,12 +1218,12 @@ class BAGRawReader(RawReader):
     def _finalize_meta(self, meta):
         if 'from_vert_datum' not in meta and 'from_vert_key' not in meta:
             for datum in vert_datum.keys():
-                if datum == meta['from_filename']:
+                if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
                     meta['from_vert_datum'], meta['from_vert_key'] = datum, datum
                     break
         elif 'from_vert_datum' in meta and 'from_vert_key' not in meta:
             for datum in vert_datum.keys():
-                if datum == meta['from_filename']:
+                if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
                     meta['from_vert_key'] = datum
                     break
         # this should be moved to the reader.
