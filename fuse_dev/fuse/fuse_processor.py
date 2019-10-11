@@ -137,7 +137,8 @@ class FuseProcessor:
         -------
             dictionary of metadata
         """
-
+        if not _os.path.isfile(configuration_file):
+            raise ValueError(f'file not found: {configuration_file}')
         config = {}
         config_file = _cp.ConfigParser()
         config_file.read(configuration_file)
@@ -151,19 +152,22 @@ class FuseProcessor:
                     raw = value.split(';')
                     for r in raw:
                         r = r.strip()
-                        if _os.path.isdir(r):
-                            rawpaths.append(r)
-                        else:
-                            raise ValueError(f'Invalid input path: {r}')
+                        rawpaths.append(r)
                     config[key] = rawpaths
-                elif key == 'outpath':
-                    if _os.path.isdir(value):
-                        config[key] = value
-                    else:
-                        raise ValueError(f'Invalid input path: {value}')
                 else:
                     config[key] = value
-
+        # add the root path
+        if 'rootpath' in config:
+            root = config['rootpath']
+            # raw paths first
+            rawtmp = []
+            for p in config['rawpaths']:
+                rawtmp.append(_os.path.join(root, p))
+            config['rawpaths'] = rawtmp
+            # output paths
+            config['outpath'] = _os.path.join(root, config['outpath'])
+            # metapath
+            config['metapath'] = _os.path.join(root, config['metapath'])
         if len(config) == 0:
             raise ValueError('Failed to read configuration file.')
         else:
@@ -199,6 +203,12 @@ class FuseProcessor:
             if required_config_key not in config_dict:
                 raise ValueError(
                     f'no {required_config_keys[required_config_key]} ("{required_config_key}") found in configuration file')
+        # check the paths
+        for p in config_dict['rawpaths']:
+            if not _os.path.isdir(p):
+                raise ValueError(f'Invalid input path: {p}')
+        if not _os.path.isdir(config_dict['outpath']):
+            raise ValueError(f'Invalid output data path: {config_dict["outpath"]}')
 
     def _set_data_reader(self):
         """
