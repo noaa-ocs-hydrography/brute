@@ -313,11 +313,6 @@ class BAGRawReader(RawReader):
             self.namespace = self._assign_namspace(bag_version=bag_version)
             self.bag_format = self._set_format(infilename, bag_version)
             self.get_fields()
-            if 'from_vert_datum' not in self.data or 'from_vert_key' not in self.data:
-                for datum in vert_datum.keys():
-                    if datum in infilename:
-                        self.data['from_vert_datum'], self.data['from_vert_key'] = datum, datum
-                        break
 
             return self.data
         except _tb.HDF5ExtError as e:
@@ -1219,6 +1214,16 @@ class BAGRawReader(RawReader):
             return
 
     def _finalize_meta(self, meta):
+        if 'from_vert_datum' not in meta and 'from_vert_key' not in meta:
+            for datum in vert_datum.keys():
+                if re.compile(fr'{datum}', re.IGNORECASE).search(meta['from_filename']):
+                    meta['from_vert_datum'], meta['from_vert_key'] = datum, datum
+                    break
+        elif 'from_vert_datum' in meta and 'from_vert_key' not in meta:
+            for datum in vert_datum.keys():
+                if re.compile(fr'{datum}', re.IGNORECASE).search(meta['from_filename']):
+                    meta['from_vert_key'] = datum
+                    break
         # this should be moved to the reader.
         meta['read_type'] = 'bag'
         # translate from the reader to common metadata keys for datum transformations
