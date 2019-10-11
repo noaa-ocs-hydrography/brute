@@ -356,8 +356,6 @@ class Interpolate:
         """
 
         xi, yi = _np.meshgrid(_np.arange(bathy.shape[1]), _np.arange(bathy.shape[0]))
-        xi = (xi * resolution[0]) + origin[0]
-        yi = origin[1] + (yi * resolution[1])
         if method == 'linear':
             xy, z = concatGrid(bathy, covrg, nodata, origin=origin, resolution=resolution)
             print(xy, z)
