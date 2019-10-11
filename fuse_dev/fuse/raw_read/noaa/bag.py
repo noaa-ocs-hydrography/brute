@@ -439,8 +439,10 @@ class BAGRawReader(RawReader):
                                             f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
                                 #                                    raise RuntimeError(f'Unable to add datum information due to incorrect formatting: {line[2]}')
                                 elif meta_field in ('from_vert_datum'):
-                                    if line[assignment] in vert_datum.keys():
-                                        datum_info['from_vert_key'] = line[assignment]
+                                    for datum in vert_datum.keys():
+                                        if datum == line[assignment]:
+                                            datum_info['from_vert_datum'], datum_info['from_vert_key'] = datum, datum
+                                            break
                                 elif meta_field in ('start_date', 'end_date'):
                                     if len(line[assignment]) == 8:
                                         bag_meta[meta_field] = line[assignment]
@@ -1216,12 +1218,12 @@ class BAGRawReader(RawReader):
     def _finalize_meta(self, meta):
         if 'from_vert_datum' not in meta and 'from_vert_key' not in meta:
             for datum in vert_datum.keys():
-                if re.compile(fr'{datum}', re.IGNORECASE).search(meta['from_filename']):
+                if datum == meta['from_filename']:
                     meta['from_vert_datum'], meta['from_vert_key'] = datum, datum
                     break
         elif 'from_vert_datum' in meta and 'from_vert_key' not in meta:
             for datum in vert_datum.keys():
-                if re.compile(fr'{datum}', re.IGNORECASE).search(meta['from_filename']):
+                if datum == meta['from_filename']:
                     meta['from_vert_key'] = datum
                     break
         # this should be moved to the reader.
