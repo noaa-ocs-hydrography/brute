@@ -75,3 +75,25 @@ class DatumTransformer:
             else:
                 return self._engine.create(filename, metadata), metadata, False
 
+    def translate_support_files(self, metadata: dict):
+        """
+        Check the horizontal georeferencing for the support files.  If they are
+        not in the same datum as the output datum they are translated and
+        written back to disk.
+        
+        Parameters
+        ----------
+        metadata
+            A dictionary of the metadata associated with a survey.  The support
+            files referenced in the dictionary will be updated if their
+            horizontal datum does not match the output datum.
+        
+        Returns
+        -------
+        None
+        """
+        # get the support file types
+        # build transform
+        # transform files
+        # write back out
+        pass
