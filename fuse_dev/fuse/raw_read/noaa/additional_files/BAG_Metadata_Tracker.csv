@@ -306,9 +306,9 @@ H12270,H12270_MB_4m_MLLW_combined.bag,lillian.dinkins,no,09/16/2010,10/25/2010,M
 H12271,H12271_LI_4m_MLLW_1of1.bag,adrian.biesel,no,1/29/2011,2/28/2011,LI,N/A,N/A,Y,Y,Y,8m,N,N,3,1,5m,5%d,50cm,1%d,NAD83 UTM 20N,MLLW
 H12272,H12272_LI_3m_MLLW_1of1,jaime.liljegren,no,1/29/2011,2/28/2011,LI,N/A,N/A,Y,Y,Y,6m,N,N,3,1,5m,5%d,50cm,1%d,NAD83 UTM 20N,MLLW
 H12273,H12273_LI_3m_MLLW_1of1,adrian.biesel,no,1/29/2011,2/28/2011,LI,N/A,N/A,Y,Y,Y,6m,N,N,3,1,5m,5%d,50cm,1%d,NAD83 UTM 20N,MLLW
-H12296,H12296_MB_1m_MLLW_1of4.bag,jessica.murphy,no,8/22/2011,10/23/2011,MB,SSS,N/A,Y,Y,Y,2m,Y,N,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
-H12296,H12296_MB_2m_MLLW_2of4.bag,jessica.murphy,no,8/22/2011,10/23/2011,MB,SSS,N/A,Y,Y,Y,4m,Y,N,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
-H12296,H12296_MB_50cm_MLLW_3of4.bag,jessica.murphy,no,8/22/2011,10/23/2011,MB,SSS,N/A,Y,Y,Y,1m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
+H12296,H12296_MB_1m_MLLW_1of4.bag,jessica.murphy,no,8/22/2011,10/23/2011,MB,SSS,N/A,Y,Y,Y,2m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
+H12296,H12296_MB_2m_MLLW_2of4.bag,jessica.murphy,no,8/22/2011,10/23/2011,MB,SSS,N/A,Y,Y,Y,4m,Y,Y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
+H12296,H12296_MB_50cm_MLLW_3of4.bag,jessica.murphy,no,8/22/2011,10/23/2011,MB,SSS,N/A,Y,Y,Y,1m,Y,N,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
 H12296,H12296_VB_4m_MLLW_4of4.bag,jessica.murphy,no,8/22/2011,10/23/2011,N/A,SSS,VB,Y,Y,Y,8m,Y,N,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
 H12296,H12296_MBVB_4m_MLLW_combined.bag,jessica.murphy,no,8/22/2011,10/23/2011,MB,SSS,VB,Y,Y,Y,8m,Y,N,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
 H12298,H12298_MB_50cm_MLLW_1of5.bag,annie.raymond,no,08/31/2011,11/16/2011,MB,SSS,n/a,Y,Y,Y,1m,Y,N,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
@@ -399,8 +399,8 @@ H12494,H12494_MB_1m_MLLW_2of2,jeffery.marshall,no,06/27/2012,7/19/2012,MB,n/a,n/
 H12508,H12508_MB_1m_MLLW_1of2,adam.argento,no,07/30/2013,05/29/2018,MB,SSS,n/a,y,y,y,2,y,n,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
 H12508,H12508_MB_2m_MLLW_2of2,adam.argento,no,07/30/2013,05/29/2018,MB,SSS,n/a,y,y,y,4,y,n,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
 H12508,H12508_MB_2m_MLLW_combined,adam.argento,no,07/30/2013,05/29/2018,MB,SSS,n/a,y,y,y,4,y,n,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
-H12509,H12509_MB_50cm_MLLW_1of2.bag,fernando.ortiz,no,07/30/2014,11/09/2014,MB,SSS,n/a,y,y,y,1,y,n,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
-H12509,H12509_MB_1m_MLLW_2of2.bag,fernando.ortiz,no,7/30/2014,11/09/2014,MB,SSS,n/a,y,y,y,2,y,n,3,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
+H12509,H12509_MB_50cm_MLLW_1of2.bag,fernando.ortiz,no,07/30/2014,11/09/2014,MB,SSS,n/a,y,y,y,1,y,n,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
+H12509,H12509_MB_1m_MLLW_2of2.bag,fernando.ortiz,no,7/30/2014,11/09/2014,MB,SSS,n/a,y,y,y,2,y,n,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
 H12509,H12509_MB_1m_MLLW_combined.bag,fernando.ortiz,no,7/30/2014,11/09/2014,MB,SSS,n/a,y,y,y,2,y,n,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
 H12510,H12510_MB_50cm_MLLW_1of2.bag,lillian.dinkins,no,09/04/2014,11/06/2014,MB,SSS,n/a,Y,Y,Y,1,Y,n,3,1,5m,5%d,50cm,1%d,WGS84 UTM 18N,MLLW
 H12510,H12510_MB_1m_MLLW_2of2.bag,lillian.dinkins,no,09/04/2014,11/06/2014,MB,SSS,n/a,Y,Y,Y,2,Y,y,3,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
@@ -481,9 +481,9 @@ H12656,H12656_MB_2m_MLLW_2of2,jaime.liljegren,no,7/10/2014,10/10/2014,MB,SSS,N/A
 H12656,H12656_MB_2m_MLLW_combined,jaime.liljegren,no,7/10/2014,10/10/2014,MB,SSS,N/A,,,,4m,,,,,5m,5%d,50cm,1%d,NAD83 UTM 16N,MLLW
 H12657,H12657_MB_2m_MLLW_1of1,adrian.biesel,no,7/27/2014,9/13/2014,MB,SSS,n/a,Y,Y,Y,4m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 16N,MLLW
 H12676,H12676_MB_VR_MLLW.bag,tyanne.faulkes,no,5/27/2014,10/24/2014,MB,n/a,n/a,Y,Y,Y,1m,N,N,2,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
-H12677,H12677_MB_50cm_MLLW_1of2.bag,lillian.dinkins,no,10/22/2014,11/12/2014,MB,SSS,n/a,Y,Y,Y,1m,Y,N,2,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
-H12677,H12677_MB_1m_MLLW_2of2.bag,lillian.dinkins,no,10/22/2014,11/12/2014,MB,SSS,n/a,Y,Y,Y,2m,y,N,2,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
-H12677,H12677_MB_1m_MLLW_combined.bag,lillian.dinkins,no,10/22/2014,11/12/2014,MB,SSS,n/a,Y,Y,Y,2m,y,N,2,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
+H12677,H12677_MB_50cm_MLLW_1of2.bag,lillian.dinkins,no,10/22/2014,11/12/2014,MB,SSS,n/a,Y,Y,Y,1m,N,N,2,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
+H12677,H12677_MB_1m_MLLW_2of2.bag,lillian.dinkins,no,10/22/2014,11/12/2014,MB,SSS,n/a,Y,Y,Y,2m,y,Y,2,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
+H12677,H12677_MB_1m_MLLW_combined.bag,lillian.dinkins,no,10/22/2014,11/12/2014,MB,SSS,n/a,Y,Y,Y,2m,N,N,2,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
 H12678,H12678_MB_VR_MLLW.bag,annie.raymond,no,08/13/2014,11/10/2014,MB,SSS,n/a,Y,Y,Y,1m,Y,N,2,1,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW
 H12679,H12679_MB_VR_MLLW.bag,laura.pagano,no,4/30/2014,10/25/14,MB,SSS,N/A,Y,Y,Y,1m,Y,N,2,1,5m,5%d,50cm,1%d,NAD83 UTM 19N,MLLW
 H12687,H12687_MB_50cm_MLLW_1of3,adrian.biesel,no,3/27/2014,5/8/2014,MB,SSS,N/A,Y,Y,Y,1m,Y,N,,,5m,5%d,50cm,1%d,NAD83 UTM 18N,MLLW

@@ -1115,7 +1115,7 @@ class BAGRawReader(RawReader):
 
         try:
             if val.lower() == 'unknown':
-                val = ''
+                raise ValueError(f'Invalid vertical datum assignment --> {val}')
             elif val.lower() in ('mean_lower_low_water', 'mean lower low water', 'mllw', 'mllw depth'):
                 self.data['from_vert_key'] = 'MLLW'
             elif val.lower() in ('hudson river datum', 'hrd'):
@@ -1216,7 +1216,7 @@ class BAGRawReader(RawReader):
             return
 
     def _finalize_meta(self, meta):
-        if 'from_vert_datum' not in meta and 'from_vert_key' not in meta:
+        if ('from_vert_datum' not in meta or meta['from_vert_datum'] == '') and 'from_vert_key' not in meta:
             for datum in vert_datum.keys():
                 if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
                     meta['from_vert_datum'], meta['from_vert_key'] = datum, datum
