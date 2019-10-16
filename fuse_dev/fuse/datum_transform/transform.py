@@ -104,13 +104,13 @@ class DatumTransformer:
             srs = self._build_srs(metadata)
             for f in sf:
                 root, ext = os.path.splitext(f)
+                path, base = os.path.split(root)
+                newf = os.path.join(dest_dir, base + ext)
                 if ext == '.tiff' or ext == '.tif':
                     src = gdal.Open(f)
                     if src is not None:
                         prj = src.GetProjection()
                         if prj != srs.ExportToWkt():
-                            path, base = os.path.split(root)
-                            newf = os.path.join(dest_dir, base + ext)
                             options = gdal.WarpOptions(dstSRS=srs, format='GTiff')
                             gdal.Warp(newf, src, options = options)
                             t.append(newf)
@@ -119,6 +119,8 @@ class DatumTransformer:
                     else:
                         t.append(f)
                         print(f'{f} failed to open with gdal')
+                elif ext == 'gpkg':
+                    self._translate_geopackage(newf, srs)
                 else:
                     t.append(f)
                     print('Only the translation of GeoTiffs is currently supported.')
@@ -152,3 +154,49 @@ class DatumTransformer:
         else:
             raise ValueError('Not all metadata is available to build the proj4 string')
             
+    def _translate_geopackage(self, fromfilename: str, tofilename: str, to_srs: str):
+        """
+        Convert a Geopackage to a provided reference frame.
+
+        Parameters
+        ----------
+        filename: str :
+            The complete file path of the input coverage file
+        to_crs: str :
+            WKT object with destination spatial reference system
+
+        Returns
+        -------
+
+        """
+
+        fName = os.path.split(fromfilename)[-1]
+        splits = os.path.splitext(fName)
+        name = splits[0]
+
+        # Open the data source and read in the extent
+        source_ds = gdal.ogr.Open(fromfilename)
+        source_layer = source_ds.GetLayer()
+        source_srs = source_layer.GetSpatialRef()
+
+        for feature in source_layer:
+            if feature is not None:
+                # get the data and transform
+                geom = feature.GetGeometryRef()
+                ds_geom = gdal.ogr.CreateGeometryFromWkt(geom.ExportToWkt())
+                coordTrans = gdal.osr.CoordinateTransformation(source_srs, to_srs)
+                ds_geom.Transform(coordTrans)
+                # build new file
+                driver = gdal.ogr.GetDriverByName('gpkg')
+                ds = driver.CreateDataSource(tofilename)
+                layer = ds.CreateLayer(name, to_srs, gdal.ogr.wkbMultiPolygon)
+                # Add one attribute
+                layer.CreateField(gdal.ogr.FieldDefn('Survey', gdal.ogr.OFTString))
+                defn = layer.GetLayerDefn()
+                # Create a new feature (attribute and geometry)
+                feat = gdal.ogr.Feature(defn)
+                feat.SetField('Survey', name)
+                feat.SetGeometry(ds_geom)
+                layer.CreateFeature(feat)
+                del feat, geom  # destroy these
+                break
