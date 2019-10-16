@@ -113,7 +113,7 @@ class ProcIO:
             elif self._out_data_type == 'bag':
                 bag_xml = f'{filename}.aux.xml'
                 if os.path.exists(bag_xml):
-                    os.remove(bag_xml)'
+                    os.remove(bag_xml)
 
 
         if self._out_data_type == 'csar':
