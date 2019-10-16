@@ -360,10 +360,11 @@ class BAGRawReader(RawReader):
         meta = {}
         found = False
         root, name = _os.path.split(infilename)
+        basename = _os.path.splitext(name)[0]
         if csv_exists:
             for survey in self.csv_data:
                 if 'bag_name' in survey:
-                    if survey['bag_name'] == name:
+                    if survey['bag_name'] == name or survey['bag_name'] == basename:
                         found = True
                         meta = {**survey, **meta}
             if not found:
