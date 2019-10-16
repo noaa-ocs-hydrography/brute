@@ -7,10 +7,11 @@ transform.py
 Abstract datum transformation.
 """
 
+import os
 import gdal
 from fuse.datum_transform import use_vdatum as uv
 from fuse.raw_read.noaa.bag import BAGRawReader
-
+gdal.UseExceptions()
 
 class DatumTransformer:
     """ An object for abstracting the datum transformation API.  This should allow for different transformation machines and versions. """
@@ -75,7 +76,7 @@ class DatumTransformer:
             else:
                 return self._engine.create(filename, metadata), metadata, False
 
-    def translate_support_files(self, metadata: dict):
+    def translate_support_files(self, metadata: dict, dest_dir: str):
         """
         Check the horizontal georeferencing for the support files.  If they are
         not in the same datum as the output datum they are translated and
@@ -87,13 +88,67 @@ class DatumTransformer:
             A dictionary of the metadata associated with a survey.  The support
             files referenced in the dictionary will be updated if their
             horizontal datum does not match the output datum.
+            
+        dest_dir
+            The path to the directory where updated files should be stored.
         
         Returns
         -------
-        None
+        dict
+            The updated metadata dictionary with reference to the transformed
+            files.
         """
-        # get the support file types
-        # build transform
-        # transform files
-        # write back out
-        pass
+        if 'support_files' in metadata:
+            sf = metadata['support_files']
+            t = []
+            srs = self._build_srs(metadata)
+            for f in sf:
+                root, ext = os.path.splitext(f)
+                if ext == '.tiff' or ext == '.tif':
+                    src = gdal.Open(f)
+                    if src is not None:
+                        prj = src.GetProjection()
+                        if prj != srs.ExportToWkt():
+                            path, base = os.path.split(root)
+                            newf = os.path.join(dest_dir, base + ext)
+                            options = gdal.WarpOptions(dstSRS=srs, format='GTiff')
+                            gdal.Warp(newf, src, options = options)
+                            t.append(newf)
+                        else:
+                            t.append(f)
+                    else:
+                        t.append(f)
+                        print(f'{f} failed to open with gdal')
+                else:
+                    t.append(f)
+                    print('Only the translation of GeoTiffs is currently supported.')
+            metadata['support_files'] = t
+        return metadata
+    
+    def _build_srs(self, metadata):
+        """
+        Build a gdal osr spatial reference object from the provided metadata 
+        dictionary to_horiz_* fields.  If the 'to_horiz_frame','to_horiz_type'
+        and 'to_horiz_key' fields are not populated a value error is raised.
+        
+        Parameters
+        ----------
+        metadata
+            A dictionary of the metadata associated with a survey.
+        
+        Returns
+        -------
+        osr object for the target horizontal reference system.
+        """
+        req = ['to_horiz_frame','to_horiz_type','to_horiz_key']
+        if all(key in metadata for key in req):
+            if metadata['to_horiz_type'] == 'utm':
+                proj4_str = f'+proj=utm +zone={metadata["to_horiz_key"]} +datum={metadata["to_horiz_frame"]}'
+                srs = gdal.osr.SpatialReference()
+                srs.ImportFromProj4(proj4_str)
+                return srs
+            else:
+                raise ValueError('We still need to sort our when we are not working in utm...')
+        else:
+            raise ValueError('Not all metadata is available to build the proj4 string')
+            
