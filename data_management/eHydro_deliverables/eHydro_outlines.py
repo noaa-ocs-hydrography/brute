@@ -33,6 +33,8 @@ else:
 if not os.path.isdir(os.path.join(downloads)):
     os.mkdir(downloads)
 
+area_to_quarter = {'area': 'CHANNELAREAIDPK', 'quarter': 'CHANNELAREAIDFK'}
+
 def create_polygon(coords: List[Tuple[float, float]]) -> ogr.Geometry:
     """
     Creates an ogr.Geometry/wkbLinearRing object from a list of coordinates.
@@ -148,8 +150,8 @@ def geometryToShape(coordinates: list):
     return multipoly
 
 
-def write_geopackage(out_path: str, name: str, poly: str,
-                     spcs: Union[str, int]):
+def write_geopackage(out_path: str, metadata: dict,
+                     spcs: Union[str, int] = 4326):
     """
     Writes out a geopackage containing the bounding geometry of
     of the given query.
@@ -161,12 +163,10 @@ def write_geopackage(out_path: str, name: str, poly: str,
 
     Parameters
     ----------
-    out_path :
+    out_path : str, os.Pathlike
         String representing the complete file path for the output geopackage
-    name :
-        String representing the name of the survey; Used to name the layer
-    poly :
-        The WTK Multipolygon object that holds the survey's bounding data
+    metadata : dict
+        Dictionary holding object metadata
     spcs :
         The ESPG code for the data
 
@@ -179,20 +179,25 @@ def write_geopackage(out_path: str, name: str, poly: str,
         proj = osr.SpatialReference()
         proj.ImportFromEPSG(spcs)
 
+    name = f"{metadata['CHANNELAREAIDPK'] if 'CHANNELAREAIDPK' in metadata else metadata['CHANNELQUARTERIDPK']}.gpkg"
+    poly = metadata['geometry']
+    metadata_keys = list(metadata.keys())[:-1]
+    output_name = os.path.join(out_path, name)
+
     # Now convert it to a geopackage with OGR
     driver = ogr.GetDriverByName('GPKG')
-    ds = driver.CreateDataSource(out_path)
+    ds = driver.CreateDataSource(output_name)
     layer = ds.CreateLayer(name, proj, ogr.wkbMultiPolygon)
-    #    layer = ds.CreateLayer(name, None, ogr.wkbMultiPolygon)
-    # Add one attribute
-    layer.CreateField(ogr.FieldDefn('Survey', ogr.OFTString))
+    for key in metadata_keys:
+        layer.CreateField(ogr.FieldDefn(key, ogr.OFTString))
     defn = layer.GetLayerDefn()
 
     # If there are multiple geometries, put the "for" loop here
 
     # Create a new feature (attribute and geometry)
     feat = ogr.Feature(defn)
-    feat.SetField('Survey', name)
+    for key in metadata_keys:
+        feat.SetField(key, metadata[key])
 
     # Make a geometry, from wkt object
     geom = ogr.CreateGeometryFromWkt(poly)
@@ -200,8 +205,6 @@ def write_geopackage(out_path: str, name: str, poly: str,
     feat.SetGeometry(geom)
 
     layer.CreateFeature(feat)
-
-
 
     # linear_geom = geom.GetLinearGeometry()
     # geojson = linear_geom.ExportToJson()
@@ -234,10 +237,7 @@ def objectID_query(query_id: int = 1) -> [int]:
     the json library to make it readable by the program. Returns the json
     responses for number of surveys and surveys in the response.
 
-    -REMOVED- It also saves a prettyprinted version of the response as a text
-    file.
-
-    The funtion uses the requests library to retrieve the API's response(s) and
+    The function uses the requests library to retrieve the API's response(s) and
     uses the json library to make them readable by the program.
 
     The function returns the json object containing the contents of the query
@@ -265,16 +265,16 @@ def objectID_query(query_id: int = 1) -> [int]:
             while i < len(agencies):
                 if i == 0:
                     # %27 is ' (Apostrophe); %25 is % (Percent sign)
-                    areas += f'UPPER(usaceDistrictCode)+like+%27%25{agencies[0].strip()}%25%27'
+                    areas += f'UPPER(USACEDISTRICTCODE)+like+%27%25{agencies[0].strip()}%25%27'
                     i += 1
                 else:
                     # %27 is ' (Apostrophe); %25 is % (Percent sign)
-                    areas += f'+OR+UPPER(usaceDistrictCode)+like+%27%25{agencies[i].strip()}%25%27'
+                    areas += f'+OR+UPPER(USACEDISTRICTCODE)+like+%27%25{agencies[i].strip()}%25%27'
                     i += 1
             areas += ')+'
         else:
             # %27 is ' (Apostrophe); %25 is % (Percent sign)
-            areas = f'UPPER(usaceDistrictCode)+like+%27%25{agencies[0].strip()}%25%27'
+            areas = f'UPPER(USACEDISTRICTCODE)+like+%27%25{agencies[0].strip()}%25%27'
     else:
         areas = ''
 
@@ -289,7 +289,7 @@ def objectID_query(query_id: int = 1) -> [int]:
     objIDs = f'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/National_Channel_Framework/FeatureServer/{query_id}/query' + \
              f'?&where={where}&outFields=*&returnGeometry=false&returnIdsOnly=true&outSR=&f=json'
 
-    print(objIDs)
+    # print(objIDs)
 
     # Initial Query execution
     objectIds_request = requests.get(objIDs)
@@ -349,15 +349,18 @@ def geometry_query(objectIds: [int], query_id: int = 1) -> [dict]:
             metadata = {}
             for attribute in attr_list:
                 try:
-                    if attribute in ("DATEUPLOADED", "DATEEDITED", "dateCreated", "dateLastDredge", "dateEdited"):
+                    if attribute.upper() in ("DATEUPLOADED", "DATEEDITED", "DATECREATED", "DATELASTDREDGE"):
                         date = (page['features'][object_num]['attributes'][attribute])
+
+                        if date is None:
+                            continue
 
                         try:
                             date = datetime.datetime.utcfromtimestamp(date / 1000)
                             metadata[attribute] = f'{date:%Y-%m-%d}'
-                        except OSError as e:
+                        except (OSError, TypeError) as e:
                             print(e, date)
-                    else:
+                    elif page['features'][object_num]['attributes'][attribute] is not None:
                         metadata[attribute] = str(page['features'][object_num]['attributes'][attribute])
                 except KeyError as e:
                     print(e, attribute)
@@ -370,14 +373,64 @@ def geometry_query(objectIds: [int], query_id: int = 1) -> [dict]:
 
             rows.append(metadata)
             object_num += 1
-            print(object_num, end=' ')
+            print(x, end=' ')
     print('rows complete')
     return rows
 
 
-def main():
-    ...
+def save_polygons(channel_areas: [dict], channel_quarters: [dict]):
+    """
+    Saves the geometry as Geopackages (.gpkg) for each area and it's associated quarter(s)
 
+    Parameters
+    ----------
+    channel_areas : [dict]
+        list of area info dicts
+    channel_quarters : [dict]
+        list of quarter info dicts
+
+    """
+
+    a = 0
+
+    for area in channel_areas:
+        district_name = area['USACEDISTRICTCODE']
+        district_path = os.path.join(downloads, district_name)
+
+        if not os.path.isdir(district_path):
+            os.mkdir(district_path)
+
+        area_quarters = []
+        area_name = area[area_to_quarter['area']]
+        area_path = os.path.join(district_path, area_name)
+
+        if not os.path.isdir(area_path):
+            os.mkdir(area_path)
+
+        if 'geometry' in area:
+            write_geopackage(area_path, area)
+            a += 1
+
+        r = 0
+
+        for quarter in channel_quarters:
+            quarter_name = quarter[area_to_quarter['quarter']]
+
+            if quarter_name == area_name:
+                area_quarters.append(quarter)
+
+                if 'geometry' in quarter:
+                    write_geopackage(area_path, quarter)
+                    r += 1
+                    print(f'{a}.{r}')
+
+
+def main():
+    channel_ids = objectID_query()
+    channel_areas = geometry_query(channel_ids)
+    quarter_ids = objectID_query(query_id=3)
+    channel_quarters = geometry_query(quarter_ids, query_id=3)
+    save_polygons(channel_areas, channel_quarters)
 
 if __name__ == "__main__":
     main()
