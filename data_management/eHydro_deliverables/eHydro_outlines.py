@@ -373,6 +373,7 @@ def geometry_query(objectIds: [int], query_id: int = 1) -> [dict]:
 
             rows.append(metadata)
             object_num += 1
+            x += 1
             print(x, end=' ')
     print('rows complete')
     return rows
@@ -392,7 +393,7 @@ def save_polygons(channel_areas: [dict], channel_quarters: [dict]):
     """
 
     a = 0
-
+    print(len(channel_areas))
     for area in channel_areas:
         district_name = area['USACEDISTRICTCODE']
         district_path = os.path.join(downloads, district_name)
@@ -422,7 +423,7 @@ def save_polygons(channel_areas: [dict], channel_quarters: [dict]):
                 if 'geometry' in quarter:
                     write_geopackage(area_path, quarter)
                     r += 1
-                    print(f'{a}.{r}')
+                    print(f'{a}.{r}', end=' ')
 
 
 def main():
