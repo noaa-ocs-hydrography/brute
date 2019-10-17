@@ -78,7 +78,7 @@ class RasterInterpolator:
                     bathTile = _itp.chunk(bag.elevation, tile, mode='a')
                     uncrTile = _itp.chunk(bag.uncertainty, tile, mode='a')
                     print('interp is next')
-                    interp = _itp.Interpolate(method, bathTile, uncrTile, covgTile, catzoc=uval, origin=bag.bounds[0], resolution=bag.resolution)
+                    interp = _itp.Interpolate(method, bathTile, uncrTile, covgTile, catzoc=uval)
                     del covgTile, bathTile, uncrTile
                     unitedBag = _itp.chunk(interp.bathy, tile, mode='c', copy=unitedBag)
                     unitedUnc = _itp.chunk(interp.uncrt, tile, mode='c', copy=unitedUnc)
@@ -94,15 +94,15 @@ class RasterInterpolator:
             ts = _dt.now()
             print('\nTile 1 of 1 -', ts)
             print('interp is next')
-            interp = _itp.Interpolate(method, bag.elevation, bag.uncertainty, coverage.array, catzoc=uval, origin=bag.bounds[0], resolution=bag.resolution)
+            interp = _itp.Interpolate(method, bag.elevation, bag.uncertainty, coverage.array, catzoc=uval)
             ugrids = [interp.bathy, interp.uncrt, interp.unint]
             del interp
             td = _dt.now()
             tdelt = td - ts
             print('Tile complete -', td, '| Tile took:', tdelt)
 
-        bag.elevation, bag.uncertainty, coverage.array = _itp.rePrint(bag.elevation, bag.uncertainty, coverage.array,
-                                                                      ugrids, bag.nodata, io)
+        bag.elevation, bag.uncertainty = _itp.rePrint(bag.elevation, bag.uncertainty, coverage.array,
+                                                      ugrids, bag.nodata, io)
 
         save = _bag.BagToGDALConverter()
         save.bag2gdal(bag)
@@ -202,19 +202,17 @@ class Intitializor:
             tdelt = td - ts
             print('Tile complete -', td, '| Tile took:', tdelt)
 
-        bag.elevation, bag.uncertainty, coverage.array = _itp.rePrint(bag.elevation, bag.uncertainty,
+        bag.elevation, bag.uncertainty = _itp.rePrint(bag.elevation, bag.uncertainty,
                                                                       coverage.array, ugrids, bag.nodata, self._io)
         print(coverage.array)
 
-        save = _bag.BagToGDALConverter('MLLW')
-        #        save.components2gdal([bag.elevation, bag.uncertainty], bag.shape,
-        #                             bag.bounds, bag.resolution, bag.wkt, bag.nodata)
+        save = _bag.BagToGDALConverter()
         save.bag2gdal(bag)
 
         writer = ProcIO('gdal', 'bag')
         print(save.dataset.GetGeoTransform())
         writer.write(save.dataset, bag.outfilename)
 
-        _cvg.write_vector(coverage, self._outlocation)
+#        _cvg.write_vector(coverage, self._outlocation)
 
         del coverage, bag, save, ugrids

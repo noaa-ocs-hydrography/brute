@@ -192,7 +192,9 @@ class BAGRawReader(RawReader):
             meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
             meta_support = self._known_meta(filename)
             meta_csv = self._csv_meta(filename)
-            return {**meta_csv, **meta_xml, **meta_gdal, **meta_support}
+            meta_combined = {**meta_csv, **meta_xml, **meta_gdal, **meta_support}
+            meta_final = self._finalize_meta(meta_combined)
+            return meta_final
         except ValueError as error:
             print(error)
             return {}
@@ -311,11 +313,6 @@ class BAGRawReader(RawReader):
             self.namespace = self._assign_namspace(bag_version=bag_version)
             self.bag_format = self._set_format(infilename, bag_version)
             self.get_fields()
-            if 'from_vert_datum' not in self.data or 'from_vert_key' not in self.data:
-                for datum in vert_datum.keys():
-                    if datum in infilename:
-                        self.data['from_vert_datum'], self.data['from_vert_key'] = datum, datum
-                        break
 
             return self.data
         except _tb.HDF5ExtError as e:
@@ -363,10 +360,11 @@ class BAGRawReader(RawReader):
         meta = {}
         found = False
         root, name = _os.path.split(infilename)
+        basename = _os.path.splitext(name)[0]
         if csv_exists:
             for survey in self.csv_data:
                 if 'bag_name' in survey:
-                    if survey['bag_name'] == name:
+                    if survey['bag_name'] == name or survey['bag_name'] == basename:
                         found = True
                         meta = {**survey, **meta}
             if not found:
@@ -442,8 +440,10 @@ class BAGRawReader(RawReader):
                                             f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
                                 #                                    raise RuntimeError(f'Unable to add datum information due to incorrect formatting: {line[2]}')
                                 elif meta_field in ('from_vert_datum'):
-                                    if line[assignment] in vert_datum.keys():
-                                        datum_info['from_vert_key'] = line[assignment]
+                                    for datum in vert_datum.keys():
+                                        if datum == line[assignment]:
+                                            datum_info['from_vert_datum'], datum_info['from_vert_key'] = datum, datum
+                                            break
                                 elif meta_field in ('start_date', 'end_date'):
                                     if len(line[assignment]) == 8:
                                         bag_meta[meta_field] = line[assignment]
@@ -1116,7 +1116,7 @@ class BAGRawReader(RawReader):
 
         try:
             if val.lower() == 'unknown':
-                val = ''
+                raise ValueError(f'Invalid vertical datum assignment --> {val}')
             elif val.lower() in ('mean_lower_low_water', 'mean lower low water', 'mllw', 'mllw depth'):
                 self.data['from_vert_key'] = 'MLLW'
             elif val.lower() in ('hudson river datum', 'hrd'):
@@ -1215,6 +1215,28 @@ class BAGRawReader(RawReader):
         except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the sensor name attribute: {e}")
             return
+
+    def _finalize_meta(self, meta):
+        if ('from_vert_datum' not in meta or meta['from_vert_datum'] == '') and 'from_vert_key' not in meta:
+            for datum in vert_datum.keys():
+                if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
+                    meta['from_vert_datum'], meta['from_vert_key'] = datum, datum
+                    break
+        elif 'from_vert_datum' in meta and 'from_vert_key' not in meta:
+            for datum in vert_datum.keys():
+                if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
+                    meta['from_vert_key'] = datum
+                    break
+        # this should be moved to the reader.
+        meta['read_type'] = 'bag'
+        # translate from the reader to common metadata keys for datum transformations
+        if 'from_vert_direction' not in meta:
+            meta['from_vert_direction'] = 'height'
+        if 'from_vert_units' not in meta:
+            meta['from_vert_units'] = 'm'
+        meta['interpolated'] = 'False'
+        meta['posted'] = False
+        return meta
 
 
 class BagFile:
@@ -1337,10 +1359,15 @@ class BagFile:
             self.resolution = self._read_res_x_and_y(xml_tree)
             sw, ne = self._read_corners_sw_and_ne(xml_tree)
             sx, sy = sw
-            nx = (sx + (self.resolution[0] * self.shape[1]))
-            ny = (sy + (self.resolution[0] * self.shape[0]))
+
+            # BAGs are a node-based convention; 1 cell is subtracted to account
+            nx = (sx + (self.resolution[0] * (self.shape[1] - 1)))
+            ny = (sy + (self.resolution[0] * (self.shape[0] - 1)))
             print(ne, (nx, ny))
-            self.bounds = ([sx, ny], [nx, sy])
+
+            # Convert to cell based-convention
+            half_cell = 0.5 * self.resolution[0]
+            self.bounds = ([sx - half_cell, ny + half_cell], [nx + half_cell, sy - half_cell])
 
     def _known_data(self, filepath: str):
         """
@@ -1646,7 +1673,6 @@ class BagToGDALConverter:
         res_x, res_y = bag.resolution[0], bag.resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
-        target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=bag.wkt)
         #        if not srs.IsCompound():
@@ -1699,7 +1725,6 @@ class BagToGDALConverter:
         res_x, res_y = resolution[0], resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
-        target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=prj)
         #        if not srs.IsCompound():
@@ -1722,9 +1747,3 @@ class BagToGDALConverter:
 
         self.dataset = target_ds
         del target_ds
-
-    def translate_bag2gdal_extents(self, geotransform: (float, float, float, float, float, float)):
-        orig_x, res_x, skew_x, orig_y, skew_y, res_y = geotransform
-        new_x = orig_x - (res_x / 2)
-        new_y = orig_y + (res_y / 2)
-        return new_x, res_x, skew_x, new_y, skew_y, res_y

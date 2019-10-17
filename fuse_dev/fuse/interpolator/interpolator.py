@@ -67,15 +67,16 @@ class Interpolator:
 
         root, filename = _os.path.split(metadata['outpath'])
         base, ext = _os.path.splitext(filename)
-        metadata['from_filename'] = self.gettag(base)
 
         # Point Interpolation
         if self._interp_engine == 'point':
-#            if not support_files:
-            interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution)
-#            else:
-#                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution,
-#                                                                support_files[0])
+            if not support_files:
+                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution)
+                metadata['from_filename'] = self.gettag(base)
+                metadata['interpolated'] = True
+            else:
+                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution,
+                                                                support_files[0])
 
         # Raster Interpolation
         elif self._interp_engine == 'raster':
@@ -83,8 +84,9 @@ class Interpolator:
                 raise ValueError("No coverage files provided; no interpolation can occur")
             else:
                 interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, support_files, file_size)
+                metadata['from_filename'] = self.gettag(base)
+                metadata['interpolated'] = True
 
-        metadata['interpolated'] = True
 
         return interpolated_dataset, metadata
 

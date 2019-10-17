@@ -287,12 +287,6 @@ class FuseProcessor:
         except RuntimeError as e:
             self.logger.log(_logging.DEBUG, e)
             return None
-        if self._read_type == 'ehydro':
-            metadata = self._read_ehydro(metadata)
-        elif self._read_type == 'bag':
-            metadata = self._read_noaa_bag(metadata)
-        else:
-            raise ValueError('Reader type not implemented')
         # get the config file information
         metadata = self._add_config_metadata(metadata)
         # check to see if the quality metadata is available.
@@ -306,48 +300,15 @@ class FuseProcessor:
         self._close_log()
         return metadata['from_path']
 
-    def _read_ehydro(self, meta: dict):
-        """
-        Extract metadata from the provided eHydro file path and write the metadata
-        to the specified metadata file.  The bathymetry will be interpolated and
-        writen to a CSAR file in the specificed csarpath.
-
-        Parameters
-        ----------
-        meta
-            meta data dictionary from the reader
-        """
-        return meta
-
-    def _read_noaa_bag(self, metadata: dict):
-        """
-        Extract metadata from the provided bag file path and write the metadata
-        to the specified metadata file.
-
-        Parameters
-        ----------
-        metadata
-            The metadata dictionary provided by the reader
-        """
-        # this should be moved to the reader.
-        metadata['read_type'] = 'bag'
-        # translate from the reader to common metadata keys for datum transformations
-        if 'from_vert_direction' not in metadata:
-            metadata['from_vert_direction'] = 'height'
-        if 'from_vert_units' not in metadata:
-            metadata['from_vert_units'] = 'm'
-        metadata['interpolated'] = 'False'
-        metadata['posted'] = False
-
     def _add_config_metadata(self, metadata):
         """
         Add the metadata contained in the config file to the dictionary.
-        
+
         Parameters
         ----------
         metadata
             metadata dictionary from the reader.
-            
+
         Returns
         -------
         dict
@@ -364,7 +325,7 @@ class FuseProcessor:
         metadata['to_vert_direction'] = self._config['to_vert_direction']
         metadata['to_vert_datum'] = self._config['to_vert_datum']
         return metadata
-        
+
     def process(self, filename: str) -> str:
         """
         Do the datum transformtion and interpolation.
