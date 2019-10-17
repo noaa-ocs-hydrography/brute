@@ -120,7 +120,8 @@ class DatumTransformer:
                         t.append(f)
                         print(f'{f} failed to open with gdal')
                 elif ext == 'gpkg':
-                    self._translate_geopackage(newf, srs)
+                    resulting_file = self._reproject_geopackage(f, newf, srs)
+                    t.append(resulting_file)
                 else:
                     t.append(f)
                     print('Only the translation of GeoTiffs is currently supported.')
@@ -154,9 +155,10 @@ class DatumTransformer:
         else:
             raise ValueError('Not all metadata is available to build the proj4 string')
             
-    def _translate_geopackage(self, fromfilename: str, tofilename: str, to_srs: str):
+    def _reproject_geopackage(self, fromfilename: str, tofilename: str, dest_srs: str):
         """
-        Convert a Geopackage to a provided reference frame.
+        Convert a Geopackage to a provided reference frame.  A single layer is
+        assumed.
 
         Parameters
         ----------
@@ -167,7 +169,8 @@ class DatumTransformer:
 
         Returns
         -------
-
+        str
+            The file name for the resulting file.
         """
 
         fName = os.path.split(fromfilename)[-1]
@@ -179,24 +182,30 @@ class DatumTransformer:
         source_layer = source_ds.GetLayer()
         source_srs = source_layer.GetSpatialRef()
 
-        for feature in source_layer:
-            if feature is not None:
-                # get the data and transform
-                geom = feature.GetGeometryRef()
-                ds_geom = gdal.ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-                coordTrans = gdal.osr.CoordinateTransformation(source_srs, to_srs)
-                ds_geom.Transform(coordTrans)
-                # build new file
-                driver = gdal.ogr.GetDriverByName('gpkg')
-                ds = driver.CreateDataSource(tofilename)
-                layer = ds.CreateLayer(name, to_srs, gdal.ogr.wkbMultiPolygon)
-                # Add one attribute
-                layer.CreateField(gdal.ogr.FieldDefn('Survey', gdal.ogr.OFTString))
-                defn = layer.GetLayerDefn()
-                # Create a new feature (attribute and geometry)
-                feat = gdal.ogr.Feature(defn)
-                feat.SetField('Survey', name)
-                feat.SetGeometry(ds_geom)
-                layer.CreateFeature(feat)
-                del feat, geom  # destroy these
-                break
+        if source_srs.ExportToWkt() == dest_srs.ExportToWkt():
+            outname = fromfilename
+        else:
+            coordTrans = gdal.osr.CoordinateTransformation(source_srs, dest_srs)
+            # build new file
+            driver = gdal.ogr.GetDriverByName('gpkg')
+            dest_ds = driver.CreateDataSource(tofilename)
+            outname = tofilename
+            layer = dest_ds.CreateLayer(name, dest_srs, gdal.ogr.wkbMultiPolygon)
+
+            for feature in source_layer:
+                if feature is not None:
+                    # get the data and transform
+                    geom = feature.GetGeometryRef()
+                    ds_geom = gdal.ogr.CreateGeometryFromWkt(geom.ExportToWkt())
+                    ds_geom.Transform(coordTrans)
+                    # Add one attribute
+                    layer.CreateField(gdal.ogr.FieldDefn('Survey', gdal.ogr.OFTString))
+                    defn = layer.GetLayerDefn()
+                    # Create a new feature (attribute and geometry)
+                    feat = gdal.ogr.Feature(defn)
+                    feat.SetField('Survey', name)
+                    feat.SetGeometry(ds_geom)
+                    layer.CreateFeature(feat)
+            dest_ds = None
+        source_ds = None
+        return outname
