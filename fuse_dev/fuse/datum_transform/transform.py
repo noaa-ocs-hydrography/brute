@@ -181,8 +181,8 @@ class DatumTransformer:
         source_ds = gdal.ogr.Open(fromfilename)
         source_layer = source_ds.GetLayer()
         source_srs = source_layer.GetSpatialRef()
-
-        if source_srs.ExportToWkt() == dest_srs.ExportToWkt():
+        # check to see if the file is already projected as it should be
+        if dest_srs.IsSame(source_srs):
             outname = fromfilename
         else:
             coordTrans = gdal.osr.CoordinateTransformation(source_srs, dest_srs)
