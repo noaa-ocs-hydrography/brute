@@ -368,9 +368,9 @@ class BAGRawReader(RawReader):
                         found = True
                         meta = {**survey, **meta}
             if not found:
+                _logging.warning(f'No CSV Metadata available for: {name, basename}')
                 meta['interpolate'] = False
         else:
-            _logging.warning(f'No CSV Metadata available for: {name}')
             meta['interpolate'] = False
         return meta
 
@@ -397,13 +397,13 @@ class BAGRawReader(RawReader):
                     else:
                         bag_meta = {}
                         for assignment in range(len(fields)):
-                            if line[assignment] != '':
+                            if line[assignment] != '' and fields[assignment].lower() not in ('', 'note'):
                                 try:
                                     meta_field = csv_to_meta[fields[assignment].strip()]
                                 except KeyError:
-                                    _logging.warning(f'Unable to parse {fields[assignment]}')
-                                    index += 1
-                                    continue
+                                    _logging.warning(f'Unable to parse field: {line[1]}, {fields[assignment]}')
+                                    # index += 1
+                                    # continue
                                 if meta_field in (
                                         'sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect', 'feat_delivered', 'feat_least_depth',
                                         'complete_coverage', 'bathymetry'):
@@ -413,18 +413,19 @@ class BAGRawReader(RawReader):
                                         bag_meta[meta_field] = 'True'
                                 elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
                                     try:
-                                        if 'cm' in line[assignment]:
-                                            bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment])) / 100
-                                        elif 'm' in line[assignment]:
-                                            bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
+                                        if line[assignment].lower() not in ('n/a', 'unassessed'):
+                                            if 'cm' in line[assignment]:
+                                                bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment])) / 100
+                                            elif 'm' in line[assignment]:
+                                                bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
                                     except ValueError:
                                         _logging.warning(
                                             f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
                                 elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
                                     try:
-                                        bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment])) / 100
+                                        if line[assignment].lower() not in ('n/a', 'unassessed'):
+                                            bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment])) / 100
                                     except ValueError:
-
                                         _logging.warning(
                                             f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
                                 elif meta_field in ('from_horiz_datum'):
@@ -1123,7 +1124,7 @@ class BAGRawReader(RawReader):
                 self.data['from_vert_key'] = 'HRD'
             self.data['from_vert_datum'] = val
         except (ValueError, IndexError, AttributeError) as e:
-            _logging.warning(f"unable to read the survey vertical datum name attribute: {e}")
+            _logging.warning(f"Unable to read the survey vertical datum name attribute: {e}")
             return
 
     def _read_horizontal_datum(self):
