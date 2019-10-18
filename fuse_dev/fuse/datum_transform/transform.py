@@ -81,17 +81,17 @@ class DatumTransformer:
         Check the horizontal georeferencing for the support files.  If they are
         not in the same datum as the output datum they are translated and
         written back to disk.
-        
+
         Parameters
         ----------
         metadata
             A dictionary of the metadata associated with a survey.  The support
             files referenced in the dictionary will be updated if their
             horizontal datum does not match the output datum.
-            
+
         dest_dir
             The path to the directory where updated files should be stored.
-        
+
         Returns
         -------
         dict
@@ -101,7 +101,7 @@ class DatumTransformer:
         if 'support_files' in metadata:
             sf = metadata['support_files']
             t = []
-            srs = self._build_srs(metadata)
+            dest_srs = self._build_srs(metadata)
             for f in sf:
                 root, ext = os.path.splitext(f)
                 path, base = os.path.split(root)
@@ -109,36 +109,36 @@ class DatumTransformer:
                 if ext == '.tiff' or ext == '.tif':
                     src = gdal.Open(f)
                     if src is not None:
-                        prj = src.GetProjection()
-                        if prj != srs.ExportToWkt():
-                            options = gdal.WarpOptions(dstSRS=srs, format='GTiff')
-                            gdal.Warp(newf, src, options = options)
+                        source_prj = src.GetProjectionRef()
+                        if dest_srs.IsSame(source_prj):
+                            options = gdal.WarpOptions(dstSRS=dest_srs, format='GTiff')
+                            gdal.Warp(newf, src, options=options)
                             t.append(newf)
                         else:
                             t.append(f)
                     else:
                         t.append(f)
                         print(f'{f} failed to open with gdal')
-                elif ext == 'gpkg':
-                    resulting_file = self._reproject_geopackage(f, newf, srs)
+                elif ext == '.gpkg':
+                    resulting_file = self._reproject_geopackage(f, newf, dest_srs)
                     t.append(resulting_file)
                 else:
                     t.append(f)
-                    print('Only the translation of GeoTiffs is currently supported.')
+                    print(f'Unsupported support file format: {ext}')
             metadata['support_files'] = t
         return metadata
-    
+
     def _build_srs(self, metadata):
         """
-        Build a gdal osr spatial reference object from the provided metadata 
+        Build a gdal osr spatial reference object from the provided metadata
         dictionary to_horiz_* fields.  If the 'to_horiz_frame','to_horiz_type'
         and 'to_horiz_key' fields are not populated a value error is raised.
-        
+
         Parameters
         ----------
         metadata
             A dictionary of the metadata associated with a survey.
-        
+
         Returns
         -------
         osr object for the target horizontal reference system.
@@ -154,7 +154,7 @@ class DatumTransformer:
                 raise ValueError('We still need to sort our when we are not working in utm...')
         else:
             raise ValueError('Not all metadata is available to build the proj4 string')
-            
+
     def _reproject_geopackage(self, fromfilename: str, tofilename: str, dest_srs: str):
         """
         Convert a Geopackage to a provided reference frame.  A single layer is
