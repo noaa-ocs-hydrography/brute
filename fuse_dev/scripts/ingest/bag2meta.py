@@ -14,12 +14,13 @@ import datetime
 import fuse.fuse_processor as ffp
 import fuse.wx_helper.process_title as wx_window
 
+SCRIPT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 
 if __name__ == '__main__':
     start = datetime.datetime.now()
     print(start)
 #    wx_frame = wx_window.Open_Frame('BAG')
-    config_list = glob('bag*.config')
+    config_list = glob(os.path.join(SCRIPT_DIRECTORY, 'bag*.config'))
     for n,config in enumerate(config_list):
         bag = ffp.FuseProcessor(config)
         root = bag.rawdata_path[0]

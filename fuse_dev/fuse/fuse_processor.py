@@ -381,8 +381,16 @@ class FuseProcessor:
 
             if 'interpolate' in metadata:
                 interpolate = metadata['interpolate'].lower()
+
+                if self._read_type == 'bag' and interpolate == 'true':
+                    if ('support_files' not in metadata or len(metadata['support_files']) < 1):
+                        interpolate = 'False'
+                        self.logger.warning("No coverage files provided; no interpolation can occur")
+
                 if interpolate == 'true':
                     meta_interp = metadata.copy()
+
+                    meta_interp = self._transform.translate_support_files(meta_interp, self._config['outpath'])
 
                     root, filename = _os.path.split(meta_interp['outpath'])
                     base = _os.path.splitext(filename)[0]
