@@ -446,12 +446,17 @@ class BAGRawReader(RawReader):
                                             datum_info['from_vert_datum'], datum_info['from_vert_key'] = datum, datum
                                             break
                                 elif meta_field in ('start_date', 'end_date'):
-                                    if len(line[assignment]) == 8:
-                                        bag_meta[meta_field] = line[assignment]
-                                    elif len(line[assignment]) == 11:
-                                        bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
-                                    elif len(line[assignment]) == 13:
-                                        bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
+                                    try:
+                                        bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%Y%m%d'):%Y%m%d}"
+                                    except ValueError:
+                                        try:
+                                            bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
+                                        except ValueError:
+                                            try:
+                                                bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
+                                            except ValueError:
+                                                _logging.warning(
+                                                    f'Unable to add `{meta_field}` information: {line[1]}, {meta_field}: {line[assignment]}')
                                 else:
                                     bag_meta[meta_field] = line[assignment]
                         if 'bathymetry' in bag_meta and 'complete_coverage' in bag_meta:
@@ -902,9 +907,9 @@ class BAGRawReader(RawReader):
             pass
             # _logging.warning("unable to handle the date string: %s" % text_date)
 
-        if tm_date is None:
+        if tm_date is None and text_date != '':
             self.data['date'] = text_date
-        else:
+        elif tm_date != '':
             self.data['date'] = tm_date
 
     def _read_uncertainty_type(self):
@@ -994,9 +999,9 @@ class BAGRawReader(RawReader):
             _logging.warning("unable to handle the date string: %s" % text_date)
             pass
 
-        if tm_date is None:
+        if tm_date is None and text_date != '':
             self.data['source_date'] = text_date
-        else:
+        elif tm_date != '':
             self.data['source_date'] = tm_date
 
     def _read_survey_authority(self):
@@ -1043,12 +1048,12 @@ class BAGRawReader(RawReader):
                 parsed_date = _parser.parse(text_start_date)
                 tms_date = parsed_date.strftime('%Y%m%d')
             except Exception:
-                pass
-                # _logging.warning("unable to handle the survey start string: %s" % text_start_date)
+                # pass
+                _logging.warning("unable to handle the survey start string: %s" % text_start_date)
 
-            if tms_date is None:
+            if tms_date is None and text_start_date != '':
                 self.data['start_date'] = text_start_date
-            else:
+            elif tms_date != '':
                 self.data['start_date'] = tms_date
 
     def _read_survey_end_date(self):
@@ -1075,12 +1080,12 @@ class BAGRawReader(RawReader):
                 parsed_date = _parser.parse(text_end_date)
                 tme_date = parsed_date.strftime('%Y%m%d')
             except Exception:
-                pass
-                # _logging.warning("unable to handle the survey end string: %s" % text_end_date)
+                # pass
+                _logging.warning("unable to handle the survey end string: %s" % text_end_date)
 
-            if tme_date is None:
+            if tme_date is None and text_end_date != '':
                 self.data['end_date'] = text_end_date
-            else:
+            elif tme_date != '':
                 self.data['end_date'] = tme_date
 
     def _read_vertical_datum(self):
@@ -1748,3 +1753,5 @@ class BagToGDALConverter:
 
         self.dataset = target_ds
         del target_ds
+
+test = BAGRawReader()
