@@ -61,7 +61,7 @@ class DatumTransformer:
 
         Returns
         -------
-        gdal.Dataset, bool
+        gdal.Dataset, dict, bool
             GDAL point cloud, metadata, and boolean value of whether data was reprojected
         """
         not_same_horiz = any(metadata[self._from_horiz_datum_info[index]].lower() != metadata[self._to_horiz_datum_info[index]].lower() for index in
@@ -75,17 +75,23 @@ class DatumTransformer:
             if not_same_vert:
                 # avoid interpolating files in the wrong vertical datum.
                 metadata['interpolate'] = 'False'
+                transformed = False
+                data_obj = None
             # if just the horizontal needs updating, warp it
             elif not_same_horiz:
                 newfilename, ext = self._dest_filename(filename,dest_dir)
                 dest_srs = self._build_srs(metadata)
                 options = gdal.WarpOptions(dstSRS=dest_srs, format='BAG')
-                gdal.Warp(newfilename, filename, options=options)
+                source = self._engine.create(filename, metadata)
+                data_obj = gdal.Warp(newfilename, source, options=options)
                 metadata['to_filename'] = newfilename
+                transformed = True
             # otherwirse, no datume change needed, hooray! 
             else:
                 metadata['to_filename'] = filename
-            return 'None', metadata, False
+                transformed = False
+                data_obj = self._engine.create(filename, metadata)
+            return data_obj, metadata, transformed
         else:
             if not_same_horiz or not_same_vert:
                 return self._engine.translate(filename, metadata), metadata, True
