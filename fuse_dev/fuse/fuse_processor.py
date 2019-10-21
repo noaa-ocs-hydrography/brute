@@ -365,13 +365,14 @@ class FuseProcessor:
             try:
                 # oddly _transform becomes the bathymetry reader here...
                 # return a GDAL dataset in the right datums to combine
-                dataset, metadata, transformed = self._transform.translate(filename, metadata)
+                dataset, metadata, transformed = self._transform.translate(filename, metadata, self._config['outpath'])
                 if self._read_type == 'ehydro':
                     outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                     self._point_writer.write(dataset, outfilename)
                     metadata['to_filename'] = outfilename
                 elif self._read_type == 'bag':
-                    metadata['to_filename'] = filename
+                    # 'to_filename' is set in the metadata when transforming
+                    pass
             except (ValueError, RuntimeError, IndexError) as error:
                     message = f' Transformation error: {error}'
                     self.logger.warning(message)
@@ -404,13 +405,8 @@ class FuseProcessor:
                         output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
 
                     meta_interp['to_filename'] = output_filename
-                    # method = self._config['interpolation_method']
-
-                    # support_files = meta_interp['support_files'] if 'support_files' in meta_interp else None
 
                     try:
-                        # interpolator = _interp.Interpolator(dataset, sidescan_rasters=support_files)
-                        # dataset = interpolator.interpolate(method, float(self._config['to_resolution']), plot=True)
                         dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:

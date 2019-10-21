@@ -16,20 +16,24 @@ gdal.UseExceptions()
 class DatumTransformer:
     """ An object for abstracting the datum transformation API.  This should allow for different transformation machines and versions. """
 
-    _from_datum_info = [
+    _from_horiz_datum_info = [
         'from_horiz_frame',
         'from_horiz_type',
         'from_horiz_units',
         'from_horiz_key',
-        'from_vert_key',
-        'from_vert_units',
-        'from_vert_direction',
     ]
-    _to_datum_info = [
+    _to_horiz_datum_info = [
         'to_horiz_frame',
         'to_horiz_type',
         'to_horiz_units',
         'to_horiz_key',
+    ]
+    _from_vert_datum_info = [
+        'from_vert_key',
+        'from_vert_units',
+        'from_vert_direction',
+    ]
+    _to_vert_datum_info = [
         'to_vert_key',
         'to_vert_units',
         'to_vert_direction',
@@ -43,7 +47,7 @@ class DatumTransformer:
         self._reader = reader
         self._engine = uv.VDatum(vdatum_path, java_path, self._reader)
 
-    def translate(self, filename: str, metadata: dict) -> (gdal.Dataset, dict, bool):
+    def translate(self, filename: str, metadata: dict, dest_dir: str) -> (gdal.Dataset, dict, bool):
         """
         Run the specified transformation engine to translate the provided
         dataset.
@@ -60,21 +64,33 @@ class DatumTransformer:
         gdal.Dataset, bool
             GDAL point cloud, metadata, and boolean value of whether data was reprojected
         """
-
-        if any(metadata[self._from_datum_info[index]].lower() != metadata[self._to_datum_info[index]].lower() for index in
-               range(len(self._from_datum_info))):
-            if type(self._reader) is BAGRawReader:
+        not_same_horiz = any(metadata[self._from_horiz_datum_info[index]].lower() != metadata[self._to_horiz_datum_info[index]].lower() for index in
+               range(len(self._from_horiz_datum_info)))
+        not_same_vert = any(metadata[self._from_vert_datum_info[index]].lower() != metadata[self._to_vert_datum_info[index]].lower() for index in
+               range(len(self._from_vert_datum_info)))
+        is_bag = type(self._reader) is BAGRawReader
+        # VDatum and rasters are giving us trouble, so this is a temp workaround
+        if is_bag:
+            # we can't deal with a change in BAG vertical datum, so punt
+            if not_same_vert:
+                # avoid interpolating files in the wrong vertical datum.
                 metadata['interpolate'] = 'False'
-                return 'None', metadata, False
+            # if just the horizontal needs updating, warp it
+            elif not_same_horiz:
+                newfilename, ext = self._dest_filename(filename,dest_dir)
+                dest_srs = self._build_srs(metadata)
+                options = gdal.WarpOptions(dstSRS=dest_srs, format='BAG')
+                gdal.Warp(newfilename, filename, options=options)
+                metadata['to_filename'] = newfilename
+            # otherwirse, no datume change needed, hooray! 
             else:
-                return self._engine.translate(filename, metadata), metadata, True
-        elif metadata['interpolate'].lower() != 'false':
-            return self._engine.create(filename, metadata), metadata, False
+                metadata['to_filename'] = filename
+            return 'None', metadata, False
         else:
-            if type(self._reader) is BAGRawReader:
-                return 'None', metadata, False
+            if not_same_horiz or not_same_vert:
+                return self._engine.translate(filename, metadata), metadata, True
             else:
-                return self._engine.create(filename, metadata), metadata, False
+              return self._engine.create(filename, metadata), metadata, False
 
     def translate_support_files(self, metadata: dict, dest_dir: str):
         """
@@ -101,11 +117,9 @@ class DatumTransformer:
         if 'support_files' in metadata:
             sf = metadata['support_files']
             t = []
-            dest_srs = self._build_srs(metadata)
+            dest_srs = self._build_gdal_horiz_srs(metadata)
             for f in sf:
-                root, ext = os.path.splitext(f)
-                path, base = os.path.split(root)
-                newf = os.path.join(dest_dir, base + ext)
+                newf, ext = self._dest_filename(f,dest_dir)
                 if ext == '.tiff' or ext == '.tif':
                     src = gdal.Open(f)
                     if src is not None:
@@ -128,7 +142,7 @@ class DatumTransformer:
             metadata['support_files'] = t
         return metadata
 
-    def _build_srs(self, metadata):
+    def _build_gdal_horiz_srs(self, metadata):
         """
         Build a gdal osr spatial reference object from the provided metadata
         dictionary to_horiz_* fields.  If the 'to_horiz_frame','to_horiz_type'
@@ -209,3 +223,26 @@ class DatumTransformer:
             dest_ds = None
         source_ds = None
         return outname
+    
+    def _dest_filename(self, filename: str, dest_dir: str):
+        """
+        Build the filename for the transformed file.
+        
+        Parameters
+        ----------
+        
+        filename : str
+            The filename of the source file
+            
+        dest_dir : str
+            The path to the target directory for a tranlated file.
+            
+        Returns
+        -------
+        str
+            The resulting path to the transformed file.
+        """
+        root, ext = os.path.splitext(filename)
+        path, base = os.path.split(root)
+        newfname = os.path.join(dest_dir, base + ext)
+        return newfname, ext
