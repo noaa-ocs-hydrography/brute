@@ -242,6 +242,8 @@ class FuseProcessor:
             elif reader_type == 'bag':
                 self._reader = _noaa.bag.BAGRawReader()
                 self._read_type = 'bag'
+            elif reader_type == 'bps':
+                self._reader = _noaa.bps.BPSRawReader()
             else:
                 raise ValueError('reader type not implemented')
         except ValueError:
