@@ -19,17 +19,6 @@ import fuse.raw_read.usace as _usace
 from fuse import score
 from fuse.proc_io.proc_io import ProcIO
 
-_ehydro_quality_metrics = {
-    'complete_coverage': False,
-    'bathymetry': True,
-    'vert_uncert_fixed': 0.5,
-    'vert_uncert_vari': 0.1,
-    'horiz_uncert_fixed': 5.0,
-    'horiz_uncert_vari': 0.05,
-    'feat_detect': False,
-}
-
-
 class FuseProcessor:
     """Bathymetric survey object."""
 
@@ -121,6 +110,7 @@ class FuseProcessor:
         self._meta_obj = _mr.MetaReviewer(self._config['metapath'], self._cols)
         self._set_data_reader()
         self._set_data_transform()
+        self._set_data_interpolator()
         self._set_data_writer()
         self._db = None
         self._meta = {}  # initialize the metadata holder
@@ -147,7 +137,8 @@ class FuseProcessor:
         -------
             dictionary of metadata
         """
-
+        if not _os.path.isfile(configuration_file):
+            raise ValueError(f'file not found: {configuration_file}')
         config = {}
         config_file = _cp.ConfigParser()
         config_file.read(configuration_file)
@@ -161,19 +152,22 @@ class FuseProcessor:
                     raw = value.split(';')
                     for r in raw:
                         r = r.strip()
-                        if _os.path.isdir(r):
-                            rawpaths.append(r)
-                        else:
-                            raise ValueError(f'Invalid input path: {r}')
+                        rawpaths.append(r)
                     config[key] = rawpaths
-                elif key == 'outpath':
-                    if _os.path.isdir(value):
-                        config[key] = value
-                    else:
-                        raise ValueError(f'Invalid input path: {value}')
                 else:
                     config[key] = value
-
+        # add the root path
+        if 'rootpath' in config:
+            root = config['rootpath']
+            # raw paths first
+            rawtmp = []
+            for p in config['rawpaths']:
+                rawtmp.append(_os.path.join(root, p))
+            config['rawpaths'] = rawtmp
+            # output paths
+            config['outpath'] = _os.path.join(root, config['outpath'])
+            # metapath
+            config['metapath'] = _os.path.join(root, config['metapath'])
         if len(config) == 0:
             raise ValueError('Failed to read configuration file.')
         else:
@@ -209,6 +203,12 @@ class FuseProcessor:
             if required_config_key not in config_dict:
                 raise ValueError(
                     f'no {required_config_keys[required_config_key]} ("{required_config_key}") found in configuration file')
+        # check the paths
+        for p in config_dict['rawpaths']:
+            if not _os.path.isdir(p):
+                raise ValueError(f'Invalid input path: {p}')
+        if not _os.path.isdir(config_dict['outpath']):
+            raise ValueError(f'Invalid output data path: {config_dict["outpath"]}')
 
     def _set_data_reader(self):
         """
@@ -242,8 +242,6 @@ class FuseProcessor:
             elif reader_type == 'bag':
                 self._reader = _noaa.bag.BAGRawReader()
                 self._read_type = 'bag'
-            elif reader_type == 'bps':
-                self._reader = _noaa.bps.BPSRawReader()
             else:
                 raise ValueError('reader type not implemented')
         except ValueError:
@@ -253,6 +251,13 @@ class FuseProcessor:
         """Set up the datum transformation engine."""
 
         self._transform = _trans.DatumTransformer(self._config['vdatum_path'], self._config['java_path'], self._reader)
+
+    def _set_data_interpolator(self):
+        """Set up the interpolator engine."""
+        engine = self._config['interpolation_engine']
+        res = float(self._config['to_resolution'])
+        method = self._config['interpolation_method']
+        self._interpolator = _interp.Interpolator(engine, method, res)
 
     def _set_data_writer(self):
         """Set up the location and method to write tranformed and interpolated data."""
@@ -265,121 +270,51 @@ class FuseProcessor:
         self._raster_writer = ProcIO('gdal', self._raster_extension)
         self._point_writer = ProcIO('point', self._point_extension)
 
-    def read(self, filename: str):
+    def read(self, dataid: str):
         """
         Read survey bathymetry and metadata into useable forms.
 
         Parameters
         ----------
-        filename
+        dataid
             Filename of survey bathymetry.
         """
-
-        if self._read_type == 'ehydro':
-            survey_folder = filename
-            return self._read_ehydro(survey_folder)
-        elif self._read_type == 'bag':
-            self._read_noaa_bag(filename)
-        elif self._read_type == 'bps':
-            self._read_noaa_bps(filename)
-        else:
-            raise ValueError('Reader type not implemented')
-
-    def _read_ehydro(self, survey_folder: str):
-        """
-        Extract metadata from the provided eHydro file path and write the metadata
-        to the specified metadata file.  The bathymetry will be interpolated and
-        writen to a CSAR file in the specificed csarpath.
-
-        Parameters
-        ----------
-        survey_folder
-            path to eHydro XYZ folder
-        """
-
-        self._set_log(survey_folder)
+        self._set_log(dataid)
         # get the metadata
         try:
-            raw_meta = self._reader.read_metadata(survey_folder)
+            raw_meta = self._reader.read_metadata(dataid)
+            metadata = raw_meta.copy()
         except RuntimeError as e:
             self.logger.log(_logging.DEBUG, e)
             return None
-        meta = raw_meta.copy()
-        meta['read_type'] = 'ehydro'
-
-        # translate from the reader to common metadata keys for datum transformations
-        if 'from_fips' in meta:
-            meta['from_horiz_key'] = meta['from_fips']
-        if 'from_horiz_units' in meta:
-            if meta['from_horiz_units'].upper() in ('US SURVEY FOOT'):
-                meta['from_horiz_units'] = 'us_ft'
-            elif meta['from_horiz_units'].upper() in ('INTL FOOT'):
-                meta['from_horiz_units'] = 'ft'
-            else:
-                raise ValueError(f'Input datum units are unknown: {meta["from_horiz_units"]}')
-        if 'from_vert_key' in meta:
-            meta['from_vert_key'] = meta['from_vert_key'].lower()
-        if 'from_vert_units' in meta:
-            if meta['from_vert_units'].upper() == 'US SURVEY FOOT':
-                meta['from_vert_units'] = 'us_ft'
-            else:
-                raise ValueError(f'Input datum units are unknown: {meta["from_vert_units"]}')
-        # insert a few default values for datum stuff if it isn't there already
-        if 'from_vert_direction' not in meta:
-            meta['from_vert_direction'] = 'height'
-        if 'from_horiz_frame' not in meta:
-            meta['from_horiz_frame'] = 'NAD83'
-        if 'from_horiz_type' not in meta:
-            meta['from_horiz_type'] = 'spc'
-        # get the rest from the config file
-        meta['to_horiz_frame'] = self._config['to_horiz_frame']
-        meta['to_horiz_type'] = self._config['to_horiz_type']
-        meta['to_horiz_units'] = self._config['to_horiz_units']
-        if 'to_horiz_key' in self._config:
-            meta['to_horiz_key'] = self._config['to_horiz_key']
-        meta['to_vert_key'] = self._config['to_vert_key']
-        meta['to_vert_units'] = self._config['to_vert_units']
-        meta['to_vert_direction'] = self._config['to_vert_direction']
-        meta['to_vert_datum'] = self._config['to_vert_datum']
-        meta['interpolated'] = 'False'
-        meta['posted'] = False
-        if not self._quality_metadata_ready(meta):
-            default = _ehydro_quality_metrics
-            msg = f'Not all quality metadata was found.  Using default values: {default}'
-            self.logger.log(_logging.DEBUG, msg)
-            meta = {**default, **meta}
+        # get the config file information
+        metadata = self._add_config_metadata(metadata)
+        # check to see if the quality metadata is available.
+        if not self._quality_metadata_ready(metadata):
+            msg = f'Not all quality metadata was found.'
         else:
             msg = f'All quality metadata was found.'
-            self.logger.log(_logging.DEBUG, msg)
-        # write the metadata
-        self._meta_obj.write_meta_record(meta)
+        self.logger.log(_logging.DEBUG, msg)
+        # write out the metadata and close the log
+        self._meta_obj.write_meta_record(metadata)
         self._close_log()
-        return meta['from_path']
+        return metadata['from_path']
 
-    def _read_noaa_bag(self, filename: str):
+    def _add_config_metadata(self, metadata):
         """
-        Extract metadata from the provided bag file path and write the metadata
-        to the specified metadata file.
+        Add the metadata contained in the config file to the dictionary.
 
         Parameters
         ----------
-        filename
-            path to NOAA BAG file
+        metadata
+            metadata dictionary from the reader.
+
+        Returns
+        -------
+        dict
+            the provided metadata dictionary with the addition of the config
+            file metadata.
         """
-
-        self._set_log(filename)
-
-        # get the metadata
-        metadata = self._reader.read_metadata(filename).copy()
-        metadata['read_type'] = 'bag'
-
-        # translate from the reader to common metadata keys for datum transformations
-        if 'from_vert_direction' not in metadata:
-            metadata['from_vert_direction'] = 'height'
-        if 'from_vert_units' not in metadata:
-            metadata['from_vert_units'] = 'm'
-
-        # get the rest from the config file
         metadata['to_horiz_frame'] = self._config['to_horiz_frame']
         metadata['to_horiz_type'] = self._config['to_horiz_type']
         metadata['to_horiz_units'] = self._config['to_horiz_units']
@@ -389,53 +324,7 @@ class FuseProcessor:
         metadata['to_vert_units'] = self._config['to_vert_units']
         metadata['to_vert_direction'] = self._config['to_vert_direction']
         metadata['to_vert_datum'] = self._config['to_vert_datum']
-        metadata['interpolated'] = 'False'
-        metadata['posted'] = False
-
-        if not self._quality_metadata_ready(metadata):
-            msg = f'Not all quality metadata was found.'
-            self.logger.log(_logging.DEBUG, msg)
-
-        # write the metadata
-        self._meta_obj.write_meta_record(metadata)
-        self._close_log()
-        
-    def _read_noaa_bps(self, filename: str):
-        """
-        Extract metadata from the provided bps file path and write the metadata
-        to the specified metadata file.
-
-        Parameters
-        ----------
-        filename
-            path to NOAA BPS file
-        """
-        self._set_log(filename)
-        # get the metadata
-        metadata = self._reader.read_metadata(filename).copy()
-        metadata['read_type'] = 'bps'
-
-        # translate from the reader to common metadata keys for datum transformations
-        # get the rest from the config file
-        metadata['to_horiz_frame'] = self._config['to_horiz_frame']
-        metadata['to_horiz_type'] = self._config['to_horiz_type']
-        metadata['to_horiz_units'] = self._config['to_horiz_units']
-        if 'to_horiz_key' in self._config:
-            metadata['to_horiz_key'] = self._config['to_horiz_key']
-        metadata['to_vert_key'] = self._config['to_vert_key']
-        metadata['to_vert_units'] = self._config['to_vert_units']
-        metadata['to_vert_direction'] = self._config['to_vert_direction']
-        metadata['to_vert_datum'] = self._config['to_vert_datum']
-        metadata['interpolated'] = 'False'
-        metadata['posted'] = False
-
-        if not self._quality_metadata_ready(metadata):
-            msg = f'Not all quality metadata was found.'
-            self.logger.log(_logging.DEBUG, msg)
-
-        # write the metadata
-        self._meta_obj.write_meta_record(metadata)
-        self._close_log()
+        return metadata
 
     def process(self, filename: str) -> str:
         """
@@ -473,23 +362,33 @@ class FuseProcessor:
             metadata['outpath'] = _os.path.join(self._config['outpath'], input_directory)
             metadata['new_ext'] = self._point_extension
 
-            # oddly _transform becomes the bathymetry reader here...
-            # return a GDAL dataset in the right datums to combine
-            dataset, metadata, transformed = self._transform.translate(filename, metadata)
-
-            if self._read_type == 'ehydro':
-                outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
-                self._point_writer.write(dataset, outfilename)
-                metadata['to_filename'] = outfilename
-            elif self._read_type == 'bag':
-                metadata['to_filename'] = filename
+            try:
+                dataset, metadata, transformed = self._transform.translate(filename, metadata)
+                if self._read_type == 'ehydro':
+                    outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
+                    self._point_writer.write(dataset, outfilename)
+                    metadata['to_filename'] = outfilename
+                elif self._read_type == 'bag':
+                    metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
+            except (ValueError, RuntimeError, IndexError) as error:
+                    message = f' Transformation error: {error}'
+                    self.logger.warning(message)
+                    metadata['interpolate'] = 'False'
 
             self._meta_obj.write_meta_record(metadata)
 
             if 'interpolate' in metadata:
                 interpolate = metadata['interpolate'].lower()
+
+                if self._read_type == 'bag' and interpolate == 'true':
+                    if ('support_files' not in metadata or len(metadata['support_files']) < 1):
+                        interpolate = 'False'
+                        self.logger.warning("No coverage files provided; no interpolation can occur")
+
                 if interpolate == 'true':
                     meta_interp = metadata.copy()
+
+                    meta_interp = self._transform.translate_support_files(meta_interp, self._config['outpath'])
 
                     root, filename = _os.path.split(meta_interp['outpath'])
                     base = _os.path.splitext(filename)[0]
@@ -503,17 +402,12 @@ class FuseProcessor:
                         output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
 
                     meta_interp['to_filename'] = output_filename
-                    method = self._config['interpolation_method']
-
-                    support_files = meta_interp['support_files'] if 'support_files' in meta_interp else None
 
                     try:
-                        interpolator = _interp.Interpolator(dataset, sidescan_rasters=support_files)
-                        dataset = interpolator.interpolate(method, float(self._config['to_resolution']), plot=True)
-                        meta_interp['interpolated'] = True
+                        dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
-                        message = f'interpolation error {error}'
+                        message = f' Interpolation error: {error}'
                         print(message)
                         self.logger.warning(message)
                         meta_interp['interpolated'] = False
@@ -522,7 +416,6 @@ class FuseProcessor:
                     metadata.update(meta_interp)
                 elif interpolate == 'false':
                     self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
-                    del dataset
             else:
                 del dataset
                 raise ValueError('metadata has no "interpolate" value')
@@ -530,7 +423,6 @@ class FuseProcessor:
             self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
 
         self._close_log()
-        return metadata['to_filename']
 
     def post(self, filename):
         """

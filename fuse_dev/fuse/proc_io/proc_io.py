@@ -17,7 +17,7 @@ from tempfile import TemporaryDirectory as tempdir
 import fiona
 import fiona.crs
 import numpy as np
-from fuse.utilities import vectorize_raster, write_geometry, gdal_to_xyz
+from fuse.utilities import vectorize_raster, gdal_to_xyz
 from osgeo import gdal, osr
 from shapely.geometry import MultiPoint
 
@@ -106,10 +106,15 @@ class ProcIO:
         if os.path.exists(filename) and self.overwrite:
             self._logger.log(logging.DEBUG, f'Overwriting {filename}')
             os.remove(filename)
-            if self._out_data_type == 'bag':
-                caris_xml = f'{filename}.aux.xml'
-                if os.path.exists(caris_xml):
-                    os.remove(caris_xml)
+            if self._out_data_type == 'csar':
+                csar_data = f'{filename}0'
+                if os.path.exists(csar_data):
+                    os.remove(csar_data)
+            elif self._out_data_type == 'bag':
+                bag_xml = f'{filename}.aux.xml'
+                if os.path.exists(bag_xml):
+                    os.remove(bag_xml)
+
 
         if self._out_data_type == 'csar':
             self._write_csar(dataset, filename, show_console=show_console)

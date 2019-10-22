@@ -18,12 +18,12 @@ import logging as _logging
 import datetime
 
 import fuse.fuse_processor as ffp
-import fuse.wx_helper.process_title as wx_window
+# import fuse.wx_helper.process_title as wx_window
 
 if __name__ == '__main__':
     start = datetime.datetime.now()
     print(start)
-    wx_frame = wx_window.Open_Frame('USACE')
+    #wx_frame = wx_window.Open_Frame('USACE')
     config_list = glob('ce*.config')
     for n,config in enumerate(config_list):
         usace = ffp.FuseProcessor(config)
@@ -33,7 +33,7 @@ if __name__ == '__main__':
             print(f'{n}.{m} - Begin working in {path}:')
             f = usace.read(path)
             try:
-                print(f'processing {f}', end = ', ')
+                print(f'processing {f} @ {datetime.datetime.now()}', end = ', ')
                 usace.process(f)
                 print(f'done.')
             except Exception as e:
@@ -43,5 +43,5 @@ if __name__ == '__main__':
                 print('\n')
     end = datetime.datetime.now()
     time_delta = end - start
-    wx_frame.close()
+    # wx_frame.close()
     print(f'{end}\n{time_delta}')

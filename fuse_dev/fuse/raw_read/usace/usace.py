@@ -22,6 +22,15 @@ from fuse.raw_read.raw_read import RawReader
 from . import parse_usace_pickle
 from . import parse_usace_xml
 
+_ehydro_quality_metrics = {
+    'complete_coverage': False,
+    'bathymetry': True,
+    'vert_uncert_fixed': 0.5,
+    'vert_uncert_vari': 0.1,
+    'horiz_uncert_fixed': 5.0,
+    'horiz_uncert_vari': 0.05,
+    'feat_detect': False,
+}
 
 class USACERawReader(RawReader):
     def __init__(self, district: str = None):
@@ -66,7 +75,9 @@ class USACERawReader(RawReader):
         meta_pickle = self._parse_pickle(filename)
         meta_date = self._parse_start_date(filename, {**meta_pickle, **meta_xyz, **meta_xml})
         meta_supplement = {**meta_determine, **meta_date, **meta_supplement}
-        return {**meta_pickle, **meta_xyz, **meta_filename, **meta_xml, **meta_supplement}
+        meta_combined = {**meta_pickle, **meta_xyz, **meta_filename, **meta_xml, **meta_supplement}
+        meta_final = self._finalize_meta(meta_combined)
+        return meta_final
 
     def read_bathymetry(self, filename: str) -> _np.array:
         """
@@ -271,7 +282,7 @@ class USACERawReader(RawReader):
                 xyz_scores[1] = xyz
 
         max_score = max(list(xyz_scores.keys()))
-        return xyz_scores[max_score], max_score not in (3, 2)
+        return xyz_scores[max_score], True if max_score != 3 else False
 
     def _data_determination(self, meta_dict: dict, survey_folder: str) -> dict:
         """
@@ -871,6 +882,52 @@ class USACERawReader(RawReader):
         if fips is not None:
             txt_meta['fips'] = int(fips.group())
         return txt_meta
+    
+    def _finalize_meta(self, meta):
+        """
+        Update the metadata to standard values.
+        
+        Parameters
+        ----------
+        meta
+            The combined metadata dictionary to be updated with standard
+            values.
+        
+        Returns
+        -------
+        dict
+            The final metadata for return to the metadata requesting method
+        
+        """
+        # if the data is coming from this reader these should be true.
+        meta['read_type'] = 'ehydro'
+        meta['posted'] = False
+        meta['interpolated'] = 'False'
+        meta['from_horiz_frame'] = 'NAD83'
+        meta['from_horiz_type'] = 'spc'
+        # make sure the dates are useful
+        if 'end_date' not in meta and 'start_date' in meta:
+            meta['end_date'] = meta['start_date']
+        elif ('end_date' in meta and meta['end_date'] == '') and 'start_date' in meta:
+            meta['end_date'] = meta['start_date']
+        # convert from text to standard values
+        if 'from_horiz_units' in meta:
+            if meta['from_horiz_units'].upper() in ('US SURVEY FOOT'):
+                meta['from_horiz_units'] = 'us_ft'
+            elif meta['from_horiz_units'].upper() in ('INTL FOOT'):
+                meta['from_horiz_units'] = 'ft'
+            else:
+                raise ValueError(f'Input datum units are unknown: {meta["from_horiz_units"]}')
+        if 'from_vert_key' in meta:
+            meta['from_vert_key'] = meta['from_vert_key'].lower()
+        if 'from_vert_units' in meta:
+            if meta['from_vert_units'].upper() == 'US SURVEY FOOT':
+                meta['from_vert_units'] = 'us_ft'
+            else:
+                raise ValueError(f'Input datum units are unknown: {meta["from_vert_units"]}')
+        # add the default quality metrics
+        final_meta = {**_ehydro_quality_metrics, **meta}
+        return final_meta
 
     def _parse_ehydro_xyz_bathy(self, filename: str) -> _np.array:
         """

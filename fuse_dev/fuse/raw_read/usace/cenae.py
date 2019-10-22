@@ -43,4 +43,28 @@ class CENAERawReader(USACERawReader):
         meta_pickle = self._parse_pickle(filename)
         meta_date = self._parse_start_date(filename, {**meta_pickle, **meta_xyz, **meta_xml})
         meta_supplement = {**meta_determine, **meta_date, **meta_supplement}
-        return {**meta_pickle, **meta_xml, **meta_xyz, **meta_filename, **meta_supplement}
+        meta_defaults = self._cenae_defaults()
+        meta_combined = {**meta_defaults, **meta_pickle, **meta_xml, **meta_xyz, **meta_filename, **meta_supplement}
+        meta_final = self._finalize_meta(meta_combined)
+        return meta_final
+
+    def _cenae_defaults(self):
+        """
+        Return default expectations for this disctrict.
+        
+        If a reader returns a value it should supersede these assuptions.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        dict
+            The default metadata
+        
+        """
+        meta = {}
+        meta['from_vert_direction'] = 'sounding'
+        return meta
+        
