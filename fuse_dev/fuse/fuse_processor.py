@@ -370,6 +370,7 @@ class FuseProcessor:
                     metadata['to_filename'] = outfilename
                 elif self._read_type == 'bag':
                     metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
+                    self._raster_writer.write(dataset, metadata['to_filename'])
             except (ValueError, RuntimeError, IndexError) as error:
                     message = f' Transformation error: {error}'
                     self.logger.warning(message)

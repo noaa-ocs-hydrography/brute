@@ -117,7 +117,7 @@ def _reproject_via_geotransform(filename: str, instructions: dict, reader: BAGRa
     target_geotransform = (dest_point.GetX(), source_geotransform[1], 0, dest_point.GetY(), 0, source_geotransform[5])
 
     source_dataset.SetGeoTransform(target_geotransform)
-    source_dataset.SetProjection(dest_spatialref)
+    source_dataset.SetProjection(dest_spatialref.ExportToWkt())
 
     return source_dataset
 
