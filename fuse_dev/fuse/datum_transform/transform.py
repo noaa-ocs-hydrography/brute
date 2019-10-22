@@ -109,7 +109,7 @@ class DatumTransformer:
                 if ext == '.tiff' or ext == '.tif':
                     src = gdal.Open(f)
                     if src is not None:
-                        source_prj = src.GetProjectionRef()
+                        source_prj = gdal.osr.SpatialReference(wkt=src.GetProjectionRef())
                         if dest_srs.IsSame(source_prj):
                             options = gdal.WarpOptions(dstSRS=dest_srs, format='GTiff')
                             gdal.Warp(newf, src, options=options)
