@@ -363,16 +363,13 @@ class FuseProcessor:
             metadata['new_ext'] = self._point_extension
 
             try:
-                # oddly _transform becomes the bathymetry reader here...
-                # return a GDAL dataset in the right datums to combine
-                dataset, metadata, transformed = self._transform.translate(filename, metadata, self._config['outpath'])
+                dataset, metadata, transformed = self._transform.translate(filename, metadata)
                 if self._read_type == 'ehydro':
                     outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                     self._point_writer.write(dataset, outfilename)
                     metadata['to_filename'] = outfilename
                 elif self._read_type == 'bag':
-                    # 'to_filename' is set in the metadata when transforming
-                    pass
+                    metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
             except (ValueError, RuntimeError, IndexError) as error:
                     message = f' Transformation error: {error}'
                     self.logger.warning(message)

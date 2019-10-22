@@ -9,6 +9,8 @@ Abstract datum transformation.
 
 import os
 import gdal
+from tempfile import TemporaryDirectory as tempdir
+
 from fuse.datum_transform import use_vdatum as uv
 from fuse.raw_read.noaa.bag import BAGRawReader
 gdal.UseExceptions()
@@ -47,7 +49,7 @@ class DatumTransformer:
         self._reader = reader
         self._engine = uv.VDatum(vdatum_path, java_path, self._reader)
 
-    def translate(self, filename: str, metadata: dict, dest_dir: str) -> (gdal.Dataset, dict, bool):
+    def translate(self, filename: str, metadata: dict) -> (gdal.Dataset, dict, bool):
         """
         Run the specified transformation engine to translate the provided
         dataset.
@@ -79,12 +81,13 @@ class DatumTransformer:
                 data_obj = None
             # if just the horizontal needs updating, warp it
             elif not_same_horiz:
-                newfilename, ext = self._dest_filename(filename,dest_dir)
+                outdir = tempdir()
+                outtif = os.path.join(outdir, 'tmp.tif')
+                outbag = os.path.join(outdir, 'tmp.bag')
                 dest_srs = self._build_srs(metadata)
-                options = gdal.WarpOptions(dstSRS=dest_srs, format='BAG')
                 source = self._engine.create(filename, metadata)
-                data_obj = gdal.Warp(newfilename, source, options=options)
-                metadata['to_filename'] = newfilename
+                tif_obj = gdal.Warp(outtif, source, dstSRS=dest_srs)
+                data_obj = gdal.Translate(outbag, tif_obj)
                 transformed = True
             # otherwirse, no datume change needed, hooray! 
             else:
