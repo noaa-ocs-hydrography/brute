@@ -6,6 +6,7 @@ Created on Tue Oct 22 16:01:28 2019
 """
 
 import gdal
+import logging
 import os
 
 from fuse.raw_read.noaa.bag import BAGRawReader
@@ -51,13 +52,14 @@ def translate_support_files(metadata: dict, dest_dir: str):
                         t.append(f)
                 else:
                     t.append(f)
-                    print(f'{f} failed to open with gdal')
+                    logging.warning(f'{f} failed to open with gdal')
             elif ext == '.gpkg':
                 resulting_file = _reproject_geopackage(f, newf, dest_srs)
                 t.append(resulting_file)
             else:
                 t.append(f)
-                print(f'Unsupported support file format: {ext}')
+                if ext != '.tfw':
+                    logging.warning(f'Unsupported support file format: {ext}')
         metadata['support_files'] = t
     return metadata
 
