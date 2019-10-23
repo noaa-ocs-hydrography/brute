@@ -314,6 +314,11 @@ class BAGRawReader(RawReader):
             self.bag_format = self._set_format(infilename, bag_version)
             self.get_fields()
 
+            if 'date_stamp' in self.data and 'end_date' in self.data:
+                if self.data['date_stamp'] == self.data['end_date']:
+                    _logging.warning(f"Removing `end_date` field from parsed xml metadata due to match with metadata date_stamp: date_stamp - {self.data['date_stamp']}, end_date - {self.data['end_date']}")
+                    del self.data['end_date']
+
             return self.data
         except _tb.HDF5ExtError as e:
             raise ValueError(f'{e}')
@@ -397,68 +402,70 @@ class BAGRawReader(RawReader):
                     else:
                         bag_meta = {}
                         for assignment in range(len(fields)):
-                            if line[assignment] != '' and fields[assignment].lower() not in ('', 'note'):
+                            if line[assignment] != '' and fields[assignment].lower() not in ('', 'notes', 'note'):
                                 try:
                                     meta_field = csv_to_meta[fields[assignment].strip()]
+                                    if meta_field in (
+                                            'sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect',
+                                            'feat_delivered', 'feat_least_depth',
+                                            'complete_coverage', 'bathymetry'):
+                                        if line[assignment].lower() in ('n/a', 'na', 'no', 'n'):
+                                            bag_meta[meta_field] = 'False'
+                                        elif line[assignment].lower() in ('y', 'yes'):
+                                            bag_meta[meta_field] = 'True'
+                                    elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
+                                        try:
+                                            if line[assignment].lower() not in ('n/a', 'unassessed'):
+                                                if 'cm' in line[assignment]:
+                                                    bag_meta[meta_field] = float(
+                                                        _re.sub(r'\D', '', line[assignment])) / 100
+                                                elif 'm' in line[assignment]:
+                                                    bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
+                                        except ValueError:
+                                            _logging.warning(
+                                                f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
+                                    elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
+                                        try:
+                                            if line[assignment].lower() not in ('n/a', 'unassessed'):
+                                                bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment])) / 100
+                                        except ValueError:
+                                            _logging.warning(
+                                                f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
+                                    elif meta_field in ('from_horiz_datum'):
+                                        splits = line[assignment].split(' ')
+                                        datum_info = {}
+                                        try:
+                                            datum_info['from_horiz_frame'] = splits[0]
+                                            datum_info['from_horiz_type'] = splits[1]
+                                            datum_info['from_horiz_key'] = _re.sub('\D', '', splits[2])
+                                            bag_meta = {**bag_meta, **datum_info}
+                                        except IndexError:
+                                            _logging.warning(
+                                                f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
+                                    elif meta_field in ('from_vert_datum'):
+                                        for datum in vert_datum.keys():
+                                            if datum == line[assignment]:
+                                                datum_info['from_vert_datum'], datum_info[
+                                                    'from_vert_key'] = datum, datum
+                                                break
+                                    elif meta_field in ('start_date', 'end_date'):
+                                        try:
+                                            bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%Y%m%d'):%Y%m%d}"
+                                        except ValueError:
+                                            try:
+                                                bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
+                                            except ValueError:
+                                                try:
+                                                    bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
+                                                except ValueError:
+                                                    _logging.warning(
+                                                        f'Unable to add `{meta_field}` information: {line[1]}, {meta_field}: {line[assignment]}')
+                                    else:
+                                        bag_meta[meta_field] = line[assignment]
                                 except KeyError:
                                     _logging.warning(f'Unable to parse field: {line[1]}, {fields[assignment]}')
                                     # index += 1
                                     # continue
-                                if meta_field in (
-                                        'sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect', 'feat_delivered', 'feat_least_depth',
-                                        'complete_coverage', 'bathymetry'):
-                                    if line[assignment].lower() in ('n/a', 'na', 'no', 'n'):
-                                        bag_meta[meta_field] = 'False'
-                                    elif line[assignment].lower() in ('y', 'yes'):
-                                        bag_meta[meta_field] = 'True'
-                                elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
-                                    try:
-                                        if line[assignment].lower() not in ('n/a', 'unassessed'):
-                                            if 'cm' in line[assignment]:
-                                                bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment])) / 100
-                                            elif 'm' in line[assignment]:
-                                                bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
-                                    except ValueError:
-                                        _logging.warning(
-                                            f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
-                                elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
-                                    try:
-                                        if line[assignment].lower() not in ('n/a', 'unassessed'):
-                                            bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment])) / 100
-                                    except ValueError:
-                                        _logging.warning(
-                                            f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
-                                elif meta_field in ('from_horiz_datum'):
-                                    splits = line[assignment].split(' ')
-                                    datum_info = {}
-                                    try:
-                                        datum_info['from_horiz_frame'] = splits[0]
-                                        datum_info['from_horiz_type'] = splits[1]
-                                        datum_info['from_horiz_key'] = _re.sub('\D', '', splits[2])
-                                        bag_meta = {**bag_meta, **datum_info}
-                                    except IndexError:
-                                        _logging.warning(
-                                            f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
-                                #                                    raise RuntimeError(f'Unable to add datum information due to incorrect formatting: {line[2]}')
-                                elif meta_field in ('from_vert_datum'):
-                                    for datum in vert_datum.keys():
-                                        if datum == line[assignment]:
-                                            datum_info['from_vert_datum'], datum_info['from_vert_key'] = datum, datum
-                                            break
-                                elif meta_field in ('start_date', 'end_date'):
-                                    try:
-                                        bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%Y%m%d'):%Y%m%d}"
-                                    except ValueError:
-                                        try:
-                                            bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
-                                        except ValueError:
-                                            try:
-                                                bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
-                                            except ValueError:
-                                                _logging.warning(
-                                                    f'Unable to add `{meta_field}` information: {line[1]}, {meta_field}: {line[assignment]}')
-                                else:
-                                    bag_meta[meta_field] = line[assignment]
                         if 'bathymetry' in bag_meta and 'complete_coverage' in bag_meta:
                             bathymetry = _ast.literal_eval(bag_meta['bathymetry'])
                             coverage = _ast.literal_eval(bag_meta['complete_coverage'])
@@ -587,6 +594,7 @@ class BAGRawReader(RawReader):
             source['lat_max'] = './/gmd:EX_GeographicBoundingBox/gmd:northBoundLatitude/gco:Decimal'
             source['abstract'] = './/gmd:abstract/gco:CharacterString'
             source['date'] = './/gmd:CI_Date/gmd:date/gco:Date'
+            source['date_stamp'] = './/gmd:dateStamp/gco:Date'
             source['unc_type'] = './/bag:verticalUncertaintyType/bag:BAG_VertUncertCode'
             source[
                 'z_min'] = './/gmd:identificationInfo/bag:BAG_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:verticalElement/gmd:EX_VerticalExtent/gmd:minimumValue/gco:Real'
@@ -612,6 +620,7 @@ class BAGRawReader(RawReader):
 
         elif bag_version < 1.5 and bag_version > 0:
             source['abstract'] = './/identificationInfo/smXML:BAG_DataIdentification/abstract'
+            source['date_stamp'] = './/dateStamp'
             source[
                 'SORDAT'] = './/identificationInfo/smXML:BAG_DataIdentification/citation/smXML:CI_Citation/date/smXML:CI_Date/date'
             source[
@@ -649,6 +658,8 @@ class BAGRawReader(RawReader):
             self._read_abstract()
         if 'date' in self.bag_format:
             self._read_date()
+        if 'date_stamp' in self.bag_format:
+            self._read_date_stamp()
         if 'unc_type' in self.bag_format:
             self._read_uncertainty_type()
         if 'z_min' in self.bag_format:
@@ -893,24 +904,59 @@ class BAGRawReader(RawReader):
             _logging.warning(f"unable to read the date string: {e}")
             return
 
+        if ret is not None:
+            try:
+                text_date = ret.text
+            except (ValueError, IndexError, AttributeError) as e:
+                _logging.warning(f"unable to read the date string: {e}")
+                return
+
+            tm_date = None
+            try:
+                parsed_date = _parser.parse(text_date)
+                tm_date = parsed_date.strftime('%Y%m%d')
+            except Exception:
+                pass
+                # _logging.warning("unable to handle the date string: %s" % text_date)
+
+            if tm_date is None and text_date != '':
+                self.data['date'] = text_date
+            elif tm_date != '':
+                self.data['date'] = tm_date
+        else:
+            _logging.warning(f"unable to read the `date` date string: {ret}")
+
+    def _read_date_stamp(self):
+        """ attempts to read the date_stamp string """
+
         try:
-            text_date = ret.text
-        except (ValueError, IndexError, AttributeError) as e:
-            _logging.warning(f"unable to read the date string: {e}")
+            ret = self.xml_tree.find(self.bag_format['date_stamp'],
+                                     namespaces=self.namespace)
+        except _et.Error as e:
+            _logging.warning(f"unable to read the date_stamp string: {e}")
             return
 
-        tm_date = None
-        try:
-            parsed_date = _parser.parse(text_date)
-            tm_date = parsed_date.strftime('%Y-%m-%d')
-        except Exception:
-            pass
-            # _logging.warning("unable to handle the date string: %s" % text_date)
+        if ret is not None:
+            try:
+                text_date = ret.text
+            except (ValueError, IndexError, AttributeError) as e:
+                _logging.warning(f"unable to read the date_stamp string: {e}")
+                return
 
-        if tm_date is None and text_date != '':
-            self.data['date'] = text_date
-        elif tm_date != '':
-            self.data['date'] = tm_date
+            tm_date = None
+            try:
+                parsed_date = _parser.parse(text_date)
+                tm_date = parsed_date.strftime('%Y%m%d')
+            except Exception:
+                pass
+                # _logging.warning("unable to handle the date string: %s" % text_date)
+
+            if tm_date is None and text_date != '':
+                self.data['date_stamp'] = text_date
+            elif tm_date != '':
+                self.data['date_stamp'] = tm_date
+        else:
+            _logging.warning(f"unable to read the `date_stamp` date string: {ret}")
 
     def _read_uncertainty_type(self):
         """ attempts to read the uncertainty type """
@@ -985,24 +1031,27 @@ class BAGRawReader(RawReader):
             _logging.warning(f"unable to read the SORDAT date string: {e}")
             return
 
-        try:
-            text_date = ret.text
-        except (ValueError, IndexError, AttributeError) as e:
-            _logging.warning(f"unable to read the SORDAT date string: {e}")
-            return
+        if ret is not None:
+            try:
+                text_date = ret.text
+            except (ValueError, IndexError, AttributeError) as e:
+                _logging.warning(f"unable to read the SORDAT date string: {e}")
+                return
 
-        tm_date = None
-        try:
-            parsed_date = _parser.parse(text_date)
-            tm_date = parsed_date.strftime('%Y%m%d')
-        except Exception:
-            _logging.warning("unable to handle the date string: %s" % text_date)
-            pass
+            tm_date = None
+            try:
+                parsed_date = _parser.parse(text_date)
+                tm_date = parsed_date.strftime('%Y%m%d')
+            except Exception:
+                _logging.warning("unable to handle the date string: %s" % text_date)
+                pass
 
-        if tm_date is None and text_date != '':
-            self.data['source_date'] = text_date
-        elif tm_date != '':
-            self.data['source_date'] = tm_date
+            if tm_date is None and text_date != '':
+                self.data['source_date'] = text_date
+            elif tm_date != '':
+                self.data['source_date'] = tm_date
+        else:
+            _logging.warning(f"unable to read the SORDAT date string: {ret}")
 
     def _read_survey_authority(self):
         """
@@ -1055,6 +1104,8 @@ class BAGRawReader(RawReader):
                 self.data['start_date'] = text_start_date
             elif tms_date != '':
                 self.data['start_date'] = tms_date
+        else:
+            _logging.warning(f"unable to read the survey start date string: {rets}")
 
     def _read_survey_end_date(self):
         """
@@ -1066,14 +1117,12 @@ class BAGRawReader(RawReader):
                                       namespaces=self.namespace)
         except _et.Error as e:
             _logging.warning(f"unable to read the survey end date string: {e}")
-            return
 
         if rete is not None:
             try:
                 text_end_date = rete.text
             except (ValueError, IndexError, AttributeError) as e:
                 _logging.warning(f"unable to read the survey end date string: {e}")
-                return
 
             tme_date = None
             try:
@@ -1087,6 +1136,8 @@ class BAGRawReader(RawReader):
                 self.data['end_date'] = text_end_date
             elif tme_date != '':
                 self.data['end_date'] = tme_date
+        else:
+            _logging.warning(f"unable to read the survey end date string: {rete}")
 
     def _read_vertical_datum(self):
         """
