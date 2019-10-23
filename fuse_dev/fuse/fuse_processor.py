@@ -293,9 +293,9 @@ class FuseProcessor:
         metadata = self._add_config_metadata(metadata)
         # check to see if the quality metadata is available.
         if not self._quality_metadata_ready(metadata):
-            msg = f'Not all quality metadata was found.'
+            msg = f'Not all quality metadata was found during read.'
         else:
-            msg = f'All quality metadata was found.'
+            msg = f'All quality metadata was found during read.'
         self.logger.log(_logging.DEBUG, msg)
         # write out the metadata and close the log
         self._meta_obj.write_meta_record(metadata)
