@@ -5,7 +5,7 @@ Created on Wed Aug 21 08:51:53 2019
 @author: Casiano.Koprowski
 """
 
-
+import ast
 import configparser
 import datetime
 import gzip
@@ -403,6 +403,27 @@ def geometryToShape(coordinates: list):
     return multipoly
 
 
+def parse_timestamp(timestamp: int) -> datetime.date:
+    """
+    Made with answers from https://stackoverflow.com/q/17231711
+
+    Parameters
+    ----------
+    timestamp : int
+        ESRI timestamp returned by REST query
+
+    Returns
+    -------
+    datetime.date
+        Parsed date from timestamp
+
+    """
+    if timestamp < 0:
+        return datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=timestamp / 1000)
+    else:
+        return datetime.datetime.utcfromtimestamp(timestamp / 1000)
+
+
 def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0, pb=None) -> (list, [dict]):
     """
     Queries and compiles the data from the input objectIDs and checks against
@@ -469,9 +490,9 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
                         if page['features'][object_num]['attributes'][attribute] is not None:
                             date = (page['features'][object_num]['attributes'][attribute])
                             try:
-                                row[attribute] = f'{datetime.datetime.utcfromtimestamp(date / 1000):%Y-%m-%d}'
+                                row[attribute] = f'{parse_timestamp(date):%Y-%m-%d}'
                             except OSError as e:
-                                print(e, date)
+                                print(f"OSError - {e} for {attribute}: {date}")
                     elif page['features'][object_num]['attributes'][attribute] is not None:
                         row[attribute] = str(page['features'][object_num]['attributes'][attribute])
             except KeyError as e:
@@ -481,6 +502,11 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
                 row['poly'] = geometryToShape(coords)
             except KeyError as e:
                 print(e, 'invalid geometry')
+
+            if 'BAGS_EXIST' in row:
+                bags_exist = True if row['BAGS_EXIST'].upper() == 'TRUE' else False
+            else:
+                bags_exist = False
 
             if 'poly' in row:
                 try:
@@ -493,11 +519,15 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
                 except TypeError as e:
                     flag = 'GEOMETRYCOLLECTION EMPTY'
 
-                if flag != 'GEOMETRYCOLLECTION EMPTY':
+                if flag != 'GEOMETRYCOLLECTION EMPTY' and data_format == 'BPS' and not bags_exist:
                     rows.append(row)
-
+                elif flag != 'GEOMETRYCOLLECTION EMPTY':
+                    rows.append(row)
             else:
-                rows.append(row)
+                if data_format == 'BPS' and not bags_exist:
+                    rows.append(row)
+                elif data_format != 'BPS':
+                    rows.append(row)
             if pb is not None:
                 pb.SetValue(object_num + 1)
             object_num += 1
@@ -871,14 +901,20 @@ def main(pb=None):
 
     regions = region_info_json()
     survey_history = survey_list()
+    data_type, data_format = config_data_type()
+
+    if data_format in ('BAG', 'MB'):
+        qId = 0
+    elif data_format in ('BPS'):
+        qId = 1
 
     for region in regions:
         print(f"{region['Processing Branch']}_{region['Region']}")
         region_poly = os.path.join(parent_dir, region['Shape'])
         bounds = region_bounds(region_poly)
-        objectIDs, bagNum = survey_objectID_query(bounds, 0)
+        objectIDs, bagNum = survey_objectID_query(bounds, qId=qId)
         if bagNum > 0:
-            attr_list, rows = survey_compile(objectIDs, bagNum, survey_history, region_poly, pb=pb)
+            attr_list, rows = survey_compile(objectIDs, bagNum, survey_history, region_poly, qId=qId, pb=pb)
             if len(rows) > 0:
                 rows = survey_download(rows, region)
                 survey_history.extend(rows)
