@@ -47,6 +47,8 @@ def translate_support_files(metadata: dict, dest_dir: str):
                     if dest_srs.IsSame(source_prj):
                         options = gdal.WarpOptions(dstSRS=dest_srs, format='GTiff')
                         gdal.Warp(newf, src, options=options)
+                        if not os.path.exists(newf):
+                            logging.warning(f"{newf} was not created")
                         t.append(newf)
                     else:
                         t.append(f)
