@@ -807,6 +807,8 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
                     with open(pickle_name, 'wb') as metafile:
                         pickle.dump(row, metafile)
                         metafile.close()
+        else:
+            print('\tNo files downloaded')
 
     return rows
 
