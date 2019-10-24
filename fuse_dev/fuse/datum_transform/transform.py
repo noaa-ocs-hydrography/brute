@@ -128,7 +128,7 @@ class DatumTransformer:
             raise ValueError('Reader type not implemented')
 
 
-    def translate_support_files(metadata: dict, dest_dir: str):
+    def translate_support_files(self, metadata: dict, dest_dir: str):
         """
         Check the horizontal georeferencing for the support files.  If they are
         not in the same datum as the output datum they are translated and
