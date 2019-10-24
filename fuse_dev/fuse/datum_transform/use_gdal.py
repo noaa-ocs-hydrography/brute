@@ -5,92 +5,94 @@ Created on Tue Oct 22 16:01:28 2019
 @author: Casiano.Koprowski
 """
 
-import gdal
 import logging
 import os
 
 from fuse.raw_read.noaa.bag import BAGRawReader
+from osgeo import osr, gdal, ogr
 
 
-def translate_support_files(metadata: dict, dest_dir: str):
+def translate_support_files(self, metadata: dict, output_directory: str) -> dict:
     """
-    Check the horizontal georeferencing for the support files.  If they are
-    not in the same datum as the output datum they are translated and
-    written back to disk.
+    Horizontally transform the given support files, writing transformed files to the given output directory.
 
     Parameters
     ----------
     metadata
-        A dictionary of the metadata associated with a survey.  The support
-        files referenced in the dictionary will be updated if their
-        horizontal datum does not match the output datum.
-
-    dest_dir
-        The path to the directory where updated files should be stored.
+        dictionary of metadata
+    output_directory
+        path to directory for transformed files
 
     Returns
     -------
     dict
-        The updated metadata dictionary with reference to the transformed
-        files.
+        dictionary of metadata with updated list of support files
     """
+
     if 'support_files' in metadata:
-        sf = metadata['support_files']
-        t = []
-        dest_srs = _build_gdal_horiz_srs(metadata)
-        for f in sf:
-            newf, ext = _dest_filename(f,dest_dir)
-            if ext in ('.tif', '.tiff'):
-                src = gdal.Open(f)
-                if src is not None:
-                    source_prj = gdal.osr.SpatialReference(wkt=src.GetProjectionRef())
-                    if dest_srs.IsSame(source_prj):
-                        options = gdal.WarpOptions(dstSRS=dest_srs, format='GTiff')
-                        gdal.Warp(newf, src, options=options)
-                        if not os.path.exists(newf):
-                            logging.warning(f"{newf} was not created")
-                        t.append(newf)
+        support_filenames = metadata['support_files']
+        transformed_filenames = []
+        output_spatial_reference = _spatial_reference_from_metadata(metadata)
+        for input_filename in support_filenames:
+            basename, extension = os.path.splitext(input_filename)
+            basename = os.path.basename(basename)
+            output_filename = os.path.join(output_directory, basename + extension)
+            if '.tif' in extension:
+                input_dataset = gdal.Open(input_filename)
+                if input_dataset is not None:
+                    input_spatial_reference = osr.SpatialReference(wkt=input_dataset.GetProjectionRef())
+                    if output_spatial_reference.IsSame(input_spatial_reference):
+                        gdal.Warp(output_filename, input_dataset,
+                                  options=gdal.WarpOptions(dstSRS=output_spatial_reference, format='GTiff'))
+
+                        if not os.path.exists(output_filename):
+                            logging.warning(f'file not created: {output_filename}')
+
+                        transformed_filenames.append(output_filename)
                     else:
-                        t.append(f)
+                        transformed_filenames.append(input_filename)
                 else:
-                    t.append(f)
-                    logging.warning(f'{f} failed to open with gdal')
-            elif ext == '.gpkg':
-                resulting_file = _reproject_geopackage(f, newf, dest_srs)
-                t.append(resulting_file)
+                    print(f'unable to open file with GDAL: {input_filename}')
+                    transformed_filenames.append(input_filename)
+            elif extension == '.gpkg':
+                output_filename = self.__reproject_geopackage(input_filename, output_filename, output_spatial_reference)
+                transformed_filenames.append(output_filename)
             else:
-                t.append(f)
-                if ext != '.tfw':
-                    logging.warning(f'Unsupported support file format: {ext}')
-        metadata['support_files'] = t
+                if extension != '.tfw':
+                    logging.warning(f'unsupported file format "{extension}"')
+
+                transformed_filenames.append(input_filename)
+        metadata['support_files'] = transformed_filenames
+
     return metadata
 
-def _build_gdal_horiz_srs(metadata):
+
+def _spatial_reference_from_metadata(metadata: dict) -> osr.SpatialReference:
     """
-    Build a gdal osr spatial reference object from the provided metadata
-    dictionary to_horiz_* fields.  If the 'to_horiz_frame','to_horiz_type'
-    and 'to_horiz_key' fields are not populated a value error is raised.
+    Build an OSR spatial reference from the `to_horiz_*` fields in the provided metadata.
+    If 'to_horiz_frame','to_horiz_type' and 'to_horiz_key' are not populated, raise an error.
 
     Parameters
     ----------
     metadata
-        A dictionary of the metadata associated with a survey.
+        dictionary of metadata
 
     Returns
     -------
-    osr object for the target horizontal reference system.
+    osr.SpatialReference
+        target horizontal reference system
     """
-    req = ['to_horiz_frame','to_horiz_type','to_horiz_key']
-    if all(key in metadata for key in req):
+
+    if all(key in metadata for key in ('to_horiz_frame', 'to_horiz_type', 'to_horiz_key')):
         if metadata['to_horiz_type'] == 'utm':
-            proj4_str = f'+proj=utm +zone={metadata["to_horiz_key"]} +datum={metadata["to_horiz_frame"]}'
-            srs = gdal.osr.SpatialReference()
-            srs.ImportFromProj4(proj4_str)
-            return srs
+            spatial_reference = osr.SpatialReference()
+            spatial_reference.ImportFromProj4(f'+proj=utm +zone={metadata["to_horiz_key"]} +datum={metadata["to_horiz_frame"]}')
+            return spatial_reference
         else:
-            raise ValueError('We still need to sort our when we are not working in utm...')
+            # TODO We still need to sort our when we are not working in utm...
+            raise NotImplementedError('working outside of UTM is not implemented')
     else:
-        raise ValueError('Not all metadata is available to build the proj4 string')
+        raise ValueError('Not all metadata is available to build the PROJ4 string')
 
 
 def _reproject_via_geotransform(filename: str, instructions: dict, reader: BAGRawReader) -> gdal.Dataset:
@@ -112,7 +114,7 @@ def _reproject_via_geotransform(filename: str, instructions: dict, reader: BAGRa
     source_dataset = reader.read_bathymetry(filename, None)
     source_geotransform = source_dataset.GetGeoTransform()
     source_spatialref = gdal.osr.SpatialReference(wkt=source_dataset.GetProjectionRef())
-    dest_spatialref =  _build_gdal_horiz_srs(instructions)
+    dest_spatialref = _spatial_reference_from_metadata(instructions)
 
     transform = gdal.osr.CoordinateTransformation(source_spatialref, dest_spatialref)
     dest_point = gdal.ogr.CreateGeometryFromWkt(f"POINT ({source_geotransform[0]} {source_geotransform[3]})")
@@ -126,60 +128,56 @@ def _reproject_via_geotransform(filename: str, instructions: dict, reader: BAGRa
     return source_dataset
 
 
-def _reproject_geopackage(fromfilename: str, tofilename: str, dest_srs: str):
+def _reproject_geopackage(input_filename: str, output_filename: str, spatial_reference: osr.SpatialReference) -> str:
     """
-    Convert a Geopackage to a provided reference frame.  A single layer is
-    assumed.
+    Convert a GeoPackage to the provided reference frame, assuming a single layer.
 
     Parameters
     ----------
-    filename: str :
-        The complete file path of the input coverage file
-    to_crs: str :
-        WKT object with destination spatial reference system
+    input_filename
+        file path of the input coverage file
+    output_filename
+        file path to which to save reprojected file
+    spatial_reference
+        OSR spatial reference of output
 
     Returns
     -------
     str
-        The file name for the resulting file.
+        file name of the resulting file
     """
 
-    fName = os.path.split(fromfilename)[-1]
-    splits = os.path.splitext(fName)
-    name = splits[0]
+    survey_name = os.path.splitext(os.path.basename(input_filename))[0]
 
     # Open the data source and read in the extent
-    source_ds = gdal.ogr.Open(fromfilename)
-    source_layer = source_ds.GetLayer()
-    source_srs = source_layer.GetSpatialRef()
-    # check to see if the file is already projected as it should be
-    if dest_srs.IsSame(source_srs):
-        outname = fromfilename
-    else:
-        coordTrans = gdal.osr.CoordinateTransformation(source_srs, dest_srs)
-        # build new file
-        driver = gdal.ogr.GetDriverByName('gpkg')
-        dest_ds = driver.CreateDataSource(tofilename)
-        outname = tofilename
-        layer = dest_ds.CreateLayer(name, dest_srs, gdal.ogr.wkbMultiPolygon)
+    input_dataset = ogr.Open(input_filename)
+    input_layer = input_dataset.GetLayer()
+    input_spatial_reference = input_layer.GetSpatialRef()
 
-        for feature in source_layer:
+    # check to see if the file is already projected in the given SRS
+    if spatial_reference.IsSame(input_spatial_reference):
+        output_filename = input_filename
+    else:
+        transform = osr.CoordinateTransformation(input_spatial_reference, spatial_reference)
+
+        output_dataset = ogr.GetDriverByName('gpkg').CreateDataSource(output_filename)
+        output_layer = output_dataset.CreateLayer(survey_name, spatial_reference, ogr.wkbMultiPolygon)
+        output_layer.CreateField(ogr.FieldDefn('Survey', ogr.OFTString))
+        output_layer_definition = output_layer.GetLayerDefn()
+
+        for feature in input_layer:
             if feature is not None:
-                # get the data and transform
-                geom = feature.GetGeometryRef()
-                ds_geom = gdal.ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-                ds_geom.Transform(coordTrans)
-                # Add one attribute
-                layer.CreateField(gdal.ogr.FieldDefn('Survey', gdal.ogr.OFTString))
-                defn = layer.GetLayerDefn()
-                # Create a new feature (attribute and geometry)
-                feat = gdal.ogr.Feature(defn)
-                feat.SetField('Survey', name)
-                feat.SetGeometry(ds_geom)
-                layer.CreateFeature(feat)
-        dest_ds = None
-    source_ds = None
-    return outname
+                geometry = ogr.CreateGeometryFromWkt(feature.GetGeometryRef().ExportToWkt())
+                geometry.Transform(transform)
+
+                feature = ogr.Feature(output_layer_definition)
+                feature.SetField('Survey', survey_name)
+                feature.SetGeometry(geometry)
+                output_layer.CreateFeature(feature)
+        del output_dataset
+    del input_dataset
+
+    return output_filename
 
 
 def _dest_filename(filename: str, dest_dir: str):
@@ -207,35 +205,35 @@ def _dest_filename(filename: str, dest_dir: str):
 
 
 def __xyz2gdal(points: [(float, float, float)], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
-        """
-        Get a GDAL point cloud dataset from XYZ points.
+    """
+    Get a GDAL point cloud dataset from XYZ points.
 
-        Parameters
-        ----------
-        points
-            XYZ points
-        utm_zone
-            desired UTM zone
-        vertical_datum
-            name of desired vertical datum
+    Parameters
+    ----------
+    points
+        XYZ points
+    utm_zone
+        desired UTM zone
+    vertical_datum
+        name of desired vertical datum
 
-        Returns
-        -------
-            GDAL point cloud dataset
-        """
+    Returns
+    -------
+        GDAL point cloud dataset
+    """
 
-        # setup the gdal bucket
-        spatial_reference = osr.SpatialReference()
-        spatial_reference.SetWellKnownGeogCS('NAD83')
-        # positive UTM zone is in the northern hemisphere
-        spatial_reference.SetUTM(abs(utm_zone), 1 if utm_zone > 0 else 0)
-        spatial_reference.SetVertCS(vertical_datum, vertical_datum, 2000)
-        dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
-        layer = dataset.CreateLayer('pts', spatial_reference, geom_type=gdal.ogr.wkbPoint)
-        for point in points:
-            geometry = gdal.ogr.Geometry(gdal.ogr.wkbPoint)
-            geometry.AddPoint(*point)
-            feature = gdal.ogr.Feature(layer.GetLayerDefn())
-            feature.SetGeometry(geometry)
-            layer.CreateFeature(feature)
-        return dataset
+    # setup the gdal bucket
+    spatial_reference = osr.SpatialReference()
+    spatial_reference.SetWellKnownGeogCS('NAD83')
+    # positive UTM zone is in the northern hemisphere
+    spatial_reference.SetUTM(abs(utm_zone), 1 if utm_zone > 0 else 0)
+    spatial_reference.SetVertCS(vertical_datum, vertical_datum, 2000)
+    dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
+    layer = dataset.CreateLayer('pts', spatial_reference, geom_type=gdal.ogr.wkbPoint)
+    for point in points:
+        geometry = gdal.ogr.Geometry(gdal.ogr.wkbPoint)
+        geometry.AddPoint(*point)
+        feature = gdal.ogr.Feature(layer.GetLayerDefn())
+        feature.SetGeometry(geometry)
+        layer.CreateFeature(feature)
+    return dataset
