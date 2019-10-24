@@ -519,15 +519,10 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
                 except TypeError as e:
                     flag = 'GEOMETRYCOLLECTION EMPTY'
 
-                if flag != 'GEOMETRYCOLLECTION EMPTY' and data_format == 'BPS' and not bags_exist:
-                    rows.append(row)
-                elif flag != 'GEOMETRYCOLLECTION EMPTY':
+                if flag != 'GEOMETRYCOLLECTION EMPTY':
                     rows.append(row)
             else:
-                if data_format == 'BPS' and not bags_exist:
-                    rows.append(row)
-                elif data_format != 'BPS':
-                    rows.append(row)
+                rows.append(row)
             if pb is not None:
                 pb.SetValue(object_num + 1)
             object_num += 1
@@ -914,10 +909,17 @@ def main(pb=None):
         print(f"{region['Processing Branch']}_{region['Region']}")
         region_poly = os.path.join(parent_dir, region['Shape'])
         bounds = region_bounds(region_poly)
-        objectIDs, bagNum = survey_objectID_query(bounds, qId=qId)
-        if bagNum > 0:
-            attr_list, rows = survey_compile(objectIDs, bagNum, survey_history, region_poly, qId=qId, pb=pb)
+        objectIDs, objNum = survey_objectID_query(bounds, qId=qId)
+        if objNum > 0:
+            attr_list, rows = survey_compile(objectIDs, objNum, survey_history, region_poly, qId=qId, pb=pb)
             if len(rows) > 0:
+                if qId == 1:
+                    before = len(rows)
+                    bag_ids, bag_num = survey_objectID_query(bounds, qId=0)
+                    bag_atts, bag_rows = survey_compile(bag_ids, bag_num, survey_history, region_poly, qId=0)
+                    bag_sids = [bag['SURVEY_ID'] for bag in bag_rows]
+                    rows = [row for row in rows if row['SURVEY_ID'] not in bag_sids]
+                    print(f'Surveys before prune: {before} Surveys after prune: {len(rows)}')
                 rows = survey_download(rows, region)
                 survey_history.extend(rows)
                 info_save(survey_history)
