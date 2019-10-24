@@ -44,7 +44,8 @@ if not os.path.isdir(os.path.join(downloads)):
 
 zList = ['xmin', 'ymin', 'xmax', 'ymax']
 attributes = {3: ['Name', 'SURVEY_ID', 'CELL_SIZE'],
-              0: ['*']}
+              0: ['*'],
+              1: ['*']}
 date_fields = ['DATE_SURVEY_BEGIN', 'DATE_SURVEY_END', 'DATE_MODIFY_DATA',
                'DATE_SURVEY_APPROVAL', 'START_TIME', 'END_TIME']
 
@@ -186,7 +187,7 @@ def survey_objectID_query(bounds: [dict], qId=0) -> ([int], int):
     # Today - 1 (ex. '2018-08-06'), unformatted
     yesterday = today - datetime.timedelta(1)
 
-    data_type = config_data_type()
+    data_type, data_format = config_data_type()
 
     if config['Timeframe']['Start Date'] != '':
         start_parse =  datetime.datetime.strptime(config['Timeframe']['Start Date'], '%Y-%m-%d')
@@ -431,7 +432,7 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
     if pb is not None:
         pb.SetRange(num)
 
-    data_type = config_data_type()
+    data_type, data_format = config_data_type()
 
     id_chunks = list(list_chunks([str(objectID) for objectID in objectIDs]))
 
@@ -705,15 +706,20 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
         function
 
     """
-    data_type = config_data_type()
+    data_type, data_format = config_data_type()
 
-
-    if data_type == 'nos_hydro_dynamic':
+    if data_type == 'nos_hydro_dynamic' and data_format == 'BAG':
         ncei_head = 'https://data.ngdc.noaa.gov/platforms/ocean/nos/coast/'
         branch_tail = r"\NOAA_NCEI_OCS\BAGs\Original"
+        ftp_folders = {'BAG': ['.bag', '.gz'], 'TIFF': ['.tif', '.tiff', '.tfw', '.gz']}
+    elif data_type == 'nos_hydro_dynamic' and data_format == 'BPS':
+        ncei_head = 'https://data.ngdc.noaa.gov/platforms/ocean/nos/coast/'
+        branch_tail = r"\NOAA_NCEI_OCS\BPS\Original"
+        ftp_folders = {'GEODAS': ['.a93', 'htm', '.xyz', '.gz']}
     elif data_type == 'multibeam_dynamic':
         ncei_head = 'https://data.ngdc.noaa.gov/ocean/platforms/ships/'
         branch_tail = r"\NOAA_NCEI_MBBDB\MBs\Original"
+        ftp_folders = {'multibeam/data/version1/products': ['.xyz', '.gz']}
 
     for row in rows:
         row['PROCESSING_REGION'] = f"{region['Processing Branch']}_{region['Region']}"
@@ -745,9 +751,7 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
         download_links = []
         print(f'Survey - {rows.index(row) + 1} of {len(rows)}: {survey}')
         survey_folder = os.path.join(download_to, survey)
-        for folder, extensions in {'BAG': ['.bag', '.gz'],
-                                   'TIFF': ['.tif', '.tiff', '.tfw', '.gz'],
-                                   'multibeam/data/version1/products': ['.xyz', '.gz']}.items():
+        for folder, extensions in ftp_folders.items():
             source_url = f'{ncei_head}/{ncei_sub}/{folder}'
             download_links.extend(link_grab(source_url, extensions))
 
@@ -763,9 +767,9 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
 #                row['SURVEY_FILES'].append(geopackage_name)
 
             if len(row['SURVEY_FILES']) > 0:
-                bag_files = [bag for bag in row['SURVEY_FILES'] if os.path.splitext(bag)[1] == '.bag']
-                for bag in bag_files:
-                    base = os.path.basename(bag)
+                survey_files = [file_name for file_name in row['SURVEY_FILES'] if os.path.splitext(file_name)[1] in ('.a93', '.bag', '.xyz')]
+                for data_file in survey_files:
+                    base = os.path.basename(data_file)
                     name, ext = os.path.splitext(base)
                     pickle_name = f'{os.path.join(survey_folder, name)}.pickle'
                     row['SURVEY_FILES'].extend([pickle_name])
@@ -827,11 +831,23 @@ def info_save(rows: [dict]):
         json_file.close()
 
 
-def config_data_type():
+def config_data_type() -> (str, str):
+    """
+    Reads the config value for data type to be queried by the tool
+
+    Returns
+    -------
+    (str, str)
+        query platform, data format
+
+    """
+
     if config['Data']['Data Type'].upper() in ('', 'BAG'):
-        return 'nos_hydro_dynamic'
+        return 'nos_hydro_dynamic', 'BAG'
+    elif config['Data']['Data Type'].upper() in ('BPS'):
+        return 'nos_hydro_dynamic', 'BPS'
     elif config['Data']['Data Type'].upper() in ('MB', 'MULTIBEAM'):
-        return 'multibeam_dynamic'
+        return 'multibeam_dynamic', 'MB'
     else:
         raise ValueError(f"Data Type not supported: {config['Data']['Data Type']}")
 
