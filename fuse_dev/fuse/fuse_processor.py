@@ -368,10 +368,9 @@ class FuseProcessor:
                     outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                     self._point_writer.write(dataset, outfilename)
                     metadata['to_filename'] = outfilename
-                elif self._read_type == 'bag':
+                elif self._read_type == 'bag' and transformed:
                     metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
-                    if transformed:
-                        self._raster_writer.write(dataset, metadata['to_filename'])
+                    self._raster_writer.write(dataset, metadata['to_filename'])
             except (ValueError, RuntimeError, IndexError) as error:
                     message = f' Transformation error: {error}'
                     self.logger.warning(message)
@@ -389,33 +388,32 @@ class FuseProcessor:
 
                 if interpolate == 'true':
                     meta_interp = metadata.copy()
-
                     meta_interp = self._transform.translate_support_files(meta_interp, self._config['outpath'])
 
-                    root, filename = _os.path.split(meta_interp['outpath'])
-                    base = _os.path.splitext(filename)[0]
-                    meta_interp['from_filename'] = f'{base}.interpolated'
-
-                    if self._config['interpolation_engine'] == 'raster':
-                        output_filename = f"{_os.path.join(root, base)}_interp.{self._raster_extension}"
-                    else:
-                        resolution = float(self._config['to_resolution'])
-                        resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
-                        output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
-
-                    meta_interp['to_filename'] = output_filename
-
                     try:
+                        root, filename = _os.path.split(meta_interp['outpath'])
+                        base = _os.path.splitext(filename)[0]
+                        meta_interp['from_filename'] = f'{base}.interpolated'
+
+                        if self._config['interpolation_engine'] == 'raster':
+                            output_filename = f"{_os.path.join(root, base)}_interp.{self._raster_extension}"
+                        else:
+                            resolution = float(self._config['to_resolution'])
+                            resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
+                            output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
+
+                        meta_interp['to_filename'] = output_filename
+
                         dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
+
+                        self._meta_obj.write_meta_record(meta_interp)
+                        metadata.update(meta_interp)
                     except (ValueError, RuntimeError, IndexError) as error:
                         message = f' Interpolation error: {error}'
                         print(message)
                         self.logger.warning(message)
-                        meta_interp['interpolated'] = False
 
-                    self._meta_obj.write_meta_record(meta_interp)
-                    metadata.update(meta_interp)
                 elif interpolate == 'false':
                     self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
             else:
