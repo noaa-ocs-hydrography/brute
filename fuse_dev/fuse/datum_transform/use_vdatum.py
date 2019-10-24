@@ -18,14 +18,13 @@ from tempfile import TemporaryDirectory as tempdir
 import numpy as _np
 from osgeo import gdal, ogr, osr
 
-from fuse.datum_transform.use_gdal import __xyz2gdal
+import fuse.datum_transform.use_gdal as ug
 
 
 from_hdatum = [
     'from_horiz_frame',
     'from_horiz_type',
     'from_horiz_units',
-    'from_horiz_key'
 ]
 
 from_vdatum = [
@@ -105,7 +104,7 @@ class VDatum:
             points, utm_zone = self.__translate_xyz(filename, instructions)
             vertical_datum = instructions['to_vert_key'].upper()
             # passing UTM zone instead of EPSG code
-            dataset = __xyz2gdal(points, utm_zone, vertical_datum)
+            dataset = ug._xyz2gdal(points, utm_zone, vertical_datum)
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
         return dataset
 
@@ -212,7 +211,10 @@ class VDatum:
         instructions
             dictionary of metadata
         """
-
+        # having the input zone is optional if the input type is geographic
+        local_from_datum = from_hdatum.copy()
+        if 'from_horiz_type' != 'geo':
+            local_from_datum.append('from_horiz_key')
         # having the output zone is optional
         local_to_hdatum = to_hdatum.copy()
         if 'to_horiz_key' in instructions:

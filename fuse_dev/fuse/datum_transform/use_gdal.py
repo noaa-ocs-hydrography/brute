@@ -202,7 +202,7 @@ def _dest_filename(filename: str, dest_dir: str):
     return newfname, ext
 
 
-def __xyz2gdal(points: [(float, float, float)], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
+def _xyz2gdal(points: [(float, float, float)], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
         """
         Get a GDAL point cloud dataset from XYZ points.
 
@@ -221,7 +221,7 @@ def __xyz2gdal(points: [(float, float, float)], utm_zone: int, vertical_datum: s
         """
 
         # setup the gdal bucket
-        spatial_reference = osr.SpatialReference()
+        spatial_reference = gdal.osr.SpatialReference()
         spatial_reference.SetWellKnownGeogCS('NAD83')
         # positive UTM zone is in the northern hemisphere
         spatial_reference.SetUTM(abs(utm_zone), 1 if utm_zone > 0 else 0)

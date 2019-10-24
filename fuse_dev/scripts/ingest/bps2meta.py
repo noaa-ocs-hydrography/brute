@@ -36,8 +36,6 @@ def main():
             print(e)
             bps.logger.log(_logging.DEBUG, e)
             print('\n')
-        if c > 50:
-            break
 
     end = datetime.datetime.now()
     time_delta = end - start

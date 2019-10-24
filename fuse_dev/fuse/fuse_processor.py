@@ -592,8 +592,12 @@ class FuseProcessor:
         ----------
             whether metadata has all datum fields
         """
-
-        return all(key in metadata for key in FuseProcessor._datums if key != 'to_horiz_key')
+        test_keys = FuseProcessor._datums.copy()
+        # if geographic input remove the need for a zone key
+        if metadata['from_horiz_type'] == 'geo' and 'from_horiz_key' in test_keys:
+            idx = test_keys.index('from_horiz_key')
+            test_keys.pop(idx)
+        return all(key in metadata for key in test_keys if key != 'to_horiz_key')
 
     def _quality_metadata_ready(self, metadata):
         """
