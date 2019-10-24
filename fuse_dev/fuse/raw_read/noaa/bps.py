@@ -77,7 +77,7 @@ class BPSRawReader(RawReader):
         # path info
         base = _os.path.basename(filename)
         name, ext = _os.path.splitext(base)
-        metadata['from_filename'] = base
+        metadata['from_filename'] = name
         metadata['from_path'] = filename
         # source info
         metadata['agency'] = 'US'

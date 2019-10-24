@@ -244,6 +244,7 @@ class FuseProcessor:
                 self._read_type = 'bag'
             elif reader_type == 'bps':
                 self._reader = _noaa.bps.BPSRawReader()
+                self._read_type = 'bps'
             else:
                 raise ValueError('reader type not implemented')
         except ValueError:
@@ -286,7 +287,7 @@ class FuseProcessor:
         try:
             raw_meta = self._reader.read_metadata(dataid)
             metadata = raw_meta.copy()
-        except RuntimeError as e:
+        except (RuntimeError, TypeError) as e:
             self.logger.log(_logging.DEBUG, e)
             return None
         # get the config file information
@@ -366,7 +367,7 @@ class FuseProcessor:
 
             try:
                 dataset, metadata, transformed = self._transform.translate(filename, metadata)
-                if self._read_type == 'ehydro':
+                if self._read_type == 'ehydro' or self._read_type == 'bps':
                     outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                     self._point_writer.write(dataset, outfilename)
                     metadata['to_filename'] = outfilename
