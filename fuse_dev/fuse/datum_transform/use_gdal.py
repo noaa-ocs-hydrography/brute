@@ -14,7 +14,7 @@ from osgeo import osr, gdal, ogr
 
 def reproject_support_files(metadata: dict, output_directory: str) -> dict:
     """
-    Horizontally transform the given support files, writing transformed files to the given output directory.
+    Horizontally transform the given support files, writing reprojected files to the given output directory.
 
     Parameters
     ----------
@@ -31,7 +31,7 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
 
     if 'support_files' in metadata:
         support_filenames = metadata['support_files']
-        transformed_filenames = []
+        reprojected_filenames = []
         output_spatial_reference = _spatial_reference_from_metadata(metadata)
         for input_filename in support_filenames:
             basename, extension = os.path.splitext(input_filename)
@@ -48,21 +48,21 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
                         if not os.path.exists(output_filename):
                             logging.warning(f'file not created: {output_filename}')
 
-                        transformed_filenames.append(output_filename)
+                        reprojected_filenames.append(output_filename)
                     else:
-                        transformed_filenames.append(input_filename)
+                        reprojected_filenames.append(input_filename)
                 else:
                     print(f'unable to open file with GDAL: {input_filename}')
-                    transformed_filenames.append(input_filename)
+                    reprojected_filenames.append(input_filename)
             elif extension == '.gpkg':
                 output_filename = _reproject_geopackage(input_filename, output_filename, output_spatial_reference)
-                transformed_filenames.append(output_filename)
+                reprojected_filenames.append(output_filename)
             else:
                 if extension != '.tfw':
                     logging.warning(f'unsupported file format "{extension}"')
 
-                transformed_filenames.append(input_filename)
-        metadata['support_files'] = transformed_filenames
+                reprojected_filenames.append(input_filename)
+        metadata['support_files'] = reprojected_filenames
 
     return metadata
 
@@ -117,9 +117,9 @@ def _reproject_via_geotransform(filename: str, instructions: dict, reader: BAGRa
     source_spatialref = gdal.osr.SpatialReference(wkt=source_dataset.GetProjectionRef())
     dest_spatialref = _spatial_reference_from_metadata(instructions)
 
-    transform = gdal.osr.CoordinateTransformation(source_spatialref, dest_spatialref)
+    coordinate_transform = gdal.osr.CoordinateTransformation(source_spatialref, dest_spatialref)
     dest_point = gdal.ogr.CreateGeometryFromWkt(f"POINT ({source_geotransform[0]} {source_geotransform[3]})")
-    dest_point.Transform(transform)
+    dest_point.Transform(coordinate_transform)
 
     target_geotransform = (dest_point.GetX(), source_geotransform[1], 0, dest_point.GetY(), 0, source_geotransform[5])
 
