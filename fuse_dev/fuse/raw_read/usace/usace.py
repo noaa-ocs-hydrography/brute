@@ -56,6 +56,9 @@ class USACERawReader(RawReader):
             3. The survey's ``.xyz`` header.
             4. The metadata pickle pulled from eHydro.
 
+        If the data are to be interpolated two dictionaries are returned, one
+        that represents the interpolated dataset and one that is not.
+
         Parameters
         ----------
         survey_folder
@@ -63,8 +66,9 @@ class USACERawReader(RawReader):
 
         Returns
         -------
-        dict
-            The complete metadata pulled from multiple sources
+        list
+            The complete metadata pulled from multiple sources within the
+            survey as a dict within a list.
         """
 
         meta_supplement = {}
@@ -77,7 +81,13 @@ class USACERawReader(RawReader):
         meta_supplement = {**meta_determine, **meta_date, **meta_supplement}
         meta_combined = {**meta_pickle, **meta_xyz, **meta_filename, **meta_xml, **meta_supplement}
         meta_final = self._finalize_meta(meta_combined)
-        return meta_final
+        if metadata_final['interpolate']:
+            meta_orig = meta_final.copy()
+            meta_orig['interpolate'] = False
+            meta_final['from_filename'] = f"{meta_orig['interpolate'].interpolate" 
+            return [meta_orig, meta_final]
+        else:
+            return [meta_final]
 
     def read_bathymetry(self, filename: str) -> _np.array:
         """

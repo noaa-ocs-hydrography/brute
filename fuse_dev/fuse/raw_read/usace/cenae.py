@@ -46,7 +46,13 @@ class CENAERawReader(USACERawReader):
         meta_defaults = self._cenae_defaults()
         meta_combined = {**meta_defaults, **meta_pickle, **meta_xml, **meta_xyz, **meta_filename, **meta_supplement}
         meta_final = self._finalize_meta(meta_combined)
-        return meta_final
+        if metadata_final['interpolate']:
+            meta_orig = meta_final.copy()
+            meta_orig['interpolate'] = False
+            meta_final['from_filename'] = f"{meta_orig['interpolate'].interpolate" 
+            return [meta_orig, meta_final]
+        else:
+            return [meta_final]
 
     def _cenae_defaults(self):
         """
