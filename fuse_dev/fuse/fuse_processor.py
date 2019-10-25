@@ -287,21 +287,26 @@ class FuseProcessor:
         try:
             raw_meta = self._reader.read_metadata(dataid)
             metadata = raw_meta.copy()
+            if type(metadata) == dict:
+                metadata = [metadata]
         except (RuntimeError, TypeError) as e:
             self.logger.log(_logging.DEBUG, e)
             return None
-        # get the config file information
-        metadata = self._add_config_metadata(metadata)
-        # check to see if the quality metadata is available.
-        if not self._quality_metadata_ready(metadata):
-            msg = f'Not all quality metadata was found during read.'
-        else:
-            msg = f'All quality metadata was found during read.'
-        self.logger.log(_logging.DEBUG, msg)
-        # write out the metadata and close the log
-        self._meta_obj.write_meta_record(metadata)
+        from_paths = []
+        for m in metadata:
+            # get the config file information
+            m = self._add_config_metadata(m)
+            # check to see if the quality metadata is available.
+            if not self._quality_metadata_ready(m):
+                msg = f'Not all quality metadata was found during read.'
+            else:
+                msg = f'All quality metadata was found during read.'
+            self.logger.log(_logging.DEBUG, msg)
+            # write out the metadata and close the log
+            self._meta_obj.write_meta_record(m)
+            from_paths.append()
         self._close_log()
-        return metadata['from_path']
+        return from_paths
 
     def _add_config_metadata(self, metadata):
         """
@@ -331,7 +336,7 @@ class FuseProcessor:
 
     def process(self, filename: str) -> str:
         """
-        Do the datum transformtion and interpolation.
+        Do the datum transformtion and interpolation (if required).
 
         Given the generic need to interpolate USACE data the 'interpolate'
         kwarg is set to True as a hack.  This information should be drawn from
@@ -367,20 +372,11 @@ class FuseProcessor:
 
             try:
                 dataset, metadata, transformed = self._transform.translate(filename, metadata)
-                if self._read_type == 'ehydro' or self._read_type == 'bps':
-                    outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
-                    self._point_writer.write(dataset, outfilename)
-                    metadata['to_filename'] = outfilename
-                elif self._read_type == 'bag':
-                    metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
-                    self._raster_writer.write(dataset, metadata['to_filename'])
             except (ValueError, RuntimeError, IndexError) as error:
                     message = f' Transformation error: {error}'
                     self.logger.warning(message)
                     metadata['interpolate'] = 'False'
-
-            self._meta_obj.write_meta_record(metadata)
-
+                    
             if 'interpolate' in metadata:
                 interpolate = metadata['interpolate'].lower()
 
@@ -389,14 +385,11 @@ class FuseProcessor:
                         interpolate = 'False'
                         self.logger.warning("No coverage files provided; no interpolation can occur")
 
+                root, filename = _os.path.split(metadata['outpath'])
+                base, ext = _os.path.splitext(filename)
+
                 if interpolate == 'true':
-                    meta_interp = metadata.copy()
-
-                    meta_interp = self._transform.translate_support_files(meta_interp, self._config['outpath'])
-
-                    root, filename = _os.path.split(meta_interp['outpath'])
-                    base = _os.path.splitext(filename)[0]
-                    meta_interp['from_filename'] = f'{base}.interpolated'
+                    metadata = self._transform.translate_support_files(metadata, self._config['outpath'])
 
                     if self._config['interpolation_engine'] == 'raster':
                         output_filename = f"{_os.path.join(root, base)}_interp.{self._raster_extension}"
@@ -405,27 +398,38 @@ class FuseProcessor:
                         resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
                         output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
 
-                    meta_interp['to_filename'] = output_filename
-
                     try:
-                        dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
-                        self._raster_writer.write(dataset, meta_interp['to_filename'])
+                        dataset, metadata = self._interpolator.interpolate(dataset, metadata)
+                        self._raster_writer.write(dataset, output_filename)
+                        metadata['interpolated'] = True
+                        metadata['to_filename'] = output_filename
                     except (ValueError, RuntimeError, IndexError) as error:
                         message = f' Interpolation error: {error}'
                         print(message)
                         self.logger.warning(message)
-                        meta_interp['interpolated'] = False
+                        metadata['interpolated'] = False
 
-                    self._meta_obj.write_meta_record(meta_interp)
-                    metadata.update(meta_interp)
+                    self._meta_obj.write_meta_record(metadata)
+                    metadata.update(metadata)
                 elif interpolate == 'false':
+                    
+                    if self._read_type == 'ehydro' or self._read_type == 'bps':
+                        outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
+                        self._point_writer.write(dataset, outfilename)
+                        metadata['to_filename'] = outfilename
+                    elif self._read_type == 'bag':
+                        metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
+                        self._raster_writer.write(dataset, metadata['to_filename'])
+                
                     self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
+                else:
+                    raise ValueError('metadata interpolate flag has an ambigious state')
             else:
                 del dataset
                 raise ValueError('metadata has no "interpolate" value')
         else:
             self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
-
+        self._meta_obj.write_meta_record(metadata)
         self._close_log()
 
     def post(self, filename):
