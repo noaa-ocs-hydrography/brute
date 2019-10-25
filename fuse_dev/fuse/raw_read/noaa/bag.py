@@ -16,19 +16,18 @@ import ast as _ast
 import csv as _csv
 import datetime as _datetime
 import logging as _logging
-import os as _os
-import re
-import re as _re
-import sys as _sys
-from glob import glob as _glob
-
-# from xml.etree import ElementTree as _et
 import lxml.etree as _et
 import numpy as _np
+import os as _os
+import rasterio as _rio
+import re as _re
+import sys as _sys
 import tables as _tb
-from fuse.raw_read.raw_read import RawReader
+
+from glob import glob as _glob
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
+from fuse.raw_read.raw_read import RawReader
 
 try:
     import dateutil.parser as _parser
@@ -145,7 +144,6 @@ def parse_namespace(meta_str):
             namespace[name] = site
     return namespace
 
-
 class BAGRawReader(RawReader):
     """
     Helper class to manage BAG xml metadata. This class takes an xml string and
@@ -196,7 +194,7 @@ class BAGRawReader(RawReader):
             meta_final = self._finalize_meta(meta_combined)
             return meta_final
         except ValueError as error:
-            print(error)
+            _logging.warning(f'Error in reading metadata for {filename}: {error}')
             return {}
 
     def read_bathymetry(self, infilename: str, out_verdat: str) -> _gdal.Dataset:
@@ -1296,6 +1294,69 @@ class BAGRawReader(RawReader):
         return meta
 
 
+class BAGSurvey(BAGRawReader):
+    """
+
+
+    """
+    survey_meta = []
+
+    def __init__(self):
+        BAGRawReader.__init__(self)
+
+    def read_metadata(self, survey_folder: str) -> [dict]:
+        """
+        Compiles the complete metadata of a
+
+        Parameters
+        ----------
+        survey_folder : str
+            Folder path containing contents of a single survey
+
+        Returns
+        -------
+        [dict]
+            List of survey metadata dicts
+
+        """
+        survey_meta = []
+
+        if _os.path.isfile(survey_folder):
+            survey_folder = _os.path.dirname(survey_folder)
+
+        bag_files = _glob(_os.path.join(survey_folder, '*.bag'))
+
+        for bag in bag_files:
+            survey_meta.append(self.__file_meta(bag))
+
+        combine = any([meta['interpolate'] for meta in survey_meta if (len(survey_meta) > 0) and 'interpolate' in meta])
+        if combine:
+            print(f'combine: {combine}')
+            survey_meta = self._combined_surface(survey_meta)
+
+        self.survey_meta = survey_meta
+
+        return survey_meta
+
+
+    def __file_meta(self, filename: str) -> dict:
+        try:
+            meta_gdal, bag_version = self._parse_bag_gdal(filename)
+            meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
+            meta_support = self._known_meta(filename)
+            meta_csv = self._csv_meta(filename)
+            meta_combined = {**meta_csv, **meta_xml, **meta_gdal, **meta_support}
+            meta_final = self._finalize_meta(meta_combined)
+            return meta_final
+        except ValueError as error:
+            _logging.warning(f'Error in reading metadata for {filename}: {error}')
+            return {}
+
+    def _combined_surface(self, metadata_list: [dict]) -> [dict]:
+        if "" == "":
+            pass
+
+
 class BagFile:
     """This class serves as the main container for BAG data."""
 
@@ -1407,7 +1468,7 @@ class BagFile:
             self.uncertainty = _np.flipud(bagfile.root.BAG_root.uncertainty.read())
             self.shape = self.elevation.shape
             meta_xml = ''.join(str(line, 'utf-8', 'ignore') for line in bagfile.root.BAG_root.metadata.read())
-            xml_tree = _et.XML(re.sub(r'<\?.+\?>', '', meta_xml))
+            xml_tree = _et.XML(_re.sub(r'<\?.+\?>', '', meta_xml))
 
             self.wkt = self._read_wkt_prj(xml_tree)
             if self.wkt is None:
