@@ -614,7 +614,7 @@ class FuseProcessor:
 
         # check the feature metadata
         if 'feat_detect' in metadata:
-            if metadata['feat_detect']:
+            if metadata['feat_detect'].upper() == 'TRUE':
                 feature_ready = 'feat_least_depth' in metadata and 'feat_size' in metadata
             else:
                 feature_ready = True
