@@ -242,6 +242,9 @@ class FuseProcessor:
             elif reader_type == 'bag':
                 self._reader = _noaa.bag.BAGRawReader()
                 self._read_type = 'bag'
+            elif reader_type == 'bps':
+                self._reader = _noaa.bps.BPSRawReader()
+                self._read_type = 'bps'
             else:
                 raise ValueError('reader type not implemented')
         except ValueError:
@@ -284,16 +287,16 @@ class FuseProcessor:
         try:
             raw_meta = self._reader.read_metadata(dataid)
             metadata = raw_meta.copy()
-        except RuntimeError as e:
+        except (RuntimeError, TypeError) as e:
             self.logger.log(_logging.DEBUG, e)
             return None
         # get the config file information
         metadata = self._add_config_metadata(metadata)
         # check to see if the quality metadata is available.
         if not self._quality_metadata_ready(metadata):
-            msg = f'Not all quality metadata was found.'
+            msg = f'Not all quality metadata was found during read.'
         else:
-            msg = f'All quality metadata was found.'
+            msg = f'All quality metadata was found during read.'
         self.logger.log(_logging.DEBUG, msg)
         # write out the metadata and close the log
         self._meta_obj.write_meta_record(metadata)
@@ -363,15 +366,14 @@ class FuseProcessor:
             metadata['new_ext'] = self._point_extension
 
             try:
-                # oddly _transform becomes the bathymetry reader here...
-                # return a GDAL dataset in the right datums to combine
                 dataset, metadata, transformed = self._transform.translate(filename, metadata)
-                if self._read_type == 'ehydro':
+                if self._read_type == 'ehydro' or self._read_type == 'bps':
                     outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                     self._point_writer.write(dataset, outfilename)
                     metadata['to_filename'] = outfilename
                 elif self._read_type == 'bag':
-                    metadata['to_filename'] = filename
+                    metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
+                    self._raster_writer.write(dataset, metadata['to_filename'])
             except (ValueError, RuntimeError, IndexError) as error:
                     message = f' Transformation error: {error}'
                     self.logger.warning(message)
@@ -404,13 +406,8 @@ class FuseProcessor:
                         output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
 
                     meta_interp['to_filename'] = output_filename
-                    # method = self._config['interpolation_method']
-
-                    # support_files = meta_interp['support_files'] if 'support_files' in meta_interp else None
 
                     try:
-                        # interpolator = _interp.Interpolator(dataset, sidescan_rasters=support_files)
-                        # dataset = interpolator.interpolate(method, float(self._config['to_resolution']), plot=True)
                         dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
@@ -595,8 +592,12 @@ class FuseProcessor:
         ----------
             whether metadata has all datum fields
         """
-
-        return all(key in metadata for key in FuseProcessor._datums if key != 'to_horiz_key')
+        test_keys = FuseProcessor._datums.copy()
+        # if geographic input remove the need for a zone key
+        if metadata['from_horiz_type'] == 'geo' and 'from_horiz_key' in test_keys:
+            idx = test_keys.index('from_horiz_key')
+            test_keys.pop(idx)
+        return all(key in metadata for key in test_keys if key != 'to_horiz_key')
 
     def _quality_metadata_ready(self, metadata):
         """
