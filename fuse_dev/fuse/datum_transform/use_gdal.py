@@ -12,7 +12,7 @@ from fuse.raw_read.noaa.bag import BAGRawReader
 from osgeo import osr, gdal, ogr
 
 
-def translate_support_files(self, metadata: dict, output_directory: str) -> dict:
+def reproject_support_files(metadata: dict, output_directory: str) -> dict:
     """
     Horizontally transform the given support files, writing transformed files to the given output directory.
 
@@ -55,7 +55,7 @@ def translate_support_files(self, metadata: dict, output_directory: str) -> dict
                     print(f'unable to open file with GDAL: {input_filename}')
                     transformed_filenames.append(input_filename)
             elif extension == '.gpkg':
-                output_filename = self.__reproject_geopackage(input_filename, output_filename, output_spatial_reference)
+                output_filename = _reproject_geopackage(input_filename, output_filename, output_spatial_reference)
                 transformed_filenames.append(output_filename)
             else:
                 if extension != '.tfw':
@@ -108,7 +108,8 @@ def _reproject_via_geotransform(filename: str, instructions: dict, reader: BAGRa
 
     Returns
     -------
-        GDAL dataset
+    gdal.Dataset
+        reprojected GDAL dataset
     """
 
     source_dataset = reader.read_bathymetry(filename, None)
@@ -200,7 +201,7 @@ def _filename_in_other_directory(filename: str, directory: str) -> (str, str):
     return os.path.join(directory, os.path.basename(filename)), os.path.splitext(filename)[-1]
 
 
-def _xyz2gdal(points: [(float, float, float)], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
+def _xyz_to_gdal(points: [(float, float, float)], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
     """
     Create a GDAL point cloud from the given XYZ points.
 

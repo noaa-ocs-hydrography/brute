@@ -48,7 +48,7 @@ class DatumTransformer:
         self._reader = reader
         self._engine = uv.VDatum(vdatum_path, java_path, self._reader)
 
-    def translate(self, filename: str, metadata: dict) -> (gdal.Dataset, dict, bool):
+    def reproject(self, filename: str, metadata: dict) -> (gdal.Dataset, dict, bool):
         """
         Run the specified transformation engine to translate the provided
         dataset.
@@ -119,14 +119,13 @@ class DatumTransformer:
             if 'from_vert_key' in instructions:
                 vertical_datum = instructions['from_vert_key']
 
-            return ug._xyz2gdal(points, utm_zone, vertical_datum)
+            return ug._xyz_to_gdal(points, utm_zone, vertical_datum)
         elif instructions['read_type'] == 'bag':
             return self._reader.read_bathymetry(filename, instructions['to_vert_key'])
         else:
             raise ValueError('Reader type not implemented')
 
-
-    def translate_support_files(self, metadata: dict, dest_dir: str):
+    def reproject_support_files(self, metadata: dict, output_directory: str):
         """
         Check the horizontal georeferencing for the support files.  If they are
         not in the same datum as the output datum they are translated and
@@ -139,7 +138,7 @@ class DatumTransformer:
             files referenced in the dictionary will be updated if their
             horizontal datum does not match the output datum.
 
-        dest_dir
+        output_directory
             The path to the directory where updated files should be stored.
 
         Returns
@@ -149,4 +148,4 @@ class DatumTransformer:
             files.
         """
 
-        return ug.translate_support_files(metadata, dest_dir)
+        return ug.reproject_support_files(metadata, output_directory)

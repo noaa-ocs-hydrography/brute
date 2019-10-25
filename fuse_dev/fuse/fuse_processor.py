@@ -19,6 +19,7 @@ import fuse.raw_read.usace as _usace
 from fuse import score
 from fuse.proc_io.proc_io import ProcIO
 
+
 class FuseProcessor:
     """Bathymetric survey object."""
 
@@ -363,7 +364,7 @@ class FuseProcessor:
             metadata['new_ext'] = self._point_extension
 
             try:
-                dataset, metadata, transformed = self._transform.translate(filename, metadata)
+                dataset, metadata, transformed = self._transform.reproject(filename, metadata)
                 if self._read_type == 'ehydro':
                     outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                     self._point_writer.write(dataset, outfilename)
@@ -388,7 +389,7 @@ class FuseProcessor:
 
                 if interpolate == 'true':
                     meta_interp = metadata.copy()
-                    meta_interp = self._transform.translate_support_files(meta_interp, self._config['outpath'])
+                    meta_interp = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
 
                     try:
                         root, filename = _os.path.split(meta_interp['outpath'])
