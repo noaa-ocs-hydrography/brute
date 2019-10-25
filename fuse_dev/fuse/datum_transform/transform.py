@@ -7,13 +7,11 @@ transform.py
 Abstract datum transformation.
 """
 
-import os
 import gdal
-from tempfile import TemporaryDirectory as tempdir
-
-from fuse.datum_transform import use_vdatum as uv
 from fuse.datum_transform import use_gdal as ug
+from fuse.datum_transform import use_vdatum as uv
 from fuse.raw_read.noaa.bag import BAGRawReader
+
 gdal.UseExceptions()
 
 class DatumTransformer:
@@ -121,7 +119,7 @@ class DatumTransformer:
             if 'from_vert_key' in instructions:
                 vertical_datum = instructions['from_vert_key']
 
-            return ug.__xyz2gdal(points, utm_zone, vertical_datum)
+            return ug._xyz2gdal(points, utm_zone, vertical_datum)
         elif instructions['read_type'] == 'bag':
             return self._reader.read_bathymetry(filename, instructions['to_vert_key'])
         else:

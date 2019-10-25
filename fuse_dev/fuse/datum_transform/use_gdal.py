@@ -180,33 +180,29 @@ def _reproject_geopackage(input_filename: str, output_filename: str, spatial_ref
     return output_filename
 
 
-def _dest_filename(filename: str, dest_dir: str):
+def _filename_in_other_directory(filename: str, directory: str) -> (str, str):
     """
-    Build the filename for the transformed file.
+    Get the given filename in a given directory.
 
     Parameters
     ----------
-
-    filename : str
-        The filename of the source file
-
-    dest_dir : str
-        The path to the target directory for a tranlated file.
+    filename
+        input filename
+    directory
+        other directory
 
     Returns
     -------
-    str
-        The resulting path to the transformed file.
+    str, str
+        path to output file in the given directory, and extension
     """
-    root, ext = os.path.splitext(filename)
-    path, base = os.path.split(root)
-    newfname = os.path.join(dest_dir, base + ext)
-    return newfname, ext
+
+    return os.path.join(directory, os.path.basename(filename)), os.path.splitext(filename)[-1]
 
 
-def __xyz2gdal(points: [(float, float, float)], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
+def _xyz2gdal(points: [(float, float, float)], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
     """
-    Get a GDAL point cloud dataset from XYZ points.
+    Create a GDAL point cloud from the given XYZ points.
 
     Parameters
     ----------
@@ -219,21 +215,25 @@ def __xyz2gdal(points: [(float, float, float)], utm_zone: int, vertical_datum: s
 
     Returns
     -------
+    gdal.Dataset
         GDAL point cloud dataset
     """
 
-    # setup the gdal bucket
+    # positive UTM zone is in the northern hemisphere
     spatial_reference = osr.SpatialReference()
     spatial_reference.SetWellKnownGeogCS('NAD83')
-    # positive UTM zone is in the northern hemisphere
     spatial_reference.SetUTM(abs(utm_zone), 1 if utm_zone > 0 else 0)
     spatial_reference.SetVertCS(vertical_datum, vertical_datum, 2000)
+
     dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
     layer = dataset.CreateLayer('pts', spatial_reference, geom_type=gdal.ogr.wkbPoint)
+    feature_definition = layer.GetLayerDefn()
+
     for point in points:
         geometry = gdal.ogr.Geometry(gdal.ogr.wkbPoint)
         geometry.AddPoint(*point)
-        feature = gdal.ogr.Feature(layer.GetLayerDefn())
+        feature = gdal.ogr.Feature(feature_definition)
         feature.SetGeometry(geometry)
         layer.CreateFeature(feature)
+
     return dataset

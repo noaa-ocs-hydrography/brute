@@ -16,10 +16,7 @@ import subprocess as _subprocess
 from tempfile import TemporaryDirectory as tempdir
 
 import numpy as _np
-from osgeo import gdal, ogr, osr
-
-from fuse.datum_transform.use_gdal import __xyz2gdal
-
+from osgeo import gdal
 
 from_hdatum = [
     'from_horiz_frame',
