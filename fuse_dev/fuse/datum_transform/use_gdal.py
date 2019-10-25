@@ -8,8 +8,13 @@ Created on Tue Oct 22 16:01:28 2019
 import logging
 import os
 
+import numpy
+import rasterio
 from fuse.raw_read.noaa.bag import BAGRawReader
+from fuse.utilities import bounds_from_opposite_corners
 from osgeo import osr, gdal, ogr
+from rasterio.crs import CRS
+from rasterio.warp import reproject, calculate_default_transform
 
 
 def reproject_support_files(metadata: dict, output_directory: str) -> dict:
@@ -32,18 +37,33 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
     if 'support_files' in metadata:
         support_filenames = metadata['support_files']
         reprojected_filenames = []
-        output_spatial_reference = _spatial_reference_from_metadata(metadata)
+
+        output_spatial_reference = CRS.from_string(f'+proj=utm +zone={metadata["to_horiz_key"]} +datum={metadata["to_horiz_frame"]}')
         for input_filename in support_filenames:
             basename, extension = os.path.splitext(input_filename)
             basename = os.path.basename(basename)
             output_filename = os.path.join(output_directory, basename + extension)
             if '.tif' in extension:
-                input_dataset = gdal.Open(input_filename)
-                if input_dataset is not None:
-                    input_spatial_reference = osr.SpatialReference(wkt=input_dataset.GetProjectionRef())
-                    if output_spatial_reference.IsSame(input_spatial_reference):
-                        gdal.Warp(output_filename, input_dataset,
-                                  options=gdal.WarpOptions(dstSRS=output_spatial_reference, format='GTiff'))
+                with rasterio.open(input_filename) as input_raster:
+                    if output_spatial_reference != input_raster.crs:
+                        input_shape = input_raster.height, input_raster.width
+                        input_resolution = numpy.array((input_raster.transform.a, input_raster.transform.e))
+                        input_origin = numpy.array((input_raster.transform.c, input_raster.transform.f))
+
+                        left, bottom, right, top = bounds_from_opposite_corners(input_origin,
+                                                                                input_origin + numpy.flip(input_shape) * input_resolution)
+                        output_transform, output_width, output_height = calculate_default_transform(input_raster.crs,
+                                                                                                    output_spatial_reference,
+                                                                                                    width=input_shape[1],
+                                                                                                    height=input_shape[0], left=left,
+                                                                                                    bottom=bottom, right=right,
+                                                                                                    top=top)
+
+                        with rasterio.open(output_filename, 'w', 'GTiff', width=output_width, height=output_height,
+                                           count=input_raster.count, crs=output_spatial_reference, transform=output_transform,
+                                           dtype=rasterio.float32) as output_raster:
+                            for band_index in range(1, input_raster.count + 1):
+                                reproject(input_raster.band(band_index), output_raster.band(band_index))
 
                         if not os.path.exists(output_filename):
                             logging.warning(f'file not created: {output_filename}')
@@ -51,9 +71,6 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
                         reprojected_filenames.append(output_filename)
                     else:
                         reprojected_filenames.append(input_filename)
-                else:
-                    print(f'unable to open file with GDAL: {input_filename}')
-                    reprojected_filenames.append(input_filename)
             elif extension == '.gpkg':
                 output_filename = _reproject_geopackage(input_filename, output_filename, output_spatial_reference)
                 reprojected_filenames.append(output_filename)

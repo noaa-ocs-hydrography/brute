@@ -1,8 +1,6 @@
 import os
 import unittest
 
-import rasterio
-
 from tests.utilities import process_USACE_points, process_NOAA_raster
 
 
@@ -25,22 +23,14 @@ class TestFuse(unittest.TestCase):
         for output_path in output_paths:
             assert os.path.exists(output_path)
 
-    def test_noaa_bag_identical(self):
-        survey_1_output_paths = process_NOAA_raster('H12604', 'linear', 'bag')
-        survey_2_output_paths = process_NOAA_raster('H12981', 'linear', 'bag')
-
+    def test_noaa_bag_sidescan_reproject(self):
+        survey_1_output_paths = process_NOAA_raster('H11250', 'linear', 'bag')
         for output_path in survey_1_output_paths:
             assert os.path.exists(output_path)
 
+        survey_2_output_paths = process_NOAA_raster('H12298', 'linear', 'bag')
         for output_path in survey_2_output_paths:
             assert os.path.exists(output_path)
-
-        assert len(survey_1_output_paths) == len(survey_2_output_paths)
-
-        for output_index in range(len(survey_1_output_paths)):
-            with rasterio.open(survey_1_output_paths[output_index]) as survey_1_interpolated, \
-                    rasterio.open(survey_2_output_paths[output_index]) as survey_2_interpolated:
-                assert survey_1_interpolated.read() == survey_2_interpolated.read()
 
 
 if __name__ == '__main__':

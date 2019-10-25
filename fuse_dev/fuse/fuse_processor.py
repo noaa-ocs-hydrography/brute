@@ -271,7 +271,7 @@ class FuseProcessor:
         self._raster_writer = ProcIO('gdal', self._raster_extension)
         self._point_writer = ProcIO('point', self._point_extension)
 
-    def read(self, dataid: str):
+    def read(self, dataid: str) -> str:
         """
         Read survey bathymetry and metadata into useable forms.
 
@@ -279,26 +279,36 @@ class FuseProcessor:
         ----------
         dataid
             Filename of survey bathymetry.
+
+        Returns
+        ----------
+        str
+            input survey path
         """
+
         self._set_log(dataid)
+
         # get the metadata
         try:
-            raw_meta = self._reader.read_metadata(dataid)
-            metadata = raw_meta.copy()
+            metadata = self._reader.read_metadata(dataid).copy()
         except RuntimeError as e:
             self.logger.log(_logging.DEBUG, e)
             return None
+
         # get the config file information
         metadata = self._add_config_metadata(metadata)
+
         # check to see if the quality metadata is available.
         if not self._quality_metadata_ready(metadata):
             msg = f'Not all quality metadata was found.'
         else:
             msg = f'All quality metadata was found.'
         self.logger.log(_logging.DEBUG, msg)
+
         # write out the metadata and close the log
         self._meta_obj.write_meta_record(metadata)
         self._close_log()
+
         return metadata['from_path']
 
     def _add_config_metadata(self, metadata):
@@ -373,9 +383,9 @@ class FuseProcessor:
                     metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
                     self._raster_writer.write(dataset, metadata['to_filename'])
             except (ValueError, RuntimeError, IndexError) as error:
-                    message = f' Transformation error: {error}'
-                    self.logger.warning(message)
-                    metadata['interpolate'] = 'False'
+                message = f' Transformation error: {error}'
+                self.logger.warning(message)
+                metadata['interpolate'] = 'False'
 
             self._meta_obj.write_meta_record(metadata)
 
@@ -389,7 +399,7 @@ class FuseProcessor:
 
                 if interpolate == 'true':
                     meta_interp = metadata.copy()
-                    meta_interp = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
+                    meta_interp['support_files'] = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
 
                     try:
                         root, filename = _os.path.split(meta_interp['outpath'])
@@ -424,6 +434,7 @@ class FuseProcessor:
             self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
 
         self._close_log()
+        return metadata['to_filename']
 
     def post(self, filename):
         """
@@ -550,9 +561,7 @@ class FuseProcessor:
         try:
             # file name is the key rather than the path
             f = _os.path.basename(filename)
-            if 'from_filename' not in self._meta:
-                self._meta = self._meta_obj.read_meta_record(f)
-            elif self._meta['from_filename'] is not filename:
+            if 'from_filename' not in self._meta or self._meta['from_filename'] != filename:
                 self._meta = self._meta_obj.read_meta_record(f)
             else:
                 # need to catch if this file is not in the metadata record yet here.

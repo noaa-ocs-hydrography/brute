@@ -90,6 +90,7 @@ def geoarray_to_xyz(data: numpy.array, origin: (float, float), resolution: (floa
 
     return numpy.stack((x_values[data != nodata], y_values[data != nodata], data[data != nodata]), axis=1)
 
+
 def regulararray_to_xyz(data: numpy.array, nodata: float = None) -> numpy.array:
     """
     Extract XYZ points from an array of data
@@ -824,7 +825,7 @@ def bounds_from_opposite_corners(corner_1: (float, float), corner_2: (float, flo
         min X, min Y, max X, max Y
     """
 
-    return numpy.ravel(numpy.sort(numpy.stack((corner_1, corner_2), axis=0), axis=0))
+    return numpy.round(numpy.ravel(numpy.sort(numpy.stack((corner_1, corner_2), axis=0), axis=0)), 6)
 
 
 def gdal_raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
