@@ -409,8 +409,6 @@ class FuseProcessor:
                         self.logger.warning(message)
                         metadata['interpolated'] = False
 
-                    self._meta_obj.write_meta_record(metadata)
-                    metadata.update(metadata)
                 elif interpolate == 'false':
                     
                     if self._read_type == 'ehydro' or self._read_type == 'bps':
