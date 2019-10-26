@@ -84,7 +84,7 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
     return metadata
 
 
-def _spatial_reference_from_metadata(metadata: dict) -> osr.SpatialReference:
+def spatial_reference_from_metadata(metadata: dict) -> osr.SpatialReference:
     """
     Build an OSR spatial reference from the `to_horiz_*` fields in the provided metadata.
     If 'to_horiz_frame','to_horiz_type' and 'to_horiz_key' are not populated, raise an error.
@@ -132,7 +132,7 @@ def _reproject_via_geotransform(filename: str, instructions: dict, reader: BAGRa
     source_dataset = reader.read_bathymetry(filename, None)
     source_geotransform = source_dataset.GetGeoTransform()
     source_spatialref = gdal.osr.SpatialReference(wkt=source_dataset.GetProjectionRef())
-    dest_spatialref = _spatial_reference_from_metadata(instructions)
+    dest_spatialref = spatial_reference_from_metadata(instructions)
 
     coordinate_transform = gdal.osr.CoordinateTransformation(source_spatialref, dest_spatialref)
     dest_point = gdal.ogr.CreateGeometryFromWkt(f"POINT ({source_geotransform[0]} {source_geotransform[3]})")
