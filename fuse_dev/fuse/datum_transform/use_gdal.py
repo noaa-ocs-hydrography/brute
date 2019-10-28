@@ -168,7 +168,7 @@ def _reproject_geopackage(input_filename: str, output_filename: str, output_crs:
     return output_filename
 
 
-def _spatial_reference_from_metadata(metadata: dict) -> CRS:
+def spatial_reference_from_metadata(metadata: dict) -> CRS:
     """
     Build an OSR spatial reference from the `to_horiz_*` fields in the provided metadata.
     If 'to_horiz_frame','to_horiz_type' and 'to_horiz_key' are not populated, raise an error.
