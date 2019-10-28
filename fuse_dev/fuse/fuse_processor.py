@@ -292,7 +292,7 @@ class FuseProcessor:
         except (RuntimeError, TypeError) as e:
             self.logger.log(_logging.DEBUG, e)
             return None
-        from_paths = []
+        from_id = []
         for m in metadata:
             # get the config file information
             m = self._add_config_metadata(m)
@@ -304,9 +304,9 @@ class FuseProcessor:
             self.logger.log(_logging.DEBUG, msg)
             # write out the metadata and close the log
             self._meta_obj.write_meta_record(m)
-            from_paths.append(m['from_path'])
+            from_id.append(m['from_filename'])
         self._close_log()
-        return from_paths
+        return from_id
 
     def _add_config_metadata(self, metadata):
         """
@@ -334,7 +334,7 @@ class FuseProcessor:
         metadata['to_vert_datum'] = self._config['to_vert_datum']
         return metadata
 
-    def process(self, filename: str) -> str:
+    def process(self, dataid: str) -> str:
         """
         Do the datum transformtion and interpolation (if required).
 
@@ -356,22 +356,19 @@ class FuseProcessor:
         str
             output filename
         """
-        if self._read_type == 'ehydro':
-            meta_entry = self._reader.name_gen(_os.path.basename(filename), '', sfx=None)
-        else:
-            meta_entry = _os.path.splitext(_os.path.basename(filename))[0]
-        metadata = self._get_stored_meta(meta_entry)
-        self._set_log(meta_entry)
+        metadata = self._get_stored_meta(dataid)
+        self._set_log(dataid)
         metadata['read_type'] = self._read_type
 
         if self._datum_metadata_ready(metadata):
             # convert the bathy for the original data
-            input_directory = _os.path.splitext(_os.path.basename(filename))[0]
+            frompath = metadata['from_path']
+            input_directory = _os.path.splitext(_os.path.basename(frompath))[0]
             metadata['outpath'] = _os.path.join(self._config['outpath'], input_directory)
             metadata['new_ext'] = self._point_extension
 
             try:
-                dataset, metadata, transformed = self._transform.translate(filename, metadata)
+                dataset, metadata, transformed = self._transform.translate(frompath, metadata)
             except (ValueError, RuntimeError, IndexError) as error:
                     message = f' Transformation error: {error}'
                     self.logger.warning(message)
