@@ -56,7 +56,7 @@ class CENANRawReader(USACERawReader):
         if meta_final['interpolate']:
             meta_orig = meta_final.copy()
             meta_orig['interpolate'] = False
-            meta_final['from_filename'] = f"{meta_orig['interpolate']}.interpolate" 
+            meta_final['from_filename'] = f"{meta_orig['from_filename']}.interpolate" 
             return [meta_orig, meta_final]
         else:
             return [meta_final]
