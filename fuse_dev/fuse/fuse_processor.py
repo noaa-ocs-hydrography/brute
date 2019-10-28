@@ -304,7 +304,7 @@ class FuseProcessor:
             self.logger.log(_logging.DEBUG, msg)
             # write out the metadata and close the log
             self._meta_obj.write_meta_record(m)
-            from_paths.append()
+            from_paths.append(m['from_path'])
         self._close_log()
         return from_paths
 
