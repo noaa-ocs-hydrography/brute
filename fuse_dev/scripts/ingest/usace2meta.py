@@ -31,16 +31,17 @@ if __name__ == '__main__':
         top = [os.path.join(root, name) for name in os.listdir(root)]
         for m,path in enumerate(top):
             print(f'{n}.{m} - Begin working in {path}:')
-            f = usace.read(path)
-            try:
-                print(f'processing {f} @ {datetime.datetime.now()}', end = ', ')
-                usace.process(f)
-                print(f'done.')
-            except Exception as e:
-                print('\n')
-                print(e)
-                usace.logger.log(_logging.DEBUG, e)
-                print('\n')
+            paths = usace.read(path)
+            for f in paths:
+                try:
+                    print(f'processing {f} @ {datetime.datetime.now()}', end = ', ')
+                    usace.process(f)
+                    print(f'done.')
+                except Exception as e:
+                    print('\n')
+                    print(e)
+                    usace.logger.log(_logging.DEBUG, e)
+                    print('\n')
     end = datetime.datetime.now()
     time_delta = end - start
     # wx_frame.close()
