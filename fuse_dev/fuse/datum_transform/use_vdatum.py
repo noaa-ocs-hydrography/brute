@@ -180,11 +180,8 @@ class VDatum:
             c_meridian = srs.GetProjParm(gdal.osr.SRS_PP_CENTRAL_MERIDIAN)
             west = c_meridian - 3
             east = c_meridian + 3
-
-            # TODO can we replace this with `xyz = xyz[(x > west) & (x < east)]`
             x = xyz[:, 0]
-            idx = _np.nonzero((x < west) | (x > east))[0]
-            xyz = xyz[idx, :]
+            xyz = xyz[(x > west) & (x < east),:]
 
         return xyz
 
