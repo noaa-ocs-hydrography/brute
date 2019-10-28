@@ -81,6 +81,8 @@ class VDatum:
 
         NSRS2007 is assumed for the out EPSG code.
 
+        TODO rename to reproject
+
         Parameters
         ----------
         filename
@@ -90,6 +92,7 @@ class VDatum:
 
         Returns
         -------
+        gdal.Dataset
             GDAL point cloud dataset
         """
 
@@ -111,6 +114,8 @@ class VDatum:
         """
         Reproject XYZ from the given filename.
 
+        TODO rename to __reproject_xyz
+
         Parameters
         ----------
         filename
@@ -120,7 +125,8 @@ class VDatum:
 
         Returns
         -------
-            array of XYZ points and UTM zone
+        numpy.array, int
+            N x 3 array of XYZ points and UTM zone
         """
 
         # read the points and put it in a temp file for VDatum to read
@@ -150,16 +156,16 @@ class VDatum:
                     raise ValueError(f'no UTM zone found in file "{filename}"')
         return _np.loadtxt(reprojected_filename, delimiter=','), utm_zone
 
-    def __filter_xyz(self, xyz: _np.array, metadata: dict) -> _np.array:
+    def __filter_xyz(self, xyz: _np.array, instructions: dict) -> _np.array:
         """
         Filter the given geographic XYZ points to exclude points outside the UTM zone of the given spatial reference frame.
         If the provided data is not geographic, or the given frame is not a UTM zone, no filter is applied.
-        
+
         Parameters
         ----------
         xyz
             N x 3 array of XYZ points
-        metadata
+        instructions
             dictionary of metadata defining geographic frame
             
         Returns
@@ -168,8 +174,8 @@ class VDatum:
             N x 3 array of XYZ points, filtered to only include the given UTM zone
         """
 
-        if metadata['from_horiz_type'] == 'geo' and metadata['to_horiz_type'] == 'utm':
-            srs = spatial_reference_from_metadata(metadata)
+        if instructions['from_horiz_type'] == 'geo' and instructions['to_horiz_type'] == 'utm':
+            srs = spatial_reference_from_metadata(instructions)
             c_meridian = srs.GetProjParm(gdal.osr.SRS_PP_CENTRAL_MERIDIAN)
             west = c_meridian - 3
             east = c_meridian + 3
@@ -185,6 +191,8 @@ class VDatum:
         """
         Reproject BAG bathy from the given filename.
 
+        TODO rename to __reproject_bag
+
         Parameters
         ----------
         filename
@@ -194,7 +202,8 @@ class VDatum:
 
         Returns
         -------
-            array of XYZ points and UTM zone
+        numpy.array, int
+            N x 3 array of XYZ points and UTM zone
         """
 
         # create a gdal.Dataset and assign a temp file name for VDatum to read
