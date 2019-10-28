@@ -14,6 +14,7 @@ from fuse.raw_read.noaa.bag import BAGRawReader
 
 gdal.UseExceptions()
 
+
 class DatumTransformer:
     """ An object for abstracting the datum transformation API.  This should allow for different transformation machines and versions. """
 
@@ -65,12 +66,14 @@ class DatumTransformer:
         gdal.Dataset, dict, bool
             GDAL point cloud, metadata, and boolean value of whether data was reprojected
         """
-        not_same_horiz = any(metadata[self._from_horiz_datum_info[index]].lower() != metadata[self._to_horiz_datum_info[index]].lower() for index in
-               range(len(self._from_horiz_datum_info)))
-        not_same_vert = any(metadata[self._from_vert_datum_info[index]].lower() != metadata[self._to_vert_datum_info[index]].lower() for index in
-               range(len(self._from_vert_datum_info)))
-        is_bag = type(self._reader) is BAGRawReader
+
+        not_same_horiz = any(metadata[self._from_horiz_datum_info[index]].lower() != metadata[self._to_horiz_datum_info[index]].lower()
+                             for index in range(len(self._from_horiz_datum_info)))
+        not_same_vert = any(metadata[self._from_vert_datum_info[index]].lower() != metadata[self._to_vert_datum_info[index]].lower()
+                            for index in range(len(self._from_vert_datum_info)))
+
         # VDatum and rasters are giving us trouble, so this is a temp workaround
+        is_bag = type(self._reader) is BAGRawReader
         if is_bag:
             # we can't deal with a change in BAG vertical datum, so punt
             if not_same_vert:
@@ -92,8 +95,7 @@ class DatumTransformer:
             if not_same_horiz or not_same_vert:
                 return self._engine.translate(filename, metadata), metadata, True
             else:
-              return self.create(filename, metadata), metadata, False
-
+                return self.create(filename, metadata), metadata, False
 
     def create(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
@@ -108,6 +110,7 @@ class DatumTransformer:
 
         Returns
         -------
+
             GDAL dataset
         """
 
@@ -116,8 +119,13 @@ class DatumTransformer:
 
             if 'to_horiz_key' in instructions:
                 utm_zone = int(instructions['from_horiz_key'])
+            else:
+                KeyError(f'output horizontal datum key does not exist in metadata')
+
             if 'from_vert_key' in instructions:
                 vertical_datum = instructions['from_vert_key']
+            else:
+                KeyError(f'output vertical datum key does not exist in metadata')
 
             return ug._xyz_to_gdal(points, utm_zone, vertical_datum)
         elif instructions['read_type'] == 'bag':

@@ -115,7 +115,6 @@ class ProcIO:
                 if os.path.exists(bag_xml):
                     os.remove(bag_xml)
 
-
         if self._out_data_type == 'csar':
             self._write_csar(dataset, filename, show_console=show_console)
         elif self._out_data_type == 'bag':
