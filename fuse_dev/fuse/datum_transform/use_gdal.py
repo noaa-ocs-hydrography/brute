@@ -7,6 +7,7 @@ Created on Tue Oct 22 16:01:28 2019
 
 import logging
 import os
+from typing import Union
 
 import fiona
 import numpy
@@ -40,7 +41,7 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
         support_filenames = metadata['support_files']
         reprojected_filenames = []
 
-        output_crs = _spatial_reference_from_metadata(metadata)
+        output_crs = spatial_reference_from_metadata(metadata, fiona_crs=True)
         for input_filename in support_filenames:
             basename, extension = os.path.splitext(input_filename)
             basename = os.path.basename(basename)
@@ -112,7 +113,7 @@ def _reproject_via_geotransform(filename: str, metadata: dict, reader: BAGRawRea
     input_shape = dataset.RasterYSize, dataset.RasterXSize
 
     input_crs = CRS.from_string(dataset.GetProjectionRef())
-    output_crs = _spatial_reference_from_metadata(metadata)
+    output_crs = spatial_reference_from_metadata(metadata, fiona_crs=True)
 
     left, bottom, right, top = bounds_from_opposite_corners(input_origin, input_origin + numpy.flip(input_shape) * input_resolution)
     output_transform, output_width, output_height = calculate_default_transform(input_crs, output_crs, width=input_shape[1],
@@ -168,7 +169,7 @@ def _reproject_geopackage(input_filename: str, output_filename: str, output_crs:
     return output_filename
 
 
-def spatial_reference_from_metadata(metadata: dict) -> CRS:
+def spatial_reference_from_metadata(metadata: dict, fiona_crs: bool = False) -> Union[CRS, osr.SpatialReference]:
     """
     Build an OSR spatial reference from the `to_horiz_*` fields in the provided metadata.
     If 'to_horiz_frame','to_horiz_type' and 'to_horiz_key' are not populated, raise an error.
@@ -186,7 +187,13 @@ def spatial_reference_from_metadata(metadata: dict) -> CRS:
 
     if all(key in metadata for key in ('to_horiz_frame', 'to_horiz_type', 'to_horiz_key')):
         if metadata['to_horiz_type'] == 'utm':
-            return CRS.from_string(f'+proj=utm +zone={metadata["to_horiz_key"]} +datum={metadata["to_horiz_frame"]}')
+            proj4_string = f'+proj=utm +zone={metadata["to_horiz_key"]} +datum={metadata["to_horiz_frame"]}'
+            if fiona_crs:
+                return CRS.from_string(proj4_string)
+            else:
+                spatial_reference = osr.SpatialReference()
+                spatial_reference.ImportFromProj4(proj4_string)
+                return spatial_reference
         else:
             # TODO We still need to sort our when we are not working in utm...
             raise NotImplementedError('working outside of UTM is not implemented')

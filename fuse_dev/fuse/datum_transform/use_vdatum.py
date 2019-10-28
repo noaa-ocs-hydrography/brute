@@ -7,6 +7,7 @@ Created on Wed Aug 22 12:27:39 2018
 
 Use VDatum for conversions.
 """
+from fuse.datum_transform.use_gdal import _xyz_to_gdal, spatial_reference_from_metadata
 
 __version__ = 'use_vdatum 0.0.1'
 
@@ -17,8 +18,6 @@ from tempfile import TemporaryDirectory as tempdir
 
 import numpy as _np
 from osgeo import gdal
-
-import fuse.datum_transform.use_gdal as ug
 
 from_hdatum = [
     'from_horiz_frame',
@@ -104,7 +103,7 @@ class VDatum:
             points, utm_zone = self.__translate_xyz(filename, instructions)
             vertical_datum = instructions['to_vert_key'].upper()
             # passing UTM zone instead of EPSG code
-            dataset = __xyz2gdal(points, utm_zone, vertical_datum)
+            dataset = _xyz_to_gdal(points, utm_zone, vertical_datum)
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
         return dataset
 
@@ -150,36 +149,34 @@ class VDatum:
                 else:
                     raise ValueError(f'no UTM zone found in file "{filename}"')
         return _np.loadtxt(reprojected_filename, delimiter=','), utm_zone
-    
+
     def __filter_xyz(self, xyz: _np.array, metadata: dict) -> _np.array:
         """
-        Return a filtered geographic xyz array.  The provided geographic xyz
-        array is filtered to remove any data not in the zone of the destination
-        spatial reference frame.  If the provided data is not geographic or the
-        destiaion frame is not UTM the provided array is returned.
+        Filter the given geographic XYZ points to exclude points outside the UTM zone of the given spatial reference frame.
+        If the provided data is not geographic, or the given frame is not a UTM zone, no filter is applied.
         
         Parameters
         ----------
         xyz
-            data as an xyz n by 3 numpy array in a geographic frame
-            
+            N x 3 array of XYZ points
         metadata
-            the metadata dict assocated with the xyz data
+            dictionary of metadata defining geographic frame
             
         Returns
         -------
-        numpy array
+        numpy.array
+            N x 3 array of XYZ points, filtered to only include the given UTM zone
         """
+
         if metadata['from_horiz_type'] == 'geo' and metadata['to_horiz_type'] == 'utm':
-            srs = ug.spatial_reference_from_metadata(metadata)
+            srs = spatial_reference_from_metadata(metadata)
             c_meridian = srs.GetProjParm(gdal.osr.SRS_PP_CENTRAL_MERIDIAN)
             west = c_meridian - 3
             east = c_meridian + 3
-            x = xyz[:,0]
+            x = xyz[:, 0]
             idx = _np.nonzero((x < west) | (x > east))[0]
-            xyz = xyz[idx,:]
+            xyz = xyz[idx, :]
         return xyz
-
 
     def __translate_bag(self, filename: str, instructions: dict) -> (gdal.Dataset, int):
         """
