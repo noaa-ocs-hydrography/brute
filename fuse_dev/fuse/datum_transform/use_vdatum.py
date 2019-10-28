@@ -7,6 +7,7 @@ Created on Wed Aug 22 12:27:39 2018
 
 Use VDatum for conversions.
 """
+
 from fuse.datum_transform.use_gdal import _xyz_to_gdal, spatial_reference_from_metadata
 
 __version__ = 'use_vdatum 0.0.1'
@@ -167,7 +168,7 @@ class VDatum:
             N x 3 array of XYZ points
         instructions
             dictionary of metadata defining geographic frame
-            
+
         Returns
         ----------
         numpy.array
@@ -251,13 +252,16 @@ class VDatum:
         instructions
             dictionary of metadata
         """
-
+        # having the input zone is optional if the input type is geographic
+        local_from_datum = from_hdatum.copy()
+        if instructions['from_horiz_type'] != 'geo':
+            local_from_datum.append('from_horiz_key')
         # having the output zone is optional
         local_to_hdatum = to_hdatum.copy()
         if 'to_horiz_key' in instructions:
             local_to_hdatum.append('to_horiz_key')
         self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
-                      f'ihorz:{":".join(instructions[key] for key in from_hdatum)} ' + \
+                      f'ihorz:{":".join(instructions[key] for key in local_from_datum)} ' + \
                       f'ivert:{":".join(instructions[key] for key in from_vdatum)} ' + \
                       f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
                       f'overt:{":".join(instructions[key] for key in to_vdatum)} '

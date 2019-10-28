@@ -243,6 +243,9 @@ class FuseProcessor:
             elif reader_type == 'bag':
                 self._reader = _noaa.bag.BAGRawReader()
                 self._read_type = 'bag'
+            elif reader_type == 'bps':
+                self._reader = _noaa.bps.BPSRawReader()
+                self._read_type = 'bps'
             else:
                 raise ValueError('reader type not implemented')
         except ValueError:
@@ -291,7 +294,7 @@ class FuseProcessor:
         # get the metadata
         try:
             metadata = self._reader.read_metadata(dataid).copy()
-        except RuntimeError as e:
+        except (RuntimeError, TypeError) as e:
             self.logger.log(_logging.DEBUG, e)
             return None
 
@@ -300,9 +303,9 @@ class FuseProcessor:
 
         # check to see if the quality metadata is available.
         if not self._quality_metadata_ready(metadata):
-            msg = f'Not all quality metadata was found.'
+            msg = f'Not all quality metadata was found during read.'
         else:
-            msg = f'All quality metadata was found.'
+            msg = f'All quality metadata was found during read.'
         self.logger.log(_logging.DEBUG, msg)
 
         # write out the metadata and close the log
@@ -375,7 +378,7 @@ class FuseProcessor:
 
             try:
                 dataset, metadata, transformed = self._transform.reproject(filename, metadata)
-                if self._read_type == 'ehydro':
+                if self._read_type == 'ehydro' or self._read_type == 'bps':
                     outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                     self._point_writer.write(dataset, outfilename)
                     metadata['to_filename'] = outfilename
@@ -598,8 +601,12 @@ class FuseProcessor:
         ----------
             whether metadata has all datum fields
         """
-
-        return all(key in metadata for key in FuseProcessor._datums if key != 'to_horiz_key')
+        test_keys = FuseProcessor._datums.copy()
+        # if geographic input remove the need for a zone key
+        if metadata['from_horiz_type'] == 'geo' and 'from_horiz_key' in test_keys:
+            idx = test_keys.index('from_horiz_key')
+            test_keys.pop(idx)
+        return all(key in metadata for key in test_keys if key != 'to_horiz_key')
 
     def _quality_metadata_ready(self, metadata):
         """
@@ -616,7 +623,7 @@ class FuseProcessor:
 
         # check the feature metadata
         if 'feat_detect' in metadata:
-            if metadata['feat_detect']:
+            if metadata['feat_detect'].lower() == 'true':
                 feature_ready = 'feat_least_depth' in metadata and 'feat_size' in metadata
             else:
                 feature_ready = True

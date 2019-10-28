@@ -5,7 +5,7 @@ Created on Wed Aug 21 08:51:53 2019
 @author: Casiano.Koprowski
 """
 
-
+import ast
 import configparser
 import datetime
 import gzip
@@ -44,7 +44,8 @@ if not os.path.isdir(os.path.join(downloads)):
 
 zList = ['xmin', 'ymin', 'xmax', 'ymax']
 attributes = {3: ['Name', 'SURVEY_ID', 'CELL_SIZE'],
-              0: ['*']}
+              0: ['*'],
+              1: ['*']}
 date_fields = ['DATE_SURVEY_BEGIN', 'DATE_SURVEY_END', 'DATE_MODIFY_DATA',
                'DATE_SURVEY_APPROVAL', 'START_TIME', 'END_TIME']
 
@@ -186,7 +187,7 @@ def survey_objectID_query(bounds: [dict], qId=0) -> ([int], int):
     # Today - 1 (ex. '2018-08-06'), unformatted
     yesterday = today - datetime.timedelta(1)
 
-    data_type = config_data_type()
+    data_type, data_format = config_data_type()
 
     if config['Timeframe']['Start Date'] != '':
         start_parse =  datetime.datetime.strptime(config['Timeframe']['Start Date'], '%Y-%m-%d')
@@ -402,6 +403,27 @@ def geometryToShape(coordinates: list):
     return multipoly
 
 
+def parse_timestamp(timestamp: int) -> datetime.date:
+    """
+    Made with answers from https://stackoverflow.com/q/17231711
+
+    Parameters
+    ----------
+    timestamp : int
+        ESRI timestamp returned by REST query
+
+    Returns
+    -------
+    datetime.date
+        Parsed date from timestamp
+
+    """
+    if timestamp < 0:
+        return datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=timestamp / 1000)
+    else:
+        return datetime.datetime.utcfromtimestamp(timestamp / 1000)
+
+
 def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0, pb=None) -> (list, [dict]):
     """
     Queries and compiles the data from the input objectIDs and checks against
@@ -431,7 +453,7 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
     if pb is not None:
         pb.SetRange(num)
 
-    data_type = config_data_type()
+    data_type, data_format = config_data_type()
 
     id_chunks = list(list_chunks([str(objectID) for objectID in objectIDs]))
 
@@ -468,9 +490,9 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
                         if page['features'][object_num]['attributes'][attribute] is not None:
                             date = (page['features'][object_num]['attributes'][attribute])
                             try:
-                                row[attribute] = f'{datetime.datetime.utcfromtimestamp(date / 1000):%Y-%m-%d}'
+                                row[attribute] = f'{parse_timestamp(date):%Y-%m-%d}'
                             except OSError as e:
-                                print(e, date)
+                                print(f"OSError - {e} for {attribute}: {date}")
                     elif page['features'][object_num]['attributes'][attribute] is not None:
                         row[attribute] = str(page['features'][object_num]['attributes'][attribute])
             except KeyError as e:
@@ -480,6 +502,11 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
                 row['poly'] = geometryToShape(coords)
             except KeyError as e:
                 print(e, 'invalid geometry')
+
+            if 'BAGS_EXIST' in row:
+                bags_exist = True if row['BAGS_EXIST'].upper() == 'TRUE' else False
+            else:
+                bags_exist = False
 
             if 'poly' in row:
                 try:
@@ -494,7 +521,6 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
 
                 if flag != 'GEOMETRYCOLLECTION EMPTY':
                     rows.append(row)
-
             else:
                 rows.append(row)
             if pb is not None:
@@ -705,15 +731,20 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
         function
 
     """
-    data_type = config_data_type()
+    data_type, data_format = config_data_type()
 
-
-    if data_type == 'nos_hydro_dynamic':
+    if data_type == 'nos_hydro_dynamic' and data_format == 'BAG':
         ncei_head = 'https://data.ngdc.noaa.gov/platforms/ocean/nos/coast/'
         branch_tail = r"\NOAA_NCEI_OCS\BAGs\Original"
+        ftp_folders = {'BAG': ['.bag', '.gz'], 'TIFF': ['.tif', '.tiff', '.tfw', '.gz']}
+    elif data_type == 'nos_hydro_dynamic' and data_format == 'BPS':
+        ncei_head = 'https://data.ngdc.noaa.gov/platforms/ocean/nos/coast/'
+        branch_tail = r"\NOAA_NCEI_OCS\BPS\Original"
+        ftp_folders = {'GEODAS': ['.a93', 'htm', '.xyz', '.gz']}
     elif data_type == 'multibeam_dynamic':
         ncei_head = 'https://data.ngdc.noaa.gov/ocean/platforms/ships/'
         branch_tail = r"\NOAA_NCEI_MBBDB\MBs\Original"
+        ftp_folders = {'multibeam/data/version1/products': ['.xyz', '.gz']}
 
     for row in rows:
         row['PROCESSING_REGION'] = f"{region['Processing Branch']}_{region['Region']}"
@@ -745,9 +776,7 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
         download_links = []
         print(f'Survey - {rows.index(row) + 1} of {len(rows)}: {survey}')
         survey_folder = os.path.join(download_to, survey)
-        for folder, extensions in {'BAG': ['.bag', '.gz'],
-                                   'TIFF': ['.tif', '.tiff', '.tfw', '.gz'],
-                                   'multibeam/data/version1/products': ['.xyz', '.gz']}.items():
+        for folder, extensions in ftp_folders.items():
             source_url = f'{ncei_head}/{ncei_sub}/{folder}'
             download_links.extend(link_grab(source_url, extensions))
 
@@ -763,9 +792,9 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
 #                row['SURVEY_FILES'].append(geopackage_name)
 
             if len(row['SURVEY_FILES']) > 0:
-                bag_files = [bag for bag in row['SURVEY_FILES'] if os.path.splitext(bag)[1] == '.bag']
-                for bag in bag_files:
-                    base = os.path.basename(bag)
+                survey_files = [file_name for file_name in row['SURVEY_FILES'] if os.path.splitext(file_name)[1] in ('.a93', '.bag', '.xyz')]
+                for data_file in survey_files:
+                    base = os.path.basename(data_file)
                     name, ext = os.path.splitext(base)
                     pickle_name = f'{os.path.join(survey_folder, name)}.pickle'
                     row['SURVEY_FILES'].extend([pickle_name])
@@ -773,6 +802,8 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
                     with open(pickle_name, 'wb') as metafile:
                         pickle.dump(row, metafile)
                         metafile.close()
+        else:
+            print('\tNo files downloaded')
 
     return rows
 
@@ -827,11 +858,23 @@ def info_save(rows: [dict]):
         json_file.close()
 
 
-def config_data_type():
+def config_data_type() -> (str, str):
+    """
+    Reads the config value for data type to be queried by the tool
+
+    Returns
+    -------
+    (str, str)
+        query platform, data format
+
+    """
+
     if config['Data']['Data Type'].upper() in ('', 'BAG'):
-        return 'nos_hydro_dynamic'
+        return 'nos_hydro_dynamic', 'BAG'
+    elif config['Data']['Data Type'].upper() in ('BPS'):
+        return 'nos_hydro_dynamic', 'BPS'
     elif config['Data']['Data Type'].upper() in ('MB', 'MULTIBEAM'):
-        return 'multibeam_dynamic'
+        return 'multibeam_dynamic', 'MB'
     else:
         raise ValueError(f"Data Type not supported: {config['Data']['Data Type']}")
 
@@ -855,15 +898,28 @@ def main(pb=None):
 
     regions = region_info_json()
     survey_history = survey_list()
+    data_type, data_format = config_data_type()
+
+    if data_format in ('BAG', 'MB'):
+        qId = 0
+    elif data_format in ('BPS'):
+        qId = 1
 
     for region in regions:
         print(f"{region['Processing Branch']}_{region['Region']}")
         region_poly = os.path.join(parent_dir, region['Shape'])
         bounds = region_bounds(region_poly)
-        objectIDs, bagNum = survey_objectID_query(bounds, 0)
-        if bagNum > 0:
-            attr_list, rows = survey_compile(objectIDs, bagNum, survey_history, region_poly, pb=pb)
+        objectIDs, objNum = survey_objectID_query(bounds, qId=qId)
+        if objNum > 0:
+            attr_list, rows = survey_compile(objectIDs, objNum, survey_history, region_poly, qId=qId, pb=pb)
             if len(rows) > 0:
+                if qId == 1:
+                    before = len(rows)
+                    bag_ids, bag_num = survey_objectID_query(bounds, qId=0)
+                    bag_atts, bag_rows = survey_compile(bag_ids, bag_num, survey_history, region_poly, qId=0)
+                    bag_sids = [bag['SURVEY_ID'] for bag in bag_rows]
+                    rows = [row for row in rows if row['SURVEY_ID'] not in bag_sids]
+                    print(f'Surveys before prune: {before} Surveys after prune: {len(rows)}')
                 rows = survey_download(rows, region)
                 survey_history.extend(rows)
                 info_save(survey_history)
