@@ -12,12 +12,13 @@ from typing import Union
 import fiona
 import numpy
 import rasterio
+from affine import Affine
+from fiona._crs import CRSError
 from fiona.transform import transform_geom
 from fuse.raw_read.noaa.bag import BAGRawReader
-from fuse.utilities import bounds_from_opposite_corners
 from osgeo import osr, gdal
 from rasterio.crs import CRS
-from rasterio.warp import reproject, calculate_default_transform, Resampling
+from rasterio.warp import transform as transform_points
 
 
 def reproject_support_files(metadata: dict, output_directory: str) -> dict:
@@ -50,24 +51,27 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
                 with rasterio.open(input_filename) as input_raster:
                     input_crs = input_raster.crs
                     if output_crs != input_crs:
-                        input_shape = input_raster.height, input_raster.width
                         input_transform = input_raster.transform
-                        input_resolution = numpy.array((input_transform.a, input_transform.e))
-                        input_origin = numpy.array((input_transform.c, input_transform.f))
+                        input_shape = input_raster.height, input_raster.width
 
-                        left, bottom, right, top = bounds_from_opposite_corners(input_origin,
-                                                                                input_origin + numpy.flip(input_shape) * input_resolution)
-                        output_transform, output_width, output_height = calculate_default_transform(input_crs, output_crs,
-                                                                                                    width=input_shape[1],
-                                                                                                    height=input_shape[0], left=left,
-                                                                                                    bottom=bottom, right=right, top=top)
+                        # # TODO uncomment if we ever need to reproject between systems with different units
+                        # left, bottom, right, top = bounds_from_opposite_corners(input_origin,
+                        #                                                         input_origin + numpy.flip(input_shape) * input_resolution)
+                        # output_transform, output_width, output_height = calculate_default_transform(input_crs, output_crs,
+                        #                                                                             width=input_shape[1],
+                        #                                                                             height=input_shape[0], left=left,
+                        #                                                                             bottom=bottom, right=right, top=top)
 
-                        with rasterio.open(output_filename, 'w', 'GTiff', width=output_width, height=output_height,
-                                           count=input_raster.count, crs=output_crs, transform=output_transform,
-                                           dtype=rasterio.float32, nodata=input_raster.nodata) as output_raster:
-                            for band_index in range(1, input_raster.count + 1):
-                                reproject(rasterio.band(input_raster, band_index), rasterio.band(output_raster, band_index),
-                                          resampling=Resampling.min)
+                        output_transform = reproject_transform(input_transform, input_crs, output_crs)
+
+                        input_data = input_raster.read()
+                        with rasterio.open(output_filename, 'w', 'GTiff', width=input_shape[1], height=input_shape[0],
+                                           count=input_raster.count, crs=output_crs, transform=output_transform, dtype=input_data.dtype,
+                                           nodata=input_raster.nodata) as output_raster:
+                            output_raster.write(input_data)
+                            # for band_index in range(1, input_raster.count + 1):
+                            #     reproject(rasterio.band(input_raster, band_index), rasterio.band(output_raster, band_index),
+                            #               resampling=Resampling.min)
 
                         if not os.path.exists(output_filename):
                             logging.warning(f'file not created: {output_filename}')
@@ -90,7 +94,7 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
 
 def _reproject_via_geotransform(filename: str, metadata: dict, reader: BAGRawReader) -> gdal.Dataset:
     """
-    Get a GDAL reprojected dataset from the given file.
+    Get a reprojected GDAL dataset from the given file.
 
     Parameters
     ----------
@@ -107,26 +111,53 @@ def _reproject_via_geotransform(filename: str, metadata: dict, reader: BAGRawRea
 
     dataset = reader.read_bathymetry(filename, None)
 
-    input_geotransform = dataset.GetGeoTransform()
-    input_origin = numpy.array((input_geotransform[0], input_geotransform[3]))
-    input_resolution = numpy.array((input_geotransform[1], input_geotransform[5]))
-    input_shape = dataset.RasterYSize, dataset.RasterXSize
-
     input_crs = CRS.from_string(dataset.GetProjectionRef())
-    output_crs = spatial_reference_from_metadata(metadata, fiona_crs=True)
-
-    left, bottom, right, top = bounds_from_opposite_corners(input_origin, input_origin + numpy.flip(input_shape) * input_resolution)
-    output_transform, output_width, output_height = calculate_default_transform(input_crs, output_crs, width=input_shape[1],
-                                                                                height=input_shape[0], left=left, bottom=bottom,
-                                                                                right=right, top=top)
-
-    spatial_reference = osr.SpatialReference()
-    spatial_reference.ImportFromProj4(output_crs.to_string())
+    spatial_reference = spatial_reference_from_metadata(metadata)
+    output_geotransform = reproject_transform(dataset.GetGeoTransform(), input_crs, spatial_reference.ExportToWkt())
 
     dataset.SetProjection(spatial_reference.ExportToWkt())
-    dataset.SetGeoTransform(output_transform.to_gdal())
+    dataset.SetGeoTransform(output_geotransform)
 
     return dataset
+
+
+def reproject_transform(transform: Union[tuple, Affine], input_crs: CRS, output_crs: CRS) -> Union[tuple, Affine]:
+    """
+    Update the origin of the given transform to the given CRS while keeping the resolution.
+
+    Parameters
+    ----------
+    transform
+        GDAL or affine transform
+    input_crs
+        CRS of input
+    output_crs
+        desired CRS
+
+    Returns
+    -------
+    Union[tuple, Affine]
+        GDAL or affine transform in new projection
+    """
+
+    try:
+        input_crs = CRS.from_user_input(input_crs)
+    except CRSError:
+        raise NotImplementedError(f'could not parse input CRS of type "{type(input_crs)}"')
+
+    try:
+        output_crs = CRS.from_user_input(output_crs)
+    except CRSError:
+        raise NotImplementedError(f'could not parse output CRS of type "{type(output_crs)}"')
+
+    if type(transform) is tuple:
+        output_origin = numpy.ravel(transform_points(input_crs, output_crs, [transform[0]], [transform[3]]))
+        return output_origin[0], transform[1], transform[2], output_origin[1], transform[4], transform[5]
+    elif type(transform) is Affine:
+        output_origin = numpy.ravel(transform_points(input_crs, output_crs, [transform.c], [transform.f]))
+        return rasterio.transform.from_origin(*output_origin, transform.a, transform.e)
+    else:
+        raise NotImplementedError(f'could not parse transform of type "{type(transform)}"')
 
 
 def _reproject_geopackage(input_filename: str, output_filename: str, output_crs: CRS, input_layer=None) -> str:
@@ -181,7 +212,7 @@ def spatial_reference_from_metadata(metadata: dict, fiona_crs: bool = False) -> 
 
     Returns
     -------
-    CRS
+    Union[CRS, osr.SpatialReference]
         horizontal coordinate reference system
     """
 

@@ -8,8 +8,8 @@ Abstract datum transformation.
 """
 
 import gdal
-from fuse.datum_transform import use_gdal as ug
 from fuse.datum_transform import use_vdatum as uv
+from fuse.datum_transform.use_gdal import _reproject_via_geotransform, _xyz_to_gdal, reproject_support_files
 from fuse.raw_read.noaa.bag import BAGRawReader
 
 gdal.UseExceptions()
@@ -75,22 +75,21 @@ class DatumTransformer:
         # VDatum and rasters are giving us trouble, so this is a temp workaround
         is_bag = type(self._reader) is BAGRawReader
         if is_bag:
-            # we can't deal with a change in BAG vertical datum, so punt
             if not_same_vert:
-                # avoid interpolating files in the wrong vertical datum.
+                # we can't deal with a change in vertical datum in BAGs, so return None
                 metadata['interpolate'] = 'False'
-                transformed = False
-                data_obj = None
-            # if just the horizontal needs updating, warp it
+                was_reprojected = False
+                dataset = None
             elif not_same_horiz:
-                data_obj = ug._reproject_via_geotransform(filename, metadata, self._reader)
-                transformed = True
-            # otherwirse, no datume change needed, hooray!
+                # if just the horizontal CRS is different, reproject with known methods
+                dataset = _reproject_via_geotransform(filename, metadata, self._reader)
+                was_reprojected = True
             else:
+                # otherwirse, no datume change needed, hooray!
                 metadata['to_filename'] = filename
-                transformed = False
-                data_obj = self.create(filename, metadata)
-            return data_obj, metadata, transformed
+                was_reprojected = False
+                dataset = self.create(filename, metadata)
+            return dataset, metadata, was_reprojected
         else:
             if not_same_horiz or not_same_vert:
                 return self._engine.translate(filename, metadata), metadata, True
@@ -127,7 +126,7 @@ class DatumTransformer:
             else:
                 KeyError(f'output vertical datum key does not exist in metadata')
 
-            return ug._xyz_to_gdal(points, utm_zone, vertical_datum)
+            return _xyz_to_gdal(points, utm_zone, vertical_datum)
         elif instructions['read_type'] == 'bag':
             return self._reader.read_bathymetry(filename, instructions['to_vert_key'])
         else:
@@ -156,4 +155,4 @@ class DatumTransformer:
             files.
         """
 
-        return ug.reproject_support_files(metadata, output_directory)
+        return reproject_support_files(metadata, output_directory)

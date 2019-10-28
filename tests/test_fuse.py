@@ -23,7 +23,7 @@ class TestFuse(unittest.TestCase):
         for output_path in output_paths:
             assert os.path.exists(output_path)
 
-    def test_noaa_bag_sidescan_reproject(self):
+    def test_noaa_bag_reprojection(self):
         survey_1_output_paths = process_NOAA_raster('H11250', 'linear', 'bag')
         for output_path in survey_1_output_paths:
             assert os.path.exists(output_path)
