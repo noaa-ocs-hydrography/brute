@@ -155,7 +155,7 @@ def reproject_transform(transform: Union[tuple, Affine], input_crs: CRS, output_
         return output_origin[0], transform[1], transform[2], output_origin[1], transform[4], transform[5]
     elif type(transform) is Affine:
         output_origin = numpy.ravel(transform_points(input_crs, output_crs, [transform.c], [transform.f]))
-        return rasterio.transform.from_origin(*output_origin, transform.a, transform.e)
+        return rasterio.transform.from_origin(*output_origin, transform.a, transform.e * -1)
     else:
         raise NotImplementedError(f'could not parse transform of type "{type(transform)}"')
 
