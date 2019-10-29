@@ -16,9 +16,10 @@ from affine import Affine
 from fiona._crs import CRSError
 from fiona.transform import transform_geom
 from fuse.raw_read.noaa.bag import BAGRawReader
+from fuse.utilities import bounds_from_opposite_corners
 from osgeo import osr, gdal
 from rasterio.crs import CRS
-from rasterio.warp import transform as transform_points
+from rasterio.warp import transform as transform_points, calculate_default_transform
 
 
 def reproject_support_files(metadata: dict, output_directory: str) -> dict:
@@ -53,22 +54,22 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
                     if output_crs != input_crs:
                         input_transform = input_raster.transform
                         input_shape = input_raster.height, input_raster.width
+                        input_origin = numpy.array((input_transform.c, input_transform.f))
+                        input_resolution = numpy.array((input_transform.a, input_transform.e))
 
-                        # # TODO uncomment if we ever need to reproject between systems with different units
-                        # left, bottom, right, top = bounds_from_opposite_corners(input_origin,
-                        #                                                         input_origin + numpy.flip(input_shape) * input_resolution)
-                        # output_transform, output_width, output_height = calculate_default_transform(input_crs, output_crs,
-                        #                                                                             width=input_shape[1],
-                        #                                                                             height=input_shape[0], left=left,
-                        #                                                                             bottom=bottom, right=right, top=top)
-
-                        output_transform = reproject_transform(input_transform, input_crs, output_crs)
+                        left, bottom, right, top = bounds_from_opposite_corners(input_origin,
+                                                                                input_origin + numpy.flip(input_shape) * input_resolution)
+                        output_transform, output_width, output_height = calculate_default_transform(input_crs, output_crs,
+                                                                                                    width=input_shape[1],
+                                                                                                    height=input_shape[0], left=left,
+                                                                                                    bottom=bottom, right=right, top=top)
 
                         input_data = input_raster.read()
                         with rasterio.open(output_filename, 'w', 'GTiff', width=input_shape[1], height=input_shape[0],
                                            count=input_raster.count, crs=output_crs, transform=output_transform, dtype=input_data.dtype,
                                            nodata=input_raster.nodata) as output_raster:
                             output_raster.write(input_data)
+                            # # TODO uncomment if we ever need to reproject between systems with different frames
                             # for band_index in range(1, input_raster.count + 1):
                             #     reproject(rasterio.band(input_raster, band_index), rasterio.band(output_raster, band_index),
                             #               resampling=Resampling.min)
@@ -112,10 +113,20 @@ def _reproject_via_geotransform(filename: str, metadata: dict, reader: BAGRawRea
     dataset = reader.read_bathymetry(filename, None)
 
     input_crs = CRS.from_string(dataset.GetProjectionRef())
-    spatial_reference = spatial_reference_from_metadata(metadata)
-    output_geotransform = reproject_transform(dataset.GetGeoTransform(), input_crs, spatial_reference.ExportToWkt())
+    output_crs = spatial_reference_from_metadata(metadata, fiona_crs=True)
 
-    dataset.SetProjection(spatial_reference.ExportToWkt())
+    input_geotransform = dataset.GetGeoTransform()
+    input_shape = dataset.RasterYSize, dataset.RasterXSize
+    input_origin = numpy.array((input_geotransform[0], input_geotransform[3]))
+    input_resolution = numpy.array((input_geotransform[1], input_geotransform[5]))
+
+    left, bottom, right, top = bounds_from_opposite_corners(input_origin,
+                                                            input_origin + numpy.flip(input_shape) * input_resolution)
+    output_transform, _, _ = calculate_default_transform(input_crs, output_crs, width=input_shape[1], height=input_shape[0], left=left,
+                                                         bottom=bottom, right=right, top=top)
+    output_geotransform = output_transform.to_gdal()
+
+    dataset.SetProjection(output_crs.to_wkt())
     dataset.SetGeoTransform(output_geotransform)
 
     return dataset
