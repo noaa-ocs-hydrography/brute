@@ -29,7 +29,7 @@ from glob import glob as _glob
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
 from fuse.raw_read.raw_read import RawReader
-import fuse.datum_transform.use_gdal as _ug
+# import fuse.datum_transform.use_gdal as _ug
 
 try:
     import dateutil.parser as _parser
@@ -1404,7 +1404,7 @@ class BAGSurvey(BAGRawReader):
 
         combined_surface_metadata = {}
         for bag_file in metadata_list:
-            if ('res' in bag_file and bag_file['res'] == min(res)) and ('csv' in bag_file and bag_file['csv']):
+            if 'res' in bag_file and bag_file['res'] == min(res):
                 combined_surface_metadata = bag_file.copy()
                 survey_id = _os.path.basename(combined_surface_metadata['from_filename']).split('_')[0]
                 combined_surface_metadata['from_filename'] = f"{survey_id}_Xof{num_files}.combined"
@@ -1413,8 +1413,9 @@ class BAGSurvey(BAGRawReader):
 
         order = _np.argsort(_np.array(res)[:, 0])
         original_datasets = []
-        for bag_file in _np.array(files)[order]:
-            dataset = self.read_bathymetry(bag_file)
+        files = _np.array(files)[order]
+        for bag_file in files:
+            dataset = self.read_bathymetry(str(bag_file))
             dataset_wkt = dataset.GetProjectionRef()
             dataset_osr = _osr.SpatialReference(wkt=dataset_wkt)
             if files.index(bag_file) == 0:
