@@ -240,7 +240,7 @@ class FuseProcessor:
                 self._reader = _usace.cenae.CENAERawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'bag':
-                self._reader = _noaa.bag.BAGRawReader()
+                self._reader = _noaa.bag.BAGRawReader(self._config['outpath'])
                 self._read_type = 'bag'
             elif reader_type == 'bps':
                 self._reader = _noaa.bps.BPSRawReader()
@@ -373,7 +373,7 @@ class FuseProcessor:
                     message = f' Transformation error: {error}'
                     self.logger.warning(message)
                     metadata['interpolate'] = 'False'
-                    
+
             if 'interpolate' in metadata:
                 interpolate = metadata['interpolate'].lower()
 
@@ -407,7 +407,7 @@ class FuseProcessor:
                         metadata['interpolated'] = False
 
                 elif interpolate == 'false':
-                    
+
                     if self._read_type == 'ehydro' or self._read_type == 'bps':
                         outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                         self._point_writer.write(dataset, outfilename)
@@ -415,7 +415,7 @@ class FuseProcessor:
                     elif self._read_type == 'bag':
                         metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
                         self._raster_writer.write(dataset, metadata['to_filename'])
-                
+
                     self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
                 else:
                     raise ValueError('metadata interpolate flag has an ambigious state')

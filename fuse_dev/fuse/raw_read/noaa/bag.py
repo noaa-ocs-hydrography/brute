@@ -154,14 +154,14 @@ class BAGRawReader(RawReader):
     (named 'data').
     """
 
-    def __init__(self):
+    def __init__(self, out_file_location):
         """
         Provided a BAG xml string for parsing, a tree will be created and the
         name speace parsed from the second line.  Values are then extracted
         based on the source dictionary.  If this dictionary
         """
-
         self.data = {}
+        self.out_file_location = out_file_location
         self._logger = _logging.getLogger('fuse')
 
         if len(self._logger.handlers) == 0:
@@ -369,12 +369,15 @@ class BAGRawReader(RawReader):
                 if 'bag_name' in survey:
                     if survey['bag_name'] == name or survey['bag_name'] == basename:
                         found = True
+                        survey['csv'] = True
                         meta = {**survey, **meta}
             if not found:
                 _logging.warning(f'No CSV Metadata available for: {name, basename}')
                 meta['interpolate'] = False
+                meta['csv'] = False
         else:
             meta['interpolate'] = False
+            meta['csv'] = False
         return meta
 
     def _from_csv(self) -> dict:
@@ -1301,12 +1304,12 @@ class BAGSurvey(BAGRawReader):
     """
     survey_meta = []
 
-    def __init__(self):
-        BAGRawReader.__init__(self)
+    def __init__(self, out_file_location):
+        BAGRawReader.__init__(self, out_file_location)
 
     def read_metadata(self, survey_folder: str) -> [dict]:
         """
-        Compiles the complete metadata of a
+        Compiles the complete metadata of a survey
 
         Parameters
         ----------
@@ -1332,7 +1335,7 @@ class BAGSurvey(BAGRawReader):
         combine = any([meta['interpolate'] for meta in survey_meta if (len(survey_meta) > 0) and 'interpolate' in meta])
         if combine:
             print(f'combine: {combine}')
-            survey_meta = self._combined_surface(survey_meta)
+            survey_meta = self._parse_groups(survey_meta)
 
         self.survey_meta = survey_meta
 
@@ -1340,6 +1343,20 @@ class BAGSurvey(BAGRawReader):
 
 
     def __file_meta(self, filename: str) -> dict:
+        """
+        read metadata from file
+
+        Parameters
+        ----------
+        filename
+            file to read
+
+        Returns
+        -------
+            dict
+
+        """
+
         try:
             meta_gdal, bag_version = self._parse_bag_gdal(filename)
             meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
@@ -1352,9 +1369,59 @@ class BAGSurvey(BAGRawReader):
             _logging.warning(f'Error in reading metadata for {filename}: {error}')
             return {}
 
-    def _combined_surface(self, metadata_list: [dict]) -> [dict]:
-        if "" == "":
-            pass
+    def _parse_groups(self, metadata_list: [dict]) -> [dict]:
+        files = [bag_file['from_path'] for bag_file in metadata_list if 'from_path' in bag_file]
+        number_groups = {}
+
+        for bag_file in files:
+            numbers = _os.path.splitext(bag_file)[0].split('_')[-1].split('of')
+            file_meta = [meta_entry for meta_entry in metadata_list if meta_entry['from_path'] == bag_file][0]
+            if numbers[-1] in number_groups:
+                number_groups[numbers[-1]].append(file_meta)
+            else:
+                number_groups[numbers[-1]] = [file_meta]
+
+        return_list = []
+        for group_number, group_list in number_groups.items():
+            if len(group_list) == 1:
+                return_list.extend(self._single_surface(group_list))
+            else:
+                return_list.extend(self._combined_surface(group_list, group_number))
+
+        return return_list
+
+    def _combined_surface(self, metadata_list: [dict], num_files: int) -> [dict]:
+        files = [bag_file['from_path'] for bag_file in metadata_list if 'from_path' in bag_file]
+        res = [bag_file['res'] for bag_file in metadata_list if 'res' in bag_file]
+        bounds = [bag_file['bounds'] for bag_file in metadata_list if 'bounds' in bag_file]
+        order = _np.argsort( _np.array(res)[:,0])
+
+        combined_surface_metadata = {}
+        for bag_file in metadata_list:
+            if ('res' in bag_file and bag_file['res'] == min(res)) and ('csv' in bag_file and bag_file['csv']):
+                combined_surface_metadata = bag_file.copy()
+                survey_id = _os.path.basename(combined_surface_metadata['from_filename']).split('_')[0]
+                combined_surface_metadata['from_filename'] = f"{survey_id}_Xof{num_files}.combined"
+                combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}_Combined.bag")
+                break
+
+
+        for bag_file in metadata_list:
+            bag_file['interpolate'] = False if 'interpolate' in bag_file else False
+
+        return metadata_list.append(combined_surface_metadata)
+
+    def _single_surface(self, metadata_list: dict) -> [dict]:
+        metadata = metadata_list[0]
+        if 'interpolate' in metadata and metadata['interpolate']:
+            interp_meta = metadata.copy()
+            interp_meta['from_filename'] = f"{metadata['from_filename']}.interpolated"
+            interp_meta['from_path'] = _os.path.join(self.out_file_location, f"{metadata['from_filename']}.bag")
+            metadata['interpolate'] = False
+            return [metadata, interp_meta]
+        else:
+            return metadata_list
+
 
 
 class BagFile:
@@ -1865,5 +1932,3 @@ class BagToGDALConverter:
 
         self.dataset = target_ds
         del target_ds
-
-test = BAGRawReader()
