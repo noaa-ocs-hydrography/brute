@@ -20,6 +20,7 @@ import lxml.etree as _et
 import numpy as _np
 import os as _os
 import rasterio as _rio
+import rasterio.merge as _rio_merge
 import re as _re
 import sys as _sys
 import tables as _tb
@@ -28,6 +29,7 @@ from glob import glob as _glob
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
 from fuse.raw_read.raw_read import RawReader
+import fuse.datum_transform.use_gdal as _ug
 
 try:
     import dateutil.parser as _parser
@@ -197,7 +199,7 @@ class BAGRawReader(RawReader):
             _logging.warning(f'Error in reading metadata for {filename}: {error}')
             return {}
 
-    def read_bathymetry(self, infilename: str, out_verdat: str) -> _gdal.Dataset:
+    def read_bathymetry(self, infilename: str, out_verdat: str = None) -> _gdal.Dataset:
         """
         Returns a BagFile data object
 
@@ -1393,8 +1395,12 @@ class BAGSurvey(BAGRawReader):
     def _combined_surface(self, metadata_list: [dict], num_files: int) -> [dict]:
         files = [bag_file['from_path'] for bag_file in metadata_list if 'from_path' in bag_file]
         res = [bag_file['res'] for bag_file in metadata_list if 'res' in bag_file]
-        bounds = [bag_file['bounds'] for bag_file in metadata_list if 'bounds' in bag_file]
-        order = _np.argsort( _np.array(res)[:,0])
+
+        x, y = [], []
+        for bag_file in metadata_list:
+            if 'bounds' in bag_file:
+                for corner in bag_file['bounds']:
+                    x.append(corner[0]), y.append(corner[1])
 
         combined_surface_metadata = {}
         for bag_file in metadata_list:
@@ -1404,6 +1410,29 @@ class BAGSurvey(BAGRawReader):
                 combined_surface_metadata['from_filename'] = f"{survey_id}_Xof{num_files}.combined"
                 combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}_Combined.bag")
                 break
+
+        order = _np.argsort(_np.array(res)[:, 0])
+        original_datasets = []
+        for bag_file in _np.array(files)[order]:
+            dataset = self.read_bathymetry(bag_file)
+            dataset_wkt = dataset.GetProjectionRef()
+            dataset_osr = _osr.SpatialReference(wkt=dataset_wkt)
+            if files.index(bag_file) == 0:
+                combined_osr = dataset_osr
+            #     original_datasets.append(dataset)
+            # else:
+            #     if not dataset_osr.IsSame(combined_osr):
+
+
+            del  dataset
+        combined_grid, geotransform = _rio_merge.merge(original_datasets, (max(x), min(y), min(x), max(y)), res=res, method='first')
+        # combined_uncr, geotransform = _rio_merge.merge(original_datasets, (max(x), min(y), min(x), max(y)), res=res, indexes=1 method='first')
+
+        bounds = [[min(x), max(y)], [max(x), min(y)]]
+        convert_dataset = BagToGDALConverter()
+        output_dataset = convert_dataset.components2gdal(combined_grid, combined_grid.shape, bounds, res, combined_osr)
+        output_driver = _gdal.GetDriverByName('BAG')
+        output_driver.CreatCopy(combined_surface_metadata['from_path'], output_dataset.dataset)
 
 
         for bag_file in metadata_list:
