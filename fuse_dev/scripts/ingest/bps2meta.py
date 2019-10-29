@@ -5,49 +5,46 @@ Created on Wed Oct  2 16:54:19 2019
 @author: grice
 """
 
-import os
-from glob import glob
 import logging as _logging
+import os
+from datetime import datetime
+from glob import glob
 
-import datetime
+from fuse.fuse_processor import FuseProcessor
 
-import fuse.fuse_processor as ffp
-import fuse.wx_helper.process_title as wx_window
-
+# import fuse.wx_helper.process_title as wx_window
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 
 if __name__ == '__main__':
-    start = datetime.datetime.now()
-    print(start)
-#    wx_frame = wx_window.Open_Frame('BPS')
-    config_list = glob(os.path.join(SCRIPT_DIRECTORY, 'bps*.config'))
-    for n,config in enumerate(config_list):
-        bps = ffp.FuseProcessor(config)
-        root = bps.rawdata_path[0]
-        top = [os.path.join(root, name) for name in os.listdir(root)]
-        for m, path in enumerate(top):
-            print(f'{n}.{m} - Begin working in {path}:')
-            flist = glob(os.path.join(path, '*.xyz'))
-            for m, file in enumerate(flist):
-                try:
-                    print(f'reading {os.path.basename(file)}', end = ', ')
-                    f = bps.read(file)
-                except Exception as e:
-                    print('\n')
-                    print(f'read error: {e}')
-                    bps.logger.log(_logging.DEBUG, e)
-                    print('\n')
-                try:
-                    print(f'processing @ {datetime.datetime.now()}')
-                    bps.process(file)
-                    print(f'done.')
-                except Exception as e:
-                    print('\n')
-                    print(f'processing error: {e}')
-                    bps.logger.log(_logging.DEBUG, e)
-                    print('\n')
-    end = datetime.datetime.now()
-    time_delta = end - start
-#    wx_frame.close()
-    print(f'{end}\n{time_delta}')
+    # wx_frame = wx_window.Open_Frame('USACE')
+    start_time = datetime.now()
+    print(f'starting BPS processing at {start_time}')
+    config_filenames = glob(os.path.join(SCRIPT_DIRECTORY, 'bps_configs', 'bps*.config'))
+
+    total_files = 0
+
+    for config_index, config_filename in enumerate(config_filenames):
+        bps_processor = FuseProcessor(config_filename)
+        config_input_root = bps_processor.rawdata_path[0]
+
+        survey_directories = [os.path.join(config_input_root, filename) for filename in os.listdir(config_input_root)]
+        total_files += len(survey_directories)
+        for survey_index, survey_directory in enumerate(survey_directories):
+            print(f'config {config_index + 1} of {len(config_filenames)}, ' +
+                  f'survey {survey_index + 1} of {len(survey_directories)} - ' +
+                  f'Begin working in {survey_directory}:')
+            xyz_filename = bps_processor.read(survey_directory)
+
+            try:
+                print(f'{datetime.now()}: processing {xyz_filename}', end=', ')
+                bps_processor.process(xyz_filename)
+                print(f'completed survey {survey_index + 1} of {len(survey_directories)}; ' +
+                      f'{(datetime.now() - start_time) / ((survey_index + 1) / (total_files + (len(survey_directories) * (len(config_filenames) - (config_index + 1)))))} remaining')
+            except Exception as error:
+                print(f'\n{error}\n')
+                bps_processor.logger.log(_logging.DEBUG, error)
+
+    end_time = datetime.now()
+    print(f'completed BPS processing at {end_time} (took {end_time - start_time})')
+    # wx_frame.close()
