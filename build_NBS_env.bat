@@ -1,0 +1,1 @@
+conda create --name NBS --file spec-file.txt
