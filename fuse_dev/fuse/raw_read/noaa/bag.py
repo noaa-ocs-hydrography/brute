@@ -1392,15 +1392,33 @@ class BAGSurvey(BAGRawReader):
 
         return return_list
 
+    def _get_combine_bounds(self, x: [int], y: [int], res: int, ref_bounds: tuple):
+        """
+
+        """
+
+        if min(x) - ref_bounds[0] % res != 0:
+            integer_offset = round((ref_bounds[0] - min(x))/res)
+            minx = ref_bounds[0] - res * integer_offset
+
+        if min(y) - ref_bounds[1] % res != 0:
+            integer_offset = round((ref_bounds[1] - min(y))/res)
+            miny = ref_bounds[1] - res * integer_offset
+
+        if max(x) - ref_bounds[2] % res != 0:
+            integer_offset =  round((max(x) - ref_bounds[2])/res)
+            maxx = ref_bounds[2] + res * integer_offset
+
+        if max(x) - ref_bounds[3] % res != 0:
+            integer_offset =  round((max(y) - ref_bounds[3])/res)
+            maxy = ref_bounds[3] + res * integer_offset
+
+        return (minx, miny, maxx, maxy)
+
+
     def _combined_surface(self, metadata_list: [dict], num_files: int) -> [dict]:
         files = [bag_file['from_path'] for bag_file in metadata_list if 'from_path' in bag_file]
         res = [bag_file['res'] for bag_file in metadata_list if 'res' in bag_file]
-
-        x, y = [], []
-        for bag_file in metadata_list:
-            if 'bounds' in bag_file:
-                for corner in bag_file['bounds']:
-                    x.append(corner[0]), y.append(corner[1])
 
         combined_surface_metadata = {}
         for bag_file in metadata_list:
@@ -1414,32 +1432,56 @@ class BAGSurvey(BAGRawReader):
         order = _np.argsort(_np.array(res)[:, 0])
         original_datasets = []
         files = _np.array(files)[order]
+        x, y = [], []
         for bag_file in files:
-            dataset = self.read_bathymetry(str(bag_file))
-            dataset_wkt = dataset.GetProjectionRef()
-            dataset_osr = _osr.SpatialReference(wkt=dataset_wkt)
-            if files.index(bag_file) == 0:
-                combined_osr = dataset_osr
-            #     original_datasets.append(dataset)
+            dataset = _from_rasterio(str(bag_file))
+            x.append(dataset.bounds[0])
+            y.append(dataset.bounds[1])
+            x.append(dataset.bounds[2])
+            y.append(dataset.bounds[3])
+            if files[0] == bag_file:
+                ref_bounds = dataset.bounds
+                tmp = self.read_bathymetry(str(bag_file))
+                dataset_wkt = tmp.GetProjectionRef()
+                del tmp
+            original_datasets.append(dataset)
             # else:
             #     if not dataset_osr.IsSame(combined_osr):
 
 
             del  dataset
-        combined_grid, geotransform = _rio_merge.merge(original_datasets, (max(x), min(y), min(x), max(y)), res=res, method='first')
+
+        print(x, y)
+
+        bounds = self._get_combine_bounds(x, y, min(res)[0], ref_bounds)
+
+        print(bounds)
+
+        combined_grid, geotransform = _rio_merge.merge(original_datasets, bounds=bounds)#, res=min(res)
         # combined_uncr, geotransform = _rio_merge.merge(original_datasets, (max(x), min(y), min(x), max(y)), res=res, indexes=1 method='first')
 
-        bounds = [[min(x), max(y)], [max(x), min(y)]]
+        print(geotransform)
+        shape = combined_grid[0].shape
+        res = geotransform[0], geotransform[4]
+        nw = geotransform[2], geotransform[5]
+        se = nw[0] + (shape[1] * res[0]),  nw[1] - (shape[1] * res[1])
+
+        print([nw, se])
+
+
+#        bounds = [[min(x), max(y)], [max(x), min(y)]]
         convert_dataset = BagToGDALConverter()
-        output_dataset = convert_dataset.components2gdal(combined_grid, combined_grid.shape, bounds, res, combined_osr)
+        convert_dataset.components2gdal(combined_grid, combined_grid[0].shape, [nw, se], res, dataset_wkt)
         output_driver = _gdal.GetDriverByName('BAG')
-        output_driver.CreatCopy(combined_surface_metadata['from_path'], output_dataset.dataset)
+        output_driver.CreateCopy(combined_surface_metadata['from_path'], convert_dataset.dataset)
 
 
         for bag_file in metadata_list:
             bag_file['interpolate'] = False if 'interpolate' in bag_file else False
 
-        return metadata_list.append(combined_surface_metadata)
+        metadata_list.append(combined_surface_metadata)
+
+        return metadata_list
 
     def _single_surface(self, metadata_list: dict) -> [dict]:
         metadata = metadata_list[0]
@@ -1847,6 +1889,27 @@ class Open(BagFile):
             self.open_file(dataset, 'hack')
         elif type(dataset) == _gdal.Dataset:
             self.from_gdal(dataset)
+
+
+def _from_rasterio(bag_file: str) -> _rio.MemoryFile:
+    bagfile_obj = Open(bag_file)
+    resx, resy = bagfile_obj.resolution
+    nw, se = bagfile_obj.bounds
+    transform = _rio.Affine(resx, 0, nw[0], 0, resy, nw[1])
+    height = bagfile_obj.shape[0]
+    width = bagfile_obj.shape[1]
+    dtype = bagfile_obj.elevation.dtype
+
+    print(transform)
+
+    with _rio.MemoryFile() as memfile:
+        with memfile.open(**{'driver': 'GTiff', 'dtype': dtype, 'nodata': 1000000.0,
+                           'width': width, 'height': height, 'count': 2, 'crs': _rio.crs.CRS.from_wkt(bagfile_obj.wkt),
+                           'transform': transform, 'tiled': False, 'compress': 'lzw', 'interleave': 'band'}) as dataset:
+            dataset.write(_np.array([bagfile_obj.elevation, bagfile_obj.uncertainty]))
+            del bagfile_obj
+
+        return memfile.open()
 
 
 class BagToGDALConverter:
