@@ -1403,15 +1403,23 @@ class BAGSurvey(BAGRawReader):
 
         if min(y) - ref_bounds[1] % res != 0:
             integer_offset = round((ref_bounds[1] - min(y))/res)
+            print('miny',ref_bounds[1], min(y), ref_bounds[1] - min(y))
             miny = ref_bounds[1] - res * integer_offset
 
         if max(x) - ref_bounds[2] % res != 0:
             integer_offset =  round((max(x) - ref_bounds[2])/res)
             maxx = ref_bounds[2] + res * integer_offset
 
-        if max(x) - ref_bounds[3] % res != 0:
+        if max(y) - ref_bounds[3] % res != 0:
             integer_offset =  round((max(y) - ref_bounds[3])/res)
             maxy = ref_bounds[3] + res * integer_offset
+
+        print(minx, miny, maxx, maxy)
+
+        minx, maxx = min(x) - res/2, max(x) + res/2
+        miny, maxy = min(y) - res/2, max(y) + res/2
+
+        print(minx, miny, maxx, maxy)
 
         return (minx, miny, maxx, maxy)
 
@@ -1454,8 +1462,6 @@ class BAGSurvey(BAGRawReader):
         print(x, y)
 
         bounds = self._get_combine_bounds(x, y, min(res)[0], ref_bounds)
-
-        print(bounds)
 
         combined_grid, geotransform = _rio_merge.merge(original_datasets, bounds=bounds)#, res=min(res)
         # combined_uncr, geotransform = _rio_merge.merge(original_datasets, (max(x), min(y), min(x), max(y)), res=res, indexes=1 method='first')
