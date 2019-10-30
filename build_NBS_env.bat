@@ -1,1 +1,0 @@
-conda create --name NBS --file %~dp0spec-file.txt
