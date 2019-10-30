@@ -1,1 +1,1 @@
-conda create --name NBS --file spec-file.txt
+conda create --name NBS --file %~dp0spec-file.txt
