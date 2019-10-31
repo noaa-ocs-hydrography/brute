@@ -8,6 +8,7 @@ Created on Wed Apr 17 17:19:27 2019
 import configparser as _cp
 import csv as _csv
 import os as _os
+import pickle as _pickle
 import re as _re
 import shutil as _shutil
 import zipfile as _zf
@@ -28,6 +29,10 @@ config.read('config.ini')
 # sections = config.sections()
 downloads = config['Source']['downloads']
 destination = config['Destination']['destination']
+if config['USACE Reference']['Path'] != '':
+    reference_files = config['USACE Reference']['location']
+else:
+    reference_files = None
 repo = _os.path.dirname(progLoc)
 method = config.getboolean('Method', 'method')
 
@@ -357,6 +362,18 @@ def zipManipulate(path: str, name: str):
             zipped.extract(item)
 
         zipped.close()
+
+        if reference_files is not None:
+            for item in _os.listdir(path):
+                if 'pickle' in item:
+                    with open(item, 'rb') as pickle_file:
+                        pickle_metadata = _pickle.load(pickle_file)
+                        district = pickle_metadata['SURVEYAGENCY']
+                        area = pickle_metadata['CHANNELAREAIDFK']
+                        area_file = f"{pickle_metadata['CHANNELAREAIDFK']}.gpkg"
+                        ref_outline = _os.path.join(reference_files, district, area, area_file)
+                        pickle_metadata['poly_name'] = ref_outline
+
         _os.remove(name)
     except _zf.BadZipfile:
         _os.remove(name)
