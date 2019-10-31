@@ -217,22 +217,25 @@ def write_geopackage(out_path: str, metadata: dict,
 
         quarter_layer = ds.CreateLayer(quarter_name, proj, ogr.wkbMultiPolygon)
 
-        # Add one attribute
-        for key in quarter_keys:
-            quarter_layer.CreateField(ogr.FieldDefn(key, ogr.OFTString))
-        quarter_defn = quarter_layer.GetLayerDefn()
+        if quarter_layer is not None:
+            # Add one attribute
+            for key in quarter_keys:
+                quarter_layer.CreateField(ogr.FieldDefn(key, ogr.OFTString))
+            quarter_defn = quarter_layer.GetLayerDefn()
 
-        # Create a new feature (attribute and geometry)
-        quarter_feat = ogr.Feature(quarter_defn)
-        for key in quarter_keys:
-            quarter_feat.SetField(key, quarter[key])
+            # Create a new feature (attribute and geometry)
+            quarter_feat = ogr.Feature(quarter_defn)
+            for key in quarter_keys:
+                quarter_feat.SetField(key, quarter[key])
 
-        # Make a geometry, from wkt object
-        quarter_geom = ogr.CreateGeometryFromWkt(quarter_poly)
-        quarter_feat.SetGeometry(quarter_geom)
-        quarter_layer.CreateFeature(quarter_feat)
+            # Make a geometry, from wkt object
+            quarter_geom = ogr.CreateGeometryFromWkt(quarter_poly)
+            quarter_feat.SetGeometry(quarter_geom)
+            quarter_layer.CreateFeature(quarter_feat)
 
-        del quarter_layer, quarter_feat, quarter_geom
+            del quarter_layer, quarter_feat, quarter_geom
+        else:
+            print(f"Failed to create {quarter_name}")
 
     try:
         gdal.VectorTranslate(output_esri, output_gpkg, format='ESRI Shapefile')
