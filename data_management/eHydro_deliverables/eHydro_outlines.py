@@ -17,7 +17,7 @@ from typing import Tuple, List, Union, TextIO, Any
 
 import numpy as np
 import requests
-from osgeo import osr, ogr
+from osgeo import osr, ogr, gdal
 
 """Known global constants"""
 prog_loc = os.path.dirname(os.path.abspath(__file__))
@@ -33,7 +33,8 @@ else:
 if not os.path.isdir(os.path.join(downloads)):
     os.mkdir(downloads)
 
-area_to_quarter = {'area': 'CHANNELAREAIDPK', 'quarter': 'CHANNELAREAIDFK'}
+area_to_quarter = {'area': 'CHANNELAREAIDPK', 'quarter': 'CHANNELAREAIDFK', 'reach': 'CHANNELAREAIDFK'}
+reach_to_quarter = {'reach': 'CHANNELREACHIDPK',  'quarter': 'CHANNELREACHIDFK'}
 
 def create_polygon(coords: List[Tuple[float, float]]) -> ogr.Geometry:
     """
@@ -171,6 +172,13 @@ def write_geopackage(out_path: str, metadata: dict,
         The ESPG code for the data
 
     """
+
+    area_name = metadata['CHANNELAREAIDPK']
+    area_poly = metadata['geometry']
+    metadata_keys = list(metadata.keys())[:-2]
+    output_gpkg = os.path.join(out_path, area_name) + ".gpkg"
+    output_esri = os.path.join(out_path, area_name) + ".shp"
+
     # Reference
     if type(spcs) == str:
         proj = osr.SpatialReference(wkt=spcs)
@@ -179,20 +187,16 @@ def write_geopackage(out_path: str, metadata: dict,
         proj = osr.SpatialReference()
         proj.ImportFromEPSG(spcs)
 
-    name = f"{metadata['CHANNELAREAIDPK'] if 'CHANNELAREAIDPK' in metadata else metadata['CHANNELQUARTERIDPK']}.gpkg"
-    poly = metadata['geometry']
-    metadata_keys = list(metadata.keys())[:-1]
-    output_name = os.path.join(out_path, name)
-
     # Now convert it to a geopackage with OGR
     driver = ogr.GetDriverByName('GPKG')
-    ds = driver.CreateDataSource(output_name)
-    layer = ds.CreateLayer(name, proj, ogr.wkbMultiPolygon)
+    ds = driver.CreateDataSource(output_gpkg)
+
+    layer = ds.CreateLayer(area_name, proj, ogr.wkbMultiPolygon)
+
+    # Add one attribute
     for key in metadata_keys:
         layer.CreateField(ogr.FieldDefn(key, ogr.OFTString))
     defn = layer.GetLayerDefn()
-
-    # If there are multiple geometries, put the "for" loop here
 
     # Create a new feature (attribute and geometry)
     feat = ogr.Feature(defn)
@@ -200,19 +204,45 @@ def write_geopackage(out_path: str, metadata: dict,
         feat.SetField(key, metadata[key])
 
     # Make a geometry, from wkt object
-    geom = ogr.CreateGeometryFromWkt(poly)
-
+    geom = ogr.CreateGeometryFromWkt(area_poly)
     feat.SetGeometry(geom)
-
     layer.CreateFeature(feat)
 
-    # linear_geom = geom.GetLinearGeometry()
-    # geojson = linear_geom.ExportToJson()
+    del layer, feat, geom
+
+    for quarter in metadata['quarters']:
+        quarter_name = quarter['CHANNELQUARTERIDPK']
+        quarter_poly = quarter['geometry']
+        quarter_keys = list(quarter.keys())[:-1]
+
+        quarter_layer = ds.CreateLayer(quarter_name, proj, ogr.wkbMultiPolygon)
+
+        # Add one attribute
+        for key in quarter_keys:
+            quarter_layer.CreateField(ogr.FieldDefn(key, ogr.OFTString))
+        quarter_defn = quarter_layer.GetLayerDefn()
+
+        # Create a new feature (attribute and geometry)
+        quarter_feat = ogr.Feature(quarter_defn)
+        for key in quarter_keys:
+            quarter_feat.SetField(key, quarter[key])
+
+        # Make a geometry, from wkt object
+        quarter_geom = ogr.CreateGeometryFromWkt(quarter_poly)
+        quarter_feat.SetGeometry(quarter_geom)
+        quarter_layer.CreateFeature(quarter_feat)
+
+        del quarter_layer, quarter_feat, quarter_geom
+
+    try:
+        gdal.VectorTranslate(output_esri, output_gpkg, format='ESRI Shapefile')
+    except ValueError:
+        pass
 
     # Save and close everything
-    del ds, layer, feat, geom
+    del ds
 
-    # return geojson
+
 
 
 def list_chunks(input_list: list, n: int = 1000):
@@ -301,7 +331,7 @@ def objectID_query(query_id: int = 1) -> [int]:
     return objectIds
 
 
-def geometry_query(objectIds: [int], query_id: int = 1) -> [dict]:
+def geometry_query(objectIds: [int], query_id: int = 1, geometry: bool = True) -> [dict]:
     """
     Uses the json object return of the each queried survey id and the total
     number of surveys included to compile a list of complete returned survey
@@ -309,12 +339,6 @@ def geometry_query(objectIds: [int], query_id: int = 1) -> [dict]:
 
     The function returns the lists of returned survey data as a dictionary
     containing the field_name - value relationships.
-
-    Notes
-    -----
-    The versioning of the attribute fields is handled by :func:`versionComp`.
-    For more information about the versions of .pickle files written by this
-    script, please refer to the ``README`` included in the folder ``versions``
 
     Parameters
     ----------
@@ -332,7 +356,7 @@ def geometry_query(objectIds: [int], query_id: int = 1) -> [dict]:
     for chunk in id_chunks:
         id_string = ','.join(chunk)
         query = f'https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/National_Channel_Framework/FeatureServer/{query_id}/query' + \
-                f'?where=&objectIds={id_string}&outFields=*&returnGeometry=true&outSR=4326&f=json'
+                f'?where=&objectIds={id_string}&outFields=*&returnGeometry={str(geometry).lower()}&outSR=4326&f=json'
         response = requests.get(query)
         page = response.json()
 
@@ -364,12 +388,12 @@ def geometry_query(objectIds: [int], query_id: int = 1) -> [dict]:
                         metadata[attribute] = str(page['features'][object_num]['attributes'][attribute])
                 except KeyError as e:
                     print(e, attribute)
-
-            try:
-                coords = page['features'][object_num]['geometry']['rings']
-                metadata['geometry'] = geometryToShape(coords)
-            except KeyError as e:
-                print(e, 'geometry')
+            if geometry:
+                try:
+                    coords = page['features'][object_num]['geometry']['rings']
+                    metadata['geometry'] = geometryToShape(coords)
+                except KeyError as e:
+                    print(e, 'geometry')
 
             rows.append(metadata)
             object_num += 1
@@ -379,9 +403,9 @@ def geometry_query(objectIds: [int], query_id: int = 1) -> [dict]:
     return rows
 
 
-def save_polygons(channel_areas: [dict], channel_quarters: [dict]):
+def save_polygons(channel_areas: [dict], channel_reaches: [dict], channel_quarters: [dict]):
     """
-    Saves the geometry as Geopackages (.gpkg) for each area and it's associated quarter(s)
+    Saves the geometry as a Geopackage (.gpkg) for each area and it's associated quarter(s)
 
     Parameters
     ----------
@@ -393,7 +417,6 @@ def save_polygons(channel_areas: [dict], channel_quarters: [dict]):
     """
 
     a = 0
-    print(len(channel_areas))
     for area in channel_areas:
         district_name = area['USACEDISTRICTCODE']
         district_path = os.path.join(downloads, district_name)
@@ -401,37 +424,42 @@ def save_polygons(channel_areas: [dict], channel_quarters: [dict]):
         if not os.path.isdir(district_path):
             os.mkdir(district_path)
 
-        area_quarters = []
+        area['quarters'] = []
         area_name = area[area_to_quarter['area']]
         area_path = os.path.join(district_path, area_name)
 
         if not os.path.isdir(area_path):
             os.mkdir(area_path)
 
+
+        for reach in channel_reaches:
+            reach_area = reach[area_to_quarter['reach']]
+            reach_name = reach[reach_to_quarter['reach']]
+
+            reach_quarters = []
+            if reach_area == area_name:
+                for quarter in channel_quarters:
+                    quarter_reach = quarter[reach_to_quarter['quarter']]
+
+                    if quarter_reach == reach_name:
+                        reach_quarters.append({**reach, **quarter})
+                area['quarters'].extend(reach_quarters)
+
         if 'geometry' in area:
             write_geopackage(area_path, area)
             a += 1
 
-        r = 0
-
-        for quarter in channel_quarters:
-            quarter_name = quarter[area_to_quarter['quarter']]
-
-            if quarter_name == area_name:
-                area_quarters.append(quarter)
-
-                if 'geometry' in quarter:
-                    write_geopackage(area_path, quarter)
-                    r += 1
-                    print(f'{a}.{r}', end=' ')
+        print(f"{a} of {len(channel_areas)}: {area_name}, completed")
 
 
 def main():
     channel_ids = objectID_query()
     channel_areas = geometry_query(channel_ids)
+    reach_ids = objectID_query(query_id=2)
+    channel_reaches = geometry_query(reach_ids, query_id=2, geometry=False)
     quarter_ids = objectID_query(query_id=3)
     channel_quarters = geometry_query(quarter_ids, query_id=3)
-    save_polygons(channel_areas, channel_quarters)
+    save_polygons(channel_areas, channel_reaches, channel_quarters)
 
 if __name__ == "__main__":
     main()
