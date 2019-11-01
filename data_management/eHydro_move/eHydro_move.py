@@ -29,7 +29,7 @@ config.read('config.ini')
 # sections = config.sections()
 downloads = config['Source']['downloads']
 destination = config['Destination']['destination']
-if config['USACE Reference']['Path'] != '':
+if config['USACE Reference']['location'] != '':
     reference_files = config['USACE Reference']['location']
 else:
     reference_files = None
@@ -369,10 +369,18 @@ def zipManipulate(path: str, name: str):
                     with open(item, 'rb') as pickle_file:
                         pickle_metadata = _pickle.load(pickle_file)
                         district = pickle_metadata['SURVEYAGENCY']
-                        area = pickle_metadata['CHANNELAREAIDFK']
-                        area_file = f"{pickle_metadata['CHANNELAREAIDFK']}.gpkg"
+                        try:
+                            area = pickle_metadata['CHANNELAREAIDFK']
+                            area_file = f"{pickle_metadata['CHANNELAREAIDFK']}.gpkg"
+                        except KeyError:
+                            channel_id = '_'.join(pickle_metadata['SURVEYJOBIDPK'].split('_')[:3])
+                            area = f"{district}_{channel_id}"
+                            area_file = f"{district}_{channel_id}.gpkg"
                         ref_outline = _os.path.join(reference_files, district, area, area_file)
-                        pickle_metadata['poly_name'] = ref_outline
+                        if _os.path.isfile(ref_outline):
+                            pickle_metadata['poly_name'] = ref_outline
+                        else:
+                            pass
 
         _os.remove(name)
     except _zf.BadZipfile:
