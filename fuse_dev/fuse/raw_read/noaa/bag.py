@@ -20,7 +20,7 @@ import lxml.etree as _et
 import numpy as _np
 import os as _os
 import rasterio as _rio
-import rasterio.merge as _rio_merge
+import rasterio.fill.fillnodata as _rio_fill
 import re as _re
 import sys as _sys
 import tables as _tb
@@ -534,8 +534,6 @@ class BAGRawReader(RawReader):
                                  _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.tfw', '.gpkg')]
         exts = [_os.path.splitext(support_file)[1].lower() for support_file in dir_files if
                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
-        #        meta['interpolate'] = len(exts) > 0
-        print(meta['support_files'])
         return meta
 
     def _assign_namspace(self, bag_version=None, xml=None):
@@ -737,7 +735,6 @@ class BAGRawReader(RawReader):
                 if self.data[key] in horz_datum:
                     s57[key] = horz_datum[self.data[key]]
                 else:
-                    # print (self.data[key])
                     s57[key] = horz_datum['Local']
         # try to find a source for SORIND
         p = _re.compile(r'[A-Z]([0-9]{5})')
@@ -1215,7 +1212,6 @@ class BAGRawReader(RawReader):
                                 loc = d.find('DATUM')
                                 if loc > -1:
                                     datum = d.split('"')[1]
-                                    # print (datum)
                         else:
                             continue
         except _et.Error as e:
@@ -1392,42 +1388,42 @@ class BAGSurvey(BAGRawReader):
 
         return return_list
 
-    def _get_combine_bounds(self, x: [int], y: [int], res: int, ref_bounds: tuple):
+    def _insert_raster(self, bag_name, comb_bounds, comb_array, comb_res):
         """
-
+        Insert the provided BAG file into the provided array.
         """
-
-        if min(x) - ref_bounds[0] % res != 0:
-            integer_offset = round((ref_bounds[0] - min(x))/res)
-            minx = ref_bounds[0] - res * integer_offset
-
-        if min(y) - ref_bounds[1] % res != 0:
-            integer_offset = round((ref_bounds[1] - min(y))/res)
-            print('miny',ref_bounds[1], min(y), ref_bounds[1] - min(y))
-            miny = ref_bounds[1] - res * integer_offset
-
-        if max(x) - ref_bounds[2] % res != 0:
-            integer_offset =  round((max(x) - ref_bounds[2])/res)
-            maxx = ref_bounds[2] + res * integer_offset
-
-        if max(y) - ref_bounds[3] % res != 0:
-            integer_offset =  round((max(y) - ref_bounds[3])/res)
-            maxy = ref_bounds[3] + res * integer_offset
-
-        print(minx, miny, maxx, maxy)
-
-        minx, maxx = min(x) - res/2, max(x) + res/2
-        miny, maxy = min(y) - res/2, max(y) + res/2
-
-        print(minx, miny, maxx, maxy)
-
-        return (minx, miny, maxx, maxy)
-
-
+        # open this file and get out the needed information
+        bagfile_obj = Open(bag_name, pixel_is_area=False)
+        nw, se = bagfile_obj.bounds
+        shape = bagfile_obj.shape
+        res = bagfile_obj.resolution
+        # if the data is lower res, zoom and fill in missing nodes
+        if res > comb_res:
+            zoom_factor = res / comb_res
+            elev = _np.kron(bagfile_obj.elevation, _np.ones((zoom_factor,zoom_factor)))
+            elev = _rio_fill(elev, max_search_distance=zoom_factor)
+        else:
+            elev = bagfile_obj.elevation
+        # determine offset from lower left for this array
+        xoff = round((comb_bounds[0] - nw[0]) / comb_res[0])
+        yoff = round((comb_bounds[1] - se[1]) / comb_res[1])
+        # insert the array
+        comb_array[yoff:yoff+shape[1], xoff:xoff+shape[0]] = elev
+        del bagfile_obj
+        return comb_array
+        
     def _combined_surface(self, metadata_list: [dict], num_files: int) -> [dict]:
+        """
+        Build a combine surface from the BAG files referenced in the metadata 
+        list provided.
+        
+        This method works with the data as nodes rather than cells.
+        """
+        # get all the file names from the metadata list
         files = [bag_file['from_path'] for bag_file in metadata_list if 'from_path' in bag_file]
+        # get all the resolutions from the metadata list
         res = [bag_file['res'] for bag_file in metadata_list if 'res' in bag_file]
-
+        # get the metadata from the first highest res dataset and copy it to represent the combined dataset
         combined_surface_metadata = {}
         for bag_file in metadata_list:
             if 'res' in bag_file and bag_file['res'] == min(res):
@@ -1436,46 +1432,39 @@ class BAGSurvey(BAGRawReader):
                 combined_surface_metadata['from_filename'] = f"{survey_id}_Xof{num_files}.combined"
                 combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}_Combined.bag")
                 break
-
+        # sort the file names by accending resolution
         order = _np.argsort(_np.array(res)[:, 0])
         original_datasets = []
         files = _np.array(files)[order]
+        # get bounds for all files
         x, y = [], []
         for bag_file in files:
-            dataset = _from_rasterio(str(bag_file))
-            x.append(dataset.bounds[0])
-            y.append(dataset.bounds[1])
-            x.append(dataset.bounds[2])
-            y.append(dataset.bounds[3])
+            bagfile_obj = Open(bag_file, pixel_is_area=False)
+            nw, se = bagfile_obj.bounds
+            x.append(nw[0])
+            y.append(se[1])
+            x.append(se[0])
+            y.append(nw[1])
             if files[0] == bag_file:
-                ref_bounds = dataset.bounds
+                nodata = bagfile_obj.nodata
                 tmp = self.read_bathymetry(str(bag_file))
                 dataset_wkt = tmp.GetProjectionRef()
                 del tmp
-            original_datasets.append(dataset)
-            # else:
-            #     if not dataset_osr.IsSame(combined_osr):
+            del bagfile_obj
+        
+        # build an array to house all the data
+        minres = min(res)
+        comb_bounds = (min(x), min(y), max(x), max(y))
+        comb_shape = ((max(y) - min(y))/minres - 1, (max(x) - min(x))/minres - 1)
+        comb_array = _np.zeros(comb_shape) + nodata
 
+        for bag_file in files[::-1]:
+            comb_array = _insert_raster(bag_file, comb_bounds, comb_array, minres)
 
-            del  dataset
+        # get the bounds as cell, aka pixel_is_area
+        bounds = (comb_bounds[0] - minres/2., comb_bounds[1] - minres/2.,
+                  comb_bounds[2] + minres/2., comb_bounds[3] + minres/2)
 
-        print(x, y)
-
-        bounds = self._get_combine_bounds(x, y, min(res)[0], ref_bounds)
-
-        combined_grid, geotransform = _rio_merge.merge(original_datasets, bounds=bounds)#, res=min(res)
-        # combined_uncr, geotransform = _rio_merge.merge(original_datasets, (max(x), min(y), min(x), max(y)), res=res, indexes=1 method='first')
-
-        print(geotransform)
-        shape = combined_grid[0].shape
-        res = geotransform[0], geotransform[4]
-        nw = geotransform[2], geotransform[5]
-        se = nw[0] + (shape[1] * res[0]),  nw[1] - (shape[1] * res[1])
-
-        print([nw, se])
-
-
-#        bounds = [[min(x), max(y)], [max(x), min(y)]]
         convert_dataset = BagToGDALConverter()
         convert_dataset.components2gdal(combined_grid, combined_grid[0].shape, [nw, se], res, dataset_wkt)
         output_driver = _gdal.GetDriverByName('BAG')
@@ -1505,12 +1494,13 @@ class BAGSurvey(BAGRawReader):
 class BagFile:
     """This class serves as the main container for BAG data."""
 
-    def __init__(self):
+    def __init__(self, pixel_is_area = True):
         self.name = None
         self.nodata = 1000000.0
         self.elevation = None
         self.uncertainty = None
         self.shape = None
+        self.pixel_is_area = pixel_is_area
         self.bounds = None
         self.resolution = None
         self.wkt = None
@@ -1555,17 +1545,12 @@ class BagFile:
         except TypeError:
             # TODO: Find a solution for this blasphemous hack
             pass
-        #            self.size = 100001
-        #            print('No files returned by gdal.Dataset.GetFileList()')
         self.elevation = self._gdalreadarray(dataset, 1)
         self.uncertainty = self._gdalreadarray(dataset, 2)
         self.shape = self.elevation.shape
-        print(dataset.GetGeoTransform())
         self.bounds, self.resolution = self._gt2bounds(dataset.GetGeoTransform(), self.shape)
         self.wkt = dataset.GetProjectionRef()
         self.version = dataset.GetMetadata()
-
-        print(self.bounds)
 
     def _file_gdal(self, filepath: str):
         """
@@ -1585,12 +1570,10 @@ class BagFile:
         self.elevation = self._gdalreadarray(bag_obj, 1)
         self.uncertainty = self._gdalreadarray(bag_obj, 2)
         self.shape = self.elevation.shape
-        print(bag_obj.GetGeoTransform())
         self.bounds, self.resolution = self._gt2bounds(bag_obj.GetGeoTransform(), self.shape)
         self.wkt = bag_obj.GetProjectionRef()
         self.version = bag_obj.GetMetadata()
 
-        print(self.bounds)
         del bag_obj
 
     def _file_hack(self, filepath: str):
@@ -1598,6 +1581,9 @@ class BagFile:
         Used to read a BAG file using pytables and HDF5.
 
         This function reads and populates this object's attributes
+        
+        Object attribute 'pixel_is_area' will shift the bounds outward from the
+        values reported in the BAG to the GDAL standard if set to True.
 
         Parameters
         ----------
@@ -1626,11 +1612,11 @@ class BagFile:
             # BAGs are a node-based convention; 1 cell is subtracted to account
             nx = (sx + (self.resolution[0] * (self.shape[1] - 1)))
             ny = (sy + (self.resolution[0] * (self.shape[0] - 1)))
-            print(ne, (nx, ny))
 
-            # Convert to cell based-convention
-            half_cell = 0.5 * self.resolution[0]
-            self.bounds = ([sx - half_cell, ny + half_cell], [nx + half_cell, sy - half_cell])
+            if self.pixel_is_area:
+                # Convert to cell based-convention
+                half_cell = 0.5 * self.resolution[0]
+                self.bounds = ([sx - half_cell, ny + half_cell], [nx + half_cell, sy - half_cell])
 
     def _known_data(self, filepath: str):
         """
@@ -1718,6 +1704,9 @@ class BagFile:
 
         This function takes a GeoTransform object and array shape and
         calculates the NW and SE corners.
+        
+        Object attribute 'pixel_is_area' will shift the bounds inward from the
+        gdal geotransform standard to the BAG standard if set to False.
 
         Parameters
         ----------
@@ -1739,8 +1728,11 @@ class BagFile:
         ulx, uly = meta[0], meta[3]
         lrx = ulx + (x * res[0])
         lry = uly + (y * res[1])
-        print([ulx, uly], [lrx, lry])
         # res = (_np.round(meta[1], 2), _np.round(meta[5], 2))
+        if not self.pixel_is_area:
+            # shift from cell bounds to node bounds
+            ulx, lry = ulx - res[0]/2., lry - res[1]/2.
+            lrx, uly = lrx + res[0]/2., uly + res[1]/2.
         return ([ulx, uly], [lrx, lry]), res
 
     def _gdalreadarray(self, bag_obj, band: int) -> _np.array:
@@ -1889,8 +1881,8 @@ class Open(BagFile):
     :func:`BagFile.from_gdal` method
     """
 
-    def __init__(self, dataset):
-        BagFile.__init__(self)
+    def __init__(self, dataset, pixel_is_area = True):
+        BagFile.__init__(self, pixel_is_area)
         if type(dataset) == str:
             self.open_file(dataset, 'hack')
         elif type(dataset) == _gdal.Dataset:
@@ -1905,8 +1897,6 @@ def _from_rasterio(bag_file: str) -> _rio.MemoryFile:
     height = bagfile_obj.shape[0]
     width = bagfile_obj.shape[1]
     dtype = bagfile_obj.elevation.dtype
-
-    print(transform)
 
     with _rio.MemoryFile() as memfile:
         with memfile.open(**{'driver': 'GTiff', 'dtype': dtype, 'nodata': 1000000.0,
