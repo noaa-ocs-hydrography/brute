@@ -39,6 +39,7 @@ h93_to_meta = {'Surv Id': 'survey',
 
 horiz_datum = {
         'NORTH AMERICAN DATUM OF 1983': 'NAD83'
+        'NORTH AMERICAN DATUM 1983': 'NAD83'
         }
 
 vert_datum = {
@@ -194,35 +195,37 @@ class BPSRawReader(RawReader):
         dict
             The final metadata for return to the metadata requesting method
         """
-
-        if metadata['year'] >= 1940:
-            # CATZOC B quality
-            metadata['from_horiz_unc'] = 50
-            # metadata['from_horiz_resolution'] =
-            metadata['from_vert_unc'] = 'CATZOC B'
-            metadata['complete_coverage'] = False
-            metadata['bathymetry'] = False
-            metadata['vert_uncert_fixed'] = 1
-            metadata['vert_uncert_vari'] = 0.02
-            metadata['horiz_uncert_fixed'] = 50
-            metadata['horiz_uncert_vari'] = 0
-            metadata['feat_size'] = 9999
-            metadata['feat_detect'] = False
-            metadata['feat_least_depth'] = False
+        if 'year' in metadata:
+            if metadata['year'] >= 1940:
+                # CATZOC B quality
+                metadata['from_horiz_unc'] = 50
+                # metadata['from_horiz_resolution'] =
+                metadata['from_vert_unc'] = 'CATZOC B'
+                metadata['complete_coverage'] = False
+                metadata['bathymetry'] = False
+                metadata['vert_uncert_fixed'] = 1
+                metadata['vert_uncert_vari'] = 0.02
+                metadata['horiz_uncert_fixed'] = 50
+                metadata['horiz_uncert_vari'] = 0
+                metadata['feat_size'] = 9999
+                metadata['feat_detect'] = False
+                metadata['feat_least_depth'] = False
+            else:
+                # CATZOC C quality
+                metadata['from_horiz_unc'] = 500
+                # metadata['from_horiz_resolution'] =
+                metadata['from_vert_unc'] = 'CATZOC C'
+                metadata['complete_coverage'] = False
+                metadata['bathymetry'] = False
+                metadata['vert_uncert_fixed'] = 2.0
+                metadata['vert_uncert_vari'] = 0.05
+                metadata['horiz_uncert_fixed'] = 500
+                metadata['horiz_uncert_vari'] = 0
+                metadata['feat_size'] = 9999
+                metadata['feat_detect'] = False
+                metadata['feat_least_depth'] = False
         else:
-            # CATZOC C quality
-            metadata['from_horiz_unc'] = 500
-            # metadata['from_horiz_resolution'] =
-            metadata['from_vert_unc'] = 'CATZOC C'
-            metadata['complete_coverage'] = False
-            metadata['bathymetry'] = False
-            metadata['vert_uncert_fixed'] = 2.0
-            metadata['vert_uncert_vari'] = 0.05
-            metadata['horiz_uncert_fixed'] = 500
-            metadata['horiz_uncert_vari'] = 0
-            metadata['feat_size'] = 9999
-            metadata['feat_detect'] = False
-            metadata['feat_least_depth'] = False
+            self._logger.warning(f"Could not finalize metadata due to missing 'year' assignment")
         return metadata
 
     def read_bathymetry(self, infilename: str) -> _np.array:
@@ -239,13 +242,8 @@ class BPSRawReader(RawReader):
             BagFile object
         """
         xyz = _np.loadtxt(infilename, delimiter=',', skiprows=1,
-                         usecols = (1,2,3,5))
-        xyz[:,[0,1]] = xyz[:,[1,0]]
-        active_bool = (xyz[:,3] == 0)
+                         usecols = (1, 2, 3, 5))
+        xyz[:, [0, 1]] = xyz[:, [1, 0]]
+        active_bool = (xyz[:, 3] == 0)
         active = xyz[active_bool == 0, :]
-        return active
-
-
-reader = BPSRawReader()
-meta = reader.read_metadata(r"N:\NBS_Data\PBC_Northeast_UTM18N_MLLW\NOAA_NCEI_OCS\BPS\Original\F00321\F00321.xyz")
-print(meta)
+        return active[:, [0, 1, 2]]
