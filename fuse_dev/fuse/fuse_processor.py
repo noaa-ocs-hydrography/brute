@@ -402,7 +402,7 @@ class FuseProcessor:
 
                 if interpolate == 'true':
                     meta_interp = metadata.copy()
-                    meta_interp['support_files'] = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
+                    meta_interp = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
 
                     try:
                         root, filename = _os.path.split(meta_interp['outpath'])
