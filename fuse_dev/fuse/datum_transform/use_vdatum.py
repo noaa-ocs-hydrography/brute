@@ -180,7 +180,7 @@ class VDatum:
             west = c_meridian - 3
             east = c_meridian + 3
             x = xyz[:,0]
-            idx = _np.nonzero((x < west) | (x > east))[0]
+            idx = _np.nonzero((x > west) & (x < east))[0]
             xyz = xyz[idx,:]
         return xyz
 

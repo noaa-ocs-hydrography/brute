@@ -38,7 +38,7 @@ h93_to_meta = {'Surv Id': 'survey',
                }
 
 horiz_datum = {
-        'NORTH AMERICAN DATUM OF 1983': 'NAD83'
+        'NORTH AMERICAN DATUM OF 1983': 'NAD83',
         'NORTH AMERICAN DATUM 1983': 'NAD83'
         }
 
