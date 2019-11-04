@@ -19,11 +19,12 @@ import logging as _logging
 import lxml.etree as _et
 import numpy as _np
 import os as _os
-import rasterio as _rio
-import rasterio.fill.fillnodata as _rio_fill
 import re as _re
 import sys as _sys
 import tables as _tb
+from scipy.ndimage import generate_binary_structure, binary_closing
+from scipy.interpolate import Rbf
+import rasterio as _rio
 
 from glob import glob as _glob
 from osgeo import gdal as _gdal
@@ -1368,6 +1369,12 @@ class BAGSurvey(BAGRawReader):
             return {}
 
     def _parse_groups(self, metadata_list: [dict]) -> [dict]:
+        """
+        Put the BAGs into groups since some of the old BAGs persist on NCEI.
+        This avoids combining data that should not go together, but does not
+        solve the problem of adding in data that is not correct (need to
+        fix this on NCEI)
+        """
         files = [bag_file['from_path'] for bag_file in metadata_list if 'from_path' in bag_file]
         number_groups = {}
 
@@ -1387,28 +1394,62 @@ class BAGSurvey(BAGRawReader):
                 return_list.extend(self._combined_surface(group_list, group_number))
 
         return return_list
+    
+    def _zoom_array(self, data_array, zoom_factor, ndv):
+        """
+        Zoom the provided array with a node centered (not pixel_is_area)
+        approach.
+        """
+        # build the expanded array
+        shape = data_array.shape
+        x_dim = zoom_factor * shape[1] - (zoom_factor - 1)
+        y_dim = zoom_factor * shape[0] - (zoom_factor - 1)
+        elev = _np.zeros((y_dim, x_dim)) + ndv
+        elev[::zoom_factor, ::zoom_factor] = data_array
+        
+        # build a mask using binary morphology
+        bin_arr = _np.zeros(elev.shape)
+        idx = _np.nonzero(elev != ndv)
+        bin_arr[idx] = 1
+        struct = generate_binary_structure(2,2)
+        mask = binary_closing(bin_arr, structure = struct)
+        
+        # interpolate the gaps in the expanded array
+        pts_idx = _np.nonzero((mask == 1) & (elev == ndv))
+        numpts = len(pts_idx[0])
+        interp_vals = _np.zeros(numpts)
+        for n in range(numpts):
+            y,x = pts_idx[0][n], pts_idx[1][n]
+            ya,xa = _np.mgrid[y-1:y+2,x-1:x+2]
+            vals = elev[ya,xa]
+            interp_vals = vals[vals!=ndv].mean()
+        elev[pts_idx] = interp_vals
+        
+        return elev
 
     def _insert_raster(self, bag_name, comb_bounds, comb_array, comb_res):
         """
         Insert the provided BAG file into the provided array.
         """
-        # open this file and get out the needed information
+        # open this file and extract the needed metadata
         bagfile_obj = Open(bag_name, pixel_is_area=False)
         nw, se = bagfile_obj.bounds
         shape = bagfile_obj.shape
-        res = bagfile_obj.resolution
-        # if the data is lower res, zoom and fill in missing nodes
+        res = bagfile_obj.resolution[0]
+        ndv = bagfile_obj.nodata
+        # if the data is lower res, expand array and fill in missing nodes
         if res > comb_res:
-            zoom_factor = res / comb_res
-            elev = _np.kron(bagfile_obj.elevation, _np.ones((zoom_factor,zoom_factor)))
-            elev = _rio_fill(elev, max_search_distance=zoom_factor)
+            if res % comb_res != 0:
+                print(f'WARNING!!! Combine process will produce unintended results with {bag_name}')
+            zoom_factor = int(res / comb_res)
+            elev = self._zoom_array(bagfile_obj.elevation, zoom_factor, ndv)
         else:
             elev = bagfile_obj.elevation
         # determine offset from lower left for this array
-        xoff = round((comb_bounds[0] - nw[0]) / comb_res[0])
-        yoff = round((comb_bounds[1] - se[1]) / comb_res[1])
+        xoff = round((comb_bounds[0] - nw[0]) / comb_res)
+        yoff = round((comb_bounds[1] - se[1]) / comb_res)
         # insert the array
-        comb_array[yoff:yoff+shape[1], xoff:xoff+shape[0]] = elev
+        comb_array[yoff:yoff+shape[0], xoff:xoff+shape[1]] = elev
         del bagfile_obj
         return comb_array
         
@@ -1434,12 +1475,11 @@ class BAGSurvey(BAGRawReader):
                 break
         # sort the file names by accending resolution
         order = _np.argsort(_np.array(res)[:, 0])
-        original_datasets = []
         files = _np.array(files)[order]
         # get bounds for all files
         x, y = [], []
         for bag_file in files:
-            bagfile_obj = Open(bag_file, pixel_is_area=False)
+            bagfile_obj = Open(str(bag_file), pixel_is_area=False)
             nw, se = bagfile_obj.bounds
             x.append(nw[0])
             y.append(se[1])
@@ -1448,20 +1488,20 @@ class BAGSurvey(BAGRawReader):
             if files[0] == bag_file:
                 nodata = bagfile_obj.nodata
                 tmp = self.read_bathymetry(str(bag_file))
+                minres = bagfile_obj.resolution[0]
                 dataset_wkt = tmp.GetProjectionRef()
                 del tmp
             del bagfile_obj
         
         # build an array to house all the data
-        minres = min(res)
         comb_bounds = (min(x), min(y), max(x), max(y))
-        comb_shape = ((max(y) - min(y))/minres - 1, (max(x) - min(x))/minres - 1)
+        comb_shape = (int((max(y) - min(y))/minres - 1), int((max(x) - min(x))/minres - 1))
         comb_array = _np.zeros(comb_shape) + nodata
 
         for bag_file in files[::-1]:
-            comb_array = _insert_raster(bag_file, comb_bounds, comb_array, minres)
+            comb_array = self._insert_raster(str(bag_file), comb_bounds, comb_array, minres)
 
-        # get the bounds as cell, aka pixel_is_area
+        # convert the bounds as cell, aka pixel_is_area
         bounds = (comb_bounds[0] - minres/2., comb_bounds[1] - minres/2.,
                   comb_bounds[2] + minres/2., comb_bounds[3] + minres/2)
 
@@ -1617,6 +1657,8 @@ class BagFile:
                 # Convert to cell based-convention
                 half_cell = 0.5 * self.resolution[0]
                 self.bounds = ([sx - half_cell, ny + half_cell], [nx + half_cell, sy - half_cell])
+            else:
+                self.bounds = ([sx, ny], [nx, sy])
 
     def _known_data(self, filepath: str):
         """

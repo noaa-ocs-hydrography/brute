@@ -240,7 +240,7 @@ class FuseProcessor:
                 self._reader = _usace.cenae.CENAERawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'bag':
-                self._reader = _noaa.bag.BAGRawReader(self._config['outpath'])
+                self._reader = _noaa.bag.BAGSurvey(self._config['outpath'])
                 self._read_type = 'bag'
             elif reader_type == 'bps':
                 self._reader = _noaa.bps.BPSRawReader()
