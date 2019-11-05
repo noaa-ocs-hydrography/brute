@@ -1391,7 +1391,7 @@ class BAGSurvey(BAGRawReader):
             if len(group_list) == 1:
                 return_list.extend(self._single_surface(group_list))
             else:
-                return_list.extend(self._combined_surface(group_list, group_number))
+                return_list.extend(self._combined_surface(group_list))
 
         return return_list
     
@@ -1400,6 +1400,8 @@ class BAGSurvey(BAGRawReader):
         Zoom the provided array with a node centered (not pixel_is_area)
         approach.
         """
+        print('Zooming...')
+        start = _datetime.datetime.now()
         # build the expanded array
         shape = data_array.shape
         x_dim = zoom_factor * shape[1] - (zoom_factor - 1)
@@ -1420,21 +1422,23 @@ class BAGSurvey(BAGRawReader):
         interp_vals = _np.zeros(numpts)
         for n in range(numpts):
             y,x = pts_idx[0][n], pts_idx[1][n]
+            # need to add a check for bounds
             ya,xa = _np.mgrid[y-1:y+2,x-1:x+2]
             vals = elev[ya,xa]
             interp_vals = vals[vals!=ndv].mean()
         elev[pts_idx] = interp_vals
-        
+        dt = _datetime.datetime.now() - start
+        print(f'Zooming completed in {dt} seconds')
         return elev
 
     def _insert_raster(self, bag_name, comb_bounds, comb_array, comb_res):
         """
         Insert the provided BAG file into the provided array.
         """
+        print(f'Inserting {bag_name}')
         # open this file and extract the needed metadata
         bagfile_obj = Open(bag_name, pixel_is_area=False)
         nw, se = bagfile_obj.bounds
-        shape = bagfile_obj.shape
         res = bagfile_obj.resolution[0]
         ndv = bagfile_obj.nodata
         # if the data is lower res, expand array and fill in missing nodes
@@ -1446,67 +1450,70 @@ class BAGSurvey(BAGRawReader):
         else:
             elev = bagfile_obj.elevation
         # determine offset from lower left for this array
-        xoff = round((comb_bounds[0] - nw[0]) / comb_res)
-        yoff = round((comb_bounds[1] - se[1]) / comb_res)
+        xoff = int(round((nw[0] - comb_bounds[0]) / comb_res))
+        yoff = int(round((se[1] - comb_bounds[1]) / comb_res))
         # insert the array
-        comb_array[yoff:yoff+shape[0], xoff:xoff+shape[1]] = elev
+        comb_array[yoff:yoff+elev.shape[0], xoff:xoff+elev.shape[1]] = elev
         del bagfile_obj
         return comb_array
         
-    def _combined_surface(self, metadata_list: [dict], num_files: int) -> [dict]:
+    def _combined_surface(self, metadata_list: [dict]) -> [dict]:
         """
         Build a combine surface from the BAG files referenced in the metadata 
         list provided.
         
         This method works with the data as nodes rather than cells.
         """
-        # get all the file names from the metadata list
-        files = [bag_file['from_path'] for bag_file in metadata_list if 'from_path' in bag_file]
-        # get all the resolutions from the metadata list
-        res = [bag_file['res'] for bag_file in metadata_list if 'res' in bag_file]
-        # get the metadata from the first highest res dataset and copy it to represent the combined dataset
-        combined_surface_metadata = {}
-        for bag_file in metadata_list:
-            if 'res' in bag_file and bag_file['res'] == min(res):
-                combined_surface_metadata = bag_file.copy()
-                survey_id = _os.path.basename(combined_surface_metadata['from_filename']).split('_')[0]
-                combined_surface_metadata['from_filename'] = f"{survey_id}_Xof{num_files}.combined"
-                combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}_Combined.bag")
-                break
-        # sort the file names by accending resolution
-        order = _np.argsort(_np.array(res)[:, 0])
-        files = _np.array(files)[order]
-        # get bounds for all files
-        x, y = [], []
-        for bag_file in files:
-            bagfile_obj = Open(str(bag_file), pixel_is_area=False)
+        # distill the information about the provided files.
+        num_files = len(metadata_list)
+        res = []
+        files = []
+        x = []
+        y = []
+        proj = []
+        for m in metadata_list:
+            f = m['from_path']
+            files.append(f)
+            res.append(m['res'])
+            bagfile_obj = Open(f, pixel_is_area=False)
             nw, se = bagfile_obj.bounds
-            x.append(nw[0])
-            y.append(se[1])
-            x.append(se[0])
-            y.append(nw[1])
-            if files[0] == bag_file:
-                nodata = bagfile_obj.nodata
-                tmp = self.read_bathymetry(str(bag_file))
-                minres = bagfile_obj.resolution[0]
-                dataset_wkt = tmp.GetProjectionRef()
-                del tmp
+            x.append([nw[0],se[0]])
+            y.append([se[1],nw[1]])
+            proj.append(bagfile_obj.wkt)
+            ndv = bagfile_obj.nodata
             del bagfile_obj
+        x = _np.array(x).flatten()
+        y = _np.array(y).flatten()
+        res = _np.abs(_np.array(res)[:,0])
+        minres = _np.abs(res).min()
         
-        # build an array to house all the data
+        # sort the file names by accending resolution
+        order = _np.argsort(res)
+        
+        # build the metadata
+        combined_surface_metadata = {}
+        combined_surface_metadata = metadata_list[order[0]].copy()
+        survey_id = _os.path.basename(combined_surface_metadata['from_filename']).split('_')[0]
+        combined_surface_metadata['from_filename'] = f"{survey_id}_Xof{num_files}.combined"
+        combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}_Combined.bag")
+        dataset_wkt = proj[order[0]]
+        
+        # build an array to house the combined dataset
+            
         comb_bounds = (min(x), min(y), max(x), max(y))
-        comb_shape = (int((max(y) - min(y))/minres - 1), int((max(x) - min(x))/minres - 1))
-        comb_array = _np.zeros(comb_shape) + nodata
+        comb_shape = (int((max(y) - min(y))/minres + 1), int((max(x) - min(x))/minres + 1))
+        comb_array = _np.zeros(comb_shape) + ndv
 
-        for bag_file in files[::-1]:
-            comb_array = self._insert_raster(str(bag_file), comb_bounds, comb_array, minres)
+        for n in order[::-1]:
+            bag_file = files[n]
+            comb_array = self._insert_raster(bag_file, comb_bounds, comb_array, minres)
 
         # convert the bounds as cell, aka pixel_is_area
-        bounds = (comb_bounds[0] - minres/2., comb_bounds[1] - minres/2.,
-                  comb_bounds[2] + minres/2., comb_bounds[3] + minres/2)
+        bounds = ((comb_bounds[0] - minres/2., comb_bounds[1] - minres/2.),
+                  (comb_bounds[2] + minres/2., comb_bounds[3] + minres/2))
 
         convert_dataset = BagToGDALConverter()
-        convert_dataset.components2gdal(combined_grid, combined_grid[0].shape, [nw, se], res, dataset_wkt)
+        convert_dataset.components2gdal(comb_array, comb_array.shape, bounds, (minres, minres), dataset_wkt)
         output_driver = _gdal.GetDriverByName('BAG')
         output_driver.CreateCopy(combined_surface_metadata['from_path'], convert_dataset.dataset)
 
