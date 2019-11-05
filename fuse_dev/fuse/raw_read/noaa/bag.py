@@ -1510,7 +1510,7 @@ class BAGSurvey(BAGRawReader):
 
         # convert the bounds as cell, aka pixel_is_area
         bounds = ((comb_bounds[0] - minres/2., comb_bounds[1] - minres/2.),
-                  (comb_bounds[2] + minres/2., comb_bounds[3] + minres/2))
+                  (comb_bounds[2] + minres/2., comb_bounds[3] + minres/2.))
 
         convert_dataset = BagToGDALConverter()
         convert_dataset.components2gdal(comb_array, comb_array.shape, bounds, (minres, minres), dataset_wkt)
