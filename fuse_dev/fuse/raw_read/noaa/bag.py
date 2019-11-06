@@ -1453,7 +1453,7 @@ class BAGSurvey(BAGRawReader):
         xoff = int(round((nw[0] - comb_bounds[0]) / comb_res))
         yoff = int(round((se[1] - comb_bounds[1]) / comb_res))
         # insert the array
-        comb_array[yoff:yoff+elev.shape[0], xoff:xoff+elev.shape[1]] = elev
+        comb_array[0, yoff:yoff+elev.shape[0], xoff:xoff+elev.shape[1]] = elev
         del bagfile_obj
         return comb_array
         
@@ -1484,11 +1484,12 @@ class BAGSurvey(BAGRawReader):
             del bagfile_obj
         x = _np.array(x).flatten()
         y = _np.array(y).flatten()
-        res = _np.abs(_np.array(res)[:,0])
-        minres = _np.abs(res).min()
+        res = _np.array(res)
+        resx = res[:,0]
+        minres = _np.abs(resx).min()
         
         # sort the file names by accending resolution
-        order = _np.argsort(res)
+        order = _np.argsort(resx)
         
         # build the metadata
         combined_surface_metadata = {}
@@ -1502,18 +1503,18 @@ class BAGSurvey(BAGRawReader):
             
         comb_bounds = (min(x), min(y), max(x), max(y))
         comb_shape = (int((max(y) - min(y))/minres + 1), int((max(x) - min(x))/minres + 1))
-        comb_array = _np.zeros(comb_shape) + ndv
+        comb_array = _np.zeros((2, comb_shape[0], comb_shape[1])) + ndv
 
         for n in order[::-1]:
             bag_file = files[n]
             comb_array = self._insert_raster(bag_file, comb_bounds, comb_array, minres)
 
-        # convert the bounds as cell, aka pixel_is_area
-        bounds = ((comb_bounds[0] - minres/2., comb_bounds[1] - minres/2.),
-                  (comb_bounds[2] + minres/2., comb_bounds[3] + minres/2.))
+        # convert the bounds to cell, aka pixel_is_area, and to (nw, se) format
+        bounds = ((comb_bounds[0] - minres/2., comb_bounds[3] + minres/2.),
+                  (comb_bounds[2] + minres/2., comb_bounds[1] - minres/2.))
 
         convert_dataset = BagToGDALConverter()
-        convert_dataset.components2gdal(comb_array, comb_array.shape, bounds, (minres, minres), dataset_wkt)
+        convert_dataset.components2gdal(comb_array, bounds, res[order[0]], dataset_wkt)
         output_driver = _gdal.GetDriverByName('BAG')
         output_driver.CreateCopy(combined_surface_metadata['from_path'], convert_dataset.dataset)
 
@@ -2017,7 +2018,7 @@ class BagToGDALConverter:
         self.dataset = target_ds
         del target_ds
 
-    def components2gdal(self, arrays: [_np.array], shape: (int, int), bounds: ((float, float), (float, float)),
+    def components2gdal(self, arrays: [_np.array], bounds: ((float, float), (float, float)),
                         resolution: (float, float), prj: str, nodata: float = 1000000.0):
         """
         Converts raw dataset components into a :obj:`gdal.Dataset` object
@@ -2026,8 +2027,6 @@ class BagToGDALConverter:
         ----------
         arrays : list of numpy.array
             Arrays [elevation, uncertainty]
-        shape : tuple of int
-            (y, x) shape of the arrays
         bounds : tuple of tuple of float
             (NW, SE) corners of the data
         resolution : tuple of float
@@ -2039,12 +2038,16 @@ class BagToGDALConverter:
 
 
         """
-
-        bands = len(arrays)
+        dims = arrays.shape
+        if len(dims) == 3:
+            bands, y_cols, x_cols = dims
+        elif len(dims) == 2:
+            raise ValueError('Only one band in array found.  Missing uncertainty layer?')
+        else:
+            raise ValueError('Shape of provided array is nonsensical')
         nw, se = bounds
         nwx, nwy = nw
         scx, scy = se
-        y_cols, x_cols = shape
         res_x, res_y = resolution[0], resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)

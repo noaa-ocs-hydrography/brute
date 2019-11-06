@@ -413,8 +413,10 @@ class FuseProcessor:
                         self._point_writer.write(dataset, outfilename)
                         metadata['to_filename'] = outfilename
                     elif self._read_type == 'bag':
-                        metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
-                        self._raster_writer.write(dataset, metadata['to_filename'])
+                        # only write out the bag if the file was transformed
+                        if 'to_filename' not in metadata:
+                            metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
+                            self._raster_writer.write(dataset, metadata['to_filename'])
 
                     self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
                 else:
