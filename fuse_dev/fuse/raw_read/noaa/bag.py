@@ -1450,10 +1450,13 @@ class BAGSurvey(BAGRawReader):
         else:
             elev = bagfile_obj.elevation
         # determine offset from lower left for this array
-        xoff = int(round((nw[0] - comb_bounds[0]) / comb_res))
-        yoff = int(round((se[1] - comb_bounds[1]) / comb_res))
+        xoff = int(round((nw[0] - comb_bounds[0][0]) / comb_res))
+        yoff = int(round((comb_bounds[0][1] - nw[1]) / comb_res))
         # insert the array
-        comb_array[0, yoff:yoff+elev.shape[0], xoff:xoff+elev.shape[1]] = elev
+        idx = _np.nonzero(elev != ndv)
+        yidx = idx[0] + yoff
+        xidx = idx[1] + xoff
+        comb_array[0, yidx, xidx] = elev[idx]
         del bagfile_obj
         return comb_array
         
@@ -1501,7 +1504,7 @@ class BAGSurvey(BAGRawReader):
         
         # build an array to house the combined dataset
             
-        comb_bounds = (min(x), min(y), max(x), max(y))
+        comb_bounds = ((min(x), max(y)), (max(x), min(y)))
         comb_shape = (int((max(y) - min(y))/minres + 1), int((max(x) - min(x))/minres + 1))
         comb_array = _np.zeros((2, comb_shape[0], comb_shape[1])) + ndv
 
@@ -1510,8 +1513,8 @@ class BAGSurvey(BAGRawReader):
             comb_array = self._insert_raster(bag_file, comb_bounds, comb_array, minres)
 
         # convert the bounds to cell, aka pixel_is_area, and to (nw, se) format
-        bounds = ((comb_bounds[0] - minres/2., comb_bounds[3] + minres/2.),
-                  (comb_bounds[2] + minres/2., comb_bounds[1] - minres/2.))
+        bounds = ((comb_bounds[0][0] - minres/2., comb_bounds[0][1] + minres/2.),
+                  (comb_bounds[1][0] + minres/2., comb_bounds[1][1] - minres/2.))
 
         convert_dataset = BagToGDALConverter()
         convert_dataset.components2gdal(comb_array, bounds, res[order[0]], dataset_wkt)
