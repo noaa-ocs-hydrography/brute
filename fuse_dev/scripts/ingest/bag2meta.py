@@ -27,19 +27,19 @@ if __name__ == '__main__':
         top = [os.path.join(root, name) for name in os.listdir(root)]
         for m, path in enumerate(top):
             print(f'{n}.{m} - Begin working in {path}:')
-            flist = glob(os.path.join(path, '*.bag'))
-            for m, file in enumerate(flist):
-                try:
-                    print(f'reading {os.path.basename(file)}', end = ', ')
-                    f = bag.read(file)
-                except Exception as e:
-                    print('\n')
-                    print(f'read error: {e}')
-                    bag.logger.log(_logging.DEBUG, e)
-                    print('\n')
+            try:
+                print(f'reading {os.path.basename(path)}', end = ', ')
+                fnames = glob(os.path.join(path,'*.bag'))
+                files = bag.read(path)
+            except Exception as e:
+                print('\n')
+                print(f'read error: {e}')
+                bag.logger.log(_logging.DEBUG, e)
+                print('\n')
+            for f in files:
                 try:
                     print(f'processing @ {datetime.datetime.now()}')
-                    bag.process(file)
+                    bag.process(f)
                     print(f'done.')
                 except Exception as e:
                     print('\n')
