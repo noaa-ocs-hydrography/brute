@@ -2,19 +2,18 @@ name: NBS
 channels:
   - conda-forge
 dependencies:
-  - python=3.6.7
-  - conda-forge::gdal=2.4.2
+  - python=3
+  - conda-forge::gdal=2.4
   - numpy
   - scipy
   - matplotlib
   - fiona
   - rasterio
-  - mongoengine
   - astropy
   - pytables
   - pykrige
+  - psycopg2
   - lxml
   - requests
   - spyder
   - wxpython
-  - libtiff=4.0.10=h6512ee2_1003
