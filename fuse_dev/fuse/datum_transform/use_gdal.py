@@ -15,7 +15,7 @@ import rasterio
 from affine import Affine
 from fiona._crs import CRSError
 from fiona.transform import transform_geom
-from fuse.raw_read.noaa.bag import BAGRawReader
+from fuse.raw_read.noaa.bag import BAGRawReader, Open, BagToGDALConverter
 from fuse.utilities import bounds_from_opposite_corners
 from osgeo import osr, gdal
 from rasterio.crs import CRS
@@ -93,7 +93,7 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
     return metadata
 
 
-def _reproject_via_geotransform(filename: str, metadata: dict, reader: BAGRawReader) -> gdal.Dataset:
+def _reproject_via_reprojectimage(filename: str, metadata: dict, reader: BAGRawReader) -> gdal.Dataset:
     """
     Get a reprojected GDAL dataset from the given file.
 
@@ -110,26 +110,48 @@ def _reproject_via_geotransform(filename: str, metadata: dict, reader: BAGRawRea
         reprojected GDAL dataset
     """
 
-    dataset = reader.read_bathymetry(filename, None)
+    bag = Open(filename)
+    input_crs = osr.SpatialReference(wkt=bag.wkt)
+    output_crs = spatial_reference_from_metadata(metadata)
+    coord_transform = osr.CoordinateTransformation(input_crs, output_crs)
+    input_shape = bag.shape
+    input_ul, input_lr = bag.bounds
+    input_resolution = bag.resolution
 
-    input_crs = CRS.from_string(dataset.GetProjectionRef())
-    output_crs = spatial_reference_from_metadata(metadata, fiona_crs=True)
+    ulx, uly, ulz = coord_transform.TransformPoint(input_ul[0], input_ul[1])
+    llx, lly, llz = coord_transform.TransformPoint(input_ul[0], input_lr[1])
+    lrx, lry, lrz = coord_transform.TransformPoint(input_lr[0], input_lr[1])
+    urx, ury, urz = coord_transform.TransformPoint(input_lr[0], input_ul[1])
 
-    input_geotransform = dataset.GetGeoTransform()
-    input_shape = dataset.RasterYSize, dataset.RasterXSize
-    input_origin = numpy.array((input_geotransform[0], input_geotransform[3]))
-    input_resolution = numpy.array((input_geotransform[1], input_geotransform[5]))
+    x_vals = [ulx, llx, lrx, urx]
+    y_vals = [uly, lly, lry, ury]
 
-    left, bottom, right, top = bounds_from_opposite_corners(input_origin,
-                                                            input_origin + numpy.flip(input_shape) * input_resolution)
-    output_transform, _, _ = calculate_default_transform(input_crs, output_crs, width=input_shape[1], height=input_shape[0], left=left,
-                                                         bottom=bottom, right=right, top=top)
-    output_geotransform = output_transform.to_gdal()
+    min_x, max_x = min(x_vals), max(x_vals)
+    min_y, max_y = min(y_vals), max(y_vals)
 
-    dataset.SetProjection(output_crs.to_wkt())
-    dataset.SetGeoTransform(output_geotransform)
+    reprojected_shape = [int((max_y - min_y)/input_resolution[0]), int((max_x - min_x)/input_resolution[0])]
 
-    return dataset
+    reprojected_geotransform = (min_x, input_resolution[0], 0, max_y, 0, input_resolution[1])
+
+    memory_driver = gdal.GetDriverByName('MEM')
+    reprojected_dataset = memory_driver.Create('', reprojected_shape[1], reprojected_shape[0], 2, gdal.GDT_Float32)
+    for band_index in (1, 2):
+        band_out = reprojected_dataset.GetRasterBand(band_index)
+        band_out.SetNoDataValue(1000000.0)
+        band_out.WriteArray(numpy.full(reprojected_shape, 1000000.0))
+        del band_out
+    reprojected_dataset.SetProjection(output_crs.ExportToWkt())
+    reprojected_dataset.SetGeoTransform(reprojected_geotransform)
+
+    build_dataset = BagToGDALConverter()
+    build_dataset.bag2gdal(bag)
+    del bag
+
+    dataset = build_dataset.dataset
+    gdal.ReprojectImage(dataset, reprojected_dataset, input_crs.ExportToWkt(), output_crs.ExportToWkt(), gdal.GRA_NearestNeighbour)
+    del build_dataset, dataset
+
+    return reprojected_dataset
 
 
 def reproject_transform(transform: Union[tuple, Affine], input_crs: CRS, output_crs: CRS) -> Union[tuple, Affine]:

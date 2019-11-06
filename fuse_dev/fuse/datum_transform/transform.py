@@ -9,7 +9,7 @@ Abstract datum transformation.
 
 import gdal
 from fuse.datum_transform import use_vdatum as uv
-from fuse.datum_transform.use_gdal import _reproject_via_geotransform, _xyz_to_gdal, reproject_support_files
+from fuse.datum_transform.use_gdal import _reproject_via_reprojectimage, _xyz_to_gdal, reproject_support_files
 from fuse.raw_read.noaa.bag import BAGRawReader
 
 gdal.UseExceptions()
@@ -82,7 +82,7 @@ class DatumTransformer:
                 dataset = None
             elif not_same_horiz:
                 # if just the horizontal CRS is different, reproject with known methods
-                dataset = _reproject_via_geotransform(filename, metadata, self._reader)
+                dataset = _reproject_via_reprojectimage(filename, metadata, self._reader)
                 was_reprojected = True
             else:
                 # otherwirse, no datume change needed, hooray!
