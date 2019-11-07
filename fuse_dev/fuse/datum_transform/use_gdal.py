@@ -148,7 +148,7 @@ def _reproject_via_reprojectimage(filename: str, metadata: dict, reader: BAGRawR
     del bag
 
     dataset = build_dataset.dataset
-    gdal.ReprojectImage(dataset, reprojected_dataset, input_crs.ExportToWkt(), output_crs.ExportToWkt(), gdal.GRA_NearestNeighbour)
+    gdal.ReprojectImage(dataset, reprojected_dataset, input_crs.ExportToWkt(), output_crs.ExportToWkt(), gdal.GRA_Min)
     del build_dataset, dataset
 
     return reprojected_dataset
