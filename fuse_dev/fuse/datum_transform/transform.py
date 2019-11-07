@@ -7,14 +7,13 @@ transform.py
 Abstract datum transformation.
 """
 
-import os
 import gdal
-from tempfile import TemporaryDirectory as tempdir
-
 from fuse.datum_transform import use_vdatum as uv
-from fuse.datum_transform import use_gdal as ug
+from fuse.datum_transform.use_gdal import _reproject_via_geotransform, _xyz_to_gdal, reproject_support_files
 from fuse.raw_read.noaa.bag import BAGRawReader
+
 gdal.UseExceptions()
+
 
 class DatumTransformer:
     """ An object for abstracting the datum transformation API.  This should allow for different transformation machines and versions. """
@@ -50,7 +49,7 @@ class DatumTransformer:
         self._reader = reader
         self._engine = uv.VDatum(vdatum_path, java_path, self._reader)
 
-    def translate(self, filename: str, metadata: dict) -> (gdal.Dataset, dict, bool):
+    def reproject(self, filename: str, metadata: dict) -> (gdal.Dataset, dict, bool):
         """
         Run the specified transformation engine to translate the provided
         dataset.
@@ -67,35 +66,35 @@ class DatumTransformer:
         gdal.Dataset, dict, bool
             GDAL point cloud, metadata, and boolean value of whether data was reprojected
         """
-        not_same_horiz = any(metadata[self._from_horiz_datum_info[index]].lower() != metadata[self._to_horiz_datum_info[index]].lower() for index in
-               range(len(self._from_horiz_datum_info)))
-        not_same_vert = any(metadata[self._from_vert_datum_info[index]].lower() != metadata[self._to_vert_datum_info[index]].lower() for index in
-               range(len(self._from_vert_datum_info)))
-        is_bag = type(self._reader) is BAGRawReader
+
+        not_same_horiz = any(metadata[self._from_horiz_datum_info[index]].lower() != metadata[self._to_horiz_datum_info[index]].lower()
+                             for index in range(len(self._from_horiz_datum_info)))
+        not_same_vert = any(metadata[self._from_vert_datum_info[index]].lower() != metadata[self._to_vert_datum_info[index]].lower()
+                            for index in range(len(self._from_vert_datum_info)))
+
         # VDatum and rasters are giving us trouble, so this is a temp workaround
+        is_bag = type(self._reader) is BAGRawReader
         if is_bag:
-            # we can't deal with a change in BAG vertical datum, so punt
             if not_same_vert:
-                # avoid interpolating files in the wrong vertical datum.
+                # we can't deal with a change in vertical datum in BAGs, so return None
                 metadata['interpolate'] = 'False'
-                transformed = False
-                data_obj = None
-            # if just the horizontal needs updating, warp it
+                was_reprojected = False
+                dataset = None
             elif not_same_horiz:
-                data_obj = ug._reproject_via_geotransform(filename, metadata, self._reader)
-                transformed = True
-            # otherwirse, no datume change needed, hooray!
+                # if just the horizontal CRS is different, reproject with known methods
+                dataset = _reproject_via_geotransform(filename, metadata, self._reader)
+                was_reprojected = True
             else:
+                # otherwirse, no datume change needed, hooray!
                 metadata['to_filename'] = filename
-                transformed = False
-                data_obj = self.create(filename, metadata)
-            return data_obj, metadata, transformed
+                was_reprojected = False
+                dataset = self.create(filename, metadata)
+            return dataset, metadata, was_reprojected
         else:
             if not_same_horiz or not_same_vert:
                 return self._engine.translate(filename, metadata), metadata, True
             else:
-              return self.create(filename, metadata), metadata, False
-
+                return self.create(filename, metadata), metadata, False
 
     def create(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
@@ -110,6 +109,7 @@ class DatumTransformer:
 
         Returns
         -------
+
             GDAL dataset
         """
 
@@ -118,17 +118,21 @@ class DatumTransformer:
 
             if 'to_horiz_key' in instructions:
                 utm_zone = int(instructions['from_horiz_key'])
+            else:
+                KeyError(f'output horizontal datum key does not exist in metadata')
+
             if 'from_vert_key' in instructions:
                 vertical_datum = instructions['from_vert_key']
+            else:
+                KeyError(f'output vertical datum key does not exist in metadata')
 
-            return ug.__xyz2gdal(points, utm_zone, vertical_datum)
+            return _xyz_to_gdal(points, utm_zone, vertical_datum)
         elif instructions['read_type'] == 'bag':
             return self._reader.read_bathymetry(filename, instructions['to_vert_key'])
         else:
             raise ValueError('Reader type not implemented')
 
-
-    def translate_support_files(self, metadata: dict, dest_dir: str):
+    def reproject_support_files(self, metadata: dict, output_directory: str):
         """
         Check the horizontal georeferencing for the support files.  If they are
         not in the same datum as the output datum they are translated and
@@ -141,7 +145,7 @@ class DatumTransformer:
             files referenced in the dictionary will be updated if their
             horizontal datum does not match the output datum.
 
-        dest_dir
+        output_directory
             The path to the directory where updated files should be stored.
 
         Returns
@@ -151,4 +155,4 @@ class DatumTransformer:
             files.
         """
 
-        return ug.translate_support_files(metadata, dest_dir)
+        return reproject_support_files(metadata, output_directory)
