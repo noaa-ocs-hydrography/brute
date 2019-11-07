@@ -7,7 +7,6 @@ Created on Wed Aug 21 08:51:53 2019
 
 import ast
 import configparser
-import csv
 import datetime
 import gzip
 import json
@@ -18,8 +17,6 @@ import re
 import shutil
 import socket
 import urllib
-
-from glob import glob
 from typing import Union, Dict, List
 
 import requests
@@ -43,71 +40,14 @@ else:
 if not os.path.isdir(os.path.join(downloads)):
     os.mkdir(downloads)
 
-try:
-    prog_loc = os.path.dirname(os.path.abspath(__file__))
-    csv_files = glob(os.path.join(prog_loc, 'additional_files', '*.csv'))
-    csv_exists = True if len(csv_files) > 0 else False
-except FileNotFoundError as e:
-    csv_exists = False
-    print(f"{e}")
-
 # https://data.ngdc.noaa.gov/platforms/ocean/nos/coast/H12001-H14000/H12001/[BAG, TIFF]
 
 zList = ['xmin', 'ymin', 'xmax', 'ymax']
 attributes = {3: ['Name', 'SURVEY_ID', 'CELL_SIZE'],
-              0: ['*']}
+              0: ['*'],
+              1: ['*']}
 date_fields = ['DATE_SURVEY_BEGIN', 'DATE_SURVEY_END', 'DATE_MODIFY_DATA',
                'DATE_SURVEY_APPROVAL', 'START_TIME', 'END_TIME']
-vert_datum = {
-    'MLWS': '1',
-    'MLLWS': '2',
-    'MSL': '3',
-    'LLW': '4',
-    'MLW': '5',
-    'ISLW': '8',
-    'MLLW': '12',
-    'MHW': '16',
-    'MHWS': '17',
-    'MHHW': '21',
-    'LAT': '23',
-    'LOC': '24',
-    'IGLD': '25',
-    'LLWLT': '27',
-    'HHWLT': '28',
-    'HAT': '30',
-    'Unknown': '701',
-    'Other': '703',
-    'HRD': '24',  # Adding this for the Hudson River Datum
-}
-csv_to_meta = {'Survey': 'survey',
-               'Bag File Name': 'bag_name',
-               'Reviewer': 'reviewer',
-               'Sensitive? Y/N': 'sensitive',
-               'Sensitive? (Y/N)': 'sensitive',
-               'Survey Start Date': 'start_date',
-               'Survey End Date': 'end_date',
-               'Processing Branch': 'branch',
-               'Source data type (MB)': 'mb_data',
-               'Source data type (MBES)': 'mb_data',
-               'Source data type (SSS)': 'sss_data',
-               'Source data type (VB)': 'vb_data',
-               'Source data type (SB)': 'sb_data',
-               'Feature Detection Capability (Y/N)': 'feat_detect',
-               'Features Delivered (Y/N)': 'feat_delivered',
-               'Least depth of features detected(Y/N)': 'feat_least_depth',
-               'Size of features detected (m)': 'feat_size',
-               'Full Coverage achieved (Y/N)': 'complete_coverage',
-               'Full bathymetric coverage achieved (Y/N)': 'bathymetry',
-               'Temporal variability (1-5)': 'temp_vari',
-               'Data Assessment (1-3)': 'data_assess',
-               'Horizontal position uncertainty (fixed)': 'horiz_uncert_fixed',
-               'Horizontal position uncertainty (variable)': 'horiz_uncert_vari',
-               'Vertical Uncertainty (Fixed)': 'vert_uncert_fixed',
-               'Vertical Uncertainty (fixed)': 'vert_uncert_fixed',
-               'Vertical Uncertainty (variable)': 'vert_uncert_vari',
-               'Horizontal datum': 'from_horiz_datum',
-               'Vertical datum': 'from_vert_datum',
-               }
 
 
 def wgs84_to_esri(min_x: float, min_y: float, max_x: float, max_y: float) -> dict:
@@ -247,7 +187,7 @@ def survey_objectID_query(bounds: [dict], qId=0) -> ([int], int):
     # Today - 1 (ex. '2018-08-06'), unformatted
     yesterday = today - datetime.timedelta(1)
 
-    data_type = config_data_type()
+    data_type, data_format = config_data_type()
 
     if config['Timeframe']['Start Date'] != '':
         start_parse =  datetime.datetime.strptime(config['Timeframe']['Start Date'], '%Y-%m-%d')
@@ -463,6 +403,27 @@ def geometryToShape(coordinates: list):
     return multipoly
 
 
+def parse_timestamp(timestamp: int) -> datetime.date:
+    """
+    Made with answers from https://stackoverflow.com/q/17231711
+
+    Parameters
+    ----------
+    timestamp : int
+        ESRI timestamp returned by REST query
+
+    Returns
+    -------
+    datetime.date
+        Parsed date from timestamp
+
+    """
+    if timestamp < 0:
+        return datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=timestamp / 1000)
+    else:
+        return datetime.datetime.utcfromtimestamp(timestamp / 1000)
+
+
 def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0, pb=None) -> (list, [dict]):
     """
     Queries and compiles the data from the input objectIDs and checks against
@@ -492,7 +453,7 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
     if pb is not None:
         pb.SetRange(num)
 
-    data_type = config_data_type()
+    data_type, data_format = config_data_type()
 
     id_chunks = list(list_chunks([str(objectID) for objectID in objectIDs]))
 
@@ -529,9 +490,9 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
                         if page['features'][object_num]['attributes'][attribute] is not None:
                             date = (page['features'][object_num]['attributes'][attribute])
                             try:
-                                row[attribute] = f'{datetime.datetime.utcfromtimestamp(date / 1000):%Y-%m-%d}'
+                                row[attribute] = f'{parse_timestamp(date):%Y-%m-%d}'
                             except OSError as e:
-                                print(e, date)
+                                print(f"OSError - {e} for {attribute}: {date}")
                     elif page['features'][object_num]['attributes'][attribute] is not None:
                         row[attribute] = str(page['features'][object_num]['attributes'][attribute])
             except KeyError as e:
@@ -541,6 +502,11 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
                 row['poly'] = geometryToShape(coords)
             except KeyError as e:
                 print(e, 'invalid geometry')
+
+            if 'BAGS_EXIST' in row:
+                bags_exist = True if row['BAGS_EXIST'].upper() == 'TRUE' else False
+            else:
+                bags_exist = False
 
             if 'poly' in row:
                 try:
@@ -555,7 +521,6 @@ def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0,
 
                 if flag != 'GEOMETRYCOLLECTION EMPTY':
                     rows.append(row)
-
             else:
                 rows.append(row)
             if pb is not None:
@@ -748,7 +713,7 @@ def file_downloader(folder: str, download_links: list, saved_files: list) -> lis
     return saved_links
 
 
-def survey_download(rows: [dict], region: dict, meta=None) -> [dict]:
+def survey_download(rows: [dict], region: dict) -> [dict]:
     """
     Downloads and stores file information to the input dict
 
@@ -766,15 +731,20 @@ def survey_download(rows: [dict], region: dict, meta=None) -> [dict]:
         function
 
     """
-    data_type = config_data_type()
+    data_type, data_format = config_data_type()
 
-
-    if data_type == 'nos_hydro_dynamic':
+    if data_type == 'nos_hydro_dynamic' and data_format == 'BAG':
         ncei_head = 'https://data.ngdc.noaa.gov/platforms/ocean/nos/coast/'
         branch_tail = r"\NOAA_NCEI_OCS\BAGs\Original"
+        ftp_folders = {'BAG': ['.bag', '.gz'], 'TIFF': ['.tif', '.tiff', '.tfw', '.gz']}
+    elif data_type == 'nos_hydro_dynamic' and data_format == 'BPS':
+        ncei_head = 'https://data.ngdc.noaa.gov/platforms/ocean/nos/coast/'
+        branch_tail = r"\NOAA_NCEI_OCS\BPS\Original"
+        ftp_folders = {'GEODAS': ['.a93', 'htm', '.xyz', '.gz']}
     elif data_type == 'multibeam_dynamic':
         ncei_head = 'https://data.ngdc.noaa.gov/ocean/platforms/ships/'
         branch_tail = r"\NOAA_NCEI_MBBDB\MBs\Original"
+        ftp_folders = {'multibeam/data/version1/products': ['.xyz', '.gz']}
 
     for row in rows:
         row['PROCESSING_REGION'] = f"{region['Processing Branch']}_{region['Region']}"
@@ -806,9 +776,7 @@ def survey_download(rows: [dict], region: dict, meta=None) -> [dict]:
         download_links = []
         print(f'Survey - {rows.index(row) + 1} of {len(rows)}: {survey}')
         survey_folder = os.path.join(download_to, survey)
-        for folder, extensions in {'BAG': ['.bag', '.gz'],
-                                   'TIFF': ['.tif', '.tiff', '.tfw', '.gz'],
-                                   'multibeam/data/version1/products': ['.xyz', '.gz']}.items():
+        for folder, extensions in ftp_folders.items():
             source_url = f'{ncei_head}/{ncei_sub}/{folder}'
             download_links.extend(link_grab(source_url, extensions))
 
@@ -818,167 +786,26 @@ def survey_download(rows: [dict], region: dict, meta=None) -> [dict]:
                 row['SURVEY_FILES'].extend(file_downloader(survey_folder, download_links, row['SURVEY_FILES']))
 
         if os.path.isdir(survey_folder):
-            if 'poly' in row:
-                geopackage_name = os.path.join(survey_folder, f'{survey}.gpkg')
-                geojson = write_geopackage(geopackage_name, survey, row[poly], 4362)
-                row['SURVEY_FILES'].append(geopackage_name)
+#            if 'poly' in row:
+#                geopackage_name = os.path.join(survey_folder, f'{survey}.gpkg')
+#                write_geopackage(geopackage_name, survey, row[poly], 4362)
+#                row['SURVEY_FILES'].append(geopackage_name)
 
             if len(row['SURVEY_FILES']) > 0:
-                bag_files = [bag for bag in row['SURVEY_FILES'] if os.path.splitext(bag)[1] == '.bag']
-                for bag in bag_files:
-                    base = os.path.basename(bag)
+                survey_files = [file_name for file_name in row['SURVEY_FILES'] if os.path.splitext(file_name)[1] in ('.a93', '.bag', '.xyz')]
+                for data_file in survey_files:
+                    base = os.path.basename(data_file)
                     name, ext = os.path.splitext(base)
                     pickle_name = f'{os.path.join(survey_folder, name)}.pickle'
                     row['SURVEY_FILES'].extend([pickle_name])
 
-                    if meta is not None:
-                        row = {**meta.csv_meta(base), **row}
-
                     with open(pickle_name, 'wb') as metafile:
                         pickle.dump(row, metafile)
                         metafile.close()
+        else:
+            print('\tNo files downloaded')
 
     return rows
-
-
-class csv_info:
-    csv_data = {}
-
-    def __init__(self):
-        self.csv_data = self._from_csv()
-
-    def csv_meta(self, infilename: str) -> dict:
-        """
-        Identifies known metadata and returns them as a dict
-
-        Parameters
-        ----------
-        infilename : str
-            Input file path
-
-        Returns
-        -------
-        dict
-            A dictionary object containing found metadata
-
-        """
-        meta = {}
-        found = False
-        root, name = os.path.split(infilename)
-        if csv_exists:
-            for survey in self.csv_data:
-                if 'bag_name' in survey:
-                    if survey['bag_name'] == name:
-                        found = True
-                        meta = {**survey, **meta}
-            if not found:
-                meta['interpolate'] = False
-        else:
-            meta['interpolate'] = False
-#            _logging.warning(f'No CSV Metadata available for: {name}')
-        return meta
-
-    def _from_csv(self) -> dict:
-        """
-        Identifies known metadata from a csv and returns them as a dict
-
-        Returns
-        -------
-        dict
-            A dictionary object containing found metadata
-
-        """
-        meta = []
-        if csv_exists:
-            for csv_file in csv_files:
-                opened = open(csv_file, 'r', newline='')
-                read = csv.reader(opened)
-                fields = []
-                index = 0
-                for line in read:
-                    if index == 0:
-                        fields.extend(field for field in line if field != '')
-                    else:
-                        bag_meta = {}
-                        for assignment in range(len(fields)):
-                            if line[assignment] != '':
-                                try:
-                                    meta_field = csv_to_meta[fields[assignment].strip()]
-                                except KeyError:
-#                                    _logging.warning(f'Unable to parse {fields[assignment]}')
-                                    index += 1
-                                    continue
-                                if meta_field in (
-                                        'sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect', 'feat_delivered', 'feat_least_depth',
-                                        'complete_coverage', 'bathymetry'):
-                                    if line[assignment].lower() in ('n/a', 'na', 'no', 'n'):
-                                        bag_meta[meta_field] = 'False'
-                                    elif line[assignment].lower() in ('y', 'yes'):
-                                        bag_meta[meta_field] = 'True'
-                                elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
-                                    try:
-                                        if 'cm' in line[assignment]:
-                                            bag_meta[meta_field] = float(re.sub(r'\D', '', line[assignment])) / 100
-                                        elif 'm' in line[assignment]:
-                                            bag_meta[meta_field] = float(re.sub(r'\D', '', line[assignment]))
-                                    except ValueError:
-                                        continue
-#                                        _logging.warning(
-#                                            f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
-                                elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
-                                    try:
-                                        bag_meta[meta_field] = float(re.sub(r'\D', '', line[assignment])) / 100
-                                    except ValueError:
-                                        continue
-#                                        _logging.warning(
-#                                            f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
-                                elif meta_field in ('from_horiz_datum'):
-                                    splits = line[assignment].split(' ')
-                                    datum_info = {}
-                                    try:
-                                        datum_info['from_horiz_frame'] = splits[0]
-                                        datum_info['from_horiz_type'] = splits[1]
-                                        datum_info['from_horiz_key'] = re.sub('\D', '', splits[2])
-                                        bag_meta = {**bag_meta, **datum_info}
-                                    except IndexError:
-                                        continue
-#                                        _logging.warning(
-#                                            f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
-                                #                                    raise RuntimeError(f'Unable to add datum information due to incorrect formatting: {line[2]}')
-                                elif meta_field in ('from_vert_datum'):
-                                    if line[assignment] in vert_datum.keys():
-                                        datum_info['from_vert_key'] = line[assignment]
-                                elif meta_field in ('start_date', 'end_date'):
-                                    if len(line[assignment]) == 8:
-                                        bag_meta[meta_field] = line[assignment]
-                                    elif len(line[assignment]) == 11:
-                                        bag_meta[meta_field] = f"{datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
-                                    elif len(line[assignment]) == 13:
-                                        bag_meta[meta_field] = f"{datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
-                                else:
-                                    bag_meta[meta_field] = line[assignment]
-                        if 'bathymetry' in bag_meta and 'complete_coverage' in bag_meta:
-                            bathymetry = ast.literal_eval(bag_meta['bathymetry'])
-                            coverage = ast.literal_eval(bag_meta['complete_coverage'])
-
-                            if bathymetry:
-                                interpolate = False
-                            else:
-                                if coverage:
-                                    interpolate = True
-                                else:
-                                    if 'sss_data' in bag_meta:
-                                        interpolate = ast.literal_eval(bag_meta['sss_data'])
-                                    else:
-                                        interpolate = False
-
-                            bag_meta['interpolate'] = interpolate
-                        else:
-                            bag_meta['interpolate'] = False
-                        meta.append(bag_meta)
-                    index += 1
-                opened.close()
-        return meta
 
 
 def region_info_json() -> [dict]:
@@ -1031,11 +858,23 @@ def info_save(rows: [dict]):
         json_file.close()
 
 
-def config_data_type():
+def config_data_type() -> (str, str):
+    """
+    Reads the config value for data type to be queried by the tool
+
+    Returns
+    -------
+    (str, str)
+        query platform, data format
+
+    """
+
     if config['Data']['Data Type'].upper() in ('', 'BAG'):
-        return 'nos_hydro_dynamic'
+        return 'nos_hydro_dynamic', 'BAG'
+    elif config['Data']['Data Type'].upper() in ('BPS'):
+        return 'nos_hydro_dynamic', 'BPS'
     elif config['Data']['Data Type'].upper() in ('MB', 'MULTIBEAM'):
-        return 'multibeam_dynamic'
+        return 'multibeam_dynamic', 'MB'
     else:
         raise ValueError(f"Data Type not supported: {config['Data']['Data Type']}")
 
@@ -1057,23 +896,35 @@ def main(pb=None):
     if pb is not None:
         pb.Pulse()
 
-    csv_meta = csv_info() if csv_exists else None
     regions = region_info_json()
     survey_history = survey_list()
+    data_type, data_format = config_data_type()
+
+    if data_format in ('BAG', 'MB'):
+        qId = 0
+    elif data_format in ('BPS'):
+        qId = 1
 
     for region in regions:
         print(f"{region['Processing Branch']}_{region['Region']}")
         region_poly = os.path.join(parent_dir, region['Shape'])
         bounds = region_bounds(region_poly)
-        objectIDs, bagNum = survey_objectID_query(bounds, 0)
-        if bagNum > 0:
-            attr_list, rows = survey_compile(objectIDs, bagNum, survey_history, region_poly, pb=pb)
-#            if len(rows) > 0:
-#                rows = survey_download(rows, region, meta=csv_meta)
-#                survey_history.extend(rows)
-#                info_save(survey_history)
-#            else:
-#                print(f'No changes in bag data')
+        objectIDs, objNum = survey_objectID_query(bounds, qId=qId)
+        if objNum > 0:
+            attr_list, rows = survey_compile(objectIDs, objNum, survey_history, region_poly, qId=qId, pb=pb)
+            if len(rows) > 0:
+                if qId == 1:
+                    before = len(rows)
+                    bag_ids, bag_num = survey_objectID_query(bounds, qId=0)
+                    bag_atts, bag_rows = survey_compile(bag_ids, bag_num, survey_history, region_poly, qId=0)
+                    bag_sids = [bag['SURVEY_ID'] for bag in bag_rows]
+                    rows = [row for row in rows if row['SURVEY_ID'] not in bag_sids]
+                    print(f'Surveys before prune: {before} Surveys after prune: {len(rows)}')
+                rows = survey_download(rows, region)
+                survey_history.extend(rows)
+                info_save(survey_history)
+            else:
+                print(f'No changes in bag data')
         else:
             print(f'No new items were found within: {region}.')
 

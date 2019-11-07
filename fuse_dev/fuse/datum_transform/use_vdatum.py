@@ -18,11 +18,15 @@ from tempfile import TemporaryDirectory as tempdir
 import numpy as _np
 from osgeo import gdal, ogr, osr
 
+import fuse.datum_transform.use_gdal as ug
+
+
+import fuse.datum_transform.use_gdal as ug
+
 from_hdatum = [
     'from_horiz_frame',
     'from_horiz_type',
     'from_horiz_units',
-    'from_horiz_key'
 ]
 
 from_vdatum = [
@@ -102,75 +106,9 @@ class VDatum:
             points, utm_zone = self.__translate_xyz(filename, instructions)
             vertical_datum = instructions['to_vert_key'].upper()
             # passing UTM zone instead of EPSG code
-            dataset = self.__xyz2gdal(points, utm_zone, vertical_datum)
+            dataset = ug._xyz_to_gdal(points, utm_zone, vertical_datum)
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
         return dataset
-
-    def create(self, filename: str, instructions: dict) -> gdal.Dataset:
-        """
-        Get a GDAL point cloud dataset from the given file.
-
-        Parameters
-        ----------
-        filename
-            filename of data file
-        instructions
-            dictionary of metadata
-
-        Returns
-        -------
-            GDAL point cloud dataset
-        """
-
-        if instructions['read_type'] == 'ehydro':
-            return self.__read_points(filename, instructions)
-        elif instructions['read_type'] == 'bag':
-            return self.__read_bag_bathy(filename, instructions)
-        else:
-            raise ValueError('Reader type not implemented')
-
-    def __read_points(self, filename: str, instructions: dict) -> gdal.Dataset:
-        """
-        Pass back a un-translated GDAL point cloud dataset
-
-        Parameters
-        ----------
-        filename
-            filename of data file
-        instructions
-            dictionary of metadata
-
-        Returns
-        -------
-            GDAL point cloud dataset
-        """
-
-        points = self._reader.read_bathymetry(filename)
-
-        if 'to_horiz_key' in instructions:
-            utm_zone = int(instructions['from_horiz_key'])
-        if 'from_vert_key' in instructions:
-            vertical_datum = instructions['from_vert_key']
-
-        return self.__xyz2gdal(points, utm_zone, vertical_datum)
-
-    def __read_bag_bathy(self, filename: str, instructions: dict) -> gdal.Dataset:
-        """
-        Create a GDAL point cloud dataset from the given BAG file.
-
-        Parameters
-        ----------
-        filename
-            filename of BAG
-        instructions
-            dictionary of metadata
-
-        Returns
-        -------
-            GDAL point cloud dataset
-        """
-
-        return self._reader.read_bathymetry(filename, instructions['to_vert_key'])
 
     def __translate_xyz(self, filename: str, instructions: dict) -> (_np.array, int):
         """
@@ -190,6 +128,9 @@ class VDatum:
 
         # read the points and put it in a temp file for VDatum to read
         points = self._reader.read_bathymetry(filename)
+        points = self.__filter_xyz(points, instructions)
+        if points.shape[0] == 0:
+            raise ValueError(f'no valid points read from {filename} in {__file__}')
         original_directory = tempdir()
         output_filename = _os.path.join(original_directory.name, 'outfile.txt')
         reprojected_directory = tempdir()
@@ -218,6 +159,36 @@ class VDatum:
         else:
             raise RuntimeError(f'No output returned from vdatum')
         return transformed_data, utm_zone
+
+    def __filter_xyz(self, xyz: _np.array, metadata: dict) -> _np.array:
+        """
+        Return a filtered geographic xyz array.  The provided geographic xyz
+        array is filtered to remove any data not in the zone of the destination
+        spatial reference frame.  If the provided data is not geographic or the
+        destiaion frame is not UTM the provided array is returned.
+
+        Parameters
+        ----------
+        xyz
+            data as an xyz n by 3 numpy array in a geographic frame
+
+        metadata
+            the metadata dict assocated with the xyz data
+
+        Returns
+        -------
+        numpy array
+        """
+        if metadata['from_horiz_type'] == 'geo' and metadata['to_horiz_type'] == 'utm':
+            srs = ug.spatial_reference_from_metadata(metadata)
+            c_meridian = srs.GetProjParm(gdal.osr.SRS_PP_CENTRAL_MERIDIAN)
+            west = c_meridian - 3
+            east = c_meridian + 3
+            x = xyz[:,0]
+            idx = _np.nonzero((x > west) & (x < east))[0]
+            xyz = xyz[idx,:]
+        return xyz
+
 
     def __translate_bag(self, filename: str, instructions: dict) -> (gdal.Dataset, int):
         """
@@ -280,13 +251,16 @@ class VDatum:
         instructions
             dictionary of metadata
         """
-
+        # having the input zone is optional if the input type is geographic
+        local_from_datum = from_hdatum.copy()
+        if instructions['from_horiz_type'] != 'geo':
+            local_from_datum.append('from_horiz_key')
         # having the output zone is optional
         local_to_hdatum = to_hdatum.copy()
         if 'to_horiz_key' in instructions:
             local_to_hdatum.append('to_horiz_key')
         self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
-                      f'ihorz:{":".join(instructions[key] for key in from_hdatum)} ' + \
+                      f'ihorz:{":".join(instructions[key] for key in local_from_datum)} ' + \
                       f'ivert:{":".join(instructions[key] for key in from_vdatum)} ' + \
                       f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
                       f'overt:{":".join(instructions[key] for key in to_vdatum)} '
@@ -328,40 +302,6 @@ class VDatum:
         except:
             print(output)
             print(outerr)
-
-    def __xyz2gdal(self, points: [(float, float, float)], utm_zone: int, vertical_datum: str) -> gdal.Dataset:
-        """
-        Get a GDAL point cloud dataset from XYZ points.
-
-        Parameters
-        ----------
-        points
-            XYZ points
-        utm_zone
-            desired UTM zone
-        vertical_datum
-            name of desired vertical datum
-
-        Returns
-        -------
-            GDAL point cloud dataset
-        """
-
-        # setup the gdal bucket
-        spatial_reference = osr.SpatialReference()
-        spatial_reference.SetWellKnownGeogCS('NAD83')
-        # positive UTM zone is in the northern hemisphere
-        spatial_reference.SetUTM(abs(utm_zone), 1 if utm_zone > 0 else 0)
-        spatial_reference.SetVertCS(vertical_datum, vertical_datum, 2000)
-        dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
-        layer = dataset.CreateLayer('pts', spatial_reference, geom_type=ogr.wkbPoint)
-        for point in points:
-            geometry = ogr.Geometry(ogr.wkbPoint)
-            geometry.AddPoint(*point)
-            feature = ogr.Feature(layer.GetLayerDefn())
-            feature.SetGeometry(geometry)
-            layer.CreateFeature(feature)
-        return dataset
 
 
 def _has_required_instructions(instructions: dict) -> bool:

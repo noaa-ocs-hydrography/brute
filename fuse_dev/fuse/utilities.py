@@ -1,22 +1,16 @@
 from re import match
 from typing import Union
 
-import fiona
-import fiona.crs
 import numpy
 import rasterio
 import rasterio.crs
 from affine import Affine
-from matplotlib import pyplot
-from matplotlib.cm import get_cmap
-from osgeo import gdal, osr
-from rasterio import MemoryFile
-from rasterio.features import shapes as rasterio_shapes
-from rasterio.mask import mask
+from osgeo import gdal, osr, ogr
+from rasterio.features import shapes as rasterio_shapes, geometry_mask
 from scipy.spatial import Delaunay, cKDTree
-from shapely import geometry
 from shapely.geometry import Polygon, MultiLineString, MultiPolygon, shape as shapely_shape, mapping
 from shapely.ops import polygonize
+from shapely.wkt import loads as load_wkt
 
 
 def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> numpy.array:
@@ -26,9 +20,9 @@ def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> 
     Parameters
     ----------
     dataset
-        GDAL dataset
+        GDAL dataset (point cloud or raster)
     index
-        index of layer (for vector, 0-indexed) or band (for raster, 1-indexed) to read in given dataset
+        zero-based index of layer / band to read from the given dataset
     nodata
         value to exclude from point creation
 
@@ -38,10 +32,21 @@ def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> 
         N x 3 array of XYZ points
     """
 
-    if dataset.GetProjectionRef() == '':
-        if nodata is None:
-            nodata = numpy.nan
+    is_raster = dataset.GetProjectionRef() != ''
 
+    if index < 0:
+        index += dataset.RasterCount if is_raster else dataset.GetLayerCount()
+
+    if is_raster:
+        raster_band = dataset.GetRasterBand(index + 1)
+        geotransform = dataset.GetGeoTransform()
+
+        if nodata is None:
+            nodata = raster_band.GetNoDataValue()
+
+        return geoarray_to_xyz(raster_band.ReadAsArray(), origin=(geotransform[0], geotransform[3]),
+                               resolution=(geotransform[1], geotransform[5]), nodata=nodata)
+    else:
         point_layer = dataset.GetLayerByIndex(index)
         num_points = point_layer.GetFeatureCount()
 
@@ -54,27 +59,15 @@ def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> 
                 output_points[point_index, :] = output_point
 
         return output_points
-    else:
-        if index < 1:
-            index += 1
-
-        raster_band = dataset.GetRasterBand(index)
-        geotransform = dataset.GetGeoTransform()
-
-        if nodata is None:
-            nodata = raster_band.GetNoDataValue()
-
-        return geoarray_to_points(raster_band.ReadAsArray(), origin=(geotransform[0], geotransform[3]),
-                                  resolution=(geotransform[1], geotransform[5]), nodata=nodata)
 
 
-def geoarray_to_points(array: numpy.array, origin: (float, float), resolution: (float, float), nodata: float = None) -> numpy.array:
+def geoarray_to_xyz(data: numpy.array, origin: (float, float), resolution: (float, float), nodata: float = None) -> numpy.array:
     """
     Extract XYZ points from an array of data using the given raster-like georeference (origin  and resolution).
 
     Parameters
     ----------
-    array
+    data
         2D array of gridded data
     origin
         X, Y coordinates of northwest corner
@@ -89,20 +82,104 @@ def geoarray_to_points(array: numpy.array, origin: (float, float), resolution: (
         N x 3 array of XYZ points
     """
 
-    x_values, y_values = numpy.meshgrid(numpy.linspace(origin[0], origin[0] + resolution[0] * array.shape[1], array.shape[1]),
-                                        numpy.linspace(origin[1], origin[1] + resolution[1] * array.shape[0], array.shape[0]))
+    if nodata is None:
+        nodata = numpy.nan
 
-    if nodata is not None:
-        x_values = x_values[array != nodata]
-        y_values = y_values[array != nodata]
-        array = array[array != nodata]
+    x_values, y_values = numpy.meshgrid(numpy.linspace(origin[0], origin[0] + resolution[0] * data.shape[1], data.shape[1]),
+                                        numpy.linspace(origin[1], origin[1] + resolution[1] * data.shape[0], data.shape[0]))
 
-    return numpy.stack((x_values, y_values, array), axis=1)
+    return numpy.stack((x_values[data != nodata], y_values[data != nodata], data[data != nodata]), axis=1)
+
+def regulararray_to_xyz(data: numpy.array, nodata: float = None) -> numpy.array:
+    """
+    Extract XYZ points from an array of data
+
+    Parameters
+    ----------
+    data
+        2D array of gridded data
+    nodata
+        value to exclude from point creation from the input grid
+
+    Returns
+    -------
+    numpy.array
+        N x 3 array of XYZ points
+    """
+
+    if nodata is None:
+        nodata = numpy.nan
+
+    x_values, y_values = numpy.meshgrid(numpy.arange(data.shape[1]), numpy.arange(data.shape[0]))
+
+    return numpy.stack((x_values[data != nodata], y_values[data != nodata], data[data != nodata]), axis=1)
+
+
+def xyz_to_gdal(points: numpy.array, spatial_reference: osr.SpatialReference) -> gdal.Dataset:
+    """
+    Get a GDAL point cloud dataset from XYZ points.
+
+    Parameters
+    ----------
+    points
+        N x 3 array of XYZ points
+    utm_zone
+        desired UTM zone
+    vertical_datum
+        name of desired vertical datum
+
+    Returns
+    -------
+    gdal.Dataset
+        GDAL point cloud dataset
+    """
+
+    dataset = gdal.GetDriverByName('Memory').Create('', 0, 0, 0, gdal.GDT_Unknown)
+    layer = dataset.CreateLayer('pts', spatial_reference, geom_type=ogr.wkbPoint)
+
+    for point in points:
+        geometry = ogr.Geometry(ogr.wkbPoint)
+        geometry.AddPoint(*point)
+        feature = ogr.Feature(layer.GetLayerDefn())
+        feature.SetGeometry(geometry)
+        layer.CreateFeature(feature)
+
+    return dataset
+
+
+def raster_edge(data: numpy.array, nodata: float) -> numpy.array:
+    """
+    Get the cells of the array bordering `nodata`.
+
+    Parameters
+    ----------
+    data
+        array of raster data
+    nodata
+        value for no data in raster
+
+    Returns
+    -------
+    numpy.array
+        boolean array of edge cells
+    """
+
+    elevation_coverage = array_coverage(data, nodata)
+
+    horizontal_difference = numpy.concatenate((numpy.full((elevation_coverage.shape[0], 1), 0),
+                                               numpy.diff(numpy.where(elevation_coverage, 1, 0), axis=1)), axis=1)
+    vertical_difference = numpy.concatenate((numpy.full((1, elevation_coverage.shape[1]), 0),
+                                             numpy.diff(numpy.where(elevation_coverage, 1, 0), axis=0)), axis=0)
+
+    horizontal_edges = (horizontal_difference == 1) | numpy.roll(horizontal_difference == -1, -1, axis=1)
+    vertical_edges = (vertical_difference == 1) | numpy.roll(vertical_difference == -1, -1, axis=0)
+
+    return horizontal_edges | vertical_edges
 
 
 def raster_edge_points(data: numpy.array, origin: (float, float), resolution: (float, float), nodata: float) -> numpy.array:
     """
-    Get the edge points of the array of data using the given raster-like georeference (origin  and resolution).
+    Get the points bordering `nodata` in the given array, using the given raster transform.
 
     Parameters
     ----------
@@ -121,31 +198,108 @@ def raster_edge_points(data: numpy.array, origin: (float, float), resolution: (f
         N x 3 array of points
     """
 
-    elevation_coverage = array_coverage(data, nodata)
-
-    horizontal_difference = numpy.concatenate((numpy.full((elevation_coverage.shape[0], 1), 0),
-                                               numpy.diff(numpy.where(elevation_coverage, 1, 0), axis=1)), axis=1)
-    vertical_difference = numpy.concatenate((numpy.full((1, elevation_coverage.shape[1]), 0),
-                                             numpy.diff(numpy.where(elevation_coverage, 1, 0), axis=0)), axis=0)
-
-    horizontal_edges = (horizontal_difference == 1) | numpy.roll(horizontal_difference == -1, -1, axis=1)
-    vertical_edges = (vertical_difference == 1) | numpy.roll(vertical_difference == -1, -1, axis=0)
-
-    return geoarray_to_points(numpy.where(horizontal_edges | vertical_edges, data, nodata), origin, resolution, nodata)
+    return geoarray_to_xyz(numpy.where(raster_edge(data, nodata), data, nodata), origin, resolution, nodata)
 
 
-def vertices(region: MultiPolygon):
-    if type(region) is Polygon:
-        return numpy.stack(region.exterior.xy, axis=1)
+def array_edge_points(data: numpy.array, nodata: float) -> numpy.array:
+    """
+    Get the points bordering `nodata` in the given array.
+
+    Parameters
+    ----------
+    data
+        array of raster data
+    nodata
+        value for no data in raster
+
+    Returns
+    -------
+    numpy.array
+        N x 3 array of points
+    """
+
+    return regulararray_to_xyz(numpy.where(raster_edge(data, nodata), data, nodata), nodata)
+
+
+def shrink_array(data: numpy.array, nodata: float, cells: int = 1) -> numpy.array:
+    """
+    Shrink the edges of the given array by setting all values bordering `nodata` to `nodata`.
+
+    Parameters
+    ----------
+    data
+        array of data
+    nodata
+        value for no data
+    cells
+        cells by which to shrink the data
+
+    Returns
+    -------
+    numpy.array
+        shrunken array of data
+    """
+
+    for _ in range(cells):
+        data = numpy.where(raster_edge(data, nodata), nodata, data)
+
+    return data
+
+
+def shrink_gdal_raster(raster: gdal.Dataset, cells: int = 1, band: int = 0) -> gdal.Dataset:
+    """
+    Shrink the edges of the given GDAL raster by erasing all values bordering `nodata`.
+
+    Parameters
+    ----------
+    raster
+        GDAL raster
+    cells
+        cells by which to shrink the raster
+    band
+        zero-based index of raster band
+
+    Returns
+    -------
+    gdal.Dataset
+        shrunken raster
+    """
+
+    raster_band = raster.GetRasterBand(band + 1)
+    raster_band.WriteArray(shrink_array(raster_band.ReadAsArray(), raster_band.GetNoDataValue(), cells))
+    del raster_band
+
+    return raster
+
+
+def polygon_vertices(polygon: Union[Polygon, MultiPolygon]) -> numpy.array:
+    """
+    Get the vertices of the given shape.
+
+    Parameters
+    ----------
+    polygon
+        Shapely polygon (or multipolygon)
+
+    Returns
+    -------
+    numpy.array
+        N x 2 array of XY points corresponding to the vertices of the given polygon
+    """
+
+    points = []
+    if type(polygon) is Polygon:
+        points.append(numpy.stack(polygon.exterior.xy, axis=1))
+        for interior in polygon.interiors:
+            points.append(numpy.stack(interior.xy, axis=1))
     else:
-        points = []
-        for polygon in region:
-            points.append(numpy.stack(polygon.exterior.xy, axis=1))
+        for geometry in polygon:
+            points.append(polygon_vertices(geometry))
 
-        return numpy.concatenate(points, axis=0)
+    return numpy.concatenate(points, axis=0)
 
 
-def alpha_hull(points: numpy.array, max_length: float = None) -> MultiPolygon:
+def alpha_hull(points: numpy.array, max_length: float = None, triangles: Delaunay = None) -> MultiPolygon:
     """
     Calculate the alpha shape (concave hull) of the given points.
     inspired by https://sgillies.net/2012/10/13/the-fading-shape-of-alpha.html
@@ -156,20 +310,23 @@ def alpha_hull(points: numpy.array, max_length: float = None) -> MultiPolygon:
         N x 3 array of XYZ points
     max_length
         maximum length to include in the convex boundary
+    triangles
+        Delaunay triangulation of points (optional)
 
     Returns
     ----------
     MultiPolygon
-        multipolygon of alpha hull
+        alpha shape (concave hull) of points
     """
 
     if points.shape[0] < 4:
         raise ValueError('need at least 4 points to perform triangulation')
 
     if max_length is None:
-        max_length = numpy.max(cKDTree(points).query(points, k=2)[0][:, 1])
+        max_length = maximum_nearest_neighbor_distance(points)
 
-    triangles = Delaunay(points)
+    if triangles is None:
+        triangles = Delaunay(points)
 
     indices = numpy.stack(((triangles.simplices[:, 0], triangles.simplices[:, 1]),
                            (triangles.simplices[:, 1], triangles.simplices[:, 2]),
@@ -185,25 +342,13 @@ def alpha_hull(points: numpy.array, max_length: float = None) -> MultiPolygon:
         boundary_edge_indices = boundary_edge_indices[counts == 1]
         return consolidate_disparate_polygons(polygonize(MultiLineString(points[boundary_edge_indices].tolist())))
     else:
-        print(f'no edges were found to be shorter than the specified length {max_length}; reverting to maximum nearest-neighbor distance')
-        return alpha_hull(points)
+        print(f'no edges were found to be shorter than the specified length {max_length}; attempting with {max_length * 2}')
+        return alpha_hull(points, max_length * 2, triangles)
 
 
-def largest_geometry(geometries: [geometry]) -> geometry:
-    max_area = 0
-    largest_geometry = None
-
-    for geometry in geometries:
-        if geometry.area > max_area:
-            max_area = geometry.area
-            largest_geometry = geometry
-
-    return largest_geometry
-
-
-def consolidate_disparate_polygons(polygons: [Polygon]) -> MultiPolygon:
+def consolidate_disparate_polygons(polygons: [Union[Polygon, MultiPolygon]]) -> MultiPolygon:
     """
-    Create a MultiPolygon from the given polygons, assuming interior polygons are holes.
+    Create a MultiPolygon from the given polygons, assuming interior polygons are holes and that no edges intersect.
 
     Parameters
     ----------
@@ -249,15 +394,44 @@ def consolidate_disparate_polygons(polygons: [Polygon]) -> MultiPolygon:
                         for index, outer_ring in enumerate(outer_rings))
 
 
-def raster_mask(region: Polygon, shape: (float, float), resolution: (float, float), origin: (float, float), nodata: float,
-                crs_wkt: str) -> gdal.Dataset:
+def rasterize_polygon(polygon: Union[Polygon, MultiPolygon], shape: (float, float), origin: (float, float),
+                      resolution: (float, float)) -> (numpy.array, Affine):
+    """
+    Convert the given Shapely polygon into a boolean mask with its requisite transform.
+
+    Parameters
+    ----------
+    polygon
+        Shapely polygon (or multipolygon) with which to create mask
+    shape
+        shape of output mask
+    resolution
+        cell size of output mask
+    origin
+        northwest corner
+
+    Returns
+    -------
+    numpy.array, Affine
+        boolean array mask (True is within the polygon, False outside) and its affine transform
+    """
+
+    if type(polygon) is Polygon:
+        polygon = MultiPolygon([polygon])
+
+    transform = affine_from_georeference(origin, resolution)
+    return ~geometry_mask(polygon, shape, transform), transform
+
+
+def raster_mask(polygon: Union[Polygon, MultiPolygon], shape: (float, float), origin: (float, float), resolution: (float, float),
+                nodata: float, crs_wkt: str) -> gdal.Dataset:
     """
     Convert the given Shapely polygon into a GDAL raster dataset mask (with values outside of the polygon set to `nodata`).
 
     Parameters
     ----------
-    region
-        Shapely polygon with which to create mask
+    polygon
+        Shapely polygon (or multipolygon) with which to create mask
     shape
         shape of mask
     resolution
@@ -275,42 +449,30 @@ def raster_mask(region: Polygon, shape: (float, float), resolution: (float, floa
         GDAL raster dataset
     """
 
-    if type(origin) is not numpy.array:
-        origin = numpy.array(origin)
-
-    with MemoryFile() as rasterio_memory_file:
-        with rasterio_memory_file.open(driver='GTiff', width=shape[1], height=shape[0], count=1, crs=rasterio.crs.CRS.from_wkt(crs_wkt),
-                                       transform=georeference_to_affine(origin, resolution), dtype=rasterio.float64,
-                                       nodata=numpy.array([nodata]).astype(rasterio.float64).item()) as memory_raster:
-            memory_raster.write(numpy.full(shape, 1, dtype=rasterio.float64), 1)
-
-        with rasterio_memory_file.open() as memory_raster:
-            masked_data, masked_transform = mask(memory_raster, [region])
-
-    masked_data = masked_data[0, :, :]
+    mask, transform = rasterize_polygon(polygon, shape, origin, resolution)
 
     output_dataset = gdal.GetDriverByName('MEM').Create('', int(shape[1]), int(shape[0]), 1, gdal.GDT_Float32)
     output_dataset.SetProjection(crs_wkt)
-    output_dataset.SetGeoTransform(masked_transform.to_gdal())
+    output_dataset.SetGeoTransform(transform.to_gdal())
     output_band = output_dataset.GetRasterBand(1)
     output_band.SetNoDataValue(nodata)
-    output_band.WriteArray(masked_data)
+    output_band.WriteArray(numpy.where(mask, 1, nodata))
 
     return output_dataset
 
 
-def raster_mask_like(region: Polygon, like_raster: gdal.Dataset, band: int = 1) -> gdal.Dataset:
+def raster_mask_like(polygon: Union[Polygon, MultiPolygon], like_raster: gdal.Dataset, band: int = 0) -> gdal.Dataset:
     """
     Get a mask of the survey area with the same properties as the given raster.
 
     Parameters
     ----------
-    region
+    polygon
         Shapely polygon with which to create mask
     like_raster
         raster to copy
     band
-        raster band (1-indexed)
+        zero-based index of raster band
 
     Returns
     -------
@@ -319,12 +481,13 @@ def raster_mask_like(region: Polygon, like_raster: gdal.Dataset, band: int = 1) 
     """
 
     geotransform = like_raster.GetGeoTransform()
-    raster_band = like_raster.GetRasterBand(band)
-    return raster_mask(region, shape=(like_raster.RasterYSize, like_raster.RasterXSize), resolution=(geotransform[1], geotransform[5]),
-                       origin=(geotransform[0], geotransform[3]), nodata=raster_band.GetNoDataValue(), crs_wkt=gdal_crs_wkt(like_raster))
+    raster_band = like_raster.GetRasterBand(band + 1)
+    return raster_mask(polygon, shape=(like_raster.RasterYSize, like_raster.RasterXSize), origin=(geotransform[0], geotransform[3]),
+                       resolution=(geotransform[1], geotransform[5]), nodata=raster_band.GetNoDataValue(),
+                       crs_wkt=crs_wkt_from_gdal(like_raster))
 
 
-def apply_raster_mask(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: float = None, band: int = 1) -> gdal.Dataset:
+def apply_raster_mask(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: float = None, band: int = 0) -> gdal.Dataset:
     """
     Mask a raster using the given mask values in the given mask band.
     Both rasters are assumed to be collocated, as all operations are conducted on the pixel level.
@@ -338,7 +501,7 @@ def apply_raster_mask(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: floa
     mask_value
         value to use as mask
     band
-        raster band of mask (1-indexed)
+        zero-based index of raster band of mask
 
     Returns
     -------
@@ -346,7 +509,7 @@ def apply_raster_mask(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: floa
         GDAL raster dataset with mask applied
     """
 
-    band = mask.GetRasterBand(band)
+    band = mask.GetRasterBand(band + 1)
     mask_array = band.ReadAsArray()
 
     if mask_value is None:
@@ -378,8 +541,8 @@ def overwrite_raster(from_raster: gdal.Dataset, onto_raster: gdal.Dataset) -> gd
         the "onto" raster after being overwritten with values from the "from" raster
     """
 
-    assert (from_raster.RasterYSize, from_raster.RasterXSize) == \
-           (onto_raster.RasterYSize, onto_raster.RasterXSize), 'rasters must be the same shape'
+    if (from_raster.RasterYSize, from_raster.RasterXSize) != (onto_raster.RasterYSize, onto_raster.RasterXSize):
+        raise NotImplementedError('overwriting rasters of different shapes is not supported')
 
     for band_index in range(1, from_raster.RasterCount + 1):
         from_band = from_raster.GetRasterBand(band_index)
@@ -425,19 +588,19 @@ def shape_from_cell_size(resolution: (float, float), bounds: (float, float, floa
     cell_remainder = (ne_corner - sw_corner) % resolution
     ne_corner -= cell_remainder
 
-    shape = numpy.flip((ne_corner - sw_corner) / resolution).astype(int)
+    shape = numpy.flip((ne_corner - sw_corner) / numpy.abs(resolution)).astype(int)
 
     return shape, numpy.concatenate((sw_corner, ne_corner))
 
 
-def epsg_to_wkt(epsg: int) -> str:
+def crs_wkt_from_epsg(crs: Union[int, str]) -> str:
     """
-    Use OSR to get the well-known text of a CRS from its EPSG code.
+    Get the well-known text of a CRS from EPSG code, SPCS string, Esri string, or well-known text of CRS.
 
     Parameters
     ----------
-    epsg
-        EPSG code of CRS
+    crs
+        EPSG code, SPCS string, Esri string, or well-known text of CRS
 
     Returns
     -------
@@ -445,19 +608,24 @@ def epsg_to_wkt(epsg: int) -> str:
         well-known text of CRS
     """
 
-    spatial_reference = osr.SpatialReference()
-    spatial_reference.ImportFromEPSG(epsg)
+    if type(crs) is str:
+        spatial_reference = osr.SpatialReference(wkt=crs)
+        spatial_reference.MorphFromESRI()
+    else:
+        spatial_reference = osr.SpatialReference()
+        spatial_reference.ImportFromEPSG(crs)
+
     return spatial_reference.ExportToWkt()
 
 
-def gdal_crs_wkt(dataset: gdal.Dataset, layer: int = 0) -> str:
+def crs_wkt_from_gdal(dataset: gdal.Dataset, layer: int = 0) -> str:
     """
-    extract the well-known text of the CRS from the given GDAL dataset
+    Extract the well-known text of the CRS from the given GDAL dataset.
 
     Parameters
     ----------
     dataset
-        GDAL dataset (either raster or vector)
+        GDAL dataset (vector or raster)
     layer
         index of vector layer
 
@@ -474,16 +642,42 @@ def gdal_crs_wkt(dataset: gdal.Dataset, layer: int = 0) -> str:
         if vector_layer is not None:
             crs_wkt = vector_layer.GetSpatialRef().ExportToWkt()
         else:
-            crs_wkt = epsg_to_wkt(4326)
+            crs_wkt = crs_wkt_from_epsg(4326)
     elif match('^EPSG:[0-9]+$', crs_wkt):
-        crs_wkt = epsg_to_wkt(int(crs_wkt[5:]))
+        crs_wkt = crs_wkt_from_epsg(int(crs_wkt[5:]))
 
     return crs_wkt
 
 
+def gdal_crs_from_utm(utm_zone: int, vertical_datum: str = 'NADV88', horizontal_datum: str = 'NAD83') -> osr.SpatialReference:
+    """
+    Create an OSR NAD83 spatial reference from the given parameters.
+
+    Parameters
+    ----------
+    utm_zone
+        UTM zone
+    vertical_datum
+        vertical datum
+    horizontal_datum
+        horizontal reference frame
+
+    Returns
+    -------
+    osr.SpatialReference
+        OSR spatial reference object
+    """
+
+    spatial_reference = osr.SpatialReference()
+    spatial_reference.SetWellKnownGeogCS(horizontal_datum)
+    spatial_reference.SetUTM(abs(utm_zone), 1 if utm_zone > 0 else 0)
+    spatial_reference.SetVertCS(vertical_datum, vertical_datum, 2000)
+    return spatial_reference
+
+
 def array_coverage(array: numpy.array, nodata: float = None) -> numpy.array:
     """
-    Return a boolean array of where data exists in the given array.
+    Get a boolean array of where data exists in the given array.
 
     Parameters
     ----------
@@ -504,7 +698,7 @@ def array_coverage(array: numpy.array, nodata: float = None) -> numpy.array:
     if nodata is None:
         nodata = numpy.nan
 
-    # TODO find reduced generalization of multiple bands
+    # TODO find reduced generalization of band coverage
     if array.shape[0] == 3:
         coverage = (array[0, :, :] != nodata) | (array[1, :, :] != nodata) | (array[2, :, :] != nodata)
     else:
@@ -538,7 +732,7 @@ def vectorize_geoarray(array: numpy.array, transform: Affine, nodata: float = No
                                                                              transform=transform))
 
 
-def vectorize_raster(raster: Union[gdal.Dataset, str], band: int = 1) -> MultiPolygon:
+def vectorize_raster(raster: Union[gdal.Dataset, str], band: int = 0) -> MultiPolygon:
     """
     Vectorize the extent of the given raster where data exists.
 
@@ -547,7 +741,7 @@ def vectorize_raster(raster: Union[gdal.Dataset, str], band: int = 1) -> MultiPo
     raster
         GDAL raster dataset or filename of raster
     band
-        raster band (1-indexed)
+        zero-based index of raster band
 
     Returns
     -------
@@ -556,7 +750,7 @@ def vectorize_raster(raster: Union[gdal.Dataset, str], band: int = 1) -> MultiPo
     """
 
     if type(raster) is gdal.Dataset:
-        raster_band = raster.GetRasterBand(band)
+        raster_band = raster.GetRasterBand(band + 1)
         raster_array = raster_band.ReadAsArray()
         del raster_band
         transform = Affine.from_gdal(*raster.GetGeoTransform())
@@ -565,62 +759,12 @@ def vectorize_raster(raster: Union[gdal.Dataset, str], band: int = 1) -> MultiPo
             raster_array = raster.read()
             transform = raster.transform
     else:
-        raise ValueError(f'unsupported input type {type(raster)}')
+        raise NotImplementedError(f'unsupported input type {type(raster)}')
 
     return vectorize_geoarray(raster_array, transform)
 
 
-def write_geometry(filename: str, geometry: Union[Polygon, MultiPolygon], crs_wkt: str = None, name: str = None, layer: str = None):
-    """
-    Write the given Shapely geometry to the given vector file.
-
-    Parameters
-    ----------
-    filename
-        file path to vector file
-    geometry
-        Shapely geometry
-    crs_wkt
-        well-known text of CRS
-    name
-        value to write to the `name` attribute
-    layer
-        name of layer to write to
-    """
-
-    write_geojson(filename, mapping(geometry), crs_wkt, name, layer)
-
-
-def write_geojson(filename: str, geojson: dict, crs_wkt: str = None, name: str = None, layer: str = None):
-    """
-    Write the given GeoJSON dictionary to the given vector file.
-
-    Parameters
-    ----------
-    filename
-        file path to vector file
-    geojson
-        dictionary with GeoJSON mappings
-    crs_wkt
-        well-known text of CRS
-    name
-        value to write to the `name` attribute
-    layer
-        name of layer to write to
-    """
-
-    if crs_wkt is None:
-        crs_wkt = fiona.crs.to_string(fiona.crs.from_epsg(4326))
-
-    if name is None:
-        name = geojson['type']
-
-    with fiona.open(filename, 'w', 'GPKG', schema={'geometry': geojson['type'], 'properties': {'name': 'str'}}, crs_wkt=crs_wkt,
-                    layer=layer) as output_vector_file:
-        output_vector_file.write({'geometry': geojson, 'properties': {'name': name}})
-
-
-def georeference_to_affine(origin: (float, float), resolution: (float, float), rotation: (float, float) = None) -> Affine:
+def affine_from_georeference(origin: (float, float), resolution: (float, float), rotation: (float, float) = None) -> Affine:
     """
     Calculate the affine transformation from the given geographic parameters.
 
@@ -665,7 +809,7 @@ def maximum_nearest_neighbor_distance(points: numpy.array) -> float:
 
 def bounds_from_opposite_corners(corner_1: (float, float), corner_2: (float, float)) -> (float, float, float, float):
     """
-    Get bounds from two opposite XY points.
+    Get bounds from two XY points.
 
     Parameters
     ----------
@@ -683,7 +827,7 @@ def bounds_from_opposite_corners(corner_1: (float, float), corner_2: (float, flo
     return numpy.ravel(numpy.sort(numpy.stack((corner_1, corner_2), axis=0), axis=0))
 
 
-def raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
+def gdal_raster_bounds(raster: gdal.Dataset) -> (float, float, float, float):
     """
     Get the bounds (grouped by dimension) of the given unrotated raster.
 
@@ -731,135 +875,37 @@ def extent_from_bounds(bounds: (float, float, float, float)) -> (float, float, f
     return bounds[[0, 2, 1, 3]]
 
 
-def plot_region(region: Union[Polygon, MultiPolygon], axis: pyplot.Axes = None, show: bool = False, **kwargs):
+def gdal_dataset_is_raster(dataset: gdal.Dataset) -> bool:
     """
-    PLot the given region (a Shapely polygon or multipolygon).
+    Determine whether the given dataset is a raster.
 
     Parameters
     ----------
-    region
-        shapely polygon or multipolygon
-    axis
-        `pyplot` axis to plot to
-    show
-        whether to show the plot
+    dataset
+        GDAL dataset
+
+    Returns
+    -------
+    bool
+        whether the given dataset is a raster
     """
 
-    if axis is None:
-        axis = pyplot.gca()
-
-    if 'c' not in kwargs:
-        try:
-            color = next(axis._get_lines.color_cycle)
-        except AttributeError:
-            color = 'r'
-        kwargs['c'] = color
-
-    if type(region) is Polygon:
-        axis.plot(*region.exterior.xy, **kwargs)
-        for interior in region.interiors:
-            axis.plot(*interior.xy, **kwargs)
-    else:
-        for geometry in region:
-            axis.plot(*geometry.exterior.xy, **kwargs)
-            for interior in geometry.interiors:
-                axis.plot(*interior.xy, **kwargs)
-
-    if show:
-        pyplot.show()
+    return dataset.GetProjectionRef() != ''
 
 
-def plot_regions(regions: [Polygon], colors: [str] = None, axis: pyplot.Axes = None, show: bool = False, **kwargs):
+def geojson_from_geometry_wkt(geometry_wkt: str) -> dict:
     """
-    PLot the given regions using the given colors.
+    Get GeoJSON of a geometry from its well-known text.
 
     Parameters
     ----------
-    regions
-        list of shapely polygons or multipolygons
-    colors
-        colors to plot each region
-    axis
-        `pyplot` axis to plot to
-    show
-        whether to show the plot
+    geometry_wkt
+        well-known text of geometry
+
+    Returns
+    -------
+    dict
+        GeoJSON of geometry
     """
 
-    if axis is None:
-        axis = pyplot.gca()
-
-    if colors is None:
-        colors = [get_cmap('gist_rainbow')(color_index / len(regions)) for color_index in range(len(regions))]
-
-    for color_index, geometry in enumerate(regions):
-        color = colors[color_index]
-        if type(geometry) is Polygon:
-            axis.plot(*geometry.exterior.xy, c=color, **kwargs)
-        else:
-            for polygon in geometry:
-                axis.plot(*polygon.exterior.xy, c=color, **kwargs)
-
-    if show:
-        pyplot.show()
-
-
-def plot_bounding_box(sw: (float, float), ne: (float, float), axis: pyplot.Axes = None, show: bool = False, **kwargs):
-    """
-    Plot the bounding box of the given extent.
-
-    Parameters
-    ----------
-    sw
-        XY coordinates of southwest corner
-    ne
-        XY coordinates of northeast corner
-    axis
-        `pyplot` axis to plot to
-    show
-        whether to show the plot
-    """
-
-    if axis is None:
-        axis = pyplot.gca()
-
-    corner_points = numpy.array([sw, (ne[0], sw[1]), ne, (sw[0], ne[1]), sw])
-
-    axis.plot(corner_points[:, 0], corner_points[:, 1], **kwargs)
-
-    if show:
-        pyplot.show()
-
-
-def plot_raster(raster: gdal.Dataset, band: int = 1, axis: pyplot.Axes = None, show: bool = False, **kwargs):
-    """
-    Plot the given GDAL raster dataset using its georeference information.
-
-    Parameters
-    ----------
-    raster
-        GDAL raster dataset
-    band
-        raster band (1-indexed)
-    axis
-        `pyplot` axis to plot to
-    show
-        whether to show the plot
-    """
-
-    if axis is None:
-        axis = pyplot.gca()
-
-    raster_band = raster.GetRasterBand(band)
-    raster_data = numpy.flip(raster_band.ReadAsArray(), axis=0)
-    raster_data[raster_data == raster_band.GetNoDataValue()] = numpy.nan
-
-    geotransform = raster.GetGeoTransform()
-    if geotransform[1] < 0:
-        raster_data = numpy.flip(raster_data, axis=1)
-    if geotransform[5] < 0:
-        raster_data = numpy.flip(raster_data, axis=0)
-
-    axis.matshow(raster_data, extent=raster_bounds(raster)[[0, 2, 1, 3]], aspect='auto', **kwargs)
-
-    if show:
-        pyplot.show()
+    return mapping(load_wkt(geometry_wkt))

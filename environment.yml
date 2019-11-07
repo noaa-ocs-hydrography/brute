@@ -8,6 +8,7 @@ dependencies:
   - scipy
   - matplotlib
   - fiona
+  - rasterio
   - mongoengine
   - astropy
   - pytables
@@ -16,3 +17,4 @@ dependencies:
   - requests
   - spyder
   - wxpython
+  - libtiff=4.0.10=h6512ee2_1003
