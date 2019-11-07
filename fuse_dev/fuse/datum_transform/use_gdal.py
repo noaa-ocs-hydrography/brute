@@ -22,6 +22,28 @@ from rasterio.crs import CRS
 from rasterio.warp import transform as transform_points, calculate_default_transform
 
 
+def _maxValue(arr: numpy.array):
+    """
+    Returns the most used value in the array as an integer
+
+    Takes an input array and finds the most used value in the array, this
+    value is used by the program to assume the array's nodata value
+
+    Parameters
+    ----------
+    arr: _np.array :
+        An input array
+
+    Returns
+    -------
+
+    """
+
+    nums, counts = numpy.unique(arr, return_counts=True)
+    index = numpy.where(counts == numpy.amax(counts))
+    return int(nums[index])
+
+
 def reproject_support_files(metadata: dict, output_directory: str) -> dict:
     """
     Horizontally transform the given support files, writing reprojected files to the given output directory.
@@ -49,10 +71,13 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
             if '.tif' in extension:
                 input_dataset = gdal.Open(input_filename)
                 input_crs = osr.SpatialReference(wkt=input_dataset.GetProjectionRef())
+                nodata = input_dataset.GetRasterBand(1).GetNoDataValue()
+                if nodata is None:
+                    nodata =_maxValue(input_dataset.GetRasterBand(1).ReadAsArray())
                 del input_dataset
                 output_crs = spatial_reference_from_metadata(metadata)
                 if not input_crs.IsSame(output_crs):
-                    options = gdal.WarpOptions(format='GTiff', srcSRS=input_crs, dstSRS=output_crs)
+                    options = gdal.WarpOptions(format='GTiff', srcSRS=input_crs, dstSRS=output_crs, srcNodata=nodata, dstNodata=nodata)
                     gdal.Warp(output_filename, input_filename, options=options)
                     if not os.path.exists(output_filename):
                         logging.warning(f'file not created: {output_filename}')
