@@ -17,6 +17,64 @@ import psycopg2
 DATABASE_CREDENTIALS_FILENAME = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.txt')
 POSTGRES_DEFAULT_PORT = '5432'
 
+# this map translates the names used here to the ID used in the database
+DATABASE_KEYS = {
+    'from_filename': 'OBJNAM',
+    'start_date': 'SURSTA',
+    'end_date': 'SUREND',
+    'horiz_uncert': 'POSACC',
+    'to_horiz_datum': 'HORDAT',
+    'agency': 'AGENCY',
+    'source_type': 's_ftyp',
+    'complete_coverage': 'flcvrg',
+    'complete_bathymetry': 'flbath',
+    'to_vert_key': 'VERDAT',
+    'to_vert_units': 'DUNITS',
+    'vert_uncert_fixed': 'vun_fx',
+    'vert_uncert_vari': 'vun_vb',
+    'feat_size': 'f_size',
+    'feat_detect': 'f_dtct',
+    'feat_least_depth': 'f_lstd',
+    'interpolated': 'interp',
+    'reviewed': 'r_name',
+    'script_version': 's_scpv',
+    'source_indicator': 'SORIND',
+    'catzoc': 'CATZOC',
+    'supersession_score': 'supscr'
+}
+
+VERTICAL_DATUM_KEYS = {
+    'MLWS': '1',
+    'MLLWS': '2',
+    'MSL': '3',
+    'LLW': '4',
+    'MLW': '5',
+    'ISLW': '8',
+    'MLLW': '12',
+    'MHW': '16',
+    'MHWS': '17',
+    'MHHW': '21',
+    'LAT': '23',
+    'LOC': '24',
+    'IGLD': '25',
+    'LLWLT': '27',
+    'HHWLT': '28',
+    'HAT': '30',
+    'Unknown': '701',
+    'Other': '703',
+    'HRD': '24'  # Hudson River Datum
+}
+
+HORIZONTAL_DATUM_KEYS = {
+    'WGS72': '1',
+    'WGS84': '2',
+    'WGS_1984': '2',
+    'NAD27': '74',
+    'NAD83': '75',
+    'North_American_Datum_1983': '75',
+    'Local': '131'
+}
+
 
 class MetadataTable:
     """table of survey metadata"""
@@ -25,64 +83,6 @@ class MetadataTable:
     _key_prefixes = {
         'manual': 'manual_',
         'script': 'script_'
-    }
-
-    # this map translates the names used here to the ID used in the database
-    _database_keys = {
-        'from_filename': 'OBJNAM',
-        'start_date': 'SURSTA',
-        'end_date': 'SUREND',
-        'horiz_uncert': 'POSACC',
-        'to_horiz_datum': 'HORDAT',
-        'agency': 'AGENCY',
-        'source_type': 's_ftyp',
-        'complete_coverage': 'flcvrg',
-        'complete_bathymetry': 'flbath',
-        'to_vert_key': 'VERDAT',
-        'to_vert_units': 'DUNITS',
-        'vert_uncert_fixed': 'vun_fx',
-        'vert_uncert_vari': 'vun_vb',
-        'feat_size': 'f_size',
-        'feat_detect': 'f_dtct',
-        'feat_least_depth': 'f_lstd',
-        'interpolated': 'interp',
-        'reviewed': 'r_name',
-        'script_version': 's_scpv',
-        'source_indicator': 'SORIND',
-        'catzoc': 'CATZOC',
-        'supersession_score': 'supscr'
-    }
-
-    _vertical_datum_keys = {
-        'MLWS': '1',
-        'MLLWS': '2',
-        'MSL': '3',
-        'LLW': '4',
-        'MLW': '5',
-        'ISLW': '8',
-        'MLLW': '12',
-        'MHW': '16',
-        'MHWS': '17',
-        'MHHW': '21',
-        'LAT': '23',
-        'LOC': '24',
-        'IGLD': '25',
-        'LLWLT': '27',
-        'HHWLT': '28',
-        'HAT': '30',
-        'Unknown': '701',
-        'Other': '703',
-        'HRD': '24'  # Hudson River Datum
-    }
-
-    _horizontal_datum_keys = {
-        'WGS72': '1',
-        'WGS84': '2',
-        'WGS_1984': '2',
-        'NAD27': '74',
-        'NAD83': '75',
-        'North_American_Datum_1983': '75',
-        'Local': '131'
     }
 
     def __init__(self, hostname: str, database: str, table: str, fields: [str]):
@@ -102,7 +102,7 @@ class MetadataTable:
         """
 
         # parse port from URL
-        self.hostname, self.port = split_URL_from_port(hostname)
+        self.hostname, self.port = split_URL_port(hostname)
         if self.port is None:
             self.port = POSTGRES_DEFAULT_PORT
 
@@ -300,8 +300,8 @@ class MetadataTable:
 
         # remap the keys
         for key, value in row.items():
-            if key in MetadataTable._database_keys:
-                database_key = MetadataTable._database_keys[key]
+            if key in DATABASE_KEYS:
+                database_key = DATABASE_KEYS[key]
 
                 if value in ('TRUE', 'True'):
                     s57_row[database_key] = 1
@@ -313,12 +313,12 @@ class MetadataTable:
         # enforce additional required formating
         if 'VERDAT' in s57_row:
             verdat = s57_row['VERDAT'].upper()
-            s57_row['VERDAT'] = MetadataTable._vertical_datum_keys[verdat]
+            s57_row['VERDAT'] = VERTICAL_DATUM_KEYS[verdat]
         elif 'HORDAT' in s57_row:
             h_datum = s57_row['HORDAT']
-            for name in MetadataTable._horizontal_datum_keys:
+            for name in HORIZONTAL_DATUM_KEYS:
                 if name in h_datum:
-                    s57_row['HORDAT'] = MetadataTable._horizontal_datum_keys[name]
+                    s57_row['HORDAT'] = HORIZONTAL_DATUM_KEYS[name]
                     break
         elif 'SUREND' in s57_row:
             s57_row['SORDAT'] = s57_row['SUREND']
@@ -326,42 +326,42 @@ class MetadataTable:
         return s57_row
 
 
-def postgres_table_exists(connection: psycopg2.connect, table: str) -> bool:
-    """
-    Whether the given table exists within the given database.
+class MetadataFile:
+    """table of survey metadata"""
 
-    Parameters
-    ----------
-    connection
-        psycopg2 connection object
-    table
-        name of table
+    # ordered dict to ensure looping through the keys always gets 'manual' last.
+    _key_prefixes = {
+        'manual': 'manual: ',
+        'script': 'script: '
+    }
 
-    Returns
-    -------
-    bool
-        whether table exists
-    """
-
-    cursor = connection.cursor()
-    cursor.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name=%s)", (table,))
-    return cursor.fetchone()[0]
-
-
-class MetadataFile(MetadataTable):
-    def __init__(self, table: str, fields: [str]):
+    def __init__(self, filename: str, fields: [str]):
         """
         Create new metadata review object from the given CSV filename and a dictionary of metadata.
 
         Parameters
         ----------
-        table
+        filename
             path to CSV file
         fields
             dictionary of metadata
         """
 
-        super().__init__(table, fields)
+        self.filename = filename
+        self.metadata_fields = fields
+
+    @property
+    def field_names(self) -> [str]:
+        """column names of table"""
+
+        csv_cols = []
+        for metadata_key in self.metadata_fields:
+            if metadata_key in ('from_filename', 'from_path', 'script_version'):
+                csv_cols.append(metadata_key)
+            else:
+                csv_cols.extend(f'{self._key_prefixes[prefix]}{metadata_key}' for prefix in ('script', 'manual'))
+        csv_cols.extend(('reviewed', 'Last Updated', 'Notes'))
+        return csv_cols
 
     def extend(self, metadata: [dict]):
         """
@@ -373,7 +373,7 @@ class MetadataFile(MetadataTable):
             list of metadata dictionaries
         """
 
-        if os.path.exists(self.table_name):
+        if os.path.exists(self.filename):
             # check if only a single record was provided
             if type(metadata) is dict:
                 metadata = [metadata]
@@ -401,7 +401,7 @@ class MetadataFile(MetadataTable):
         # update the metadata keys
         metadata = self._prepend_script_to_keys(metadata)
         # get all the metadata that is in the file already
-        with open(self.table_name, 'r', encoding='utf-8') as csvfile:
+        with open(self.filename, 'r', encoding='utf-8') as csvfile:
             reader = _csv.DictReader(csvfile, fieldnames=self.field_names)
             for row in reader:
                 orig.append(row)
@@ -423,7 +423,7 @@ class MetadataFile(MetadataTable):
             for row in metadata:
                 writer.writerow(row)
         # replace the original file with the temp file
-        _shutil.move(tempfile.name, self.table_name)
+        _shutil.move(tempfile.name, self.filename)
 
     def _write_new_csv(self, metadata: [dict]):
         """
@@ -441,7 +441,7 @@ class MetadataFile(MetadataTable):
         else:
             metadata = self._prepend_script_to_keys(metadata)
 
-        with open(self.table_name, 'w', newline='', encoding='utf-8') as csv_file:
+        with open(self.filename, 'w', newline='', encoding='utf-8') as csv_file:
             writer = _csv.DictWriter(csv_file, fieldnames=self.field_names, extrasaction='ignore')
             writer.writeheader()
             writer.writerows(metadata)
@@ -473,7 +473,7 @@ class MetadataFile(MetadataTable):
             list of dictionaries of simplified metadata rows
         """
 
-        with open(self.table_name, 'r', encoding='utf-8') as csv_file:
+        with open(self.filename, 'r', encoding='utf-8') as csv_file:
             return [self._simplify_row(row) for row in _csv.DictReader(csv_file)]
 
     def read_meta_record(self, search_value: str, meta_key: str = 'from_filename') -> dict:
@@ -492,7 +492,7 @@ class MetadataFile(MetadataTable):
             dictionary of matching row
         """
 
-        with open(self.table_name, 'r', encoding='utf-8') as csv_file:
+        with open(self.filename, 'r', encoding='utf-8') as csv_file:
             for row in _csv.DictReader(csv_file):
                 if row[meta_key] == search_value:
                     return self._simplify_row(row)
@@ -557,8 +557,8 @@ class MetadataFile(MetadataTable):
 
         # remap the keys
         for key, value in row.items():
-            if key in MetadataTable._database_keys:
-                database_key = MetadataTable._database_keys[key]
+            if key in DATABASE_KEYS:
+                database_key = DATABASE_KEYS[key]
 
                 if value in ('TRUE', 'True'):
                     s57_row[database_key] = 1
@@ -570,12 +570,12 @@ class MetadataFile(MetadataTable):
         # enforce additional required formating
         if 'VERDAT' in s57_row:
             verdat = s57_row['VERDAT'].upper()
-            s57_row['VERDAT'] = MetadataTable._vertical_datum_keys[verdat]
+            s57_row['VERDAT'] = VERTICAL_DATUM_KEYS[verdat]
         elif 'HORDAT' in s57_row:
             h_datum = s57_row['HORDAT']
-            for name in MetadataTable._horizontal_datum_keys:
+            for name in HORIZONTAL_DATUM_KEYS:
                 if name in h_datum:
-                    s57_row['HORDAT'] = MetadataTable._horizontal_datum_keys[name]
+                    s57_row['HORDAT'] = HORIZONTAL_DATUM_KEYS[name]
                     break
         elif 'SUREND' in s57_row:
             s57_row['SORDAT'] = s57_row['SUREND']
@@ -583,7 +583,29 @@ class MetadataFile(MetadataTable):
         return s57_row
 
 
-def split_URL_from_port(url: str) -> (str, Union[str, None]):
+def postgres_table_exists(connection: psycopg2.connect, table: str) -> bool:
+    """
+    Whether the given table exists within the given database.
+
+    Parameters
+    ----------
+    connection
+        psycopg2 connection object
+    table
+        name of table
+
+    Returns
+    -------
+    bool
+        whether table exists
+    """
+
+    cursor = connection.cursor()
+    cursor.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name=%s)", (table,))
+    return cursor.fetchone()[0]
+
+
+def split_URL_port(url: str) -> (str, Union[str, None]):
     """
     Split the given URL into host and port, assuming port is appended after a colon.
 

@@ -108,8 +108,15 @@ class FuseProcessor:
         self.rawdata_path = self._config['rawpaths']
         self.procdata_path = self._config['outpath']
         self._cols = FuseProcessor._paths + FuseProcessor._dates + FuseProcessor._datums + FuseProcessor._quality_metrics + FuseProcessor._scores + FuseProcessor._source_info + FuseProcessor._processing_info
-        table_name = _os.path.splitext(_os.path.basename(self._config['metapath']))[0]
-        self._meta_obj = _mr.MetadataTable('ocs-vs-nbs01:5434', 'metadata', table_name, self._cols)
+
+        if 'metatable' in self._config:
+            hostname, database, table = self._config['metapath'].split('/')
+            self._meta_obj = _mr.MetadataTable(hostname, database, table, self._cols)
+        elif 'metapath' in self._config:
+            self._meta_obj = _mr.MetadataFile(self._config['metapath'], self._cols)
+        else:
+            raise ConfigParseError('configuration does not specify metadata table or file')
+
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()
@@ -162,14 +169,12 @@ class FuseProcessor:
         if 'rootpath' in config:
             root = config['rootpath']
             # raw paths first
-            rawtmp = []
-            for p in config['rawpaths']:
-                rawtmp.append(_os.path.join(root, p))
-            config['rawpaths'] = rawtmp
+            config['rawpaths'] = [_os.path.join(root, path) for path in config['rawpaths']]
             # output paths
             config['outpath'] = _os.path.join(root, config['outpath'])
             # metapath
-            config['metapath'] = _os.path.join(root, config['metapath'])
+            if 'metapath' in config:
+                config['metapath'] = _os.path.join(root, config['metapath'])
         if len(config) == 0:
             raise ValueError('Failed to read configuration file.')
         else:
@@ -282,7 +287,7 @@ class FuseProcessor:
         Parameters
         ----------
         dataid
-            Filename of survey bathymetry.
+            survey name
 
         Returns
         ----------
@@ -379,12 +384,12 @@ class FuseProcessor:
 
             try:
                 dataset, metadata, transformed = self._transform.reproject(filename, metadata)
-                if self._read_type == 'ehydro' or self._read_type == 'bps':
+                if self._read_type in ('ehydro', 'bps'):
                     outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
                     self._point_writer.write(dataset, outfilename)
                     metadata['to_filename'] = outfilename
                 elif self._read_type == 'bag' and transformed:
-                    metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
+                    metadata['to_filename'] = f'{metadata["outpath"]}.{self._raster_extension}'
                     self._raster_writer.write(dataset, metadata['to_filename'])
             except (ValueError, RuntimeError, IndexError) as error:
                 message = f' Transformation error: {error}'
@@ -394,41 +399,42 @@ class FuseProcessor:
             self._meta_obj.extend(metadata)
 
             if 'interpolate' in metadata:
-                interpolate = metadata['interpolate'].lower()
-
-                if self._read_type == 'bag' and interpolate == 'true':
-                    if ('support_files' not in metadata or len(metadata['support_files']) < 1):
-                        interpolate = 'False'
-                        self.logger.warning("No coverage files provided; no interpolation can occur")
-
-                if interpolate == 'true':
+                if metadata['interpolate'].lower() == 'true':
                     meta_interp = metadata.copy()
                     meta_interp = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
 
+                    root, filename = _os.path.split(meta_interp['outpath'])
+                    base = _os.path.splitext(filename)[0]
+                    meta_interp['from_filename'] = f'{base}.interpolated'
+
+                    if self._config['interpolation_engine'] == 'raster':
+                        output_filename = f"{_os.path.join(root, base)}_interp.{self._raster_extension}"
+                    else:
+                        resolution = float(self._config['to_resolution'])
+                        resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
+                        output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
+
+                    meta_interp['to_filename'] = output_filename
+
+                    if 'support_files' in meta_interp:
+                        meta_interp = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
+                        support_files = meta_interp['support_files']
+                    else:
+                        support_files = None
+
                     try:
-                        root, filename = _os.path.split(meta_interp['outpath'])
-                        base = _os.path.splitext(filename)[0]
-                        meta_interp['from_filename'] = f'{base}.interpolated'
-
-                        if self._config['interpolation_engine'] == 'raster':
-                            output_filename = f"{_os.path.join(root, base)}_interp.{self._raster_extension}"
-                        else:
-                            resolution = float(self._config['to_resolution'])
-                            resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
-                            output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
-
-                        meta_interp['to_filename'] = output_filename
-
-                        dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
+                        dataset = self.interpolator.interpolate(dataset, ancillary_coverage_files=support_files, catzoc='B')
+                        meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
-                        message = f' Interpolation error: {error}'
+                        message = f'interpolation error: {error}'
                         print(message)
                         self.logger.warning(message)
 
                     self._meta_obj.extend(meta_interp)
                     metadata.update(meta_interp)
-                elif interpolate == 'false':
+                else:
+                    del dataset
                     self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
             else:
                 del dataset
@@ -437,7 +443,7 @@ class FuseProcessor:
             self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
 
         self._close_log()
-        return metadata['to_filename']
+        return metadata['to_filename'] if 'to_filename' in metadata else ''
 
     def post(self, filename):
         """
@@ -601,12 +607,14 @@ class FuseProcessor:
         ----------
             whether metadata has all datum fields
         """
-        test_keys = FuseProcessor._datums.copy()
+
+        datum_keys = FuseProcessor._datums.copy()
+
         # if geographic input remove the need for a zone key
-        if metadata['from_horiz_type'] == 'geo' and 'from_horiz_key' in test_keys:
-            idx = test_keys.index('from_horiz_key')
-            test_keys.pop(idx)
-        return all(key in metadata for key in test_keys if key != 'to_horiz_key')
+        if metadata['from_horiz_type'] == 'geo' and 'from_horiz_key' in datum_keys:
+            datum_keys.remove('from_horiz_key')
+
+        return all(key in metadata for key in datum_keys if key != 'to_horiz_key')
 
     def _quality_metadata_ready(self, metadata):
         """
@@ -667,11 +675,7 @@ class FuseProcessor:
             whether metadata has all date fields
         """
 
-        for key in FuseProcessor._dates:
-            if key not in metadata:
-                return False
-        else:
-            return True
+        return all(key in metadata for key in FuseProcessor._dates)
 
     def _score_metadata_ready(self, metadata):
         """
@@ -686,8 +690,8 @@ class FuseProcessor:
             whether metadata has all score fields
         """
 
-        for key in FuseProcessor._scores:
-            if key not in metadata:
-                return False
-        else:
-            return True
+        return all(key in metadata for key in FuseProcessor._scores)
+
+
+class ConfigParseError(Exception):
+    pass
