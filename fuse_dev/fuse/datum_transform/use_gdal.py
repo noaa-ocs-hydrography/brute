@@ -42,51 +42,29 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
     if 'support_files' in metadata:
         support_filenames = metadata['support_files']
         reprojected_filenames = []
-
-        output_crs = spatial_reference_from_metadata(metadata, fiona_crs=True)
         for input_filename in support_filenames:
             basename, extension = os.path.splitext(input_filename)
             basename = os.path.basename(basename)
             output_filename = os.path.join(output_directory, basename + extension)
             if '.tif' in extension:
-                with rasterio.open(input_filename) as input_raster:
-                    input_crs = input_raster.crs
-                    if output_crs != input_crs:
-                        input_transform = input_raster.transform
-                        input_shape = input_raster.height, input_raster.width
-                        input_origin = numpy.array((input_transform.c, input_transform.f))
-                        input_resolution = numpy.array((input_transform.a, input_transform.e))
-
-                        left, bottom, right, top = bounds_from_opposite_corners(input_origin,
-                                                                                input_origin + numpy.flip(input_shape) * input_resolution)
-                        output_transform, output_width, output_height = calculate_default_transform(input_crs, output_crs,
-                                                                                                    width=input_shape[1],
-                                                                                                    height=input_shape[0], left=left,
-                                                                                                    bottom=bottom, right=right, top=top)
-
-                        input_data = input_raster.read()
-                        with rasterio.open(output_filename, 'w', 'GTiff', width=input_shape[1], height=input_shape[0],
-                                           count=input_raster.count, crs=output_crs, transform=output_transform, dtype=input_data.dtype,
-                                           nodata=input_raster.nodata) as output_raster:
-                            output_raster.write(input_data)
-                            # # TODO uncomment if we ever need to reproject between systems with different frames
-                            # for band_index in range(1, input_raster.count + 1):
-                            #     reproject(rasterio.band(input_raster, band_index), rasterio.band(output_raster, band_index),
-                            #               resampling=Resampling.min)
-
-                        if not os.path.exists(output_filename):
-                            logging.warning(f'file not created: {output_filename}')
-
-                        reprojected_filenames.append(output_filename)
+                input_dataset = gdal.Open(input_filename)
+                input_crs = osr.SpatialReference(wkt=input_dataset.GetProjectionRef())
+                del input_dataset
+                output_crs = spatial_reference_from_metadata(metadata)
+                if not input_crs.IsSame(output_crs):
+                    options = gdal.WarpOptions(format='GTiff', srcSRS=input_crs, dstSRS=output_crs)
+                    gdal.Warp(output_filename, input_filename, options=options)
+                    if not os.path.exists(output_filename):
+                        logging.warning(f'file not created: {output_filename}')
                     else:
-                        reprojected_filenames.append(input_filename)
+                        reprojected_filenames.append(output_filename)
             elif extension == '.gpkg':
+                output_crs = spatial_reference_from_metadata(metadata, fiona_crs=True)
                 output_filename = _reproject_geopackage(input_filename, output_filename, output_crs)
                 reprojected_filenames.append(output_filename)
             else:
                 if extension != '.tfw':
                     logging.warning(f'unsupported file format "{extension}"')
-
                 reprojected_filenames.append(input_filename)
         metadata['support_files'] = reprojected_filenames
 
