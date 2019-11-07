@@ -23,8 +23,8 @@ class MetadataTable:
 
     # ordered dict to ensure looping through the keys always gets 'manual' last.
     _key_prefixes = {
-        'manual': 'manual: ',
-        'script': 'script: '
+        'manual': 'manual_',
+        'script': 'script_'
     }
 
     # this map translates the names used here to the ID used in the database
@@ -120,7 +120,7 @@ class MetadataTable:
                 csv_cols.append(metadata_key)
             else:
                 csv_cols.extend(f'{self._key_prefixes[prefix]}{metadata_key}' for prefix in ('script', 'manual'))
-        csv_cols.extend(('reviewed', 'Last Updated', 'Notes'))
+        csv_cols.extend(('reviewed', 'date_modified', 'notes'))
         return csv_cols
 
     def extend(self, metadata: [dict]):
@@ -136,10 +136,11 @@ class MetadataTable:
         if type(metadata) is dict:
             metadata = [metadata]
 
-        assert 'from_filename' in metadata.keys(), 'provided metadata does not contain the primary key "from_filename"'
+        assert all('from_filename' in record for record in metadata), 'provided metadata does not contain the primary key "from_filename"'
 
         with open(DATABASE_CREDENTIALS_FILENAME) as database_credentials_file:
-            database_username, database_password = database_credentials_file.readlines()
+            lines = [line.strip() for line in database_credentials_file.readlines()]
+            database_username, database_password = lines[:2]
 
         connection = psycopg2.connect(database=self.database_name, user=database_username, password=database_password, host=self.hostname,
                                       port=self.port)

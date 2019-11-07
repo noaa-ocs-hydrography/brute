@@ -108,7 +108,8 @@ class FuseProcessor:
         self.rawdata_path = self._config['rawpaths']
         self.procdata_path = self._config['outpath']
         self._cols = FuseProcessor._paths + FuseProcessor._dates + FuseProcessor._datums + FuseProcessor._quality_metrics + FuseProcessor._scores + FuseProcessor._source_info + FuseProcessor._processing_info
-        self._meta_obj = _mr.MetadataTable('ocs-vs-nbs01', 'metadata', self._config['metapath'], self._cols)
+        table_name = _os.path.splitext(_os.path.basename(self._config['metapath']))[0]
+        self._meta_obj = _mr.MetadataTable('ocs-vs-nbs01:5434', 'metadata', table_name, self._cols)
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()
