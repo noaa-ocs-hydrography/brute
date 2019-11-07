@@ -21,6 +21,8 @@ from osgeo import gdal, ogr, osr
 import fuse.datum_transform.use_gdal as ug
 
 
+import fuse.datum_transform.use_gdal as ug
+
 from_hdatum = [
     'from_horiz_frame',
     'from_horiz_type',
@@ -104,7 +106,7 @@ class VDatum:
             points, utm_zone = self.__translate_xyz(filename, instructions)
             vertical_datum = instructions['to_vert_key'].upper()
             # passing UTM zone instead of EPSG code
-            dataset = ug._xyz2gdal(points, utm_zone, vertical_datum)
+            dataset = ug._xyz_to_gdal(points, utm_zone, vertical_datum)
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
         return dataset
 
@@ -126,6 +128,9 @@ class VDatum:
 
         # read the points and put it in a temp file for VDatum to read
         points = self._reader.read_bathymetry(filename)
+        points = self.__filter_xyz(points, instructions)
+        if points.shape[0] == 0:
+            raise ValueError(f'no valid points read from {filename} in {__file__}')
         original_directory = tempdir()
         output_filename = _os.path.join(original_directory.name, 'outfile.txt')
         reprojected_directory = tempdir()
@@ -149,6 +154,36 @@ class VDatum:
                 else:
                     raise ValueError(f'no UTM zone found in file "{filename}"')
         return _np.loadtxt(reprojected_filename, delimiter=','), utm_zone
+
+    def __filter_xyz(self, xyz: _np.array, metadata: dict) -> _np.array:
+        """
+        Return a filtered geographic xyz array.  The provided geographic xyz
+        array is filtered to remove any data not in the zone of the destination
+        spatial reference frame.  If the provided data is not geographic or the
+        destiaion frame is not UTM the provided array is returned.
+
+        Parameters
+        ----------
+        xyz
+            data as an xyz n by 3 numpy array in a geographic frame
+
+        metadata
+            the metadata dict assocated with the xyz data
+
+        Returns
+        -------
+        numpy array
+        """
+        if metadata['from_horiz_type'] == 'geo' and metadata['to_horiz_type'] == 'utm':
+            srs = ug.spatial_reference_from_metadata(metadata)
+            c_meridian = srs.GetProjParm(gdal.osr.SRS_PP_CENTRAL_MERIDIAN)
+            west = c_meridian - 3
+            east = c_meridian + 3
+            x = xyz[:,0]
+            idx = _np.nonzero((x > west) & (x < east))[0]
+            xyz = xyz[idx,:]
+        return xyz
+
 
     def __translate_bag(self, filename: str, instructions: dict) -> (gdal.Dataset, int):
         """
