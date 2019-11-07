@@ -181,7 +181,7 @@ class VDatum:
             west = c_meridian - 3
             east = c_meridian + 3
             x = xyz[:, 0]
-            xyz = xyz[(x > west) & (x < east),:]
+            xyz = xyz[(x > west) & (x < east), :]
 
         return xyz
 

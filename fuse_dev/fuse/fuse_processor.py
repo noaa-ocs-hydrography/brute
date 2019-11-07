@@ -108,7 +108,7 @@ class FuseProcessor:
         self.rawdata_path = self._config['rawpaths']
         self.procdata_path = self._config['outpath']
         self._cols = FuseProcessor._paths + FuseProcessor._dates + FuseProcessor._datums + FuseProcessor._quality_metrics + FuseProcessor._scores + FuseProcessor._source_info + FuseProcessor._processing_info
-        self._meta_obj = _mr.MetaReviewer(self._config['metapath'], self._cols)
+        self._meta_obj = _mr.MetadataTable('ocs-vs-nbs01', 'metadata', self._config['metapath'], self._cols)
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()
@@ -309,7 +309,7 @@ class FuseProcessor:
         self.logger.log(_logging.DEBUG, msg)
 
         # write out the metadata and close the log
-        self._meta_obj.write_meta_record(metadata)
+        self._meta_obj.extend(metadata)
         self._close_log()
 
         return metadata['from_path']
@@ -390,7 +390,7 @@ class FuseProcessor:
                 self.logger.warning(message)
                 metadata['interpolate'] = 'False'
 
-            self._meta_obj.write_meta_record(metadata)
+            self._meta_obj.extend(metadata)
 
             if 'interpolate' in metadata:
                 interpolate = metadata['interpolate'].lower()
@@ -420,14 +420,13 @@ class FuseProcessor:
 
                         dataset, meta_interp = self._interpolator.interpolate(dataset, meta_interp)
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
-
-                        self._meta_obj.write_meta_record(meta_interp)
-                        metadata.update(meta_interp)
                     except (ValueError, RuntimeError, IndexError) as error:
                         message = f' Interpolation error: {error}'
                         print(message)
                         self.logger.warning(message)
 
+                    self._meta_obj.extend(meta_interp)
+                    metadata.update(meta_interp)
                 elif interpolate == 'false':
                     self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
             else:
@@ -460,7 +459,7 @@ class FuseProcessor:
             s57_meta = self._metadata_to_s57(metadata)
             self._db.write(procfile, 'new', s57_meta)
             # need to check for proper insertion...
-            self._meta_obj.write_meta_record(metadata)
+            self._meta_obj.extend(metadata)
         self._close_log()
 
     def score(self, filename, date):

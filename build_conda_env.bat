@@ -1,1 +1,1 @@
-conda env create --file %~dp0environment.yml
+conda create -n NBS python=3.6.7 conda-forge::gdal=2.4 fiona rasterio conda-forge::pykrige scipy matplotlib astropy pytables psycopg2 lxml requests wxpython spyder
