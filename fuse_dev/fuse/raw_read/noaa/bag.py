@@ -27,20 +27,13 @@ import lxml.etree as _et
 import numpy as _np
 import tables as _tb
 from fuse.raw_read.raw_read import RawReader
+from fuse.raw_read import parse_file_pickle
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
 
 try:
     import dateutil.parser as _parser
 except ModuleNotFoundError as e:
-    print(f"{e}")
-
-try:
-    prog_loc = _os.path.dirname(_os.path.abspath(__file__))
-    csv_files = _glob(_os.path.join(prog_loc, 'additional_files', '*.csv'))
-    csv_exists = True if len(csv_files) > 0 else False
-except FileNotFoundError as e:
-    csv_exists = False
     print(f"{e}")
 
 _gdal.UseExceptions()
@@ -92,37 +85,6 @@ _ns2 = {
     'smXML': 'http://metadata.dgiwg.org/smXML',
 }
 
-csv_to_meta = {'Survey': 'survey',
-               'Bag File Name': 'bag_name',
-               'Reviewer': 'reviewer',
-               'Sensitive? Y/N': 'sensitive',
-               'Sensitive? (Y/N)': 'sensitive',
-               'Survey Start Date': 'start_date',
-               'Survey End Date': 'end_date',
-               'Processing Branch': 'branch',
-               'Source data type (MB)': 'mb_data',
-               'Source data type (MBES)': 'mb_data',
-               'Source data type (SSS)': 'sss_data',
-               'Source data type (VB)': 'vb_data',
-               'Source data type (SB)': 'sb_data',
-               'Feature Detection Capability (Y/N)': 'feat_detect',
-               'Features Delivered (Y/N)': 'feat_delivered',
-               'Least depth of features detected(Y/N)': 'feat_least_depth',
-               'Size of features detected (m)': 'feat_size',
-               'Full Coverage achieved (Y/N)': 'complete_coverage',
-               'Full bathymetric coverage achieved (Y/N)': 'bathymetry',
-               'Temporal variability (1-5)': 'temp_vari',
-               'Data Assessment (1-3)': 'data_assess',
-               'Horizontal position uncertainty (fixed)': 'horiz_uncert_fixed',
-               'Horizontal position uncertainty (variable)': 'horiz_uncert_vari',
-               'Vertical Uncertainty (Fixed)': 'vert_uncert_fixed',
-               'Vertical Uncertainty (fixed)': 'vert_uncert_fixed',
-               'Vertical Uncertainty (variable)': 'vert_uncert_vari',
-               'Horizontal datum': 'from_horiz_datum',
-               'Vertical datum': 'from_vert_datum',
-               }
-
-
 def parse_namespace(meta_str):
     """
     Catch the xml and read the second line assuming it is the namespace
@@ -171,8 +133,6 @@ class BAGRawReader(RawReader):
             ch.setLevel(_logging.DEBUG)
             self._logger.addHandler(ch)
 
-        self.csv_data = self._from_csv()
-
     def read_metadata(self, filename: str) -> dict:
         """
         read metadata from file
@@ -191,10 +151,8 @@ class BAGRawReader(RawReader):
             meta_gdal, bag_version = self._parse_bag_gdal(filename)
             meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
             meta_support = self._known_meta(filename)
-            meta_csv = self._csv_meta(filename)
-            meta_combined = {**meta_csv, **meta_xml, **meta_gdal, **meta_support}
-            meta_final = self._finalize_meta(meta_combined)
-            return meta_final
+            meta_pickle = parse_file_pickle.read_pickle(filename)
+            return {**meta_pickle, **meta_xml, **meta_gdal, **meta_support}
         except ValueError as error:
             print(error)
             return {}
@@ -313,11 +271,11 @@ class BAGRawReader(RawReader):
             self.namespace = self._assign_namspace(bag_version=bag_version)
             self.bag_format = self._set_format(infilename, bag_version)
             self.get_fields()
-
-            if 'date_stamp' in self.data and 'end_date' in self.data:
-                if self.data['date_stamp'] == self.data['end_date']:
-                    _logging.warning(f"Removing `end_date` field from parsed xml metadata due to match with metadata date_stamp: date_stamp - {self.data['date_stamp']}, end_date - {self.data['end_date']}")
-                    del self.data['end_date']
+            if 'from_vert_datum' not in self.data or 'from_vert_key' not in self.data:
+                for datum in vert_datum.keys():
+                    if datum in infilename:
+                        self.data['from_vert_datum'], self.data['from_vert_key'] = datum, datum
+                        break
 
             return self.data
         except _tb.HDF5ExtError as e:
@@ -346,148 +304,6 @@ class BAGRawReader(RawReader):
         meta['file_size'] = self._size_finder(infilename)
 
         return {**coverage, **meta}
-
-    def _csv_meta(self, infilename: str) -> dict:
-        """
-        Identifies known metadata and returns them as a dict
-
-        Parameters
-        ----------
-        infilename : str
-            Input file path
-
-        Returns
-        -------
-        dict
-            A dictionary object containing found metadata
-
-        """
-        meta = {}
-        found = False
-        root, name = _os.path.split(infilename)
-        basename = _os.path.splitext(name)[0]
-        if csv_exists:
-            for survey in self.csv_data:
-                if 'bag_name' in survey:
-                    if survey['bag_name'] == name or survey['bag_name'] == basename:
-                        found = True
-                        meta = {**survey, **meta}
-            if not found:
-                _logging.warning(f'No CSV Metadata available for: {name, basename}')
-                meta['interpolate'] = False
-        else:
-            meta['interpolate'] = False
-        return meta
-
-    def _from_csv(self) -> dict:
-        """
-        Identifies known metadata from a csv and returns them as a dict
-
-        Returns
-        -------
-        dict
-            A dictionary object containing found metadata
-
-        """
-        meta = []
-        if csv_exists:
-            for csv_file in csv_files:
-                opened = open(csv_file, 'r', newline='')
-                read = _csv.reader(opened)
-                fields = []
-                index = 0
-                for line in read:
-                    if index == 0:
-                        fields.extend(field for field in line if field != '')
-                    else:
-                        bag_meta = {}
-                        for assignment in range(len(fields)):
-                            if line[assignment] != '' and fields[assignment].lower() not in ('', 'notes', 'note'):
-                                try:
-                                    meta_field = csv_to_meta[fields[assignment].strip()]
-                                    if meta_field in (
-                                            'sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect',
-                                            'feat_delivered', 'feat_least_depth',
-                                            'complete_coverage', 'bathymetry'):
-                                        if line[assignment].lower() in ('n/a', 'na', 'no', 'n'):
-                                            bag_meta[meta_field] = 'False'
-                                        elif line[assignment].lower() in ('y', 'yes'):
-                                            bag_meta[meta_field] = 'True'
-                                    elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
-                                        try:
-                                            if line[assignment].lower() not in ('n/a', 'unassessed'):
-                                                if 'cm' in line[assignment]:
-                                                    bag_meta[meta_field] = float(
-                                                        _re.sub(r'\D', '', line[assignment])) / 100
-                                                elif 'm' in line[assignment]:
-                                                    bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
-                                        except ValueError:
-                                            _logging.warning(
-                                                f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
-                                    elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
-                                        try:
-                                            if line[assignment].lower() not in ('n/a', 'unassessed'):
-                                                bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment])) / 100
-                                        except ValueError:
-                                            _logging.warning(
-                                                f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
-                                    elif meta_field in ('from_horiz_datum'):
-                                        splits = line[assignment].split(' ')
-                                        datum_info = {}
-                                        try:
-                                            datum_info['from_horiz_frame'] = splits[0]
-                                            datum_info['from_horiz_type'] = splits[1]
-                                            datum_info['from_horiz_key'] = _re.sub('\D', '', splits[2])
-                                            bag_meta = {**bag_meta, **datum_info}
-                                        except IndexError:
-                                            _logging.warning(
-                                                f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
-                                    elif meta_field in ('from_vert_datum'):
-                                        for datum in vert_datum.keys():
-                                            if datum == line[assignment]:
-                                                datum_info['from_vert_datum'], datum_info[
-                                                    'from_vert_key'] = datum, datum
-                                                break
-                                    elif meta_field in ('start_date', 'end_date'):
-                                        try:
-                                            bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%Y%m%d'):%Y%m%d}"
-                                        except ValueError:
-                                            try:
-                                                bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
-                                            except ValueError:
-                                                try:
-                                                    bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
-                                                except ValueError:
-                                                    _logging.warning(
-                                                        f'Unable to add `{meta_field}` information: {line[1]}, {meta_field}: {line[assignment]}')
-                                    else:
-                                        bag_meta[meta_field] = line[assignment]
-                                except KeyError:
-                                    _logging.warning(f'Unable to parse field: {line[1]}, {fields[assignment]}')
-                                    # index += 1
-                                    # continue
-                        if 'bathymetry' in bag_meta and 'complete_coverage' in bag_meta:
-                            bathymetry = _ast.literal_eval(bag_meta['bathymetry'])
-                            coverage = _ast.literal_eval(bag_meta['complete_coverage'])
-
-                            if bathymetry:
-                                interpolate = False
-                            else:
-                                if coverage:
-                                    interpolate = True
-                                else:
-                                    if 'sss_data' in bag_meta:
-                                        interpolate = _ast.literal_eval(bag_meta['sss_data'])
-                                    else:
-                                        interpolate = False
-
-                            bag_meta['interpolate'] = interpolate
-                        else:
-                            bag_meta['interpolate'] = False
-                        meta.append(bag_meta)
-                    index += 1
-                opened.close()
-        return meta
 
     def _size_finder(self, filepath: str) -> int:
         """
@@ -594,7 +410,6 @@ class BAGRawReader(RawReader):
             source['lat_max'] = './/gmd:EX_GeographicBoundingBox/gmd:northBoundLatitude/gco:Decimal'
             source['abstract'] = './/gmd:abstract/gco:CharacterString'
             source['date'] = './/gmd:CI_Date/gmd:date/gco:Date'
-            source['date_stamp'] = './/gmd:dateStamp/gco:Date'
             source['unc_type'] = './/bag:verticalUncertaintyType/bag:BAG_VertUncertCode'
             source[
                 'z_min'] = './/gmd:identificationInfo/bag:BAG_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:verticalElement/gmd:EX_VerticalExtent/gmd:minimumValue/gco:Real'
@@ -620,7 +435,6 @@ class BAGRawReader(RawReader):
 
         elif bag_version < 1.5 and bag_version > 0:
             source['abstract'] = './/identificationInfo/smXML:BAG_DataIdentification/abstract'
-            source['date_stamp'] = './/dateStamp'
             source[
                 'SORDAT'] = './/identificationInfo/smXML:BAG_DataIdentification/citation/smXML:CI_Citation/date/smXML:CI_Date/date'
             source[
@@ -658,8 +472,6 @@ class BAGRawReader(RawReader):
             self._read_abstract()
         if 'date' in self.bag_format:
             self._read_date()
-        if 'date_stamp' in self.bag_format:
-            self._read_date_stamp()
         if 'unc_type' in self.bag_format:
             self._read_uncertainty_type()
         if 'z_min' in self.bag_format:
@@ -904,59 +716,24 @@ class BAGRawReader(RawReader):
             _logging.warning(f"unable to read the date string: {e}")
             return
 
-        if ret is not None:
-            try:
-                text_date = ret.text
-            except (ValueError, IndexError, AttributeError) as e:
-                _logging.warning(f"unable to read the date string: {e}")
-                return
-
-            tm_date = None
-            try:
-                parsed_date = _parser.parse(text_date)
-                tm_date = parsed_date.strftime('%Y%m%d')
-            except Exception:
-                pass
-                # _logging.warning("unable to handle the date string: %s" % text_date)
-
-            if tm_date is None and text_date != '':
-                self.data['date'] = text_date
-            elif tm_date != '':
-                self.data['date'] = tm_date
-        else:
-            _logging.warning(f"unable to read the `date` date string: {ret}")
-
-    def _read_date_stamp(self):
-        """ attempts to read the date_stamp string """
-
         try:
-            ret = self.xml_tree.find(self.bag_format['date_stamp'],
-                                     namespaces=self.namespace)
-        except _et.Error as e:
-            _logging.warning(f"unable to read the date_stamp string: {e}")
+            text_date = ret.text
+        except (ValueError, IndexError, AttributeError) as e:
+            _logging.warning(f"unable to read the date string: {e}")
             return
 
-        if ret is not None:
-            try:
-                text_date = ret.text
-            except (ValueError, IndexError, AttributeError) as e:
-                _logging.warning(f"unable to read the date_stamp string: {e}")
-                return
+        tm_date = None
+        try:
+            parsed_date = _parser.parse(text_date)
+            tm_date = parsed_date.strftime('%Y-%m-%d')
+        except Exception:
+            pass
+            # _logging.warning("unable to handle the date string: %s" % text_date)
 
-            tm_date = None
-            try:
-                parsed_date = _parser.parse(text_date)
-                tm_date = parsed_date.strftime('%Y%m%d')
-            except Exception:
-                pass
-                # _logging.warning("unable to handle the date string: %s" % text_date)
-
-            if tm_date is None and text_date != '':
-                self.data['date_stamp'] = text_date
-            elif tm_date != '':
-                self.data['date_stamp'] = tm_date
+        if tm_date is None:
+            self.data['date'] = text_date
         else:
-            _logging.warning(f"unable to read the `date_stamp` date string: {ret}")
+            self.data['date'] = tm_date
 
     def _read_uncertainty_type(self):
         """ attempts to read the uncertainty type """
@@ -1031,27 +808,24 @@ class BAGRawReader(RawReader):
             _logging.warning(f"unable to read the SORDAT date string: {e}")
             return
 
-        if ret is not None:
-            try:
-                text_date = ret.text
-            except (ValueError, IndexError, AttributeError) as e:
-                _logging.warning(f"unable to read the SORDAT date string: {e}")
-                return
+        try:
+            text_date = ret.text
+        except (ValueError, IndexError, AttributeError) as e:
+            _logging.warning(f"unable to read the SORDAT date string: {e}")
+            return
 
-            tm_date = None
-            try:
-                parsed_date = _parser.parse(text_date)
-                tm_date = parsed_date.strftime('%Y%m%d')
-            except Exception:
-                _logging.warning("unable to handle the date string: %s" % text_date)
-                pass
+        tm_date = None
+        try:
+            parsed_date = _parser.parse(text_date)
+            tm_date = parsed_date.strftime('%Y%m%d')
+        except Exception:
+            _logging.warning("unable to handle the date string: %s" % text_date)
+            pass
 
-            if tm_date is None and text_date != '':
-                self.data['source_date'] = text_date
-            elif tm_date != '':
-                self.data['source_date'] = tm_date
+        if tm_date is None:
+            self.data['source_date'] = text_date
         else:
-            _logging.warning(f"unable to read the SORDAT date string: {ret}")
+            self.data['source_date'] = tm_date
 
     def _read_survey_authority(self):
         """
@@ -1097,15 +871,13 @@ class BAGRawReader(RawReader):
                 parsed_date = _parser.parse(text_start_date)
                 tms_date = parsed_date.strftime('%Y%m%d')
             except Exception:
-                # pass
-                _logging.warning("unable to handle the survey start string: %s" % text_start_date)
+                pass
+                # _logging.warning("unable to handle the survey start string: %s" % text_start_date)
 
-            if tms_date is None and text_start_date != '':
+            if tms_date is None:
                 self.data['start_date'] = text_start_date
-            elif tms_date != '':
+            else:
                 self.data['start_date'] = tms_date
-        else:
-            _logging.warning(f"unable to read the survey start date string: {rets}")
 
     def _read_survey_end_date(self):
         """
@@ -1117,27 +889,27 @@ class BAGRawReader(RawReader):
                                       namespaces=self.namespace)
         except _et.Error as e:
             _logging.warning(f"unable to read the survey end date string: {e}")
+            return
 
         if rete is not None:
             try:
                 text_end_date = rete.text
             except (ValueError, IndexError, AttributeError) as e:
                 _logging.warning(f"unable to read the survey end date string: {e}")
+                return
 
             tme_date = None
             try:
                 parsed_date = _parser.parse(text_end_date)
                 tme_date = parsed_date.strftime('%Y%m%d')
             except Exception:
-                # pass
-                _logging.warning("unable to handle the survey end string: %s" % text_end_date)
+                pass
+                # _logging.warning("unable to handle the survey end string: %s" % text_end_date)
 
-            if tme_date is None and text_end_date != '':
+            if tme_date is None:
                 self.data['end_date'] = text_end_date
-            elif tme_date != '':
+            else:
                 self.data['end_date'] = tme_date
-        else:
-            _logging.warning(f"unable to read the survey end date string: {rete}")
 
     def _read_vertical_datum(self):
         """
@@ -1173,14 +945,14 @@ class BAGRawReader(RawReader):
 
         try:
             if val.lower() == 'unknown':
-                raise ValueError(f'Invalid vertical datum assignment --> {val}')
+                val = ''
             elif val.lower() in ('mean_lower_low_water', 'mean lower low water', 'mllw', 'mllw depth'):
                 self.data['from_vert_key'] = 'MLLW'
             elif val.lower() in ('hudson river datum', 'hrd'):
                 self.data['from_vert_key'] = 'HRD'
             self.data['from_vert_datum'] = val
         except (ValueError, IndexError, AttributeError) as e:
-            _logging.warning(f"Unable to read the survey vertical datum name attribute: {e}")
+            _logging.warning(f"unable to read the survey vertical datum name attribute: {e}")
             return
 
     def _read_horizontal_datum(self):
@@ -1273,28 +1045,6 @@ class BAGRawReader(RawReader):
             _logging.warning(f"unable to read the sensor name attribute: {e}")
             return
 
-    def _finalize_meta(self, meta):
-        if ('from_vert_datum' not in meta or meta['from_vert_datum'] == '') and 'from_vert_key' not in meta:
-            for datum in vert_datum.keys():
-                if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
-                    meta['from_vert_datum'], meta['from_vert_key'] = datum, datum
-                    break
-        elif 'from_vert_datum' in meta and 'from_vert_key' not in meta:
-            for datum in vert_datum.keys():
-                if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
-                    meta['from_vert_key'] = datum
-                    break
-        # this should be moved to the reader.
-        meta['read_type'] = 'bag'
-        # translate from the reader to common metadata keys for datum transformations
-        if 'from_vert_direction' not in meta:
-            meta['from_vert_direction'] = 'height'
-        if 'from_vert_units' not in meta:
-            meta['from_vert_units'] = 'm'
-        meta['interpolated'] = 'False'
-        meta['posted'] = False
-        return meta
-
 
 class BagFile:
     """This class serves as the main container for BAG data."""
@@ -1307,7 +1057,7 @@ class BagFile:
         self.shape = None
         self.bounds = None
         self.resolution = None
-        self.wkt = None
+        self.crs_wkt = None
         self.size = None
         self.outfilename = None
         self.version = None
@@ -1356,7 +1106,7 @@ class BagFile:
         self.shape = self.elevation.shape
         print(dataset.GetGeoTransform())
         self.bounds, self.resolution = self._gt2bounds(dataset.GetGeoTransform(), self.shape)
-        self.wkt = dataset.GetProjectionRef()
+        self.crs_wkt = dataset.GetProjectionRef()
         self.version = dataset.GetMetadata()
 
         print(self.bounds)
@@ -1381,7 +1131,7 @@ class BagFile:
         self.shape = self.elevation.shape
         print(bag_obj.GetGeoTransform())
         self.bounds, self.resolution = self._gt2bounds(bag_obj.GetGeoTransform(), self.shape)
-        self.wkt = bag_obj.GetProjectionRef()
+        self.crs_wkt = bag_obj.GetProjectionRef()
         self.version = bag_obj.GetMetadata()
 
         print(self.bounds)
@@ -1409,22 +1159,17 @@ class BagFile:
             meta_xml = ''.join(str(line, 'utf-8', 'ignore') for line in bagfile.root.BAG_root.metadata.read())
             xml_tree = _et.XML(re.sub(r'<\?.+\?>', '', meta_xml))
 
-            self.wkt = self._read_wkt_prj(xml_tree)
-            if self.wkt is None:
-                self.wkt = BAGRawReader().read_metadata(filepath)['from_horiz_datum']
+            self.crs_wkt = self._read_wkt_prj(xml_tree)
+            if self.crs_wkt is None:
+                self.crs_wkt = BAGRawReader().read_metadata(filepath)['from_horiz_datum']
 
             self.resolution = self._read_res_x_and_y(xml_tree)
             sw, ne = self._read_corners_sw_and_ne(xml_tree)
             sx, sy = sw
-
-            # BAGs are a node-based convention; 1 cell is subtracted to account
-            nx = (sx + (self.resolution[0] * (self.shape[1] - 1)))
-            ny = (sy + (self.resolution[0] * (self.shape[0] - 1)))
+            nx = (sx + (self.resolution[0] * self.shape[1]))
+            ny = (sy + (self.resolution[0] * self.shape[0]))
             print(ne, (nx, ny))
-
-            # Convert to cell based-convention
-            half_cell = 0.5 * self.resolution[0]
-            self.bounds = ([sx - half_cell, ny + half_cell], [nx + half_cell, sy - half_cell])
+            self.bounds = ([sx, ny], [nx, sy])
 
     def _known_data(self, filepath: str):
         """
@@ -1730,8 +1475,9 @@ class BagToGDALConverter:
         res_x, res_y = bag.resolution[0], bag.resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
+        target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
-        srs = _osr.SpatialReference(wkt=bag.wkt)
+        srs = _osr.SpatialReference(wkt=bag.crs_wkt)
         #        if not srs.IsCompound():
         #            srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
         wkt = srs.ExportToWkt()
@@ -1782,6 +1528,7 @@ class BagToGDALConverter:
         res_x, res_y = resolution[0], resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
+        target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=prj)
         #        if not srs.IsCompound():
@@ -1805,4 +1552,8 @@ class BagToGDALConverter:
         self.dataset = target_ds
         del target_ds
 
-test = BAGRawReader()
+    def translate_bag2gdal_extents(self, geotransform: (float, float, float, float, float, float)):
+        orig_x, res_x, skew_x, orig_y, skew_y, res_y = geotransform
+        new_x = orig_x - (res_x / 2)
+        new_y = orig_y + (res_y / 2)
+        return new_x, res_x, skew_x, new_y, skew_y, res_y

@@ -29,6 +29,7 @@ import os as _os
 import sys as _sys
 
 from fuse.raw_read.raw_read import RawReader
+from fuse.raw_read import parse_file_pickle
 
 h93_to_meta = {'Surv Id': 'survey',
                'Strt Yr': 'start_date',
@@ -91,8 +92,9 @@ class BPSRawReader(RawReader):
         """
 
         meta_h93 = self._parse_htm(filename)
+        meta_pickle = parse_file_pickle.read_pickle(filename)
         meta_default = self._defualt_meta(filename)
-        meta_combined = {**meta_default, **meta_h93}
+        meta_combined = {**meta_default, **meta_h93, **meta_pickle}
         meta_final = self._finalize_meta(meta_combined)
         return meta_final
 

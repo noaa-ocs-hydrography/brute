@@ -143,17 +143,22 @@ class VDatum:
         self.__convert_file(output_filename, reprojected_directory.name)
         if 'to_horiz_key' in instructions:
             utm_zone = int(instructions['to_horiz_key'])
+#        else:
+#            # read out UTM Zone from VDatum log file
+#
+#            with open(log_filename, 'r') as logfile:
+#                for line in logfile.readlines():
+#                    if line.startswith('Zone:'):
+#                        # input_zone = line[27:53].strip()
+#                        utm_zone = int(line[54:82].strip())
+#                        break
+#                else:
+#                    raise ValueError(f'No UTM zone found in file "{filename}"')
+        if _os.path.isfile(reprojected_filename):
+            transformed_data = _np.loadtxt(reprojected_filename, delimiter=',')
         else:
-            # read out UTM Zone from VDatum log file
-            with open(log_filename, 'r') as logfile:
-                for line in logfile.readlines():
-                    if line.startswith('Zone:'):
-                        # input_zone = line[27:53].strip()
-                        utm_zone = int(line[54:82].strip())
-                        break
-                else:
-                    raise ValueError(f'no UTM zone found in file "{filename}"')
-        return _np.loadtxt(reprojected_filename, delimiter=','), utm_zone
+            raise RuntimeError(f'No output returned from vdatum')
+        return transformed_data, utm_zone
 
     def __filter_xyz(self, xyz: _np.array, metadata: dict) -> _np.array:
         """
