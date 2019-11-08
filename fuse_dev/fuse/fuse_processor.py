@@ -110,8 +110,8 @@ class FuseProcessor:
         self._cols = FuseProcessor._paths + FuseProcessor._dates + FuseProcessor._datums + FuseProcessor._quality_metrics + FuseProcessor._scores + FuseProcessor._source_info + FuseProcessor._processing_info
 
         if 'metatable' in self._config:
-            hostname, database, table = self._config['metapath'].split('/')
-            self._meta_obj = _mr.MetadataTable(hostname, database, table, self._cols)
+            hostname, database, table = self._config['metatable'].split('/')
+            self._meta_obj = _mr.MetadataDatabase(hostname, database, table, self._cols)
         elif 'metapath' in self._config:
             self._meta_obj = _mr.MetadataFile(self._config['metapath'], self._cols)
         else:
@@ -135,7 +135,7 @@ class FuseProcessor:
         outpath
         to_horiz_datum
         to_vert_datum
-        metapath
+        metapath or metatable
 
         Parameters
         ----------
@@ -203,19 +203,22 @@ class FuseProcessor:
             'to_vert_key': 'EPSG of output vertical datum',
             'to_vert_units': 'units of output vertical datum units',
             'to_vert_direction': 'vertical direction of output vertical datum',
-            'to_vert_datum': 'output vertical datum',
-            'metapath': 'file path to CSV of metadata',
+            'to_vert_datum': 'output vertical datum'
         }
         for required_config_key in required_config_keys:
             if required_config_key not in config_dict:
-                raise ValueError(
-                    f'no {required_config_keys[required_config_key]} ("{required_config_key}") found in configuration file')
+                raise ConfigParseError(
+                    f'configuration does not specify a {required_config_keys[required_config_key]} ("{required_config_key}")')
+
+        if 'metapath' not in config_dict and 'metatable' not in config_dict:
+            raise ConfigParseError('configuration does not specify a metadata location ("metapath" or "metatable")')
+
         # check the paths
         for p in config_dict['rawpaths']:
             if not _os.path.isdir(p):
-                raise ValueError(f'Invalid input path: {p}')
+                raise ConfigParseError(f'Invalid input path: {p}')
         if not _os.path.isdir(config_dict['outpath']):
-            raise ValueError(f'Invalid output data path: {config_dict["outpath"]}')
+            raise ConfigParseError(f'Invalid output data path: {config_dict["outpath"]}')
 
     def _set_data_reader(self):
         """
@@ -315,7 +318,7 @@ class FuseProcessor:
         self.logger.log(_logging.DEBUG, msg)
 
         # write out the metadata and close the log
-        self._meta_obj.extend(metadata)
+        self._meta_obj.insert_records(metadata)
         self._close_log()
 
         return metadata['from_path']
@@ -396,7 +399,7 @@ class FuseProcessor:
                 self.logger.warning(message)
                 metadata['interpolate'] = 'False'
 
-            self._meta_obj.extend(metadata)
+            self._meta_obj.insert_records(metadata)
 
             if 'interpolate' in metadata:
                 if metadata['interpolate'].lower() == 'true':
@@ -418,12 +421,9 @@ class FuseProcessor:
 
                     if 'support_files' in meta_interp:
                         meta_interp = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
-                        support_files = meta_interp['support_files']
-                    else:
-                        support_files = None
 
                     try:
-                        dataset = self.interpolator.interpolate(dataset, ancillary_coverage_files=support_files, catzoc='B')
+                        dataset = self._interpolator.interpolate(dataset, meta_interp)
                         meta_interp['interpolated'] = True
                         self._raster_writer.write(dataset, meta_interp['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
@@ -431,7 +431,7 @@ class FuseProcessor:
                         print(message)
                         self.logger.warning(message)
 
-                    self._meta_obj.extend(meta_interp)
+                    self._meta_obj.insert_records(meta_interp)
                     metadata.update(meta_interp)
                 else:
                     del dataset
@@ -466,7 +466,7 @@ class FuseProcessor:
             s57_meta = self._metadata_to_s57(metadata)
             self._db.write(procfile, 'new', s57_meta)
             # need to check for proper insertion...
-            self._meta_obj.extend(metadata)
+            self._meta_obj.insert_records(metadata)
         self._close_log()
 
     def score(self, filename, date):
@@ -532,7 +532,8 @@ class FuseProcessor:
         root, extension = _os.path.splitext(filename)
         if extension == '.interpolated':
             filename = root
-        log_filename = _os.path.join(_os.path.dirname(self._config['metapath']),
+
+        log_filename = _os.path.join(_os.path.dirname(self._config['metapath' if 'metapath' in self._config else 'outpath']),
                                      f'{_os.path.splitext(_os.path.split(filename)[-1])[0]}.log')
         self._meta['logfilename'] = log_filename
 
@@ -571,13 +572,13 @@ class FuseProcessor:
             # file name is the key rather than the path
             f = _os.path.basename(filename)
             if 'from_filename' not in self._meta or self._meta['from_filename'] != filename:
-                self._meta = self._meta_obj.read_meta_record(f)
+                self._meta = self._meta_obj[f]
             else:
                 # need to catch if this file is not in the metadata record yet here.
                 raise KeyError(f'File not referenced in stored metadata: {f}')
             return self._meta
-        except KeyError as e:
-            return None
+        except KeyError:
+            return {}
 
     def _metadata_to_s57(self, metadata) -> dict:
         """
@@ -593,7 +594,7 @@ class FuseProcessor:
             dictionary of metadata
         """
 
-        return self._meta_obj.csv_to_s57(metadata)
+        return _mr.csv_to_s57(metadata)
 
     def _datum_metadata_ready(self, metadata) -> bool:
         """

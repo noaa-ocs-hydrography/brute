@@ -9,16 +9,18 @@ import ast as _ast
 import csv as _csv
 import os
 import shutil as _shutil
+from abc import ABC, abstractmethod
+from collections import OrderedDict
 from tempfile import NamedTemporaryFile as _NamedTemporaryFile
-from typing import Union
+from typing import Union, Any
 
 import psycopg2
 
-DATABASE_CREDENTIALS_FILENAME = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.txt')
+DATABASE_CREDENTIALS_FILENAME = r"D:\credentials\postgres_scripting.txt"
 POSTGRES_DEFAULT_PORT = '5432'
 
 # this map translates the names used here to the ID used in the database
-DATABASE_KEYS = {
+S57_KEY_TRANSLATIONS = {
     'from_filename': 'OBJNAM',
     'start_date': 'SURSTA',
     'end_date': 'SUREND',
@@ -43,7 +45,7 @@ DATABASE_KEYS = {
     'supersession_score': 'supscr'
 }
 
-VERTICAL_DATUM_KEYS = {
+VERTICAL_DATUM_KEY_TRANSLATIONS = {
     'MLWS': '1',
     'MLLWS': '2',
     'MSL': '3',
@@ -65,7 +67,7 @@ VERTICAL_DATUM_KEYS = {
     'HRD': '24'  # Hudson River Datum
 }
 
-HORIZONTAL_DATUM_KEYS = {
+HORIZONTAL_DATUM_KEY_TRANSLATIONS = {
     'WGS72': '1',
     'WGS84': '2',
     'WGS_1984': '2',
@@ -75,17 +77,162 @@ HORIZONTAL_DATUM_KEYS = {
     'Local': '131'
 }
 
+FIELDS_EXCLUDED_FROM_PREFIX = ('from_filename', 'from_path')
 
-class MetadataTable:
-    """table of survey metadata"""
 
+class MetadataTable(ABC):
+    """abstract class representing a table of survey metadata records"""
+
+    column_prefixes: OrderedDict
+    metadata_fields: [str]
+
+    @property
+    def column_names(self) -> [str]:
+        csv_cols = []
+        for metadata_key in self.metadata_fields:
+            if metadata_key in FIELDS_EXCLUDED_FROM_PREFIX or metadata_key == 'script_version':
+                csv_cols.append(metadata_key)
+            else:
+                csv_cols.extend(f'{self.column_prefixes[prefix]}{metadata_key}' for prefix in self.column_prefixes)
+        csv_cols.extend(('reviewed', 'last_updated', 'notes'))
+        return csv_cols
+
+    @property
+    @abstractmethod
+    def records(self) -> [dict]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def records_where(self, where: dict) -> [dict]:
+        """
+        Query table for matching key-value pairs.
+
+        Parameters
+        ----------
+        where
+            dictionary mapping keys to values, with which to match records
+
+        Returns
+        -------
+        [dict]
+            dictionaries of matching records
+        """
+
+        raise NotImplementedError
+
+    @abstractmethod
+    def __getitem__(self, primary_key_value: Any) -> dict:
+        """
+        Query table for the given value of the primary key.
+
+        Parameters
+        ----------
+        primary_key_value
+            value to query from primary key
+
+        Returns
+        -------
+        dict
+            dictionary of matching record
+        """
+
+        raise NotImplementedError
+
+    @abstractmethod
+    def __setitem__(self, primary_key_value: Any, record: dict):
+        """
+        Insert the given record into the table with the given primary key value.
+
+        Parameters
+        ----------
+        primary_key_value
+            value of primary key at which to insert record
+        record
+            dictionary record
+        """
+
+        raise NotImplementedError
+
+    @abstractmethod
+    def insert_records(self, records: [dict]):
+        """
+        Insert the list of metadata records into the table.
+
+        Parameters
+        ----------
+        records
+            metadata dictionaries
+        """
+
+        raise NotImplementedError
+
+    def _prepend_script_to_keys(self, metadata: [dict]) -> [dict]:
+        """
+        Prepend 'script' prefix to each applicable key in the list of metadata dictionaries.
+
+        Parameters
+        ----------
+        metadata
+            list of metadata dictionaries
+
+        Returns
+        -------
+        [dict]
+            list of metadata dictionaries with `script: ` prepended to keys
+        """
+
+        # TODO is `script_version` needed? if so, set the value to f'{row[key]},{__version__}' if provided in the key
+        return [{f'{self.column_prefixes["script"]}{key}' if key not in FIELDS_EXCLUDED_FROM_PREFIX else key: value
+                 for key, value in row.items()} for row in metadata]
+
+    def _simplify_record(self, record: dict) -> dict:
+        """
+        Combine `manual` and `script` fields in the given record, preferring manual entries.
+
+        Parameters
+        ----------
+        record
+            dictionary of keys and values from a single record of the metadata
+
+        Returns
+        -------
+        dict
+            simplified dictionary
+        """
+
+        # make dictionaries for sorting data into
+        entries_by_prefix = {'base': {}}
+        for prefix_name in self.column_prefixes:
+            entries_by_prefix[prefix_name] = {}
+
+        # sort each key (that has information) into the dictionary by prefix
+        for column_name, value in record.items():
+            if value is not None and len(value) > 0:
+                for prefix_name, prefix in self.column_prefixes.items():
+                    if prefix in column_name:
+                        metadata_key = column_name.replace(prefix, '')
+                        if type(value) is str and metadata_key == 'support_files':
+                            entries_by_prefix[prefix_name][metadata_key] = _ast.literal_eval(value)
+                        elif type(value) is str and (value.capitalize() == 'True' or value.capitalize() == 'False'):
+                            entries_by_prefix[prefix_name][metadata_key] = _ast.literal_eval(value.capitalize())
+                        else:
+                            entries_by_prefix[prefix_name][metadata_key] = value
+                        break
+                else:
+                    entries_by_prefix['base'][column_name] = value
+
+        # combine the dictionaries, overwriting the prefixed columns according to the order specified in the class attribute
+        simplified_row = {}
+        for prefix_name in self.column_prefixes:
+            simplified_row.update(entries_by_prefix[prefix_name])
+        return simplified_row
+
+
+class MetadataDatabase(MetadataTable):
     # ordered dict to ensure looping through the keys always gets 'manual' last.
-    _key_prefixes = {
-        'manual': 'manual_',
-        'script': 'script_'
-    }
+    column_prefixes = OrderedDict([('script', 'script_'), ('manual', 'manual_')])
 
-    def __init__(self, hostname: str, database: str, table: str, fields: [str]):
+    def __init__(self, hostname: str, database: str, table: str, fields: [str], primary_key: str = 'from_filename'):
         """
         Create new metadata review object from the given CSV filename and a dictionary of metadata.
 
@@ -109,233 +256,83 @@ class MetadataTable:
         self.database_name = database
         self.table_name = table
         self.metadata_fields = fields
-
-    @property
-    def field_names(self) -> [str]:
-        """column names of table"""
-
-        csv_cols = []
-        for metadata_key in self.metadata_fields:
-            if metadata_key in ('from_filename', 'from_path', 'script_version'):
-                csv_cols.append(metadata_key)
-            else:
-                csv_cols.extend(f'{self._key_prefixes[prefix]}{metadata_key}' for prefix in ('script', 'manual'))
-        csv_cols.extend(('reviewed', 'date_modified', 'notes'))
-        return csv_cols
-
-    def extend(self, metadata: [dict]):
-        """
-        Add the list of metadata to the CSV file.
-
-        Parameters
-        ----------
-        metadata
-            list of metadata dictionaries
-        """
-
-        if type(metadata) is dict:
-            metadata = [metadata]
-
-        assert all('from_filename' in record for record in metadata), 'provided metadata does not contain the primary key "from_filename"'
+        self.primary_key = primary_key
 
         with open(DATABASE_CREDENTIALS_FILENAME) as database_credentials_file:
             lines = [line.strip() for line in database_credentials_file.readlines()]
             database_username, database_password = lines[:2]
 
-        connection = psycopg2.connect(database=self.database_name, user=database_username, password=database_password, host=self.hostname,
-                                      port=self.port)
-        cursor = connection.cursor()
+        self.connection = psycopg2.connect(database=self.database_name, user=database_username, password=database_password,
+                                           host=self.hostname, port=self.port)
 
-        if not postgres_table_exists(connection, self.table_name):
-            schema = ['from_filename VARCHAR PRIMARY KEY'] + [f'{field_name} VARCHAR'
-                                                              for field_name in self.field_names if field_name != 'from_filename']
-            cursor.execute(f'CREATE TABLE {self.table_name} ({", ".join(schema)});')
+    @property
+    def records(self) -> [dict]:
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                cursor.execute(f'SELECT * FROM {self.table_name}')
+                records = cursor.fetchall()
 
-        orig = []
-        # get the names of all the files in the new metadata
-        new_meta_files = []
-        for m in metadata:
-            new_meta_files.append(m['from_filename'])
-        # update the metadata keys
-        metadata = self._prepend_script_to_keys(metadata)
-        # get all the metadata that is in the file already
-        with open(self.table_name, 'r', encoding='utf-8') as csvfile:
-            reader = _csv.DictReader(csvfile, fieldnames=self.field_names)
-            for row in reader:
-                orig.append(row)
-        # move the data into a new temp file
-        with _NamedTemporaryFile(mode='w', newline='', encoding='utf-8', delete=False) as tempfile:
-            writer = _csv.DictWriter(tempfile, fieldnames=self.field_names, extrasaction='ignore')
-            # check to see if the new metadata is the same as an existing entry
-            for row in orig:
-                fname = row['from_filename']
-                # if the file is being updated, move over the updated info
-                if fname in new_meta_files:
-                    idx = new_meta_files.index(fname)
-                    m = metadata.pop(idx)
-                    new_meta_files.pop(idx)
-                    for key in m.keys():
-                        row[key] = m[key]
-                writer.writerow(row)
-            # append what remains to the file
-            for row in metadata:
-                writer.writerow(row)
-        # replace the original file with the temp file
-        _shutil.move(tempfile.name, self.table_name)
+        return [self._simplify_record(dict(zip(self.column_names, record))) for record in records]
 
-        connection.commit()
-        connection.close()
+    def records_where(self, where: dict) -> [dict]:
+        where_clause = ' AND '.join(f'{key} = %s' for key in where.keys())
 
-    def _prepend_script_to_keys(self, metadata: [dict]) -> [dict]:
-        """
-        Prepend 'script: ' to each applicable key in the list of metadata dictionaries
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                cursor.execute(f'SELECT * FROM {self.table_name} WHERE {where_clause}', [*where.values()])
+                records = cursor.fetchall()
 
-        Parameters
-        ----------
-        metadata
-            list of metadata dictionaries
+        return [self._simplify_record(dict(zip(self.column_names, record))) for record in records]
 
-        Returns
-        -------
-        [dict]
-            list of metadata dictionaries with `script: ` prepended to keys
-        """
+    def __getitem__(self, primary_key_value: Any) -> dict:
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                cursor.execute(f'SELECT * FROM {self.table_name} WHERE {self.primary_key} = %s', [primary_key_value])
+                record = cursor.fetchone()
 
-        # TODO is `script_version` needed? if so, set the value to f'{row[key]},{__version__}' if provided in the key
-        return [{f'{self._key_prefixes["script"]}{key}' if key not in ('from_filename', 'from_path') else key: value
-                 for key, value in row.items()}
-                for row in metadata]
+        return self._simplify_record(dict(zip(self.column_names, record)))
 
-    def read_metadata(self) -> [dict]:
-        """
-        Get a list of combined metadata rows from the CSV.
+    def __setitem__(self, primary_key_value: Any, record: dict):
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                cursor.execute(f'SELECT * FROM {self.table_name} WHERE {self.primary_key} = %s', [primary_key_value])
+                record = cursor.fetchone()[0]
 
-        Returns
-        -------
-        [dict]
-            list of dictionaries of simplified metadata rows
-        """
+        return self._simplify_record(dict(zip(self.column_names, record)))
 
-        with open(self.table_name, 'r', encoding='utf-8') as csv_file:
-            return [self._simplify_row(row) for row in _csv.DictReader(csv_file)]
+    def insert_records(self, records: [dict]):
+        if type(records) is dict:
+            records = [records]
 
-    def read_meta_record(self, search_value: str, meta_key: str = 'from_filename') -> dict:
-        """
-        Extract the simplified metadata row in the given CSV file where the value of the given key matches the given key.
+        assert all(self.primary_key in record for record in records), f'one or more records does not contain "{self.primary_key}"'
 
-        Parameters
-        ----------
-        search_value
-            value to find in the CSV file
-        meta_key
-            key to search
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                if not database_has_table(cursor, self.table_name):
+                    FIELD_TYPES = [type(entry) for entry in records[0]]
 
-        Returns
-        -------
-            dictionary of matching row
-        """
+                    schema = ['from_filename VARCHAR PRIMARY KEY'] + [f'{field_name} VARCHAR'
+                                                                      for field_name in self.column_names if field_name != 'from_filename']
+                    cursor.execute(f'CREATE TABLE {self.table_name} ({", ".join(schema)});')
 
-        with open(self.table_name, 'r', encoding='utf-8') as csv_file:
-            for row in _csv.DictReader(csv_file):
-                if row[meta_key] == search_value:
-                    return self._simplify_row(row)
-            else:
-                return {}
-
-    def _simplify_row(self, row: dict) -> dict:
-        """
-        Combine `manual: ` and `script: ` fields in the given CSV row, preferring manual entries.
-
-        Parameters
-        ----------
-        row
-            dicitonary of keys and values from a single row of the metadata CSV
-
-        Returns
-        -------
-            simplified dictionary
-        """
-
-        metarow = {}
-        # make dictionaries for sorting data into
-        for name in MetadataTable._key_prefixes:
-            metarow[name] = {}
-        metarow['base'] = {}
-        # sort each key (that has information) into the right dictionary
-        for key in row:
-            # only do stuff with keys that have information
-            if len(row[key]) > 0:
-                named = False
-                for name in MetadataTable._key_prefixes:
-                    if name in key:
-                        named = True
-                        val = key.replace(MetadataTable._key_prefixes[name], '')
-                        if val == 'support_files':
-                            metarow[name][val] = _ast.literal_eval(row[key])
-                        else:
-                            metarow[name][val] = row[key]
-                if not named:
-                    metarow['base'][key] = row[key]
-        # combine the dictionaries
-        simplified_row = {}
-        for name in sorted(list(metarow.keys()), reverse=True):
-            simplified_row = {**simplified_row, **metarow[name]}
-        return simplified_row
-
-    def csv_to_s57(self, row: dict) -> dict:
-        """
-        Convert the expanded column names used in the CSV to S57 names / values.
-
-        Parameters
-        ----------
-        row
-            dictionary of CSV row
-
-        Returns
-        -------
-            dictionary with S57 names / values
-        """
-
-        s57_row = {}
-
-        # remap the keys
-        for key, value in row.items():
-            if key in DATABASE_KEYS:
-                database_key = DATABASE_KEYS[key]
-
-                if value in ('TRUE', 'True'):
-                    s57_row[database_key] = 1
-                elif value in ('FALSE', 'False'):
-                    s57_row[database_key] = 0
-                else:
-                    s57_row[database_key] = value
-
-        # enforce additional required formating
-        if 'VERDAT' in s57_row:
-            verdat = s57_row['VERDAT'].upper()
-            s57_row['VERDAT'] = VERTICAL_DATUM_KEYS[verdat]
-        elif 'HORDAT' in s57_row:
-            h_datum = s57_row['HORDAT']
-            for name in HORIZONTAL_DATUM_KEYS:
-                if name in h_datum:
-                    s57_row['HORDAT'] = HORIZONTAL_DATUM_KEYS[name]
-                    break
-        elif 'SUREND' in s57_row:
-            s57_row['SORDAT'] = s57_row['SUREND']
-
-        return s57_row
+                for record in records:
+                    if table_has_record(cursor, self.table_name, record, self.primary_key):
+                        pass
+                    else:
+                        fields = [field for field in self.metadata_fields if field in record]
+                        values = tuple(record[field] for field in fields)
+                        cursor.execute(f'INSERT INTO {self.table_name} ' +
+                                       f'({", ".join(self.column_prefixes["script"] + field if field not in FIELDS_EXCLUDED_FROM_PREFIX else field for field in fields)}) VALUES %s;',
+                                       [values])
 
 
-class MetadataFile:
+class MetadataFile(MetadataTable):
     """table of survey metadata"""
 
     # ordered dict to ensure looping through the keys always gets 'manual' last.
-    _key_prefixes = {
-        'manual': 'manual: ',
-        'script': 'script: '
-    }
+    column_prefixes = OrderedDict([('script', 'script: '), ('manual', 'manual: ')])
 
-    def __init__(self, filename: str, fields: [str]):
+    def __init__(self, filename: str, fields: [str], primary_key: str = 'from_filename'):
         """
         Create new metadata review object from the given CSV filename and a dictionary of metadata.
 
@@ -349,248 +346,157 @@ class MetadataFile:
 
         self.filename = filename
         self.metadata_fields = fields
+        self.primary_key = primary_key
 
     @property
-    def field_names(self) -> [str]:
-        """column names of table"""
+    def records(self) -> [dict]:
+        with open(self.filename, 'r', encoding='utf-8') as csv_file:
+            return [self._simplify_record(row) for row in _csv.DictReader(csv_file)]
 
-        csv_cols = []
-        for metadata_key in self.metadata_fields:
-            if metadata_key in ('from_filename', 'from_path', 'script_version'):
-                csv_cols.append(metadata_key)
+    def records_where(self, where: dict) -> [dict]:
+        records = []
+        with open(self.filename, 'r', encoding='utf-8') as csv_file:
+            for row in _csv.DictReader(csv_file):
+                if all(row[key] == value for key, value in where):
+                    records.append(row)
+
+        return [self._simplify_record(record) for record in records]
+
+    def __getitem__(self, primary_key_value: str) -> dict:
+        with open(self.filename, 'r', encoding='utf-8') as csv_file:
+            for row in _csv.DictReader(csv_file):
+                if row['from_filename'] == primary_key_value:
+                    return self._simplify_record(row)
             else:
-                csv_cols.extend(f'{self._key_prefixes[prefix]}{metadata_key}' for prefix in ('script', 'manual'))
-        csv_cols.extend(('reviewed', 'Last Updated', 'Notes'))
-        return csv_cols
+                return {}
 
-    def extend(self, metadata: [dict]):
-        """
-        Add the list of metadata to the CSV file.
-
-        Parameters
-        ----------
-        metadata
-            list of metadata dictionaries
-        """
+    def insert_records(self, records: [dict]):
+        assert all(self.primary_key in record for record in records), f'one or more records does not contain "{self.primary_key}"'
 
         if os.path.exists(self.filename):
             # check if only a single record was provided
-            if type(metadata) is dict:
-                metadata = [metadata]
+            if type(records) is dict:
+                records = [records]
 
-            self._add_to_csv(metadata)
+            self._add_to_csv(records)
         # just write a new file since there is not one already
         else:
-            self._write_new_csv([metadata])
+            self._write_new_csv([records])
 
-    def _add_to_csv(self, metadata: [dict]):
+    def _add_to_csv(self, records: [dict]):
         """
         Add the provided metadata to the CSV file.
 
         Parameters
         ----------
-        metadata
+        records
             list of metadata dictionaries
         """
 
         orig = []
         # get the names of all the files in the new metadata
         new_meta_files = []
-        for m in metadata:
-            new_meta_files.append(m['from_filename'])
+        for record in records:
+            new_meta_files.append(record['from_filename'])
         # update the metadata keys
-        metadata = self._prepend_script_to_keys(metadata)
+        records = self._prepend_script_to_keys(records)
         # get all the metadata that is in the file already
-        with open(self.filename, 'r', encoding='utf-8') as csvfile:
-            reader = _csv.DictReader(csvfile, fieldnames=self.field_names)
-            for row in reader:
-                orig.append(row)
+        with open(self.filename, 'r', encoding='utf-8') as csv_file:
+            orig.extend(row for row in _csv.DictReader(csv_file, fieldnames=self.column_names))
         # move the data into a new temp file
         with _NamedTemporaryFile(mode='w', newline='', encoding='utf-8', delete=False) as tempfile:
-            writer = _csv.DictWriter(tempfile, fieldnames=self.field_names, extrasaction='ignore')
+            writer = _csv.DictWriter(tempfile, fieldnames=self.column_names, extrasaction='ignore')
             # check to see if the new metadata is the same as an existing entry
             for row in orig:
                 fname = row['from_filename']
                 # if the file is being updated, move over the updated info
                 if fname in new_meta_files:
                     idx = new_meta_files.index(fname)
-                    m = metadata.pop(idx)
+                    record = records.pop(idx)
                     new_meta_files.pop(idx)
-                    for key in m.keys():
-                        row[key] = m[key]
+                    for key in record.keys():
+                        row[key] = record[key]
                 writer.writerow(row)
             # append what remains to the file
-            for row in metadata:
+            for row in records:
                 writer.writerow(row)
         # replace the original file with the temp file
         _shutil.move(tempfile.name, self.filename)
 
-    def _write_new_csv(self, metadata: [dict]):
+    def _write_new_csv(self, records: [dict]):
         """
         Write the provided metadata to a new CSV file.
 
         Parameters
         ----------
-        metadata
+        records
             list of metadata dictionaries
         """
 
         # check if only a single record was provided
-        if type(metadata) is dict:
-            metadata = self._prepend_script_to_keys([metadata])
+        if type(records) is dict:
+            records = self._prepend_script_to_keys([records])
         else:
-            metadata = self._prepend_script_to_keys(metadata)
+            records = self._prepend_script_to_keys(records)
 
         with open(self.filename, 'w', newline='', encoding='utf-8') as csv_file:
-            writer = _csv.DictWriter(csv_file, fieldnames=self.field_names, extrasaction='ignore')
+            writer = _csv.DictWriter(csv_file, fieldnames=self.column_names, extrasaction='ignore')
             writer.writeheader()
-            writer.writerows(metadata)
+            writer.writerows(records)
 
-    def _prepend_script_to_keys(self, metadata: [dict]) -> [dict]:
-        """
-        Prepend 'script: ' to each key in the list of metadata such that the list goes to the right column when written to a CSV
 
-        Parameters
-        ----------
-        metadata
-            list of metadata dictionaries
+def csv_to_s57(row: dict) -> dict:
+    """
+    Convert the expanded column names used in the CSV to S57 names / values.
 
-        Returns
-        -------
-            list of metadata dictionaries with `script: ` prepended to keys
-        """
+    Parameters
+    ----------
+    row
+        dictionary of CSV row
 
-        # TODO is `script_version` needed? if so, set the value to f'{row[key]},{__version__}' if provided in the key
-        return [{f'script: {key}' if key not in ('from_filename', 'from_path') else key: value for key, value in
-                 row.items()} for row in metadata]
+    Returns
+    -------
+    dict
+        dictionary with S57 names / values
+    """
 
-    def read_metadata(self) -> [dict]:
-        """
-        Get a list of combined metadata rows from the CSV.
+    s57_row = {}
 
-        Returns
-        -------
-            list of dictionaries of simplified metadata rows
-        """
+    # remap the keys
+    for key, value in row.items():
+        if key in S57_KEY_TRANSLATIONS:
+            key_in_s57 = S57_KEY_TRANSLATIONS[key]
 
-        with open(self.filename, 'r', encoding='utf-8') as csv_file:
-            return [self._simplify_row(row) for row in _csv.DictReader(csv_file)]
-
-    def read_meta_record(self, search_value: str, meta_key: str = 'from_filename') -> dict:
-        """
-        Extract the simplified metadata row in the given CSV file where the value of the given key matches the given key.
-
-        Parameters
-        ----------
-        search_value
-            value to find in the CSV file
-        meta_key
-            key to search
-
-        Returns
-        -------
-            dictionary of matching row
-        """
-
-        with open(self.filename, 'r', encoding='utf-8') as csv_file:
-            for row in _csv.DictReader(csv_file):
-                if row[meta_key] == search_value:
-                    return self._simplify_row(row)
+            if value in ('TRUE', 'True'):
+                s57_row[key_in_s57] = 1
+            elif value in ('FALSE', 'False'):
+                s57_row[key_in_s57] = 0
             else:
-                return {}
+                s57_row[key_in_s57] = value
 
-    def _simplify_row(self, row: dict) -> dict:
-        """
-        Combine `manual: ` and `script: ` fields in the given CSV row, preferring manual entries.
+    # enforce additional required formatting
+    if 'VERDAT' in s57_row:
+        s57_row['VERDAT'] = VERTICAL_DATUM_KEY_TRANSLATIONS[s57_row['VERDAT'].upper()]
+    elif 'HORDAT' in s57_row:
+        h_datum = s57_row['HORDAT']
+        for name in HORIZONTAL_DATUM_KEY_TRANSLATIONS:
+            if name in h_datum:
+                s57_row['HORDAT'] = HORIZONTAL_DATUM_KEY_TRANSLATIONS[name]
+                break
+    elif 'SUREND' in s57_row:
+        s57_row['SORDAT'] = s57_row['SUREND']
 
-        Parameters
-        ----------
-        row
-            dicitonary of keys and values from a single row of the metadata CSV
-
-        Returns
-        -------
-            simplified dictionary
-        """
-
-        metarow = {}
-        # make dictionaries for sorting data into
-        for name in MetadataTable._key_prefixes:
-            metarow[name] = {}
-        metarow['base'] = {}
-        # sort each key (that has information) into the right dictionary
-        for key in row:
-            # only do stuff with keys that have information
-            if len(row[key]) > 0:
-                named = False
-                for name in MetadataTable._key_prefixes:
-                    if name in key:
-                        named = True
-                        val = key.replace(MetadataTable._key_prefixes[name], '')
-                        if val == 'support_files':
-                            metarow[name][val] = _ast.literal_eval(row[key])
-                        else:
-                            metarow[name][val] = row[key]
-                if not named:
-                    metarow['base'][key] = row[key]
-        # combine the dictionaries
-        simplified_row = {}
-        for name in sorted(list(metarow.keys()), reverse=True):
-            simplified_row = {**simplified_row, **metarow[name]}
-        return simplified_row
-
-    def csv_to_s57(self, row: dict) -> dict:
-        """
-        Convert the expanded column names used in the CSV to S57 names / values.
-
-        Parameters
-        ----------
-        row
-            dictionary of CSV row
-
-        Returns
-        -------
-            dictionary with S57 names / values
-        """
-
-        s57_row = {}
-
-        # remap the keys
-        for key, value in row.items():
-            if key in DATABASE_KEYS:
-                database_key = DATABASE_KEYS[key]
-
-                if value in ('TRUE', 'True'):
-                    s57_row[database_key] = 1
-                elif value in ('FALSE', 'False'):
-                    s57_row[database_key] = 0
-                else:
-                    s57_row[database_key] = value
-
-        # enforce additional required formating
-        if 'VERDAT' in s57_row:
-            verdat = s57_row['VERDAT'].upper()
-            s57_row['VERDAT'] = VERTICAL_DATUM_KEYS[verdat]
-        elif 'HORDAT' in s57_row:
-            h_datum = s57_row['HORDAT']
-            for name in HORIZONTAL_DATUM_KEYS:
-                if name in h_datum:
-                    s57_row['HORDAT'] = HORIZONTAL_DATUM_KEYS[name]
-                    break
-        elif 'SUREND' in s57_row:
-            s57_row['SORDAT'] = s57_row['SUREND']
-
-        return s57_row
+    return s57_row
 
 
-def postgres_table_exists(connection: psycopg2.connect, table: str) -> bool:
+def database_has_table(cursor: psycopg2._psycopg.cursor, table: str) -> bool:
     """
     Whether the given table exists within the given database.
 
     Parameters
     ----------
-    connection
-        psycopg2 connection object
+    cursor
+        psycopg2 cursor
     table
         name of table
 
@@ -600,8 +506,40 @@ def postgres_table_exists(connection: psycopg2.connect, table: str) -> bool:
         whether table exists
     """
 
-    cursor = connection.cursor()
-    cursor.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name=%s)", (table,))
+    cursor.execute(f'SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name=\'{table}\');')
+    return cursor.fetchone()[0]
+
+
+def table_has_record(cursor: psycopg2._psycopg.cursor, table: str, record: dict, primary_key: str) -> bool:
+    """
+    Whether the given table exists within the given database.
+
+    Parameters
+    ----------
+    cursor
+        psycopg2 cursor
+    table
+        name of table
+    record
+        dictionary record
+    primary_key
+        name of primary key
+
+    Returns
+    -------
+    bool
+        whether table exists
+    """
+
+    # if primary_key is None:
+    #     cursor.execute(f'SELECT 1 FROM information_schema.table_constraints ' +
+    #                    f'WHERE table_name=\'{table}\' AND constraint_type= \'PRIMARY KEY\';')
+    #     primary_key_index = cursor.fetchone()[0] - 1
+    #
+    #     cursor.execute(f'SELECT * FROM information_schema.columns WHERE table_name=\'{table}\';')
+    #     primary_key = cursor.fetchall()[primary_key_index]
+
+    cursor.execute(f'SELECT EXISTS(SELECT 1 FROM {table} WHERE {primary_key}=\'{record[primary_key]}\');')
     return cursor.fetchone()[0]
 
 
