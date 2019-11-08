@@ -5,7 +5,7 @@ Created on Tue Aug 13 11:09:10 2019
 @author: Casiano.Koprowski
 """
 
-import os
+import os,sys
 from glob import glob
 import logging as _logging
 
@@ -31,21 +31,28 @@ if __name__ == '__main__':
                 print(f'reading {os.path.basename(path)}', end = ', ')
                 fnames = glob(os.path.join(path,'*.bag'))
                 files = bag.read(path)
-            except Exception as e:
+            except Exception as error:                
                 print('\n')
-                print(f'read error: {e}')
-                bag.logger.log(_logging.DEBUG, e)
+                _, _, error_traceback = sys.exc_info()
+                msg = f'read error:{error} ({os.path.split(error_traceback.tb_frame.f_code.co_filename)[1]}:{error_traceback.tb_lineno})'
+                print(msg)
+                bag.logger.log(_logging.DEBUG, msg)
                 print('\n')
-            for f in files:
-                try:
-                    print(f'processing @ {datetime.datetime.now()}')
-                    bag.process(f)
-                    print(f'done.')
-                except Exception as e:
-                    print('\n')
-                    print(f'processing error: {e}')
-                    bag.logger.log(_logging.DEBUG, e)
-                    print('\n')
+            if files is None:
+                print('\nNo file ID returned by fuse read.\n')
+            else:
+                for f in files:
+                    try:
+                        print(f'processing {f} @ {datetime.datetime.now()}')
+                        bag.process(f)
+                        print(f'done.')
+                    except Exception as error:                
+                        print('\n')
+                        _, _, error_traceback = sys.exc_info()
+                        msg = f'process error:{error} ({os.path.split(error_traceback.tb_frame.f_code.co_filename)[1]}:{error_traceback.tb_lineno})'
+                        print(msg)
+                        bag.logger.log(_logging.DEBUG, msg)
+                        print('\n')
     end = datetime.datetime.now()
     time_delta = end - start
 #    wx_frame.close()

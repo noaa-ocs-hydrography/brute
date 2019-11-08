@@ -1425,7 +1425,7 @@ class BAGSurvey(BAGRawReader):
             # need to add a check for bounds
             ya,xa = _np.mgrid[y-1:y+2,x-1:x+2]
             vals = elev[ya,xa]
-            interp_vals = vals[vals!=ndv].mean()
+            interp_vals[n] = vals[vals!=ndv].mean()
         elev[pts_idx] = interp_vals
         dt = _datetime.datetime.now() - start
         print(f'Zooming completed in {dt} seconds')
@@ -1474,10 +1474,13 @@ class BAGSurvey(BAGRawReader):
         x = []
         y = []
         proj = []
+        have_support_files = False
         for m in metadata_list:
             f = m['from_path']
             files.append(f)
             res.append(m['res'])
+            if 'support_files' in m:
+                have_support_files = True
             bagfile_obj = Open(f, pixel_is_area=False)
             nw, se = bagfile_obj.bounds
             x.append([nw[0],se[0]])
@@ -1499,28 +1502,30 @@ class BAGSurvey(BAGRawReader):
         combined_surface_metadata = metadata_list[order[0]].copy()
         survey_id = _os.path.basename(combined_surface_metadata['from_filename']).split('_')[0]
         combined_surface_metadata['from_filename'] = f"{survey_id}_Xof{num_files}.combined"
-        combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}_Combined.bag")
-        dataset_wkt = proj[order[0]]
         
-        # build an array to house the combined dataset
-            
-        comb_bounds = ((min(x), max(y)), (max(x), min(y)))
-        comb_shape = (int((max(y) - min(y))/minres + 1), int((max(x) - min(x))/minres + 1))
-        comb_array = _np.zeros((2, comb_shape[0], comb_shape[1])) + ndv
-
-        for n in order[::-1]:
-            bag_file = files[n]
-            comb_array = self._insert_raster(bag_file, comb_bounds, comb_array, minres)
-
-        # convert the bounds to cell, aka pixel_is_area, and to (nw, se) format
-        bounds = ((comb_bounds[0][0] - minres/2., comb_bounds[0][1] + minres/2.),
-                  (comb_bounds[1][0] + minres/2., comb_bounds[1][1] - minres/2.))
-
-        convert_dataset = BagToGDALConverter()
-        convert_dataset.components2gdal(comb_array, bounds, res[order[0]], dataset_wkt)
-        output_driver = _gdal.GetDriverByName('BAG')
-        output_driver.CreateCopy(combined_surface_metadata['from_path'], convert_dataset.dataset)
-
+        if have_support_files:
+            combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}_Combined.bag")
+        
+            # build an array to house the combined dataset
+                
+            comb_bounds = ((min(x), max(y)), (max(x), min(y)))
+            comb_shape = (int((max(y) - min(y))/minres + 1), int((max(x) - min(x))/minres + 1))
+            comb_array = _np.zeros((2, comb_shape[0], comb_shape[1])) + ndv
+    
+            for n in order[::-1]:
+                bag_file = files[n]
+                comb_array = self._insert_raster(bag_file, comb_bounds, comb_array, minres)
+    
+            # convert the bounds to cell, aka pixel_is_area, and to (nw, se) format
+            bounds = ((comb_bounds[0][0] - minres/2., comb_bounds[0][1] + minres/2.),
+                      (comb_bounds[1][0] + minres/2., comb_bounds[1][1] - minres/2.))
+            dataset_wkt = proj[order[0]]
+            convert_dataset = BagToGDALConverter()
+            convert_dataset.components2gdal(comb_array, bounds, res[order[0]], dataset_wkt)
+            output_driver = _gdal.GetDriverByName('BAG')
+            output_driver.CreateCopy(combined_surface_metadata['from_path'], convert_dataset.dataset)
+        else:
+            print('No support files found. Creating metadata entry but not creating combined surface for interpoaltion.')
 
         for bag_file in metadata_list:
             bag_file['interpolate'] = False if 'interpolate' in bag_file else False
@@ -1534,7 +1539,7 @@ class BAGSurvey(BAGRawReader):
         if 'interpolate' in metadata and metadata['interpolate']:
             interp_meta = metadata.copy()
             interp_meta['from_filename'] = f"{metadata['from_filename']}.interpolated"
-            interp_meta['from_path'] = _os.path.join(self.out_file_location, f"{metadata['from_filename']}.bag")
+            # interp_meta['from_path'] = _os.path.join(self.out_file_location, f"{metadata['from_filename']}.bag")
             metadata['interpolate'] = False
             return [metadata, interp_meta]
         else:

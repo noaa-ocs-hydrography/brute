@@ -7,13 +7,11 @@ transform.py
 Abstract datum transformation.
 """
 
-import os
 import gdal
-from tempfile import TemporaryDirectory as tempdir
 
 from fuse.datum_transform import use_vdatum as uv
 from fuse.datum_transform import use_gdal as ug
-from fuse.raw_read.noaa.bag import BAGRawReader
+from fuse.raw_read.noaa.bag import BAGSurvey
 gdal.UseExceptions()
 
 class DatumTransformer:
@@ -71,7 +69,7 @@ class DatumTransformer:
                range(len(self._from_horiz_datum_info)))
         not_same_vert = any(metadata[self._from_vert_datum_info[index]].lower() != metadata[self._to_vert_datum_info[index]].lower() for index in
                range(len(self._from_vert_datum_info)))
-        is_bag = type(self._reader) is BAGRawReader
+        is_bag = type(self._reader) is BAGSurvey
         # VDatum and rasters are giving us trouble, so this is a temp workaround
         if is_bag:
             # we can't deal with a change in BAG vertical datum, so punt

@@ -379,7 +379,7 @@ class FuseProcessor:
 
                 if self._read_type == 'bag' and interpolate == 'true':
                     if ('support_files' not in metadata or len(metadata['support_files']) < 1):
-                        interpolate = 'False'
+                        interpolate = 'false'
                         self.logger.warning("No coverage files provided; no interpolation can occur")
 
                 root, filename = _os.path.split(metadata['outpath'])
@@ -420,7 +420,7 @@ class FuseProcessor:
 
                     self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
                 else:
-                    raise ValueError('metadata interpolate flag has an ambigious state')
+                    raise ValueError(f'metadata interpolate flag has an ambigious state: {interpolate}')
             else:
                 del dataset
                 raise ValueError('metadata has no "interpolate" value')
