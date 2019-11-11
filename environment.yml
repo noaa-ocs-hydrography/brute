@@ -16,3 +16,4 @@ dependencies:
   - requests
   - spyder
   - wxpython
+  - numba

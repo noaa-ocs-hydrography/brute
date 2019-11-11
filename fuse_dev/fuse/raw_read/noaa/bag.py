@@ -17,6 +17,7 @@ import csv as _csv
 import datetime as _datetime
 import logging as _logging
 import lxml.etree as _et
+from numba import jit
 import numpy as _np
 import os as _os
 import re as _re
@@ -1413,20 +1414,17 @@ class BAGSurvey(BAGRawReader):
         bin_arr = _np.zeros(elev.shape)
         idx = _np.nonzero(elev != ndv)
         bin_arr[idx] = 1
-        struct = generate_binary_structure(2,2)
+        dim = 2 * zoom_factor - 1
+        struct = _np.ones((dim,dim), dtype = _np.bool)
         mask = binary_closing(bin_arr, structure = struct)
         
         # interpolate the gaps in the expanded array
-        pts_idx = _np.nonzero((mask == 1) & (elev == ndv))
-        numpts = len(pts_idx[0])
-        interp_vals = _np.zeros(numpts)
-        for n in range(numpts):
-            y,x = pts_idx[0][n], pts_idx[1][n]
-            # need to add a check for bounds
-            ya,xa = _np.mgrid[y-1:y+2,x-1:x+2]
-            vals = elev[ya,xa]
-            interp_vals[n] = vals[vals!=ndv].mean()
-        elev[pts_idx] = interp_vals
+        rel_idx = _np.arange(dim, dtype = _np.int)-int(zoom_factor/2)
+        footprint = _np.tile(rel_idx,(dim,1))
+        x_fp = footprint.flatten()
+        y_fp = footprint.T.flatten()
+        elev = _interpolate_gaps(elev, mask, y_fp, x_fp, ndv)
+        
         dt = _datetime.datetime.now() - start
         print(f'Zooming completed in {dt} seconds')
         return elev
@@ -2081,3 +2079,28 @@ class BagToGDALConverter:
 
         self.dataset = target_ds
         del target_ds
+
+@jit(nopython=True)
+def _interpolate_gaps(data, mask, y_footprint, x_footprint, ndv):
+    """
+    Return the provided 2d data with the missing nodes not covered by the mask. 
+    """
+    y_idx, x_idx = _np.nonzero((mask == 1) & (data == ndv))
+    numpts = x_idx.shape[0]
+    interp_vals = _np.zeros(numpts)
+    for n in range(numpts):
+        # need to add a check for bounds
+        y = y_footprint + y_idx[n]
+        x = x_footprint + x_idx[n]
+        count = 0
+        tmp = 0
+        for m in range(x_footprint.shape[0]):
+            val = data[y[m],x[m]]
+            if val != ndv:
+                count = count + 1
+                tmp = tmp + val 
+        if count != 0:
+            interp_vals[n] = tmp / count
+    for n in range(numpts):
+        data[y_idx[n],x_idx[n]] = interp_vals[n]
+    return data
