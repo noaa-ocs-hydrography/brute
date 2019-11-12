@@ -149,7 +149,7 @@ class MetadataTable(ABC):
             dictionary record
         """
 
-        raise NotImplementedError
+        self.insert_records([record])
 
     @abstractmethod
     def insert_records(self, records: [dict]):
@@ -353,15 +353,6 @@ class MetadataDatabase(MetadataTable):
 
         return self._simplify_record(dict(zip(self.column_names, record)))
 
-    def __setitem__(self, primary_key_value: Any, record: dict):
-        with self.connection:
-            with self.connection.cursor() as cursor:
-                if table_has_record(cursor, self.table_name, record, self.primary_key):
-                    cursor.execute(f'UPDATE {self.table_name} SET ({", ".join(self.column_names)}) = %s',
-                                   [tuple(record[key] for key in self.column_names)])
-                else:
-                    cursor.execute(f'INSERT INTO {self.table_name} VALUES %s', [tuple(record[key] for key in self.column_names)])
-
     def insert_records(self, records: [dict]):
         if type(records) is dict:
             records = [records]
@@ -372,7 +363,8 @@ class MetadataDatabase(MetadataTable):
             with self.connection.cursor() as cursor:
                 for record in records:
                     if table_has_record(cursor, self.table_name, record, self.primary_key):
-                        pass
+                        cursor.execute(f'UPDATE {self.table_name} SET ({", ".join(self.column_names)}) = %s',
+                                       [tuple(record[key] for key in self.column_names)])
                     else:
                         fields = [field for field in self.metadata_fields if field in record]
                         values = tuple(record[field] for field in fields)
@@ -424,6 +416,9 @@ class MetadataFile(MetadataTable):
                     return self._simplify_record(row)
             else:
                 return {}
+
+    def __setitem__(self, primary_key_value: str, record: dict):
+        super().__setitem__(primary_key_value, record)
 
     def insert_records(self, records: [dict]):
         assert all(self.primary_key in record for record in records), f'one or more records does not contain "{self.primary_key}"'
