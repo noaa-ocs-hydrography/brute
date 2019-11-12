@@ -251,19 +251,26 @@ class VDatum:
         instructions
             dictionary of metadata
         """
+        vert = True
         # having the input zone is optional if the input type is geographic
         local_from_datum = from_hdatum.copy()
         if instructions['from_horiz_type'] != 'geo':
             local_from_datum.append('from_horiz_key')
+            vert = False
         # having the output zone is optional
         local_to_hdatum = to_hdatum.copy()
         if 'to_horiz_key' in instructions:
             local_to_hdatum.append('to_horiz_key')
-        self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
+        if vert:
+            self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
+                          f'ihorz:{":".join(instructions[key] for key in local_from_datum)} ' + \
+                          f'ivert:{":".join(instructions[key] for key in from_vdatum)} ' + \
+                          f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
+                          f'overt:{":".join(instructions[key] for key in to_vdatum)} '
+        else:
+            self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
                       f'ihorz:{":".join(instructions[key] for key in local_from_datum)} ' + \
-                      f'ivert:{":".join(instructions[key] for key in from_vdatum)} ' + \
-                      f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
-                      f'overt:{":".join(instructions[key] for key in to_vdatum)} '
+                      f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} '
         if mode == 'points':
             self._shell += f'-file:txt:comma,0,1,2,skip0:'
         elif mode == 'geotiff':
