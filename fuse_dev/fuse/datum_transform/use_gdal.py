@@ -8,7 +8,6 @@ Created on Tue Oct 22 16:01:28 2019
 import logging
 import os
 from typing import Union
-
 import fiona
 import numpy
 import rasterio
