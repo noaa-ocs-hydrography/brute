@@ -220,7 +220,7 @@ class MetadataTable(ABC):
                     entries_by_prefix['base'][column_name] = value
 
         # combine the dictionaries, overwriting the prefixed columns according to the order specified in the class attribute
-        simplified_row = {}
+        simplified_row = entries_by_prefix['base']
         for prefix_name in self.column_prefixes:
             simplified_row.update(entries_by_prefix[prefix_name])
         return simplified_row
