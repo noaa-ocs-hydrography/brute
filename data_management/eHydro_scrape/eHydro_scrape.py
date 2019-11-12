@@ -494,8 +494,6 @@ def write_geopackage(out_path: str, name: str, poly: str,
 
     layer.CreateFeature(feat)
 
-
-
     linear_geom = geom.GetLinearGeometry()
     geojson = linear_geom.ExportToJson()
 

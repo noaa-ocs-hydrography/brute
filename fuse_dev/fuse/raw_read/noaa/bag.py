@@ -23,27 +23,18 @@ import os as _os
 import re as _re
 import sys as _sys
 import tables as _tb
-from scipy.ndimage import generate_binary_structure, binary_closing
+from scipy.ndimage import binary_closing
 from scipy.interpolate import Rbf
 import rasterio as _rio
-
 from glob import glob as _glob
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
 from fuse.raw_read.raw_read import RawReader
-# import fuse.datum_transform.use_gdal as _ug
+from fuse.raw_read import parse_file_pickle
 
 try:
     import dateutil.parser as _parser
 except ModuleNotFoundError as e:
-    print(f"{e}")
-
-try:
-    prog_loc = _os.path.dirname(_os.path.abspath(__file__))
-    csv_files = _glob(_os.path.join(prog_loc, 'additional_files', '*.csv'))
-    csv_exists = True if len(csv_files) > 0 else False
-except FileNotFoundError as e:
-    csv_exists = False
     print(f"{e}")
 
 _gdal.UseExceptions()
@@ -95,37 +86,6 @@ _ns2 = {
     'smXML': 'http://metadata.dgiwg.org/smXML',
 }
 
-csv_to_meta = {'Survey': 'survey',
-               'Bag File Name': 'bag_name',
-               'Reviewer': 'reviewer',
-               'Sensitive? Y/N': 'sensitive',
-               'Sensitive? (Y/N)': 'sensitive',
-               'Survey Start Date': 'start_date',
-               'Survey End Date': 'end_date',
-               'Processing Branch': 'branch',
-               'Source data type (MB)': 'mb_data',
-               'Source data type (MBES)': 'mb_data',
-               'Source data type (SSS)': 'sss_data',
-               'Source data type (VB)': 'vb_data',
-               'Source data type (SB)': 'sb_data',
-               'Feature Detection Capability (Y/N)': 'feat_detect',
-               'Features Delivered (Y/N)': 'feat_delivered',
-               'Least depth of features detected(Y/N)': 'feat_least_depth',
-               'Size of features detected (m)': 'feat_size',
-               'Full Coverage achieved (Y/N)': 'complete_coverage',
-               'Full bathymetric coverage achieved (Y/N)': 'bathymetry',
-               'Temporal variability (1-5)': 'temp_vari',
-               'Data Assessment (1-3)': 'data_assess',
-               'Horizontal position uncertainty (fixed)': 'horiz_uncert_fixed',
-               'Horizontal position uncertainty (variable)': 'horiz_uncert_vari',
-               'Vertical Uncertainty (Fixed)': 'vert_uncert_fixed',
-               'Vertical Uncertainty (fixed)': 'vert_uncert_fixed',
-               'Vertical Uncertainty (variable)': 'vert_uncert_vari',
-               'Horizontal datum': 'from_horiz_datum',
-               'Vertical datum': 'from_vert_datum',
-               }
-
-
 def parse_namespace(meta_str):
     """
     Catch the xml and read the second line assuming it is the namespace
@@ -173,8 +133,6 @@ class BAGRawReader(RawReader):
             ch.setLevel(_logging.DEBUG)
             self._logger.addHandler(ch)
 
-        self.csv_data = self._from_csv()
-
     def read_metadata(self, filename: str) -> dict:
         """
         read metadata from file
@@ -193,10 +151,8 @@ class BAGRawReader(RawReader):
             meta_gdal, bag_version = self._parse_bag_gdal(filename)
             meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
             meta_support = self._known_meta(filename)
-            meta_csv = self._csv_meta(filename)
-            meta_combined = {**meta_csv, **meta_xml, **meta_gdal, **meta_support}
-            meta_final = self._finalize_meta(meta_combined)
-            return meta_final
+            meta_pickle = parse_file_pickle.read_pickle(filename)
+            return {**meta_pickle, **meta_xml, **meta_gdal, **meta_support}
         except ValueError as error:
             _logging.warning(f'Error in reading metadata for {filename}: {error}')
             return {}
@@ -315,11 +271,11 @@ class BAGRawReader(RawReader):
             self.namespace = self._assign_namspace(bag_version=bag_version)
             self.bag_format = self._set_format(infilename, bag_version)
             self.get_fields()
-
-            if 'date_stamp' in self.data and 'end_date' in self.data:
-                if self.data['date_stamp'] == self.data['end_date']:
-                    _logging.warning(f"Removing `end_date` field from parsed xml metadata due to match with metadata date_stamp: date_stamp - {self.data['date_stamp']}, end_date - {self.data['end_date']}")
-                    del self.data['end_date']
+            if 'from_vert_datum' not in self.data or 'from_vert_key' not in self.data:
+                for datum in vert_datum.keys():
+                    if datum in infilename:
+                        self.data['from_vert_datum'], self.data['from_vert_key'] = datum, datum
+                        break
 
             return self.data
         except _tb.HDF5ExtError as e:
@@ -348,151 +304,6 @@ class BAGRawReader(RawReader):
         meta['file_size'] = self._size_finder(infilename)
 
         return {**coverage, **meta}
-
-    def _csv_meta(self, infilename: str) -> dict:
-        """
-        Identifies known metadata and returns them as a dict
-
-        Parameters
-        ----------
-        infilename : str
-            Input file path
-
-        Returns
-        -------
-        dict
-            A dictionary object containing found metadata
-
-        """
-        meta = {}
-        found = False
-        root, name = _os.path.split(infilename)
-        basename = _os.path.splitext(name)[0]
-        if csv_exists:
-            for survey in self.csv_data:
-                if 'bag_name' in survey:
-                    if survey['bag_name'] == name or survey['bag_name'] == basename:
-                        found = True
-                        survey['csv'] = True
-                        meta = {**survey, **meta}
-            if not found:
-                _logging.warning(f'No CSV Metadata available for: {name, basename}')
-                meta['interpolate'] = False
-                meta['csv'] = False
-        else:
-            meta['interpolate'] = False
-            meta['csv'] = False
-        return meta
-
-    def _from_csv(self) -> dict:
-        """
-        Identifies known metadata from a csv and returns them as a dict
-
-        Returns
-        -------
-        dict
-            A dictionary object containing found metadata
-
-        """
-        meta = []
-        if csv_exists:
-            for csv_file in csv_files:
-                opened = open(csv_file, 'r', newline='')
-                read = _csv.reader(opened)
-                fields = []
-                index = 0
-                for line in read:
-                    if index == 0:
-                        fields.extend(field for field in line if field != '')
-                    else:
-                        bag_meta = {}
-                        for assignment in range(len(fields)):
-                            if line[assignment] != '' and fields[assignment].lower() not in ('', 'notes', 'note'):
-                                try:
-                                    meta_field = csv_to_meta[fields[assignment].strip()]
-                                    if meta_field in (
-                                            'sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect',
-                                            'feat_delivered', 'feat_least_depth',
-                                            'complete_coverage', 'bathymetry'):
-                                        if line[assignment].lower() in ('n/a', 'na', 'no', 'n'):
-                                            bag_meta[meta_field] = 'False'
-                                        elif line[assignment].lower() in ('y', 'yes'):
-                                            bag_meta[meta_field] = 'True'
-                                    elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
-                                        try:
-                                            if line[assignment].lower() not in ('n/a', 'unassessed'):
-                                                if 'cm' in line[assignment]:
-                                                    bag_meta[meta_field] = float(
-                                                        _re.sub(r'\D', '', line[assignment])) / 100
-                                                elif 'm' in line[assignment]:
-                                                    bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment]))
-                                        except ValueError:
-                                            _logging.warning(
-                                                f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
-                                    elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
-                                        try:
-                                            if line[assignment].lower() not in ('n/a', 'unassessed'):
-                                                bag_meta[meta_field] = float(_re.sub(r'\D', '', line[assignment])) / 100
-                                        except ValueError:
-                                            _logging.warning(
-                                                f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
-                                    elif meta_field in ('from_horiz_datum'):
-                                        splits = line[assignment].split(' ')
-                                        datum_info = {}
-                                        try:
-                                            datum_info['from_horiz_frame'] = splits[0]
-                                            datum_info['from_horiz_type'] = splits[1]
-                                            datum_info['from_horiz_key'] = _re.sub('\D', '', splits[2])
-                                            bag_meta = {**bag_meta, **datum_info}
-                                        except IndexError:
-                                            _logging.warning(
-                                                f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
-                                    elif meta_field in ('from_vert_datum'):
-                                        for datum in vert_datum.keys():
-                                            if datum == line[assignment]:
-                                                datum_info['from_vert_datum'], datum_info[
-                                                    'from_vert_key'] = datum, datum
-                                                break
-                                    elif meta_field in ('start_date', 'end_date'):
-                                        try:
-                                            bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%Y%m%d'):%Y%m%d}"
-                                        except ValueError:
-                                            try:
-                                                bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
-                                            except ValueError:
-                                                try:
-                                                    bag_meta[meta_field] = f"{_datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
-                                                except ValueError:
-                                                    _logging.warning(
-                                                        f'Unable to add `{meta_field}` information: {line[1]}, {meta_field}: {line[assignment]}')
-                                    else:
-                                        bag_meta[meta_field] = line[assignment]
-                                except KeyError:
-                                    _logging.warning(f'Unable to parse field: {line[1]}, {fields[assignment]}')
-                                    # index += 1
-                                    # continue
-                        if 'bathymetry' in bag_meta and 'complete_coverage' in bag_meta:
-                            bathymetry = _ast.literal_eval(bag_meta['bathymetry'])
-                            coverage = _ast.literal_eval(bag_meta['complete_coverage'])
-
-                            if bathymetry:
-                                interpolate = False
-                            else:
-                                if coverage:
-                                    interpolate = True
-                                else:
-                                    if 'sss_data' in bag_meta:
-                                        interpolate = _ast.literal_eval(bag_meta['sss_data'])
-                                    else:
-                                        interpolate = False
-
-                            bag_meta['interpolate'] = interpolate
-                        else:
-                            bag_meta['interpolate'] = False
-                        meta.append(bag_meta)
-                    index += 1
-                opened.close()
-        return meta
 
     def _size_finder(self, filepath: str) -> int:
         """
@@ -1273,28 +1084,6 @@ class BAGRawReader(RawReader):
         except (ValueError, IndexError, AttributeError) as e:
             _logging.warning(f"unable to read the sensor name attribute: {e}")
             return
-
-    def _finalize_meta(self, meta):
-        if ('from_vert_datum' not in meta or meta['from_vert_datum'] == '') and 'from_vert_key' not in meta:
-            for datum in vert_datum.keys():
-                if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
-                    meta['from_vert_datum'], meta['from_vert_key'] = datum, datum
-                    break
-        elif 'from_vert_datum' in meta and 'from_vert_key' not in meta:
-            for datum in vert_datum.keys():
-                if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
-                    meta['from_vert_key'] = datum
-                    break
-        # this should be moved to the reader.
-        meta['read_type'] = 'bag'
-        # translate from the reader to common metadata keys for datum transformations
-        if 'from_vert_direction' not in meta:
-            meta['from_vert_direction'] = 'height'
-        if 'from_vert_units' not in meta:
-            meta['from_vert_units'] = 'm'
-        meta['interpolated'] = 'False'
-        meta['posted'] = False
-        return meta
 
 
 class BAGSurvey(BAGRawReader):

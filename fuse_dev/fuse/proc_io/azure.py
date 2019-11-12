@@ -14,7 +14,7 @@ def upload_to_azure(local_path: str, remote_path: str, credentials: str, overwri
 
 
 if __name__ == '__main__':
-    local_data_path = r"\\OCS-VS-NBS02\data\testing"
+    local_data_path = r"\\OCS-VS-NBS01\nbs\TestingResources"
     remote_data_path = 'https://ocsnbssa.blob.core.windows.net/data'
 
     with open(os.path.join(local_data_path, "azure_credentials.txt")) as credentials_file:

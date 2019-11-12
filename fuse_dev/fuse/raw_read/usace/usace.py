@@ -19,7 +19,7 @@ import numpy as _np
 from fuse.datum_transform import usefips as _usefips
 from fuse.raw_read.raw_read import RawReader
 
-from . import parse_usace_pickle
+from fuse.raw_read import parse_file_pickle
 from . import parse_usace_xml
 
 _ehydro_quality_metrics = {

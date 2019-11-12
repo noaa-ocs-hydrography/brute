@@ -19,6 +19,7 @@ import fuse.raw_read.usace as _usace
 from fuse import score
 from fuse.proc_io.proc_io import ProcIO
 
+
 class FuseProcessor:
     """Bathymetric survey object."""
 
@@ -273,7 +274,7 @@ class FuseProcessor:
         self._raster_writer = ProcIO('gdal', self._raster_extension)
         self._point_writer = ProcIO('point', self._point_extension)
 
-    def read(self, dataid: str):
+    def read(self, dataid: str) -> str:
         """
         Read survey bathymetry and metadata into useable forms.
 
@@ -281,8 +282,15 @@ class FuseProcessor:
         ----------
         dataid
             Filename of survey bathymetry.
+
+        Returns
+        ----------
+        str
+            input survey path
         """
+
         self._set_log(dataid)
+
         # get the metadata
         try:
             raw_meta = self._reader.read_metadata(dataid)
@@ -368,11 +376,11 @@ class FuseProcessor:
             metadata['new_ext'] = self._point_extension
 
             try:
-                dataset, metadata, transformed = self._transform.translate(frompath, metadata)
+                dataset, metadata, transformed = self._transform.reproject(frompath, metadata)
             except (ValueError, RuntimeError, IndexError) as error:
-                    message = f' Transformation error: {error}'
-                    self.logger.warning(message)
-                    metadata['interpolate'] = 'False'
+                message = f' Transformation error: {error}'
+                self.logger.warning(message)
+                metadata['interpolate'] = 'False'
 
             if 'interpolate' in metadata:
                 interpolate = metadata['interpolate'].lower()
@@ -386,23 +394,13 @@ class FuseProcessor:
                 base, ext = _os.path.splitext(filename)
 
                 if interpolate == 'true':
-                    metadata = self._transform.translate_support_files(metadata, self._config['outpath'])
-
-                    if self._config['interpolation_engine'] == 'raster':
-                        output_filename = f"{_os.path.join(root, base)}_interp.{self._raster_extension}"
-                    else:
-                        resolution = float(self._config['to_resolution'])
-                        resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
-                        output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
-
+                    metadata = self._transform.reproject_support_files(metadata, self._config['outpath'])
+                    
                     try:
                         dataset, metadata = self._interpolator.interpolate(dataset, metadata)
-                        self._raster_writer.write(dataset, output_filename)
-                        metadata['interpolated'] = True
-                        metadata['to_filename'] = output_filename
+                        self._raster_writer.write(dataset, metadata['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
                         message = f' Interpolation error: {error}'
-                        print(message)
                         self.logger.warning(message)
                         metadata['interpolated'] = False
 
@@ -615,7 +613,7 @@ class FuseProcessor:
 
         # check the feature metadata
         if 'feat_detect' in metadata:
-            if metadata['feat_detect'].upper() == 'TRUE':
+            if metadata['feat_detect']:
                 feature_ready = 'feat_least_depth' in metadata and 'feat_size' in metadata
             else:
                 feature_ready = True
