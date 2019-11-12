@@ -7,6 +7,7 @@ Created on Wed Aug 21 08:51:53 2019
 
 import ast
 import configparser
+import csv
 import datetime
 import gzip
 import json
@@ -17,6 +18,7 @@ import re
 import shutil
 import socket
 import urllib
+from glob import glob
 from typing import Union, Dict, List
 
 import requests
@@ -39,6 +41,183 @@ else:
 
 if not os.path.isdir(os.path.join(downloads)):
     os.mkdir(downloads)
+
+try:
+    prog_loc = os.path.dirname(os.path.abspath(__file__))
+    csv_files = glob(os.path.join(prog_loc, 'additional_files', '*.csv'))
+    csv_exists = True if len(csv_files) > 0 else False
+except FileNotFoundError as e:
+    csv_exists = False
+    print(f"{e}")
+
+vert_datum = {
+    'MLWS': '1',
+    'MLLWS': '2',
+    'MSL': '3',
+    'LLW': '4',
+    'MLW': '5',
+    'ISLW': '8',
+    'MLLW': '12',
+    'MHW': '16',
+    'MHWS': '17',
+    'MHHW': '21',
+    'LAT': '23',
+    'LOC': '24',
+    'IGLD': '25',
+    'LLWLT': '27',
+    'HHWLT': '28',
+    'HAT': '30',
+    'Unknown': '701',
+    'Other': '703',
+    'HRD': '24',  # Adding this for the Hudson River Datum
+}
+horz_datum = {
+    'WGS72': '1',
+    'WGS84': '2',
+    'WGS_1984': '2',
+    'NAD27': '74',
+    'NAD83': '75',
+    'North_American_Datum_1983': '75',
+    'Local': '131',
+}
+csv_to_meta = {'Survey': 'survey',
+               'Bag File Name': 'bag_name',
+               'Reviewer': 'reviewer',
+               'Sensitive? Y/N': 'sensitive',
+               'Sensitive? (Y/N)': 'sensitive',
+               'Survey Start Date': 'start_date',
+               'Survey End Date': 'end_date',
+               'Processing Branch': 'branch',
+               'Source data type (MB)': 'mb_data',
+               'Source data type (MBES)': 'mb_data',
+               'Source data type (SSS)': 'sss_data',
+               'Source data type (VB)': 'vb_data',
+               'Source data type (SB)': 'sb_data',
+               'Feature Detection Capability (Y/N)': 'feat_detect',
+               'Features Delivered (Y/N)': 'feat_delivered',
+               'Least depth of features detected(Y/N)': 'feat_least_depth',
+               'Size of features detected (m)': 'feat_size',
+               'Full Coverage achieved (Y/N)': 'complete_coverage',
+               'Full bathymetric coverage achieved (Y/N)': 'bathymetry',
+               'Temporal variability (1-5)': 'temp_vari',
+               'Data Assessment (1-3)': 'data_assess',
+               'Horizontal position uncertainty (fixed)': 'horiz_uncert_fixed',
+               'Horizontal position uncertainty (variable)': 'horiz_uncert_vari',
+               'Vertical Uncertainty (Fixed)': 'vert_uncert_fixed',
+               'Vertical Uncertainty (fixed)': 'vert_uncert_fixed',
+               'Vertical Uncertainty (variable)': 'vert_uncert_vari',
+               'Horizontal datum': 'from_horiz_datum',
+               'Vertical datum': 'from_vert_datum',
+               }
+h93_to_vert_datum = {
+        'MEAN LOW WATER SPRINGS': 'MLWS',
+        'MEAN LOWER LOW WATER SPRINGS': 'MLLWS',
+        'MEAN SEA LEVEL': 'MSL',
+        'LOWER LOW WATER': 'LLW',
+        'MEAN LOW WATER': 'MLW',
+        'INDIAN SPRING LOW WATER': 'ISLW',
+        'MEAN LOWER LOW WATER': 'MLLW',
+        'MEAN HIGH WATER': 'MHW',
+        'MEAN HIGH WATER SPRINGS': 'MHWS',
+        'MEAN HIGHER HIGH WATER': 'MHHW',
+        'LOWEST ASTRONOMICAL TIDE': 'LAT',
+        'INTERNATION GREAT LAKES DATUM': 'IGLD',
+        'LOWER LOW WATER LARGE TIDE': 'LLWLT',
+        'HIGHER HIGH WATER LARGE TIDE': 'HHWLT',
+        'HIGHEST ASTRONOMICAL TIDE': 'HAT',
+        'HUDSON RIVER DATUM': 'HRD',  # Adding this for the Hudson River Datum
+        }
+h93_to_horiz_datum = {
+        'NORTH AMERICAN DATUM OF 1983': 'NAD83',
+        'NORTH AMERICAN DATUM 1983': 'NAD83'
+        }
+h93_vert_datum = {
+        0: 'Undetermined vertical datum',
+        1: 'Mean Sea Level',
+        2: 'Mean Low Water',
+        3: 'Mean Low Water Springs',
+        4: 'Mean Lower Low Water',
+        5: 'Mean Lower Water Springs',
+        6: 'Lowest Normal Low Water',
+        7: 'Lowest Low Water',
+        8: 'Indian Spring Low Water',
+        9: 'Great Lakes Low Water',
+        10: 'Low Lake Level - Lake Champlain',
+        11: 'Normal Pool Level - Cayuga & Seneca Lakes',
+        12: 'Hudson River Datum',
+        13: 'Normal Lake Level - Franklin D. Roosevelt Lake',
+        14: 'Sacramento River - Sacramento to Old Ferry',
+        15: 'Columbia River Datum',
+        16: 'Local Low Water',
+        17: 'Gulf Coast Low Water',
+        18: 'Low Water Datum 600.0 ft IGLD-1955 Lake Superior',
+        19: 'Low Water Datum 576.8 ft IGLD-1955 L Michigan,Huron',
+        20: 'Low Water Datum 571.7 ft IGLD-1955 Lake St. Clair',
+        21: 'Low Water Datum 568.6 ft IGLD-1955 Lake Erie',
+        22: 'Low Water Datum 242.8 ft IGLD-1955 Lake Ontario',
+        23: 'Mystic River Datum',
+        24: 'Mean High Water',
+        25: 'Low Water Datum 601.1 ft IGLD-1985 Lake Superior',
+        26: 'Low Water Datum 577.5 ft IGLD-1985 L Michigan,Huron',
+        27: 'Low Water Datum 572.3 ft IGLD-1985 Lake St. Clair',
+        28: 'Low Water Datum 569.2 ft IGLD-1985 Lake Erie',
+        29: 'Low Water Datum 243.3 ft IGLD-1985 Lake Ontario',
+        }
+h93_horiz_datum = {
+        'NOS01': 'Bessel Spheroid 1841-80',
+        'NOS02': 'Clarke Spheroid of 1866',
+        'NOS03': 'Astronomic Datum (General)',
+        'NOS04': 'United States Standard Datum 1901',
+        'NOS05': 'North American Datum 1913',
+        'NOS06': 'North American Datum 1927',
+        'NOS07': 'Old Hawaiian Datum',
+        'NOS08': 'Kauai Datum',
+        'NOS09': 'Lisanski 1931 (Field)',
+        'NOS10': 'Laysan 1930 (Field)',
+        'NOS11': 'Gardners Pinnacles 1929 (Field)',
+        'NOS12': 'French Frigate Shoal 1928 (Field)',
+        'NOS13': 'Necker 1928 Datum',
+        'NOS14': 'Nihoa 1928 Datum',
+        'NOS15': 'Vigan Datum',
+        'NOS16': 'Luzon Datum 1911',
+        'NOS17': 'San Juan Astro Datum 1901',
+        'NOS18': 'Puerto Rico Datum',
+        'NOS19': 'Limon Bay - Colon 1877',
+        'NOS20': 'Panama Harbor Panama Cathedrl 1877',
+        'NOS21': 'Panama - Colon Datum 1911',
+        'NOS22': 'Valdez Datum',
+        'NOS23': 'Unalaska Datum',
+        'NOS24': 'Southeast Alaska Datum',
+        'NOS25': 'Aleutian Islands Datum',
+        'NOS26': 'Nushagak Bay Datum',
+        'NOS27': 'Cape Newenham Datum',
+        'NOS28': 'Norton Sound Datum',
+        'NOS29': 'Port Clarence and Pribilof Islands',
+        'NOS30': 'North American Datum of 1902',
+        'NOS31': 'North American Datum of 1983',
+        'NOS32': 'Guam 1963 Datum',
+        'NOS33': 'World Geodetic System (WGS) 1972',
+        'NOS34': 'World Geodetic System (WGS) 1984',
+        'NOS35': 'Johnston Island 1961 Astro Datum',
+        'NOS36': 'Maro Reef Astro Datum 1930 (Field)',
+        'NOS37': 'Bosun Astronomic Datum 1941 Field',
+        'NOS38': 'Preliminary North American 1927',
+        'NOS39': 'Palmyra Atoll - Astro Datum 1944',
+        'MGGHA': 'Early Hawaiian Island Datums',
+        'MGGPR': 'Early Puerto Rico Island Datums',
+        'MGGSL': 'Early St. Laurence Island Datums',
+        'MGGSG': 'Early St. George Island Datums',
+        'MGGSP': 'Early St. Paul Island Datums',
+        'MGGAL': 'Early Alaska Datums',
+        'NOSXX': 'Undetermined Datum',
+        }
+bps_to_meta = {'SURVEY_ID': 'survey',
+               'CHIEF_HYDROGRAPHERS': 'reviewer',
+               'START_YEAR': 'start_date',
+               'END_YEAR': 'end_date',
+               'HORIZ_DATUM_CODE_OF_ARCHIVE': 'from_horiz_datum',
+               'CALCULATED_VERTICAL_DATUM_CODE': 'from_vert_datum',
+               }
 
 # https://data.ngdc.noaa.gov/platforms/ocean/nos/coast/H12001-H14000/H12001/[BAG, TIFF]
 
@@ -424,7 +603,7 @@ def parse_timestamp(timestamp: int) -> datetime.date:
         return datetime.datetime.utcfromtimestamp(timestamp / 1000)
 
 
-def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId=0, pb=None) -> (list, [dict]):
+def survey_compile(objectIDs: list, num: int, history: [dict], poly: str, qId: int = 0, pb=None) -> (list, [dict]):
     """
     Queries and compiles the data from the input objectIDs and checks against
     the history of past queries to mark them for updates
@@ -713,7 +892,7 @@ def file_downloader(folder: str, download_links: list, saved_files: list) -> lis
     return saved_links
 
 
-def survey_download(rows: [dict], region: dict) -> [dict]:
+def survey_download(rows: [dict], region: dict, metadata_list: [list] = None) -> [dict]:
     """
     Downloads and stores file information to the input dict
 
@@ -799,6 +978,24 @@ def survey_download(rows: [dict], region: dict) -> [dict]:
                     pickle_name = f'{os.path.join(survey_folder, name)}.pickle'
                     row['SURVEY_FILES'].extend([pickle_name])
 
+                    if metadata_list is not None and len(metadata_list) > 0:
+                        found = False
+                        for survey_dict in metadata_list:
+                            if 'bag_name' in survey_dict and data_format =='BAG':
+                                if survey_dict['bag_name'] == name or survey_dict['bag_name'] == base:
+                                    found = True
+                                    row = {**row, **survey_dict}
+                            elif data_format =='BPS':
+                                if survey_dict['survey'] == name or survey_dict['survey'] == survey:
+                                    found = True
+                                    row = {**row, **survey_dict}
+                        if not found:
+                            print(f'No CSV Metadata available for: {name, base}')
+                            row['interpolate'] = False
+
+                    else:
+                        row['interpolate'] = False
+
                     with open(pickle_name, 'wb') as metafile:
                         pickle.dump(row, metafile)
                         metafile.close()
@@ -879,6 +1076,177 @@ def config_data_type() -> (str, str):
         raise ValueError(f"Data Type not supported: {config['Data']['Data Type']}")
 
 
+class CSV_Meta:
+    """"""
+
+    csv_metadata = []
+
+    def __init__(self, data_format: str = None) -> [dict]:
+        if not csv_exists:
+            self.csv_metadata = []
+        else:
+            to_use = []
+            for csv_file in csv_files:
+                basename = os.path.basename(csv_file)
+                if basename.split('_')[0].upper() == data_format.upper():
+                    to_use.append(csv_file)
+            if data_format.upper() in ('BAG'):
+                self.csv_metadata =  self._from_bag_csv(to_use)
+            elif data_format.upper() in ('BPS'):
+                self.csv_metadata =  self._from_bps_csv(to_use)
+            else:
+                raise ValueError(f"Metadata Type not supported: {config['Data']['Data Type']}")
+
+    def _from_bag_csv(self, csv_files: list) -> [dict]:
+        """
+        Identifies known metadata from a csv and returns them as a dict
+
+        Returns
+        -------
+        dict
+            A dictionary object containing found metadata
+
+        """
+        meta = []
+        for csv_file in csv_files:
+            opened = open(csv_file, 'r', newline='')
+            read = csv.reader(opened)
+            fields = []
+            index = 0
+            for line in read:
+                if index == 0:
+                    fields.extend(field for field in line if field != '')
+                else:
+                    bag_meta = {}
+                    for assignment in range(len(fields)):
+                        if line[assignment] != '' and fields[assignment].lower() not in ('', 'notes', 'note'):
+                            try:
+                                meta_field = csv_to_meta[fields[assignment].strip()]
+                                if meta_field in (
+                                        'sensitive', 'mb_data', 'sss_data', 'vb_data', 'feat_detect',
+                                        'feat_delivered', 'feat_least_depth',
+                                        'complete_coverage', 'bathymetry'):
+                                    if line[assignment].lower() in ('n/a', 'na', 'no', 'n'):
+                                        bag_meta[meta_field] = 'False'
+                                    elif line[assignment].lower() in ('y', 'yes'):
+                                        bag_meta[meta_field] = 'True'
+                                elif meta_field in ('feat_size', 'horiz_uncert_fixed', 'vert_uncert_fixed'):
+                                    try:
+                                        if line[assignment].lower() not in ('n/a', 'unassessed'):
+                                            if 'cm' in line[assignment]:
+                                                bag_meta[meta_field] = float(
+                                                    re.sub(r'\D', '', line[assignment])) / 100
+                                            elif 'm' in line[assignment]:
+                                                bag_meta[meta_field] = float(re.sub(r'\D', '', line[assignment]))
+                                    except ValueError:
+                                        print(
+                                            f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
+                                elif meta_field in ('horiz_uncert_vari', 'vert_uncert_vari'):
+                                    try:
+                                        if line[assignment].lower() not in ('n/a', 'unassessed'):
+                                            bag_meta[meta_field] = float(re.sub(r'\D', '', line[assignment])) / 100
+                                    except ValueError:
+                                        print(
+                                            f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
+                                elif meta_field in ('from_horiz_datum'):
+                                    splits = line[assignment].split(' ')
+                                    datum_info = {}
+                                    try:
+                                        datum_info['from_horiz_frame'] = splits[0]
+                                        datum_info['from_horiz_type'] = splits[1]
+                                        datum_info['from_horiz_key'] = re.sub('\D', '', splits[2])
+                                        bag_meta = {**bag_meta, **datum_info}
+                                    except IndexError:
+                                        print(
+                                            f'Unable to add `{meta_field}` information due to incorrect formatting: {line[1]}, {meta_field}: {line[assignment]}')
+                                elif meta_field in ('from_vert_datum'):
+                                    for datum in vert_datum.keys():
+                                        if datum == line[assignment]:
+                                            datum_info['from_vert_datum'], datum_info[
+                                                'from_vert_key'] = datum, datum
+                                            break
+                                elif meta_field in ('start_date', 'end_date'):
+                                    try:
+                                        bag_meta[meta_field] = f"{datetime.datetime.strptime(line[assignment], r'%Y%m%d'):%Y%m%d}"
+                                    except ValueError:
+                                        try:
+                                            bag_meta[meta_field] = f"{datetime.datetime.strptime(line[assignment], r'%m/%d/%y'):%Y%m%d}"
+                                        except ValueError:
+                                            try:
+                                                bag_meta[meta_field] = f"{datetime.datetime.strptime(line[assignment], r'%m/%d/%Y'):%Y%m%d}"
+                                            except ValueError:
+                                                print(
+                                                    f'Unable to add `{meta_field}` information: {line[1]}, {meta_field}: {line[assignment]}')
+                                else:
+                                    bag_meta[meta_field] = line[assignment]
+                            except KeyError:
+                                print(f'Unable to parse field: {line[1]}, {fields[assignment]}')
+                                # index += 1
+                                # continue
+                    if 'bathymetry' in bag_meta and 'complete_coverage' in bag_meta:
+                        bathymetry = ast.literal_eval(bag_meta['bathymetry'])
+                        coverage = ast.literal_eval(bag_meta['complete_coverage'])
+                        if bathymetry:
+                            interpolate = False
+                        else:
+                            if coverage:
+                                interpolate = True
+                            else:
+                                if 'sss_data' in bag_meta:
+                                    interpolate = ast.literal_eval(bag_meta['sss_data'])
+                                else:
+                                    interpolate = False
+                        bag_meta['interpolate'] = interpolate
+                    else:
+                        bag_meta['interpolate'] = False
+                    meta.append(bag_meta)
+                index += 1
+            opened.close()
+        return meta
+
+    def _from_bps_csv(self, csv_files: list) -> [dict]:
+        meta = []
+        for csv_file in csv_files:
+            opened = open(csv_file, 'r', newline='')
+            read = csv.reader(opened)
+            fields = []
+            index = 0
+            for line in read:
+                if index == 0:
+                    fields.extend(field for field in line if field != '')
+                else:
+                    bps_meta = {}
+                    for assignment in range(len(fields)):
+                        if line[assignment] != '' and fields[assignment] not in ('') and fields[assignment].upper() in bps_to_meta.keys():
+                            try:
+                                meta_field = bps_to_meta[fields[assignment].strip()]
+                                if meta_field in ('survey'):
+                                    bps_meta[meta_field] = line[assignment]
+                                elif meta_field in ('start_date', 'end_date'):
+                                    bps_meta[meta_field] = f"{line[assignment]}0101"
+                                    bps_meta['year'] = int(line[assignment])
+                                elif meta_field in ('from_horiz_datum'):
+                                    bps_meta[meta_field] = h93_horiz_datum[line[assignment].upper()]
+                                    if line[assignment].upper() in h93_horiz_datum and line[assignment].upper() not in ('NOSXX',):
+                                        bps_meta['from_vert_key'] = h93_to_horiz_datum[bps_meta[meta_field].upper()]
+                                    else:
+                                        print(f"{line[1]} - Unrecognized horizontal datum: {line[assignment]}, {bps_meta[meta_field]}")
+                                elif meta_field in ('from_vert_datum'):
+                                    bps_meta[meta_field] = h93_vert_datum[int(line[assignment])]
+                                    if int(line[assignment]) in h93_vert_datum and int(line[assignment]) not in (0,):
+                                        bps_meta['from_vert_key'] = h93_to_vert_datum[bps_meta[meta_field].upper()]
+                                    else:
+                                        print(f"{line[1]} - Unrecognized vertical datum: {line[assignment]}, {bps_meta[meta_field]}")
+                                else:
+                                    bps_meta[meta_field] = line[assignment]
+                            except KeyError:
+                                print(f'Unable to parse field: {line[1]}, {fields[assignment]} = {line[assignment]}')
+                    meta.append(bps_meta)
+                index += 1
+            opened.close()
+        return meta
+
+
 def main(pb=None):
     """
     TODO write description
@@ -905,6 +1273,9 @@ def main(pb=None):
     elif data_format in ('BPS'):
         qId = 1
 
+    csv_metadata = CSV_Meta(data_format)
+    metadata_list = csv_metadata.csv_metadata
+
     for region in regions:
         print(f"{region['Processing Branch']}_{region['Region']}")
         region_poly = os.path.join(parent_dir, region['Shape'])
@@ -920,7 +1291,7 @@ def main(pb=None):
                     bag_sids = [bag['SURVEY_ID'] for bag in bag_rows]
                     rows = [row for row in rows if row['SURVEY_ID'] not in bag_sids]
                     print(f'Surveys before prune: {before} Surveys after prune: {len(rows)}')
-                rows = survey_download(rows, region)
+                rows = survey_download(rows, region, metadata_list=metadata_list)
                 survey_history.extend(rows)
                 info_save(survey_history)
             else:

@@ -149,6 +149,7 @@ class MetaReviewer:
             reader = _csv.DictReader(csvfile, fieldnames=self._fieldnames)
             for row in reader:
                 orig.append(row)
+        csvfile.close()
         # move the data into a new temp file
         with _NamedTemporaryFile(mode='w', newline='', encoding='utf-8', delete=False) as tempfile:
             writer = _csv.DictWriter(tempfile, fieldnames=self._fieldnames, extrasaction='ignore')
@@ -166,6 +167,8 @@ class MetaReviewer:
             # append what remains to the file
             for row in metadata:
                 writer.writerow(row)
+            del writer
+        tempfile.close()
         # replace the original file with the temp file
         _shutil.move(tempfile.name, self._metadata_filename)
 
@@ -189,6 +192,7 @@ class MetaReviewer:
             writer = _csv.DictWriter(csv_file, fieldnames=self._fieldnames, extrasaction='ignore')
             writer.writeheader()
             writer.writerows(metadata)
+            csv_file.close()
 
     def _prepend_script_to_keys(self, metadata: [dict]) -> [dict]:
         """
@@ -235,13 +239,14 @@ class MetaReviewer:
         -------
             dictionary of matching row
         """
-
+        meta = {}
         with open(self._metadata_filename, 'r', encoding='utf-8') as csv_file:
             for row in _csv.DictReader(csv_file):
                 if row[meta_key] == search_value:
-                    return self._simplify_row(row)
-            else:
-                return {}
+                    meta = self._simplify_row(row)
+                    break
+            csv_file.close()
+        return meta
 
     def _simplify_row(self, row: dict) -> dict:
         """
