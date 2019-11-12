@@ -79,8 +79,9 @@ FIELDS_EXCLUDED_FROM_PREFIX = ('from_filename', 'from_path')
 
 
 class MetadataTable(ABC):
-    """abstract class representing a table of survey metadata records"""
+    """abstract class representing a table containing metadata records of bathymetric surveys"""
 
+    # order key iteration in column prefixes
     column_prefixes: OrderedDict
     metadata_fields: [str]
 
@@ -226,7 +227,8 @@ class MetadataTable(ABC):
 
 
 class MetadataDatabase(MetadataTable):
-    # ordered dict to ensure looping through the keys always gets 'manual' last.
+    """PostGreSQL database table containing metadata records of bathymetric surveys"""
+
     column_prefixes = OrderedDict([('script', 'script_'), ('manual', 'manual_')])
 
     postgres_field_types = {
@@ -361,21 +363,20 @@ class MetadataDatabase(MetadataTable):
         with self.connection:
             with self.connection.cursor() as cursor:
                 for record in records:
+                    fields_in_record = [field for field in self.metadata_fields if field in record]
+                    columns = [self.column_prefixes["script"] + field if field not in FIELDS_EXCLUDED_FROM_PREFIX else field
+                               for field in fields_in_record]
+                    values = [record[field] for field in fields_in_record]
+
                     if table_has_record(cursor, self.table_name, record, self.primary_key):
-                        cursor.execute(f'UPDATE {self.table_name} SET ({", ".join(self.column_names)}) = %s',
-                                       [tuple(record[key] for key in self.column_names)])
+                        cursor.execute(f'UPDATE {self.table_name} SET ({", ".join(columns)}) = %s;', [tuple(values)])
                     else:
-                        fields = [field for field in self.metadata_fields if field in record]
-                        values = tuple(record[field] for field in fields)
-                        cursor.execute(f'INSERT INTO {self.table_name} ' +
-                                       f'({", ".join(self.column_prefixes["script"] + field if field not in FIELDS_EXCLUDED_FROM_PREFIX else field for field in fields)}) VALUES %s;',
-                                       [values])
+                        cursor.execute(f'INSERT INTO {self.table_name} ({", ".join(columns)}) VALUES %s;', [tuple(values)])
 
 
 class MetadataFile(MetadataTable):
-    """table of survey metadata"""
+    """CSV table containing metadata records of bathymetric surveys"""
 
-    # ordered dict to ensure looping through the keys always gets 'manual' last.
     column_prefixes = OrderedDict([('script', 'script: '), ('manual', 'manual: ')])
 
     def __init__(self, filename: str, fields: [str], primary_key: str = 'from_filename'):
