@@ -136,7 +136,6 @@ class MetadataTable(ABC):
 
         raise NotImplementedError
 
-    @abstractmethod
     def __setitem__(self, primary_key_value: Any, record: dict):
         """
         Insert the given record into the table with the given primary key value.
