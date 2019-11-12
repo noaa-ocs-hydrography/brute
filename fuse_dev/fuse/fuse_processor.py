@@ -434,13 +434,16 @@ class FuseProcessor:
                     self._meta_obj.insert_records(meta_interp)
                     metadata.update(meta_interp)
                 else:
-                    del dataset
-                    self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
+                    message = f'{input_directory} - No interpolation required'
+                    print(message)
+                    self.logger.log(_logging.DEBUG, message)
             else:
                 del dataset
                 raise ValueError('metadata has no "interpolate" value')
         else:
-            self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
+            message = 'metadata is missing required datum transformation entries'
+            print(message)
+            self.logger.log(_logging.DEBUG, message)
 
         self._close_log()
         return metadata['to_filename'] if 'to_filename' in metadata else ''

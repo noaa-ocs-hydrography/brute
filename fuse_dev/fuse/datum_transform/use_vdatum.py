@@ -20,26 +20,26 @@ from tempfile import TemporaryDirectory as tempdir
 import numpy as _np
 from osgeo import gdal
 
-from_hdatum = [
+FROM_HDATUM = [
     'from_horiz_frame',
     'from_horiz_type',
     'from_horiz_units',
     'from_horiz_key'
 ]
 
-from_vdatum = [
+FROM_VDATUM = [
     'from_vert_key',
     'from_vert_units',
     'from_vert_direction'
 ]
 
-to_hdatum = [
+TO_HDATUM = [
     'to_horiz_frame',
     'to_horiz_type',
     'to_horiz_units'
 ]
 
-to_vdatum = [
+TO_VDATUM = [
     'to_vert_key',
     'to_vert_units',
     'to_vert_direction'
@@ -133,16 +133,19 @@ class VDatum:
         # read the points and put it in a temp file for VDatum to read
         points = self._reader.read_bathymetry(filename)
         points = self.__filter_xyz(points, instructions)
-        original_directory = tempdir()
-        output_filename = _os.path.join(original_directory.name, 'outfile.txt')
-        reprojected_directory = tempdir()
-        reprojected_filename = _os.path.join(reprojected_directory.name, 'outfile.txt')
-        log_filename = _os.path.join(reprojected_directory.name, 'outfile.txt.log')
+
         # save point array to file
+        point_file_directory = tempdir()
+        output_filename = _os.path.join(point_file_directory.name, 'outfile.txt')
         _np.savetxt(output_filename, points, delimiter=',')
+
         # translate points with VDatum
+        reprojected_directory = tempdir()
         self.__setup_vdatum(instructions, 'points')
         self.__convert_file(output_filename, reprojected_directory.name)
+        reprojected_filename = _os.path.join(reprojected_directory.name, 'outfile.txt')
+        log_filename = _os.path.join(reprojected_directory.name, 'outfile.txt.log')
+
         if 'to_horiz_key' in instructions:
             utm_zone = int(instructions['to_horiz_key'])
         else:
@@ -155,6 +158,10 @@ class VDatum:
                         break
                 else:
                     raise ValueError(f'no UTM zone found in file "{filename}"')
+
+        if not _os.path.isfile(reprojected_filename):
+            raise RuntimeError(f'VDatum was unable to reproject survey from {filename} to {reprojected_filename}')
+
         return _np.loadtxt(reprojected_filename, delimiter=','), utm_zone
 
     def __filter_xyz(self, xyz: _np.array, instructions: dict) -> _np.array:
@@ -251,20 +258,20 @@ class VDatum:
         """
 
         # having the input zone is optional if the input type is geographic
-        local_from_datum = from_hdatum.copy()
+        local_from_datum = FROM_HDATUM.copy()
         if instructions['from_horiz_type'] != 'geo':
             local_from_datum.append('from_horiz_key')
 
         # having the output zone is optional
-        local_to_hdatum = to_hdatum.copy()
+        local_to_hdatum = TO_HDATUM.copy()
         if 'to_horiz_key' in instructions:
             local_to_hdatum.append('to_horiz_key')
 
-        self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
+        self._shell = f'{_os.path.join(self._java_path, "java")} -jar {_os.path.join(self._vdatum_path, "vdatum.jar")} ' + \
                       f'ihorz:{":".join(instructions[key] for key in local_from_datum)} ' + \
-                      f'ivert:{":".join(instructions[key] for key in from_vdatum)} ' + \
+                      f'ivert:{":".join(instructions[key] for key in FROM_VDATUM)} ' + \
                       f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
-                      f'overt:{":".join(instructions[key] for key in to_vdatum)} '
+                      f'overt:{":".join(instructions[key] for key in TO_VDATUM)} '
 
         if mode == 'points':
             self._shell += f'-file:txt:comma,0,1,2,skip0:'
@@ -316,7 +323,7 @@ def _has_required_instructions(instructions: dict) -> bool:
         dictionary of metadata
     """
 
-    for key in from_hdatum + from_vdatum + to_hdatum + to_vdatum:
+    for key in FROM_HDATUM + FROM_VDATUM + TO_HDATUM + TO_VDATUM:
         if key not in instructions:
             return False
     else:
