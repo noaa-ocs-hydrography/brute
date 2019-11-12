@@ -20,7 +20,7 @@ DATABASE_CREDENTIALS_FILENAME = r"D:\credentials\postgres_scripting.txt"
 POSTGRES_DEFAULT_PORT = '5432'
 
 # this map translates the names used here to the ID used in the database
-S57_KEY_TRANSLATIONS = {
+S57_BASE_TRANSLATIONS = {
     'from_filename': 'OBJNAM',
     'start_date': 'SURSTA',
     'end_date': 'SUREND',
@@ -44,8 +44,7 @@ S57_KEY_TRANSLATIONS = {
     'catzoc': 'CATZOC',
     'supersession_score': 'supscr'
 }
-
-VERTICAL_DATUM_KEY_TRANSLATIONS = {
+S57_VERTICAL_DATUM_TRANSLATIONS = {
     'MLWS': '1',
     'MLLWS': '2',
     'MSL': '3',
@@ -66,8 +65,7 @@ VERTICAL_DATUM_KEY_TRANSLATIONS = {
     'Other': '703',
     'HRD': '24'  # Hudson River Datum
 }
-
-HORIZONTAL_DATUM_KEY_TRANSLATIONS = {
+S57_HORIZONTAL_DATUM_TRANSLATIONS = {
     'WGS72': '1',
     'WGS84': '2',
     'WGS_1984': '2',
@@ -88,14 +86,14 @@ class MetadataTable(ABC):
 
     @property
     def column_names(self) -> [str]:
-        csv_cols = []
+        columns = []
         for metadata_key in self.metadata_fields:
             if metadata_key in FIELDS_EXCLUDED_FROM_PREFIX or metadata_key == 'script_version':
-                csv_cols.append(metadata_key)
+                columns.append(metadata_key)
             else:
-                csv_cols.extend(f'{self.column_prefixes[prefix]}{metadata_key}' for prefix in self.column_prefixes)
-        csv_cols.extend(('reviewed', 'last_updated', 'notes'))
-        return csv_cols
+                columns.extend(f'{self.column_prefixes[prefix]}{metadata_key}' for prefix in self.column_prefixes)
+        columns.extend(('reviewed', 'last_updated', 'notes'))
+        return columns
 
     @property
     @abstractmethod
@@ -207,7 +205,7 @@ class MetadataTable(ABC):
 
         # sort each key (that has information) into the dictionary by prefix
         for column_name, value in record.items():
-            if value is not None and len(value) > 0:
+            if value is not None and value != '':
                 for prefix_name, prefix in self.column_prefixes.items():
                     if prefix in column_name:
                         metadata_key = column_name.replace(prefix, '')
@@ -231,6 +229,57 @@ class MetadataTable(ABC):
 class MetadataDatabase(MetadataTable):
     # ordered dict to ensure looping through the keys always gets 'manual' last.
     column_prefixes = OrderedDict([('script', 'script_'), ('manual', 'manual_')])
+
+    postgres_field_types = {
+        'from_filename': 'VARCHAR',
+        'from_path': 'VARCHAR',
+        'to_filename': 'VARCHAR',
+        'support_files': 'VARCHAR[]',
+        'start_date': 'DATE',
+        'end_date': 'DATE',
+        'from_horiz_datum': 'VARCHAR',
+        'from_horiz_frame': 'VARCHAR',
+        'from_horiz_type': 'VARCHAR',
+        'from_horiz_units': 'VARCHAR',
+        'from_horiz_key': 'VARCHAR',
+        'from_vert_datum': 'VARCHAR',
+        'from_vert_key': 'VARCHAR',
+        'from_vert_units': 'VARCHAR',
+        'from_vert_direction': 'VARCHAR',
+        'to_horiz_frame': 'VARCHAR',
+        'to_horiz_type': 'VARCHAR',
+        'to_horiz_units': 'VARCHAR',
+        'to_horiz_key': 'VARCHAR',
+        'to_vert_datum': 'VARCHAR',
+        'to_vert_key': 'VARCHAR',
+        'to_vert_units': 'VARCHAR',
+        'to_vert_direction': 'VARCHAR',
+        'from_horiz_unc': 'REAL',
+        'from_horiz_resolution': 'REAL',
+        'from_vert_unc': 'REAL',
+        'complete_coverage': 'BOOL',
+        'bathymetry': 'BOOL',
+        'vert_uncert_fixed': 'REAL',
+        'vert_uncert_vari': 'REAL',
+        'horiz_uncert_fixed': 'REAL',
+        'horiz_uncert_vari': 'REAL',
+        'to_horiz_resolution': 'REAL',
+        'feat_size': 'REAL',
+        'feat_detect': 'BOOL',
+        'feat_least_depth': 'REAL',
+        'catzoc': 'VARCHAR',
+        'supersession_score': 'VARCHAR',
+        'agency': 'VARCHAR',
+        'source_indicator': 'VARCHAR',
+        'source_type': 'VARCHAR',
+        'interpolated': 'BOOL',
+        'posted': 'BOOL',
+        'license': 'VARCHAR',
+        'logfilename': 'VARCHAR',
+        'version_reference': 'VARCHAR',
+        'interpolate': 'BOOL',
+        'file_size': 'REAL'
+    }
 
     def __init__(self, hostname: str, database: str, table: str, fields: [str], primary_key: str = 'from_filename'):
         """
@@ -265,6 +314,18 @@ class MetadataDatabase(MetadataTable):
         self.connection = psycopg2.connect(database=self.database_name, user=database_username, password=database_password,
                                            host=self.hostname, port=self.port)
 
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                if not database_has_table(cursor, self.table_name):
+                    data_types = {key: value for key, value in self.postgres_field_types.items() if key in FIELDS_EXCLUDED_FROM_PREFIX}
+                    data_types.update({f'{prefix}{key}': value for prefix_name, prefix in self.column_prefixes.items()
+                                       for key, value in self.postgres_field_types.items() if key not in FIELDS_EXCLUDED_FROM_PREFIX})
+                    data_types.update({key: 'VARCHAR' for key in self.column_names if key not in data_types})
+
+                    schema = ['from_filename VARCHAR PRIMARY KEY'] + [f'{field_name} {data_types[field_name]}'
+                                                                      for field_name in self.column_names if field_name != 'from_filename']
+                    cursor.execute(f'CREATE TABLE {self.table_name} ({", ".join(schema)});')
+
     @property
     def records(self) -> [dict]:
         with self.connection:
@@ -295,10 +356,11 @@ class MetadataDatabase(MetadataTable):
     def __setitem__(self, primary_key_value: Any, record: dict):
         with self.connection:
             with self.connection.cursor() as cursor:
-                cursor.execute(f'SELECT * FROM {self.table_name} WHERE {self.primary_key} = %s', [primary_key_value])
-                record = cursor.fetchone()[0]
-
-        return self._simplify_record(dict(zip(self.column_names, record)))
+                if table_has_record(cursor, self.table_name, record, self.primary_key):
+                    cursor.execute(f'UPDATE {self.table_name} SET ({", ".join(self.column_names)}) = %s',
+                                   [tuple(record[key] for key in self.column_names)])
+                else:
+                    cursor.execute(f'INSERT INTO {self.table_name} VALUES %s', [tuple(record[key] for key in self.column_names)])
 
     def insert_records(self, records: [dict]):
         if type(records) is dict:
@@ -308,13 +370,6 @@ class MetadataDatabase(MetadataTable):
 
         with self.connection:
             with self.connection.cursor() as cursor:
-                if not database_has_table(cursor, self.table_name):
-                    FIELD_TYPES = [type(entry) for entry in records[0]]
-
-                    schema = ['from_filename VARCHAR PRIMARY KEY'] + [f'{field_name} VARCHAR'
-                                                                      for field_name in self.column_names if field_name != 'from_filename']
-                    cursor.execute(f'CREATE TABLE {self.table_name} ({", ".join(schema)});')
-
                 for record in records:
                     if table_has_record(cursor, self.table_name, record, self.primary_key):
                         pass
@@ -464,8 +519,8 @@ def csv_to_s57(row: dict) -> dict:
 
     # remap the keys
     for key, value in row.items():
-        if key in S57_KEY_TRANSLATIONS:
-            key_in_s57 = S57_KEY_TRANSLATIONS[key]
+        if key in S57_BASE_TRANSLATIONS:
+            key_in_s57 = S57_BASE_TRANSLATIONS[key]
 
             if value in ('TRUE', 'True'):
                 s57_row[key_in_s57] = 1
@@ -476,12 +531,12 @@ def csv_to_s57(row: dict) -> dict:
 
     # enforce additional required formatting
     if 'VERDAT' in s57_row:
-        s57_row['VERDAT'] = VERTICAL_DATUM_KEY_TRANSLATIONS[s57_row['VERDAT'].upper()]
+        s57_row['VERDAT'] = S57_VERTICAL_DATUM_TRANSLATIONS[s57_row['VERDAT'].upper()]
     elif 'HORDAT' in s57_row:
         h_datum = s57_row['HORDAT']
-        for name in HORIZONTAL_DATUM_KEY_TRANSLATIONS:
+        for name in S57_HORIZONTAL_DATUM_TRANSLATIONS:
             if name in h_datum:
-                s57_row['HORDAT'] = HORIZONTAL_DATUM_KEY_TRANSLATIONS[name]
+                s57_row['HORDAT'] = S57_HORIZONTAL_DATUM_TRANSLATIONS[name]
                 break
     elif 'SUREND' in s57_row:
         s57_row['SORDAT'] = s57_row['SUREND']

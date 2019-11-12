@@ -397,12 +397,12 @@ class FuseProcessor:
             except (ValueError, RuntimeError, IndexError) as error:
                 message = f' Transformation error: {error}'
                 self.logger.warning(message)
-                metadata['interpolate'] = 'False'
+                metadata['interpolate'] = False
 
             self._meta_obj.insert_records(metadata)
 
             if 'interpolate' in metadata:
-                if metadata['interpolate'].lower() == 'true':
+                if metadata['interpolate']:
                     meta_interp = metadata.copy()
                     meta_interp = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
 
