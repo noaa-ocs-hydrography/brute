@@ -152,7 +152,9 @@ class BAGRawReader(RawReader):
             meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
             meta_support = self._known_meta(filename)
             meta_pickle = parse_file_pickle.read_pickle(filename)
-            return {**meta_pickle, **meta_xml, **meta_gdal, **meta_support}
+            meta_combined = {**meta_pickle, **meta_xml, **meta_gdal, **meta_support}
+            meta_final = self._finalize_meta(meta_combined)
+            return meta_final
         except ValueError as error:
             _logging.warning(f'Error in reading metadata for {filename}: {error}')
             return {}
@@ -347,6 +349,28 @@ class BAGRawReader(RawReader):
                                  _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.tfw', '.gpkg')]
         exts = [_os.path.splitext(support_file)[1].lower() for support_file in dir_files if
                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
+        return meta
+
+    def _finalize_meta(self, meta):
+        if ('from_vert_datum' not in meta or meta['from_vert_datum'] == '') and 'from_vert_key' not in meta:
+            for datum in vert_datum.keys():
+                if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
+                    meta['from_vert_datum'], meta['from_vert_key'] = datum, datum
+                    break
+        elif 'from_vert_datum' in meta and 'from_vert_key' not in meta:
+            for datum in vert_datum.keys():
+                if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
+                    meta['from_vert_key'] = datum
+                    break
+        # this should be moved to the reader.
+        meta['read_type'] = 'bag'
+        # translate from the reader to common metadata keys for datum transformations
+        if 'from_vert_direction' not in meta:
+            meta['from_vert_direction'] = 'height'
+        if 'from_vert_units' not in meta:
+            meta['from_vert_units'] = 'm'
+        meta['interpolated'] = 'False'
+        meta['posted'] = False
         return meta
 
     def _assign_namspace(self, bag_version=None, xml=None):
@@ -1150,8 +1174,8 @@ class BAGSurvey(BAGRawReader):
             meta_gdal, bag_version = self._parse_bag_gdal(filename)
             meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
             meta_support = self._known_meta(filename)
-            meta_csv = self._csv_meta(filename)
-            meta_combined = {**meta_csv, **meta_xml, **meta_gdal, **meta_support}
+            meta_pickle = parse_file_pickle.read_pickle(filename)
+            meta_combined = {**meta_pickle, **meta_xml, **meta_gdal, **meta_support}
             meta_final = self._finalize_meta(meta_combined)
             return meta_final
         except ValueError as error:
@@ -1184,7 +1208,7 @@ class BAGSurvey(BAGRawReader):
                 return_list.extend(self._combined_surface(group_list))
 
         return return_list
-    
+
     def _zoom_array(self, data_array, zoom_factor, ndv):
         """
         Zoom the provided array with a node centered (not pixel_is_area)
@@ -1198,7 +1222,7 @@ class BAGSurvey(BAGRawReader):
         y_dim = zoom_factor * shape[0] - (zoom_factor - 1)
         elev = _np.zeros((y_dim, x_dim)) + ndv
         elev[::zoom_factor, ::zoom_factor] = data_array
-        
+
         # build a mask using binary morphology
         bin_arr = _np.zeros(elev.shape)
         idx = _np.nonzero(elev != ndv)
@@ -1206,14 +1230,14 @@ class BAGSurvey(BAGRawReader):
         dim = 2 * zoom_factor - 1
         struct = _np.ones((dim,dim), dtype = _np.bool)
         mask = binary_closing(bin_arr, structure = struct)
-        
+
         # interpolate the gaps in the expanded array
         rel_idx = _np.arange(dim, dtype = _np.int)-int(zoom_factor/2)
         footprint = _np.tile(rel_idx,(dim,1))
         x_fp = footprint.flatten()
         y_fp = footprint.T.flatten()
         elev = _interpolate_gaps(elev, mask, y_fp, x_fp, ndv)
-        
+
         dt = _datetime.datetime.now() - start
         print(f'Zooming completed in {dt} seconds')
         return elev
@@ -1246,12 +1270,12 @@ class BAGSurvey(BAGRawReader):
         comb_array[0, yidx, xidx] = elev[idx]
         del bagfile_obj
         return comb_array
-        
+
     def _combined_surface(self, metadata_list: [dict]) -> [dict]:
         """
-        Build a combine surface from the BAG files referenced in the metadata 
+        Build a combine surface from the BAG files referenced in the metadata
         list provided.
-        
+
         This method works with the data as nodes rather than cells.
         """
         # distill the information about the provided files.
@@ -1280,29 +1304,29 @@ class BAGSurvey(BAGRawReader):
         res = _np.array(res)
         resx = res[:,0]
         minres = _np.abs(resx).min()
-        
+
         # sort the file names by accending resolution
         order = _np.argsort(resx)
-        
+
         # build the metadata
         combined_surface_metadata = {}
         combined_surface_metadata = metadata_list[order[0]].copy()
         survey_id = _os.path.basename(combined_surface_metadata['from_filename']).split('_')[0]
         combined_surface_metadata['from_filename'] = f"{survey_id}_Xof{num_files}.combined"
-        
+
         if have_support_files:
             combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}_Combined.bag")
-        
+
             # build an array to house the combined dataset
-                
+
             comb_bounds = ((min(x), max(y)), (max(x), min(y)))
             comb_shape = (int((max(y) - min(y))/minres + 1), int((max(x) - min(x))/minres + 1))
             comb_array = _np.zeros((2, comb_shape[0], comb_shape[1])) + ndv
-    
+
             for n in order[::-1]:
                 bag_file = files[n]
                 comb_array = self._insert_raster(bag_file, comb_bounds, comb_array, minres)
-    
+
             # convert the bounds to cell, aka pixel_is_area, and to (nw, se) format
             bounds = ((comb_bounds[0][0] - minres/2., comb_bounds[0][1] + minres/2.),
                       (comb_bounds[1][0] + minres/2., comb_bounds[1][1] - minres/2.))
@@ -1424,7 +1448,7 @@ class BagFile:
         Used to read a BAG file using pytables and HDF5.
 
         This function reads and populates this object's attributes
-        
+
         Object attribute 'pixel_is_area' will shift the bounds outward from the
         values reported in the BAG to the GDAL standard if set to True.
 
@@ -1549,7 +1573,7 @@ class BagFile:
 
         This function takes a GeoTransform object and array shape and
         calculates the NW and SE corners.
-        
+
         Object attribute 'pixel_is_area' will shift the bounds inward from the
         gdal geotransform standard to the BAG standard if set to False.
 
@@ -1872,7 +1896,7 @@ class BagToGDALConverter:
 @jit(nopython=True)
 def _interpolate_gaps(data, mask, y_footprint, x_footprint, ndv):
     """
-    Return the provided 2d data with the missing nodes not covered by the mask. 
+    Return the provided 2d data with the missing nodes not covered by the mask.
     """
     y_idx, x_idx = _np.nonzero((mask == 1) & (data == ndv))
     numpts = x_idx.shape[0]
@@ -1887,7 +1911,7 @@ def _interpolate_gaps(data, mask, y_footprint, x_footprint, ndv):
             val = data[y[m],x[m]]
             if val != ndv:
                 count = count + 1
-                tmp = tmp + val 
+                tmp = tmp + val
         if count != 0:
             interp_vals[n] = tmp / count
     for n in range(numpts):
