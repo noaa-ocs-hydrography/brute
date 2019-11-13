@@ -17,11 +17,7 @@ from tempfile import TemporaryDirectory as tempdir
 
 import numpy as _np
 from osgeo import gdal, ogr, osr
-
-import fuse.datum_transform.use_gdal as ug
-
-
-import fuse.datum_transform.use_gdal as ug
+from fuse.datum_transform.use_gdal import _xyz_to_gdal
 
 from_hdatum = [
     'from_horiz_frame',
@@ -106,7 +102,7 @@ class VDatum:
             points, utm_zone = self.__translate_xyz(filename, instructions)
             vertical_datum = instructions['to_vert_key'].upper()
             # passing UTM zone instead of EPSG code
-            dataset = ug._xyz_to_gdal(points, utm_zone, vertical_datum)
+            dataset = _xyz_to_gdal(points, utm_zone, vertical_datum)
         self._logger.log(_logging.DEBUG, 'Datum transformation complete')
         return dataset
 
