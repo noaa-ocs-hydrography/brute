@@ -3,7 +3,7 @@ from glob import glob
 
 from fuse.fuse_processor import FuseProcessor
 
-TESTING_DIRECTORY = r'\\OCS-VS-NBS01\nbs\TestingResources'
+TESTING_DIRECTORY = r'D:\TestingResources'
 INPUT_ROOT = os.path.join(TESTING_DIRECTORY, 'raw')
 NOAA_INPUT_ROOT = os.path.join(INPUT_ROOT, 'NOAA')
 USACE_INPUT_ROOT = os.path.join(INPUT_ROOT, 'USACE')
