@@ -538,7 +538,7 @@ class FuseProcessor:
         if extension == '.interpolated':
             filename = root
 
-        log_filename = _os.path.join(_os.path.dirname(self._config['metapath' if 'metapath' in self._config else 'outpath']),
+        log_filename = _os.path.join(_os.path.dirname(self._config['metapath']) if 'metapath' in self._config else self._config['outpath'],
                                      f'{_os.path.splitext(_os.path.split(filename)[-1])[0]}.log')
         self._meta['logfilename'] = log_filename
 
