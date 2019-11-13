@@ -15,7 +15,7 @@ __version__ = 'use_vdatum 0.0.1'
 import logging as _logging
 import os as _os
 import subprocess as _subprocess
-from tempfile import TemporaryDirectory as tempdir
+from tempfile import TemporaryDirectory
 
 import numpy as _np
 from osgeo import gdal
@@ -23,8 +23,7 @@ from osgeo import gdal
 FROM_HDATUM = [
     'from_horiz_frame',
     'from_horiz_type',
-    'from_horiz_units',
-    'from_horiz_key'
+    'from_horiz_units'
 ]
 
 FROM_VDATUM = [
@@ -135,14 +134,14 @@ class VDatum:
         points = self.__filter_xyz(points, instructions)
 
         # save point array to file
-        point_file_directory = tempdir()
-        output_filename = _os.path.join(point_file_directory.name, 'outfile.txt')
-        _np.savetxt(output_filename, points, delimiter=',')
+        points_file_directory = TemporaryDirectory()
+        points_filename = _os.path.join(points_file_directory.name, 'outfile.txt')
+        _np.savetxt(points_filename, points, delimiter=',')
 
         # translate points with VDatum
-        reprojected_directory = tempdir()
+        reprojected_directory = TemporaryDirectory()
         self.__setup_vdatum(instructions, 'points')
-        self.__convert_file(output_filename, reprojected_directory.name)
+        self.__convert_file(points_filename, reprojected_directory.name)
         reprojected_filename = _os.path.join(reprojected_directory.name, 'outfile.txt')
         log_filename = _os.path.join(reprojected_directory.name, 'outfile.txt.log')
 
@@ -213,9 +212,9 @@ class VDatum:
 
         # create a gdal.Dataset and assign a temp file name for VDatum to read
         dataset = self._reader.read_bathymetry(filename, out_verdat=None)
-        original_directory = tempdir()
+        original_directory = TemporaryDirectory()
         output_filename = _os.path.join(original_directory.name, 'outfile.tif')
-        reprojected_directory = tempdir()
+        reprojected_directory = TemporaryDirectory()
         reprojected_filename = _os.path.join(reprojected_directory.name, 'outfile.tif')
         log_filename = _os.path.join(reprojected_directory.name, 'outfile.tif.log')
         # save dataset to file
@@ -258,9 +257,9 @@ class VDatum:
         """
 
         # having the input zone is optional if the input type is geographic
-        local_from_datum = FROM_HDATUM.copy()
+        local_from_hdatum = FROM_HDATUM.copy()
         if instructions['from_horiz_type'] != 'geo':
-            local_from_datum.append('from_horiz_key')
+            local_from_hdatum.append('from_horiz_key')
 
         # having the output zone is optional
         local_to_hdatum = TO_HDATUM.copy()
@@ -268,7 +267,7 @@ class VDatum:
             local_to_hdatum.append('to_horiz_key')
 
         self._shell = f'{_os.path.join(self._java_path, "java")} -jar {_os.path.join(self._vdatum_path, "vdatum.jar")} ' + \
-                      f'ihorz:{":".join(instructions[key] for key in local_from_datum)} ' + \
+                      f'ihorz:{":".join(instructions[key] for key in local_from_hdatum)} ' + \
                       f'ivert:{":".join(instructions[key] for key in FROM_VDATUM)} ' + \
                       f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
                       f'overt:{":".join(instructions[key] for key in TO_VDATUM)} '
@@ -300,12 +299,10 @@ class VDatum:
             print(f'Error executing: {command}\nat: {self._vdatum_path}')
             raise
         try:
-            (output, outerr) = proc.communicate()
-            output_str = output.decode('utf-8')
-            outerr_str = outerr.decode('utf-8')
-            self._logger.log(_logging.DEBUG, output_str)
-            if len(outerr_str) > 0:
-                self._logger.log(_logging.DEBUG, outerr_str)
+            output, outerr = proc.communicate()
+            self._logger.log(_logging.DEBUG, output.decode('utf-8'))
+            if len(outerr) > 0:
+                self._logger.log(_logging.DEBUG, outerr.decode('utf-8'))
             else:
                 self._logger.log(_logging.DEBUG, 'No datum transformation errors reported')
         except:
