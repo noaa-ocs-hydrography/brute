@@ -8,6 +8,8 @@ Created on Wed Aug 22 12:27:39 2018
 Use VDatum for conversions.
 """
 
+from fuse.datum_transform.use_gdal import _xyz_to_gdal, spatial_reference_from_metadata
+
 __version__ = 'use_vdatum 0.0.1'
 
 import logging as _logging
@@ -17,7 +19,6 @@ from tempfile import TemporaryDirectory as tempdir
 
 import numpy as _np
 from osgeo import gdal, ogr, osr
-from fuse.datum_transform.use_gdal import _xyz_to_gdal
 
 from_hdatum = [
     'from_horiz_frame',
@@ -176,7 +177,7 @@ class VDatum:
         numpy array
         """
         if metadata['from_horiz_type'] == 'geo' and metadata['to_horiz_type'] == 'utm':
-            srs = ug.spatial_reference_from_metadata(metadata)
+            srs = spatial_reference_from_metadata(metadata)
             c_meridian = srs.GetProjParm(gdal.osr.SRS_PP_CENTRAL_MERIDIAN)
             west = c_meridian - 3
             east = c_meridian + 3
