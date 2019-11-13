@@ -8,18 +8,39 @@ Created on Tue Oct 22 16:01:28 2019
 import logging
 import os
 from typing import Union
-
 import fiona
 import numpy
 import rasterio
 from affine import Affine
 from fiona._crs import CRSError
 from fiona.transform import transform_geom
-from fuse.raw_read.noaa.bag import BAGRawReader
+from fuse.raw_read.noaa.bag import BAGRawReader, Open, BagToGDALConverter
 from fuse.utilities import bounds_from_opposite_corners
 from osgeo import osr, gdal
 from rasterio.crs import CRS
 from rasterio.warp import transform as transform_points, calculate_default_transform
+
+
+def _maxValue(arr: numpy.array):
+    """
+    Returns the most used value in the array as an integer
+
+    Takes an input array and finds the most used value in the array, this
+    value is used by the program to assume the array's nodata value
+
+    Parameters
+    ----------
+    arr: _np.array :
+        An input array
+
+    Returns
+    -------
+
+    """
+
+    nums, counts = numpy.unique(arr, return_counts=True)
+    index = numpy.where(counts == numpy.amax(counts))
+    return int(nums[index])
 
 
 def reproject_support_files(metadata: dict, output_directory: str) -> dict:
@@ -42,58 +63,39 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
     if 'support_files' in metadata:
         support_filenames = metadata['support_files']
         reprojected_filenames = []
-
-        output_crs = spatial_reference_from_metadata(metadata, fiona_crs=True)
         for input_filename in support_filenames:
             basename, extension = os.path.splitext(input_filename)
             basename = os.path.basename(basename)
             output_filename = os.path.join(output_directory, basename + extension)
             if '.tif' in extension:
-                with rasterio.open(input_filename) as input_raster:
-                    input_crs = input_raster.crs
-                    if output_crs != input_crs:
-                        input_transform = input_raster.transform
-                        input_shape = input_raster.height, input_raster.width
-                        input_origin = numpy.array((input_transform.c, input_transform.f))
-                        input_resolution = numpy.array((input_transform.a, input_transform.e))
-
-                        left, bottom, right, top = bounds_from_opposite_corners(input_origin,
-                                                                                input_origin + numpy.flip(input_shape) * input_resolution)
-                        output_transform, output_width, output_height = calculate_default_transform(input_crs, output_crs,
-                                                                                                    width=input_shape[1],
-                                                                                                    height=input_shape[0], left=left,
-                                                                                                    bottom=bottom, right=right, top=top)
-
-                        input_data = input_raster.read()
-                        with rasterio.open(output_filename, 'w', 'GTiff', width=input_shape[1], height=input_shape[0],
-                                           count=input_raster.count, crs=output_crs, transform=output_transform, dtype=input_data.dtype,
-                                           nodata=input_raster.nodata) as output_raster:
-                            output_raster.write(input_data)
-                            # # TODO uncomment if we ever need to reproject between systems with different frames
-                            # for band_index in range(1, input_raster.count + 1):
-                            #     reproject(rasterio.band(input_raster, band_index), rasterio.band(output_raster, band_index),
-                            #               resampling=Resampling.min)
-
-                        if not os.path.exists(output_filename):
-                            logging.warning(f'file not created: {output_filename}')
-
-                        reprojected_filenames.append(output_filename)
+                input_dataset = gdal.Open(input_filename)
+                input_crs = osr.SpatialReference(wkt=input_dataset.GetProjectionRef())
+                nodata = input_dataset.GetRasterBand(1).GetNoDataValue()
+                if nodata is None:
+                    nodata =_maxValue(input_dataset.GetRasterBand(1).ReadAsArray())
+                del input_dataset
+                output_crs = spatial_reference_from_metadata(metadata)
+                if not input_crs.IsSame(output_crs):
+                    options = gdal.WarpOptions(format='GTiff', srcSRS=input_crs, dstSRS=output_crs, srcNodata=nodata, dstNodata=nodata)
+                    gdal.Warp(output_filename, input_filename, options=options)
+                    if not os.path.exists(output_filename):
+                        logging.warning(f'file not created: {output_filename}')
                     else:
-                        reprojected_filenames.append(input_filename)
+                        reprojected_filenames.append(output_filename)
             elif extension == '.gpkg':
+                output_crs = spatial_reference_from_metadata(metadata, fiona_crs=True)
                 output_filename = _reproject_geopackage(input_filename, output_filename, output_crs)
                 reprojected_filenames.append(output_filename)
             else:
                 if extension != '.tfw':
                     logging.warning(f'unsupported file format "{extension}"')
-
                 reprojected_filenames.append(input_filename)
         metadata['support_files'] = reprojected_filenames
 
     return metadata
 
 
-def _reproject_via_geotransform(filename: str, metadata: dict, reader: BAGRawReader) -> gdal.Dataset:
+def _reproject_via_reprojectimage(filename: str, metadata: dict, reader: BAGRawReader) -> gdal.Dataset:
     """
     Get a reprojected GDAL dataset from the given file.
 
@@ -110,26 +112,48 @@ def _reproject_via_geotransform(filename: str, metadata: dict, reader: BAGRawRea
         reprojected GDAL dataset
     """
 
-    dataset = reader.read_bathymetry(filename, None)
+    bag = Open(filename)
+    input_crs = osr.SpatialReference(wkt=bag.wkt)
+    output_crs = spatial_reference_from_metadata(metadata)
+    coord_transform = osr.CoordinateTransformation(input_crs, output_crs)
+    input_shape = bag.shape
+    input_ul, input_lr = bag.bounds
+    input_resolution = bag.resolution
 
-    input_crs = CRS.from_string(dataset.GetProjectionRef())
-    output_crs = spatial_reference_from_metadata(metadata, fiona_crs=True)
+    ulx, uly, ulz = coord_transform.TransformPoint(input_ul[0], input_ul[1])
+    llx, lly, llz = coord_transform.TransformPoint(input_ul[0], input_lr[1])
+    lrx, lry, lrz = coord_transform.TransformPoint(input_lr[0], input_lr[1])
+    urx, ury, urz = coord_transform.TransformPoint(input_lr[0], input_ul[1])
 
-    input_geotransform = dataset.GetGeoTransform()
-    input_shape = dataset.RasterYSize, dataset.RasterXSize
-    input_origin = numpy.array((input_geotransform[0], input_geotransform[3]))
-    input_resolution = numpy.array((input_geotransform[1], input_geotransform[5]))
+    x_vals = [ulx, llx, lrx, urx]
+    y_vals = [uly, lly, lry, ury]
 
-    left, bottom, right, top = bounds_from_opposite_corners(input_origin,
-                                                            input_origin + numpy.flip(input_shape) * input_resolution)
-    output_transform, _, _ = calculate_default_transform(input_crs, output_crs, width=input_shape[1], height=input_shape[0], left=left,
-                                                         bottom=bottom, right=right, top=top)
-    output_geotransform = output_transform.to_gdal()
+    min_x, max_x = min(x_vals), max(x_vals)
+    min_y, max_y = min(y_vals), max(y_vals)
 
-    dataset.SetProjection(output_crs.to_wkt())
-    dataset.SetGeoTransform(output_geotransform)
+    reprojected_shape = [int((max_y - min_y)/input_resolution[0]), int((max_x - min_x)/input_resolution[0])]
 
-    return dataset
+    reprojected_geotransform = (min_x, input_resolution[0], 0, max_y, 0, input_resolution[1])
+
+    memory_driver = gdal.GetDriverByName('MEM')
+    reprojected_dataset = memory_driver.Create('', reprojected_shape[1], reprojected_shape[0], 2, gdal.GDT_Float32)
+    for band_index in (1, 2):
+        band_out = reprojected_dataset.GetRasterBand(band_index)
+        band_out.SetNoDataValue(1000000.0)
+        band_out.WriteArray(numpy.full(reprojected_shape, 1000000.0))
+        del band_out
+    reprojected_dataset.SetProjection(output_crs.ExportToWkt())
+    reprojected_dataset.SetGeoTransform(reprojected_geotransform)
+
+    build_dataset = BagToGDALConverter()
+    build_dataset.bag2gdal(bag)
+    del bag
+
+    dataset = build_dataset.dataset
+    gdal.ReprojectImage(dataset, reprojected_dataset, input_crs.ExportToWkt(), output_crs.ExportToWkt(), gdal.GRA_Min)
+    del build_dataset, dataset
+
+    return reprojected_dataset
 
 
 def reproject_transform(transform: Union[tuple, Affine], input_crs: CRS, output_crs: CRS) -> Union[tuple, Affine]:

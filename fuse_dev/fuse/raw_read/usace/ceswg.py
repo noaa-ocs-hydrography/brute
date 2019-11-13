@@ -6,9 +6,9 @@ extract_ehydro_meta_class_CESWG.py
 Galveston uses MLLW in the name of some files, but not all?
 Many are in MLLW even if its not in the filename.
 
-This script takes as an input the filename and path of an USACE e-Hydro .xyz 
+This script takes as an input the filename and path of an USACE e-Hydro .xyz
 text file and pull the metadata from the xyz header and file name.
-Additionally, it passes the matching .xml file and utilizes 
+Additionally, it passes the matching .xml file and utilizes
 the parse_usace_xml script to pull out the relevant metadata if it
 is either FGDC or ISO FGDC USACE metadata format.
 
@@ -24,7 +24,7 @@ import re as _re
 from datetime import datetime
 
 import numpy as _np
-from fuse.raw_read.usace import parse_usace_pickle
+from fuse.raw_read import parse_file_pickle
 from fuse.raw_read.usace.usace import USACERawReader
 
 __version__ = 'FUSE'
@@ -40,16 +40,16 @@ class CESWGRawReader(USACERawReader):
         """
         Read all available meta data.
         returns dictionary
-        
+
         Parameters
         ----------
         filename : str :
-        
-        
+
+
         Returns
         -------
         -> dict
-        
+
         """
         version = 'CESWG'
         self.version = version
@@ -59,16 +59,16 @@ class CESWGRawReader(USACERawReader):
         """
         Read the bathymetry from the .dat file. The dat file is less precise,
         but had no header and is in a standardized format
-        
+
         Parameters
         ----------
         infilename :
-        
-        
+
+
         Returns
         -------
         xyz
-        
+
         """
         # get the dat file for CESWG# Galveston
         stub, ext = os.path.splitext(infilename)
@@ -76,7 +76,7 @@ class CESWGRawReader(USACERawReader):
         """
         F-strings provide a way to embed expressions inside string literals, using a minimal syntax.
         It should be noted that an f-string is really an expression evaluated at run time, not a constant
-         value. In Python source code, an f-string is a literal string, prefixed with f, which contains 
+         value. In Python source code, an f-string is a literal string, prefixed with f, which contains
         expressions inside braces. The expressions are replaced with their values.
         https://realpython.com/python-f-strings/
         one can also include expressions within the quoted strings, The expressions in an f-string are evaluated in left-to-right order. This is detectable only if the expressions have side effects:
@@ -91,17 +91,17 @@ class CESWGRawReader(USACERawReader):
         """
         Read the bathymetry from the xyz files, this tells it to not include
         the header when reading the file
-        
+
         Note: The high resolution multibeam files are available as .xyz on E-Hydro
-        
+
         Parameters
         ----------
         filename: str :
-        
+
         Returns
         -------
         xyz
-        
+
         """
         version = 'CESWG'
         self.version = version
@@ -129,17 +129,17 @@ def return_surveyid(filenamepath: str, ex_string: str) -> str:
     """
     strip end of filename off
     surveybasename =return_surveyid(filenamepath, ex_string)
-    
+
     Parameters
     ----------
     filenamepath: str :
         param ex_string:
     ex_string: str :
-    
+
     Returns
     -------
     surveybasename
-    
+
     """
     basename = os.path.basename(filenamepath)
     surveybasename = basename.rstrip(ex_string)
@@ -152,13 +152,13 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
     """
     retrieve metadata for USACE E-Hydro files
     function returns metadata dictionary
-    
+
     input is filename of .xyz file with path
 
     Parameters
     ----------
     filename :
-        
+
 
     Returns
     -------
@@ -258,17 +258,17 @@ class EhydroPickleReader(object):
     def __init__(self, infilename):
 
         """
-        Pass filename that matches the pickle file you want to match 
+        Pass filename that matches the pickle file you want to match
         but with any extension
         (Here we tend to pass the xmlfilename as it already has been matched
         in the cases of _A.xyz etc., but one could use a .xyz file)
-    
-    
+
+
         Parameters
         ----------
         infilename :
-    
-    
+
+
         Returns
         -------
         self.filename = infilename
@@ -279,21 +279,21 @@ class EhydroPickleReader(object):
         """
         Read in picklefile that ehydro_move creates from the E-Hydro REST API
         table attributes.
-    
-    
+
+
         Parameters
         ----------
         infilename :
-    
-    
+
+
         Returns
         -------
-    
+
         """
         print(f'reading in pickle based on: {self.filename}')  # making sure pickle passing is working
-        pickle_meta = parse_usace_pickle.read_pickle(self.filename)
+        pickle_meta = parse_file_pickle.read_pickle(self.filename)
         self.meta_from_ehydro = pickle_meta
-        # pickle = parse_usace_pickle.pickle_file(infilename)
+        # pickle = parse_file_pickle.pickle_file(infilename)
         # self.pickle_meta = pickle.pickle_meta
         # self.meta_from_ehydro = self.pickle_meta#separating while debugging to track original
         return pickle_meta
@@ -301,13 +301,13 @@ class EhydroPickleReader(object):
     def _Check_for_SPCSconflicts(self, meta_xml):  # , meta_from_ehydro = None
         """
         Cheacking to see if the SPCS codes conflict between sources
-        
+
         Parameters
         ----------
         meta_xml :
         xml_data : (class object)
         self :# meta_from_ehydro :
-    
+
         Returns
         -------
         """
@@ -343,18 +343,18 @@ class EhydroPickleReader(object):
     def _when_use_pickle(self, meta_xml):  # , meta_from_ehydro
         """
         If there is no SPCS code in the xml, use the pickle/ REST API SPCS code
-        
+
         Additional check to see if their is a conflict. District specific rules on conflict resolution may need to apply.
         1st assumption is that the REST API has the correct SPCS code according to E-Hydro team. (John McKenzie) and reinterated by
         District contacts thus far (as of June 2019) base on E-hydro upload procedures.
-        
+
         Parameters
         ----------
         meta_xml :
         xml_data(xml reader class)
         self :
-    
-    
+
+
         Returns
         -------
         """
@@ -377,13 +377,13 @@ class EhydroPickleReader(object):
         """
         if xml_meta is blank and if meta does not have information use pickle data for date
         next: Check survey start & end date against filename and other locations
-        
+
         Parameters
         ----------
         meta_xml :
         self: # uses meta_from_ehydro :
-    
-    
+
+
         Returns
         """
         meta_from_ehydro = self.meta_from_ehydro
@@ -495,7 +495,7 @@ class XYZMetaReader(object):
         Parameters
         ----------
         infilename :
-            
+
 
         Returns
         -------
@@ -603,7 +603,7 @@ class XYZMetaReader(object):
         infilename :
             param default_meta:
         default_meta :
-            
+
 
         Returns
         -------
@@ -630,7 +630,7 @@ def get_xml(filename):
     Parameters
     ----------
     filename :
-        
+
 
     Returns
     -------
@@ -653,7 +653,7 @@ def get_xml_xt(filename, extension):
     filename :
         param extension:
     extension :
-        
+
 
     Returns
     -------
@@ -677,7 +677,7 @@ def get_xml_match(f):
     Parameters
     ----------
     f :
-        
+
 
     Returns
     -------
@@ -698,27 +698,27 @@ def get_vertdat_ceswg(meta: dict):  # -> dict:
     """
     pass the meta dict of the filename broken up
     returns the vertical datum found in the filename back to the meta dict
-    
+
     Expected possible USACE Galveston District Vertical Datums include:
         MLLW : Mean Lower Low Water
         LWD  : Low Water Datum
         MLT  : Mean Low Tide
-        
-        All data should as of 2018 be in MLLW or LWD, both are official chart 
+
+        All data should as of 2018 be in MLLW or LWD, both are official chart
         datums. LWD is based on the same 19 year epoch as MLLW NTDE, but it
         looks at lowest water levels that are non-tidal, whereas in MLLW
         areas one expects the low water level to be driven by the tidal cycle.
         Areas of LWD still may have tidal effects, but they are far less than
-        more meteorological forcings (pressure and wind, riverine inputs etc. 
+        more meteorological forcings (pressure and wind, riverine inputs etc.
         (storm surge, wind pilling up water on one side of the bay etc.)
-        
+
         MLT should no longer be being produced by USACE CESWG, but it is
         includined in older data on e-hydro.
-        
+
     Parameters
     ----------
     meta: dict
-        
+
 
     Returns
     -------
@@ -741,11 +741,11 @@ def _check_special_handling(basename):
     """
     Doing a check if the xyz file type is full resolution or may have
     other special handling flags that should be passed
-    
+
     Parameters
     ----------
     basename :
-        
+
 
     Returns
     -------
@@ -766,14 +766,14 @@ def _start_xyz(infilename):
     """
     looks for the first line of the xyz data after the header
     returns the row number of first line of data
-    
+
     Parameters
     ----------
     infilename :
-    
+
     Returns
     -------
-    
+
     """
     first_instance = ''
     numberofrows = []
@@ -795,17 +795,17 @@ def _start_xyz(infilename):
 def _is_header2(line, version=None):
     """
     looks at header
-    
+
     Parameters
     ----------
     line :
         param version:  (Default value = None)
     version :
          (Default value = None)
-    
+
     Returns
     -------
-    
+
     """
     if version is None:
         version = ''
@@ -836,7 +836,7 @@ def _parse_projectname(line):
     Parameters
     ----------
     line :
-        
+
 
     Returns
     -------
@@ -850,12 +850,12 @@ def _parse_projectname(line):
 
 def _parse_notes_chart(line):
     """
-    
+
 
     Parameters
     ----------
     line :
-        
+
 
     Returns
     -------
@@ -893,7 +893,7 @@ def _parse_note(line):
     Parameters
     ----------
     line :
-        
+
 
     Returns
     -------
@@ -954,7 +954,7 @@ def _parse_surveyname(line):
     Parameters
     ----------
     line :
-        
+
 
     Returns
     -------
@@ -973,7 +973,7 @@ def _parse_surveydates(line):
     Parameters
     ----------
     line :
-        
+
 
     Returns
     -------
@@ -1005,7 +1005,7 @@ def _xyztext2date(textdate):
     Parameters
     ----------
     textdate :
-        
+
 
     Returns
     -------
@@ -1034,7 +1034,7 @@ def _parse_sounding_frequency(line):
     Parameters
     ----------
     line :
-        
+
 
     Returns
     -------
@@ -1052,7 +1052,7 @@ def _parse_survey_type(line):
     Parameters
     ----------
     line :
-        
+
 
     Returns
     -------
@@ -1071,7 +1071,7 @@ def _parse_survey_crew(line):
     Parameters
     ----------
     line :
-        
+
 
     Returns
     -------
@@ -1090,7 +1090,7 @@ def _parse_sea_condition(line):
     Parameters
     ----------
     line :
-        
+
 
     Returns
     -------
@@ -1109,7 +1109,7 @@ def _parse_vessel_name(line):
     Parameters
     ----------
     line :
-        
+
 
     Returns
     -------
@@ -1128,7 +1128,7 @@ def _parse_LWRP_(line):
     Parameters
     ----------
     line :
-        
+
 
     Returns
     -------
@@ -1156,16 +1156,16 @@ def _parse_LWRP_(line):
 def _parse_Gage_Reading(line, allcap1):
     """
     Looks for the water level Gage
-    
+
     Parameters
     ----------
     line :
         param allcap1:
     allcap1 :
-    
+
     Returns
     -------
-    
+
     """
     if allcap1 == 1:
         name = line.split('GAGE_READING==')[-1]
@@ -1181,14 +1181,14 @@ def _parse_Gage_Reading(line, allcap1):
 def _parse_sound_velocity(line):
     """
     Looks for Sound Velocity
-    
+
     Parameters
     ----------
     line :
-    
+
     Returns
     -------
-    
+
     """
     name = line.split('SOUND VELOCITY')[-1]
     name = name.strip('\n')
@@ -1199,14 +1199,14 @@ def _parse_sound_velocity(line):
 def _parse_Ranges(line):
     """
     looks at ranges
-    
+
     Parameters
     ----------
     line :
-    
+
     Returns
     -------
-    
+
     """
     name = line.split('Range:')[-1]
     name = name.strip('\n')
@@ -1217,15 +1217,15 @@ def _parse_Ranges(line):
 def _is_RTK(line):
     """
     pulls RTK line
-    
+
     Parameters
     ----------
     line :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     pattern_coordinates = '[RTK]'  # at least six digits# should be seven then . plus two digits
     if _re.findall(pattern_coordinates, line) is not None:
@@ -1237,15 +1237,15 @@ def _is_RTK(line):
 def _is_RTK_Tide(line):
     """
     looks for RTK Tide
-    
+
     Parameters
     ----------
     line :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     if _re.findall('[VRS RTK TIDES]', line) is not None:
         return False
@@ -1260,11 +1260,11 @@ def _parse_processedBy(line):
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     metadata = {'ProcessedBy': line}
     return metadata
@@ -1273,15 +1273,15 @@ def _parse_processedBy(line):
 def _parse_CheckedBy(line):
     """
     parse CheckedBy
-    
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     metadata = {'CheckedBy': line.split('CheckedBy==')[1]}
     return metadata
@@ -1290,15 +1290,15 @@ def _parse_CheckedBy(line):
 def _parse_ReviewedBy(line):
     """
     parse ReviewedBy
-    
+
     Parameters
     ----------
     line :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     metadata = {'ReviewedBy': line.split('ReviewedBy==')[1]}
     return metadata
@@ -1309,17 +1309,17 @@ def check_date_order(m, mm):
     """
     ingest dates from e-hydro file name, and xml if available
     do a date check.
-    
+
     Parameters
     ----------
     m :
         param mm:
     mm :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     date_list = []  # date_list = [begdate, enddate,filename_date]
     if 'begdate' in m:
@@ -1372,7 +1372,7 @@ def check_abst_date(filename_date, daterange):
     filename_date :
         param daterange:
     daterange :
-        
+
 
     Returns
     -------
@@ -1457,15 +1457,15 @@ def check_abst_date(filename_date, daterange):
 def check_datelist(next_date):
     """
     checks date list
-    
+
     Parameters
     ----------
     next_date :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     dateonly_list = []
     for day in next_date:
@@ -1477,17 +1477,17 @@ def check_datelist(next_date):
 def check_date_format_hasday(date_string, b_or_e=None):
     """
     check_date_format_hasday
-    
+
     Parameters
     ----------
     date_string :
         param b_or_e:  (Default value = None)
     b_or_e :
          (Default value = None)
-    
+
     Returns
     -------
-    
+
     """
     pattern_missing_valid_day = '[\d][\d][\d][\d][\d][\d][0][0]'
     if b_or_e is None:

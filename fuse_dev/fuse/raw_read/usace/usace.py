@@ -19,8 +19,8 @@ import numpy as _np
 from fuse.datum_transform import usefips as _usefips
 from fuse.raw_read.raw_read import RawReader
 
-from . import parse_usace_pickle
-from . import parse_usace_xml
+from fuse.raw_read import parse_file_pickle
+from fuse.raw_read.usace import parse_usace_xml
 
 _ehydro_quality_metrics = {
     'complete_coverage': False,
@@ -135,7 +135,7 @@ class USACERawReader(RawReader):
         root = _os.path.split(filename)[0]
         pickle_name = self.name_gen(filename, ext='.pickle', sfx=False)
         if _os.path.isfile(pickle_name):
-            pickle_dict = parse_usace_pickle.read_pickle(pickle_name, pickle_ext=True)
+            pickle_dict = parse_file_pickle.read_pickle(pickle_name, pickle_ext=True)
             if 'poly_name' in pickle_dict:
                 pickle_dict['support_files'] = [_os.path.join(root, pickle_dict['poly_name'])]
         else:
@@ -882,22 +882,22 @@ class USACERawReader(RawReader):
         if fips is not None:
             txt_meta['fips'] = int(fips.group())
         return txt_meta
-    
+
     def _finalize_meta(self, meta):
         """
         Update the metadata to standard values.
-        
+
         Parameters
         ----------
         meta
             The combined metadata dictionary to be updated with standard
             values.
-        
+
         Returns
         -------
         dict
             The final metadata for return to the metadata requesting method
-        
+
         """
         # if the data is coming from this reader these should be true.
         meta['read_type'] = 'ehydro'

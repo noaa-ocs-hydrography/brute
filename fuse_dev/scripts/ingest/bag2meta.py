@@ -5,56 +5,48 @@ Created on Tue Aug 13 11:09:10 2019
 @author: Casiano.Koprowski
 """
 
-import logging as _logging
 import os
-from datetime import datetime
 from glob import glob
+import logging as _logging
 
-from fuse.fuse_processor import FuseProcessor
+import datetime
 
-# import fuse.wx_helper.process_title as wx_window
+import fuse.fuse_processor as ffp
+import fuse.wx_helper.process_title as wx_window
 
 SCRIPT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 
 if __name__ == '__main__':
-    # wx_frame = wx_window.Open_Frame('BAG')
-    start_time = datetime.now()
-    print(f'starting NOAA BAG processing at {start_time}')
-    config_filenames = glob(os.path.join(SCRIPT_DIRECTORY, 'bag_configs', 'pbc_*.config'))
-
-    total_files = 0
-
-    for config_index, config_filename in enumerate(config_filenames):
-        bag_processor = FuseProcessor(config_filename)
-        config_input_root = bag_processor.rawdata_path[0]
-
-        survey_directories = [os.path.join(config_input_root, filename) for filename in os.listdir(config_input_root)]
-        for survey_index, survey_directory in enumerate(survey_directories):
-            print(f'config {config_index + 1}/{len(config_filenames)}, ' +
-                  f'survey {survey_index + 1}/{len(survey_directories)} - ' +
-                  f'Begin working in {survey_directory}:')
-            bag_filenames = glob(os.path.join(survey_directory, '*.bag'))
-
-            for bag_index, bag_filename in enumerate(bag_filenames):
-                total_files += len(bag_filenames)
-
+    start = datetime.datetime.now()
+    print(start)
+#    wx_frame = wx_window.Open_Frame('BAG')
+    config_list = glob(os.path.join(SCRIPT_DIRECTORY, 'bag*.config'))
+    for n,config in enumerate(config_list):
+        bag = ffp.FuseProcessor(config)
+        root = bag.rawdata_path[0]
+        top = [os.path.join(root, name) for name in os.listdir(root)]
+        for m, path in enumerate(top):
+            print(f'{n}.{m} - Begin working in {path}:')
+            flist = glob(os.path.join(path, '*.bag'))
+            for m, file in enumerate(flist):
                 try:
-                    print(f'file {bag_index}/{len(bag_filenames)}: reading {os.path.basename(bag_filename)}', end=', ')
-                    bag_processor.read(bag_filename)
-                except Exception as error:
-                    print(f'\nread error: {error}\n')
-                    bag_processor.logger.log(_logging.DEBUG, error)
-
+                    print(f'reading {os.path.basename(file)}', end = ', ')
+                    f = bag.read(file)
+                except Exception as e:
+                    print('\n')
+                    print(f'read error: {e}')
+                    bag.logger.log(_logging.DEBUG, e)
+                    print('\n')
                 try:
-                    print(f'{datetime.now()}: processing {bag_filename}', end=', ')
-                    bag_processor.process(bag_filename)
-                    print(f'completed BAG {bag_index + 1} of {len(bag_filenames)} ' +
-                          f'of survey {survey_index + 1} of {len(survey_directories)}; ' +
-                          f'{(datetime.now() - start_time) / ((bag_index + 1) / (total_files + (len(bag_filenames) * len(survey_directories) * (len(config_filenames) - (config_index + 1)))))} remaining')
-                except Exception as error:
-                    print(f'\n{error}\n')
-                    bag_processor.logger.log(_logging.DEBUG, error)
-
-    end_time = datetime.now()
-    print(f'completed NOAA BAG processing at {end_time} (took {end_time - start_time})')
-    # wx_frame.close()
+                    print(f'processing @ {datetime.datetime.now()}')
+                    bag.process(file)
+                    print(f'done.')
+                except Exception as e:
+                    print('\n')
+                    print(f'processing error: {e}')
+                    bag.logger.log(_logging.DEBUG, e)
+                    print('\n')
+    end = datetime.datetime.now()
+    time_delta = end - start
+#    wx_frame.close()
+    print(f'{end}\n{time_delta}')
