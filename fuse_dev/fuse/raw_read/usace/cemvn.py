@@ -3,9 +3,9 @@
 Edited by Juliet Kinney
 extract_ehydro_meta_class_CEMNV.py
 
-This script takes as an input the filename and path of an USACE e-Hydro .xyz 
+This script takes as an input the filename and path of an USACE e-Hydro .xyz
 text file and pull the metadata from the xyz header and file name.
-Additionally, it passes the matching .xml file and utilizes 
+Additionally, it passes the matching .xml file and utilizes
 the parse_usace_xml script to pull out the relevant metadata if it
 is either FGDC or ISO FGDC USACE metadata format.
 
@@ -21,7 +21,8 @@ from datetime import datetime
 
 import numpy as _np
 from dateutil import parser
-from fuse.raw_read.usace import parse_usace_pickle, parse_usace_xml
+from fuse.raw_read import parse_file_pickle
+from fuse.raw_read.usace import parse_usace_xml
 from fuse.raw_read.usace.usace import USACERawReader
 
 __version__ = 'FUSE'
@@ -37,12 +38,12 @@ class CEMVNRawReader(USACERawReader):
         """
         Read all available meta data.
         returns dictionary
-        
+
         Parameters
         ----------
         filename
             file path to metadata
-        
+
         Returns
         -------
         dict
@@ -57,12 +58,12 @@ class CEMVNRawReader(USACERawReader):
         """
         Read the bathymetry from the .dat file. The dat file is less precise,
         but had no header and is in a standardized format
-        
+
         Parameters
         ----------
         filename
             file path to bathymetry
-        
+
         Returns
         -------
         numpy.array
@@ -75,7 +76,7 @@ class CEMVNRawReader(USACERawReader):
         """
         F-strings provide a way to embed expressions inside string literals, using a minimal syntax.
         It should be noted that an f-string is really an expression evaluated at run time, not a constant
-         value. In Python source code, an f-string is a literal string, prefixed with f, which contains 
+         value. In Python source code, an f-string is a literal string, prefixed with f, which contains
         expressions inside braces. The expressions are replaced with their values.
         https://realpython.com/python-f-strings/
         one can also include expressions within the quoted strings, The expressions in an f-string are evaluated in left-to-right order. This is detectable only if the expressions have side effects:
@@ -90,18 +91,18 @@ class CEMVNRawReader(USACERawReader):
         """
         Read the bathymetry from the xyz files, this tells it to not include
         the header when reading the file
-        
+
         Note: The high resolution multibeam files are available as .xyz on E-Hydro
-        
+
         Parameters
         ----------
         filename
             file path to bathymetry
-        
+
         Returns
         -------
         numpy.array
-        
+
         """
         version = 'CEMVN'
         self.version = version
@@ -131,7 +132,7 @@ def return_surveyid(filename: str) -> str:
     """
     strip end of filename off
     surveybasename =return_surveyid(filenamepath, ex_string)
-    
+
     Parameters
     ----------
     filename
@@ -152,14 +153,14 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     """
     retrieve metadata for USACE E-Hydro files
     function returns metadata dictionary
-    
+
     input is filename of .xyz file with path
-    
+
     Parameters
     ----------
     filename
         file path to XYZ
-    
+
     Returns
     -------
     dict
@@ -257,7 +258,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
 class EhydroPickleReader(object):
     """
     Reading in ehydro pickle file, looking for conflicts with other metadata inputs
-    and determining when /how to pass on metadata attributes 
+    and determining when /how to pass on metadata attributes
     """
 
     def __init__(self, filename: str):
@@ -265,8 +266,8 @@ class EhydroPickleReader(object):
         Pass filename that matches the pickle file you want to match  but with any extension
         (Here we tend to pass the xmlfilename as it already has been matched
         in the cases of _A.xyz etc., but one could use a .xyz file)
-        
-        
+
+
         Parameters
         ----------
         filename
@@ -287,14 +288,14 @@ class EhydroPickleReader(object):
         """
 
         print(f'reading in pickle based on: {self.filename}')  # making sure pickle passing is working
-        pickle_meta = parse_usace_pickle.read_pickle(self.filename)
+        pickle_meta = parse_file_pickle.read_pickle(self.filename)
         self.meta_from_ehydro = pickle_meta
         return pickle_meta
 
     def _Check_for_SPCSconflicts(self, meta_xml: dict) -> (bool, bool, dict):
         """
         Checking to see if the SPCS codes conflict between sources
-        
+
         Parameters
         ----------
         meta_xml
@@ -336,11 +337,11 @@ class EhydroPickleReader(object):
     def _when_use_pickle(self, meta_xml: dict) -> dict:
         """
         If there is no SPCS code in the xml, use the pickle/ REST API SPCS code
-        
+
         Additional check to see if their is a conflict. District specific rules on conflict resolution may need to apply.
         1st assumption is that the REST API has the correct SPCS code according to E-Hydro team. (John McKenzie) and reinterated by
         District contacts thus far (as of June 2019) base on E-hydro upload procedures.
-        
+
         Parameters
         ----------
         meta_xml
@@ -370,7 +371,7 @@ class EhydroPickleReader(object):
         """
         if xml_meta is blank and if meta does not have information use pickle data for date
         next: Check survey start & end date against filename and other locations
-        
+
         Parameters
         ----------
         meta_xml
@@ -442,7 +443,7 @@ class XYZMetaReader(object):
             Default value = '')
         meta_source :
              (Default value = 'xyz')
-        
+
         Returns
         -------
         dict
@@ -488,16 +489,16 @@ class XYZMetaReader(object):
             optional : this is the contents of the condition field
             from_path : this is named to match other scripts downstream
             from_filename : this is also named to match other file downstream
-        
+
         Parameters
         ----------
-        
+
         infilename: str :
-        
-        
+
+
         Returns
         -------
-        
+
         """
         base = os.path.basename(infilename)
         name, ext = os.path.splitext(base)
@@ -533,19 +534,19 @@ class XYZMetaReader(object):
             PROJECT_NAME
             SURVEY_NAME
             DATES_OF_SURVEY
-        
+
         Parameters
         ----------
         infilename :
             param version:  (Default value = None)
         infilename: str :
-            
+
         version: str :
              (Default value = None)
-        
+
         Returns
         -------
-        
+
         """
         header = []
         metalist = []
@@ -622,19 +623,19 @@ class XYZMetaReader(object):
         picked dictionary), look for the default file.  If that files does not
         exist, look for a file named 'default.pkl' in the same directory as the
         provided file name.
-        
+
         Parameters
         ----------
         infilename :
             param default_meta:
         infilename: str :
-            
+
         default_meta: dict :
-        
-        
+
+
         Returns
         -------
-        
+
         """
         if len(default_meta) == 0:
             path, infile = os.path.split(infilename)
@@ -653,17 +654,17 @@ def get_xml(filename: str) -> str:
     input USACE .xyz/.XYZ filename or any last extension and return .xml
     xmlname = get_xml(filename) this makes this friendlier to .ppxyz files
     for instance
-    
+
     Parameters
     ----------
     filename :
-        
+
     filename: str :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     basef = filename.rpartition('.')[0]
     xml_name = f'{basef}.xml'
@@ -676,19 +677,19 @@ def get_xml_xt(filename: str, extension: str) -> str:
     output will be the .xml file name
     (_A.xyz for instance or _FULL.XYZ are examples of extensions)
     xmlname = get_xml_xt(filename, extension)
-    
+
     Parameters
     ----------
     filename :
         param extension:
     filename: str :
-        
+
     extension: str :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     end_len = len(extension)
     if filename[-end_len:].upper() == extension:
@@ -704,17 +705,17 @@ def get_xml_match(f: str) -> str:
     input USACE .xyz/.XYZ filename or any last extension and return .xml
     it will try to match the non-full survey to the full density survey
     inorder to use the matching xml
-    
+
     Parameters
     ----------
     f :
-        
+
     f: str :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     xmlfilename = ''
     ext_list = ['_FULL.XYZ', '_A.XYZ', '.PPXYZ']
@@ -731,12 +732,12 @@ def _check_special_handling(basename):
     """
     Doing a check if the xyz file type is full resolution or may have
     other special handling flags that should be passed
-    
+
     Parameters
     ----------
     basename :
-        
-    
+
+
     Returns
     -------
     """
@@ -764,23 +765,23 @@ def _start_xyz(infilename: str):
     """
     looks for the first line of the xyz data after the header
     returns the row number of first line of data
-    
+
     Parameters
     ----------
     infilename :
-    
+
     infilename: str :
-    
+
     Returns
     -------
     first_instance: int
-    
+
     commas_present: str
-    
+
     '' if space or other
     ','  if commas
     'tab_instead' if tab delimited
-    
+
     """
     first_instance = ''
     numberofrows = []
@@ -801,19 +802,19 @@ def _start_xyz(infilename: str):
 def _is_header2(line: str, version: str = None):
     """
     looks at header
-    
+
     Parameters
     ----------
     line :
         param version:  (Default value = None)
     line: str :
-        
+
     version: str :
          (Default value = None)
-    
+
     Returns
     -------
-    
+
     """
     if version is None:
         version = ''
@@ -840,17 +841,17 @@ def _is_header2(line: str, version: str = None):
 def _parse_projectname(line: str) -> dict:
     """
     Parse the project name line.
-    
+
     Parameters
     ----------
     line :
-        
+
     line: str :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('=')[-1]
     name = name.strip('\n')
@@ -861,13 +862,13 @@ def _parse_projectname(line: str) -> dict:
 def _parse_note(line: str) -> dict:
     """
     Parse the notes line.
-    
+
     Parameters
     ----------
     line :
-        
+
     line: str :
-    
+
     Returns
     -------
 
@@ -920,17 +921,17 @@ def _parse_note(line: str) -> dict:
 def _parse_surveyname(line: str) -> dict:
     """
     Parse the survey name line.
-    
+
     Parameters
     ----------
     line :
-        
+
     line: str :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('=')[-1]
     name = name.strip('\n')
@@ -941,17 +942,17 @@ def _parse_surveyname(line: str) -> dict:
 def _parse_surveydates(line: str) -> dict:
     """
     Parse the project dates line.
-    
+
     Parameters
     ----------
     line :
-        
+
     line: str :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     metadata = {}
     datestr = line.split('=')[-1]
@@ -977,17 +978,17 @@ def _parse_sounding_frequency(line: str) -> dict:
     Note: LOW & HIGH are usually settings for the
     single beam in New Orleans
     400kHz seems to be their multibeam.
-    
+
     Parameters
     ----------
     line :
-        
+
     line: str :
-    
-    
+
+
     Returns
     -------
-    
+
     """
 
     name = line.split('SOUNDING_FREQUENCY==')[-1].strip('\n')
@@ -998,16 +999,16 @@ def _parse_sounding_frequency(line: str) -> dict:
 def _parse_survey_type(line: str) -> dict:
     """
     returns survey type
-    
+
     Parameters
     ----------
     line :
-        
+
     line: str :
-    
+
     Returns
     -------
-    
+
     """
     name = line.split('SURVEY_TYPE==')[-1]
     name = name.strip('\n')
@@ -1019,17 +1020,17 @@ def _xyztext2date(textdate: datetime) -> str:
     """
     Take the date as provided in a text string as "day month year" as in
     "20 March 2017" and return the format "YearMonthDay" as in "20170320".
-    
+
     Parameters
     ----------
     textdate :
-        
+
     textdate: datetime :
-        
-    
+
+
     Returns
     -------
-    
+
     """
 
     try:
@@ -1043,17 +1044,17 @@ def _xyztext2date(textdate: datetime) -> str:
 def _parse_survey_crew(line: str) -> dict:
     """
     returns survey crew
-    
+
     Parameters
     ----------
     line :
-        
+
     line: str :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('SURVEY_CREW==')[-1]
     name = name.strip('\n')
@@ -1064,17 +1065,17 @@ def _parse_survey_crew(line: str) -> dict:
 def _parse_sea_condition(line: str) -> dict:
     """
     sea conditions
-    
+
     Parameters
     ----------
     line :
-        
+
     line: str :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('SEA_CONDITION==')[-1]
     name = name.strip('\n')
@@ -1085,17 +1086,17 @@ def _parse_sea_condition(line: str) -> dict:
 def _parse_vessel_name(line: str) -> dict:
     """
     vessel name
-    
+
     Parameters
     ----------
     line :
-        
+
     line: str :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('VESSEL_NAME==')[-1]
     name = name.strip('\n')
@@ -1106,17 +1107,17 @@ def _parse_vessel_name(line: str) -> dict:
 def _parse_LWRP_(line: str) -> dict:
     """
     Checks to see if its in Low Water Reference Plane
-    
+
     Parameters
     ----------
     line :
-        
+
     line: str :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('LWRP==')[-1]
     name = name.split('LWRP=')[-1]
@@ -1140,16 +1141,16 @@ def _parse_LWRP_(line: str) -> dict:
 def _parse_Gage_Reading(line: str, allcap1) -> dict:
     """
     Looks for the water level Gage
-    
+
     Parameters
     ----------
     line :
         param allcap1:
     allcap1 :
-    
+
     Returns
     -------
-    
+
     """
     if allcap1 == 1:
         name = line.split('GAGE_READING==')[-1]
@@ -1165,16 +1166,16 @@ def _parse_Gage_Reading(line: str, allcap1) -> dict:
 def _parse_sound_velocity(line: str) -> dict:
     """
     Looks for Sound Velocity
-    
+
     Parameters
     ----------
     line :
-    
+
     line: str :
-    
+
     Returns
     -------
-    
+
     """
     name = line.split('SOUND VELOCITY')[-1]
     name = name.strip('\n')
@@ -1185,12 +1186,12 @@ def _parse_sound_velocity(line: str) -> dict:
 def _parse_Ranges(line: str) -> dict:
     """
     looks at ranges
-    
+
     Parameters
     ----------
     line :
     line: str :
-    
+
     Returns
     -------
         """
@@ -1203,12 +1204,12 @@ def _parse_Ranges(line: str) -> dict:
 def _is_RTK(line):
     """
     pulls RTK line
-    
+
     Parameters
     ----------
     line :
-    
-    
+
+
     Returns
     -------
         """
@@ -1222,13 +1223,13 @@ def _is_RTK(line):
 def _is_RTK_Tide(line: str):
     """
     looks for RTK Tide
-    
+
     Parameters
     ----------
     line :
-    
+
     line: str :
-    
+
     Returns
     -------
      True or False
@@ -1244,18 +1245,18 @@ def check_date_order(m: dict, mm: dict) -> dict:
     """
     ingest dates from e-hydro file name, and xml if available
     do a date check.
-    
+
     Parameters
     ----------
     m :
         param mm:
     m: dict :
-    
+
     mm: dict :
-    
+
     Returns
     -------
-    
+
     """
     date_list = []  # date_list = [begdate, enddate,filename_date]
     if 'begdate' in m:
@@ -1298,18 +1299,18 @@ def check_abst_date(filename_date: str, daterange: str):
     Expecting values from:
     #filename_date = m['filename_date']
     #dateramge = xml_meta['daterange']
-    
+
     Parameters
     ----------
     filename_date :
         param daterange:
     filename_date: str :
-    
+
     daterange: str :
-    
+
     Returns
     -------
-    
+
     """
     next_date = []
     mnum = ''
@@ -1388,15 +1389,15 @@ def check_abst_date(filename_date: str, daterange: str):
 def check_datelist(next_date):
     """
     checks date list
-    
+
     Parameters
     ----------
     next_date :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     dateonly_list = []
     for day in next_date:
@@ -1408,19 +1409,19 @@ def check_datelist(next_date):
 def check_date_format_hasday(date_string: str, b_or_e=None):
     """
     check_date_format_hasday
-    
+
     Parameters
     ----------
     date_string :
         param b_or_e:  (Default value = None)
     date_string: str :
-    
+
     b_or_e :
          (Default value = None)
-    
+
     Returns
     -------
-    
+
     """
     pattern_missing_valid_day = '[\d][\d][\d][\d][\d][\d][0][0]'
     if b_or_e is None:
