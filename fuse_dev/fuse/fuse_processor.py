@@ -385,6 +385,7 @@ class FuseProcessor:
             metadata['outpath'] = _os.path.join(self._config['outpath'], input_directory)
             metadata['new_ext'] = self._point_extension
 
+            dataset = None
             try:
                 dataset, metadata, transformed = self._transform.reproject(filename, metadata)
                 if self._read_type in ('ehydro', 'bps'):
@@ -401,45 +402,46 @@ class FuseProcessor:
 
             self._meta_obj.insert_records(metadata)
 
-            if 'interpolate' in metadata:
-                if metadata['interpolate']:
-                    meta_interp = metadata.copy()
-                    meta_interp = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
-
-                    root, filename = _os.path.split(meta_interp['outpath'])
-                    base = _os.path.splitext(filename)[0]
-                    meta_interp['from_filename'] = f'{base}.interpolated'
-
-                    if self._config['interpolation_engine'] == 'raster':
-                        output_filename = f"{_os.path.join(root, base)}_interp.{self._raster_extension}"
-                    else:
-                        resolution = float(self._config['to_resolution'])
-                        resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
-                        output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
-
-                    meta_interp['to_filename'] = output_filename
-
-                    if 'support_files' in meta_interp:
+            if dataset is not None:
+                if 'interpolate' in metadata:
+                    if metadata['interpolate']:
+                        meta_interp = metadata.copy()
                         meta_interp = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
 
-                    try:
-                        dataset = self._interpolator.interpolate(dataset, meta_interp)
-                        meta_interp['interpolated'] = True
-                        self._raster_writer.write(dataset, meta_interp['to_filename'])
-                    except (ValueError, RuntimeError, IndexError) as error:
-                        message = f'interpolation error: {error}'
-                        print(message)
-                        self.logger.warning(message)
+                        root, filename = _os.path.split(meta_interp['outpath'])
+                        base = _os.path.splitext(filename)[0]
+                        meta_interp['from_filename'] = f'{base}.interpolated'
 
-                    self._meta_obj.insert_records(meta_interp)
-                    metadata.update(meta_interp)
+                        if self._config['interpolation_engine'] == 'raster':
+                            output_filename = f"{_os.path.join(root, base)}_interp.{self._raster_extension}"
+                        else:
+                            resolution = float(self._config['to_resolution'])
+                            resolution_string = f'{int(resolution)}m' if resolution >= 1 else f'{int(resolution * 100)}cm'
+                            output_filename = f'{_os.path.join(root, base)}_{resolution_string}_interp.{self._raster_extension}'
+
+                        meta_interp['to_filename'] = output_filename
+
+                        if 'support_files' in meta_interp:
+                            meta_interp = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
+
+                        try:
+                            dataset = self._interpolator.interpolate(dataset, meta_interp)
+                            meta_interp['interpolated'] = True
+                            self._raster_writer.write(dataset, meta_interp['to_filename'])
+                        except (ValueError, RuntimeError, IndexError) as error:
+                            message = f'interpolation error: {error}'
+                            print(message)
+                            self.logger.warning(message)
+
+                        self._meta_obj.insert_records(meta_interp)
+                        metadata.update(meta_interp)
+                    else:
+                        message = f'{input_directory} - No interpolation required'
+                        print(message)
+                        self.logger.log(_logging.DEBUG, message)
                 else:
-                    message = f'{input_directory} - No interpolation required'
-                    print(message)
-                    self.logger.log(_logging.DEBUG, message)
-            else:
-                del dataset
-                raise ValueError('metadata has no "interpolate" value')
+                    del dataset
+                    raise ValueError('metadata has no "interpolate" value')
         else:
             message = 'metadata is missing required datum transformation entries'
             print(message)
