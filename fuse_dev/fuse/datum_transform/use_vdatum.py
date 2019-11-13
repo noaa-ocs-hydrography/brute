@@ -288,7 +288,7 @@ class VDatum:
             output directory
         """
 
-        command = f'{self._shell}{filename};{output_directory}'
+        command = f'{self._shell}{filename};{output_directory} -nodata'
         self._logger.log(_logging.DEBUG, command)
         try:
             proc = _subprocess.Popen(command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, cwd=self._vdatum_path)
