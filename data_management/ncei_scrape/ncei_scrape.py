@@ -110,7 +110,7 @@ csv_to_meta = {'Survey': 'survey',
                'Vertical datum': 'from_vert_datum',
                }
 h93_to_vert_datum = {
-        'MEAN LOW WATER SPRINGS': 'MLWS',
+        'MEAN LOW WATER SPRINGS': 'MLLW', #11/13/2019 Decision to change recognize the more conservative MLWS as the less conservative MLLW
         'MEAN LOWER LOW WATER SPRINGS': 'MLLWS',
         'MEAN SEA LEVEL': 'MSL',
         'LOWER LOW WATER': 'LLW',

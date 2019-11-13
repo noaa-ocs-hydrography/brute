@@ -271,8 +271,8 @@ class VDatum:
                           f'overt:{":".join(instructions[key] for key in to_vdatum)} '
         else:
             self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
-                      f'ihorz:{":".join(instructions[key] for key in local_from_datum)} ' + \
-                      f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} '
+                          f'ihorz:{":".join(instructions[key] for key in local_from_datum)} ' + \
+                          f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} '
         if mode == 'points':
             self._shell += f'-file:txt:comma,0,1,2,skip0:'
         elif mode == 'geotiff':
