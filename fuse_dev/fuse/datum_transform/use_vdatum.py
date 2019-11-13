@@ -255,9 +255,10 @@ class VDatum:
         local_from_datum = from_hdatum.copy()
         if instructions['from_horiz_type'] != 'geo':
             local_from_datum.append('from_horiz_key')
-            vert = True
-        else:
+        if ":".join(instructions[key] for key in from_vdatum).lower() == ":".join(instructions[key] for key in to_vdatum).lower():
             vert = False
+        else:
+            vert = True
         # having the output zone is optional
         local_to_hdatum = to_hdatum.copy()
         if 'to_horiz_key' in instructions:
