@@ -397,6 +397,7 @@ class FuseProcessor:
                     self._raster_writer.write(dataset, metadata['to_filename'])
             except (ValueError, RuntimeError, IndexError) as error:
                 message = f' Transformation error: {error}'
+                print(message)
                 self.logger.warning(message)
                 metadata['interpolate'] = False
 
@@ -538,7 +539,8 @@ class FuseProcessor:
         if extension == '.interpolated':
             filename = root
 
-        log_filename = _os.path.join(_os.path.dirname(self._config['metapath']) if 'metapath' in self._config else self._config['outpath'],
+        log_filename = _os.path.join(_os.path.dirname(self._config['metapath'])
+                                     if 'metapath' in self._config else self._config['outpath'],
                                      f'{_os.path.splitext(_os.path.split(filename)[-1])[0]}.log')
         self._meta['logfilename'] = log_filename
 
