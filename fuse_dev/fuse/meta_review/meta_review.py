@@ -81,9 +81,9 @@ FIELDS_EXCLUDED_FROM_PREFIX = ('from_filename', 'from_path')
 class MetadataTable(ABC):
     """abstract class representing a table containing metadata records of bathymetric surveys"""
 
-    # order key iteration in column prefixes
     column_prefixes: OrderedDict
     metadata_fields: [str]
+    primary_key: str
 
     @property
     def column_names(self) -> [str]:
@@ -99,12 +99,13 @@ class MetadataTable(ABC):
     @property
     @abstractmethod
     def records(self) -> [dict]:
+        """ all records in the table """
         raise NotImplementedError
 
     @abstractmethod
     def records_where(self, where: dict) -> [dict]:
         """
-        Query table for matching key-value pairs.
+        records in the table that match the given key-value pairs
 
         Parameters
         ----------
@@ -352,7 +353,10 @@ class MetadataDatabase(MetadataTable):
                 cursor.execute(f'SELECT * FROM {self.table_name} WHERE {self.primary_key} = %s', [primary_key_value])
                 record = cursor.fetchone()
 
-        return self._simplify_record(dict(zip(self.column_names, record)))
+        if len(record) > 0:
+            return self._simplify_record(dict(zip(self.column_names, record)))
+        else:
+            raise KeyError(f'could not find primary key ("{self.primary_key}") value of \'{primary_key_value}\'')
 
     def insert_records(self, records: [dict]):
         if type(records) is dict:
@@ -372,6 +376,9 @@ class MetadataDatabase(MetadataTable):
                         cursor.execute(f'UPDATE {self.table_name} SET ({", ".join(columns)}) = %s;', [tuple(values)])
                     else:
                         cursor.execute(f'INSERT INTO {self.table_name} ({", ".join(columns)}) VALUES %s;', [tuple(values)])
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}("{self.hostname}:{self.port}", "{self.database_name}", "{self.table_name}", {self.metadata_fields}, "{self.primary_key}")'
 
 
 class MetadataFile(MetadataTable):
@@ -415,23 +422,23 @@ class MetadataFile(MetadataTable):
                 if row['from_filename'] == primary_key_value:
                     return self._simplify_record(row)
             else:
-                return {}
+                raise KeyError(f'could not find primary key ("{self.primary_key}") value of \'{primary_key_value}\'')
 
     def __setitem__(self, primary_key_value: str, record: dict):
         super().__setitem__(primary_key_value, record)
 
     def insert_records(self, records: [dict]):
+        # check if only a single record was provided
+        if type(records) is dict:
+            records = [records]
+
         assert all(self.primary_key in record for record in records), f'one or more records does not contain "{self.primary_key}"'
 
         if os.path.exists(self.filename):
-            # check if only a single record was provided
-            if type(records) is dict:
-                records = [records]
-
             self._add_to_csv(records)
         # just write a new file since there is not one already
         else:
-            self._write_new_csv([records])
+            self._write_new_csv(records)
 
     def _add_to_csv(self, records: [dict]):
         """
@@ -483,16 +490,15 @@ class MetadataFile(MetadataTable):
             list of metadata dictionaries
         """
 
-        # check if only a single record was provided
-        if type(records) is dict:
-            records = self._prepend_script_to_keys([records])
-        else:
-            records = self._prepend_script_to_keys(records)
+        records = self._prepend_script_to_keys(records)
 
         with open(self.filename, 'w', newline='', encoding='utf-8') as csv_file:
             writer = _csv.DictWriter(csv_file, fieldnames=self.column_names, extrasaction='ignore')
             writer.writeheader()
             writer.writerows(records)
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(r"{self.filename}", {self.metadata_fields}, "{self.primary_key}")'
 
 
 def csv_to_s57(row: dict) -> dict:
