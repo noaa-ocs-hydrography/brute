@@ -17,4 +17,4 @@ dependencies:
   - requests
   - spyder
   - wxpython
-  - libtiff=4.0.10=h6512ee2_1003
+  - numba

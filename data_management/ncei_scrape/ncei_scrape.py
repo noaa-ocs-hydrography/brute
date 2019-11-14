@@ -1228,7 +1228,7 @@ class CSV_Meta:
                                 elif meta_field in ('from_horiz_datum'):
                                     bps_meta[meta_field] = h93_horiz_datum[line[assignment].upper()]
                                     if line[assignment].upper() in h93_horiz_datum and line[assignment].upper() not in ('NOSXX',):
-                                        bps_meta['from_vert_key'] = h93_to_horiz_datum[bps_meta[meta_field].upper()]
+                                        bps_meta['from_horiz_frame'] = h93_to_horiz_datum[bps_meta[meta_field].upper()]
                                     else:
                                         print(f"{line[1]} - Unrecognized horizontal datum: {line[assignment]}, {bps_meta[meta_field]}")
                                 elif meta_field in ('from_vert_datum'):

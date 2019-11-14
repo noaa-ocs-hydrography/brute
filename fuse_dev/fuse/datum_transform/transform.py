@@ -10,7 +10,7 @@ Abstract datum transformation.
 import gdal
 from fuse.datum_transform import use_vdatum as uv
 from fuse.datum_transform.use_gdal import _reproject_via_reprojectimage, _xyz_to_gdal, reproject_support_files
-from fuse.raw_read.noaa.bag import BAGRawReader
+from fuse.raw_read.noaa.bag import BAGSurvey
 
 gdal.UseExceptions()
 
@@ -66,14 +66,12 @@ class DatumTransformer:
         gdal.Dataset, dict, bool
             GDAL point cloud, metadata, and boolean value of whether data was reprojected
         """
-
         not_same_horiz = any(metadata[self._from_horiz_datum_info[index]].lower() != metadata[self._to_horiz_datum_info[index]].lower()
                              for index in range(len(self._from_horiz_datum_info)))
         not_same_vert = any(metadata[self._from_vert_datum_info[index]].lower() != metadata[self._to_vert_datum_info[index]].lower()
                             for index in range(len(self._from_vert_datum_info)))
-
         # VDatum and rasters are giving us trouble, so this is a temp workaround
-        is_bag = type(self._reader) is BAGRawReader
+        is_bag = type(self._reader) is BAGSurvey
         if is_bag:
             if not_same_vert:
                 # we can't deal with a change in vertical datum in BAGs, so return None
