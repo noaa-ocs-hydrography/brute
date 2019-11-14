@@ -395,44 +395,41 @@ class FuseProcessor:
             self._meta_obj.insert_records(metadata)
 
             if 'interpolate' in metadata:
-                    if metadata['interpolate'] and self._read_type == 'bag':
-                            if ('support_files' not in metadata or len(metadata['support_files']) < 1):
-                                metadata['interpolate'] = False
-                                self.logger.warning("No coverage files provided; no interpolation can occur")
+                if metadata['interpolate'] and self._read_type == 'bag':
+                    if ('support_files' not in metadata or len(metadata['support_files']) < 1):
+                        metadata['interpolate'] = False
+                        self.logger.warning("No coverage files provided; no interpolation can occur")
 
-                    root, filename = _os.path.split(metadata['outpath'])
-                    base = _os.path.splitext(filename)[0]
+                if metadata['interpolate']:
+                    metadata = self._transform.reproject_support_files(metadata, self._config['outpath'])
 
-                    if metadata['interpolate']:
-                        metadata = self._transform.reproject_support_files(metadata, self._config['outpath'])
-
-                        try:
-                            dataset, metadata = self._interpolator.interpolate(dataset, metadata)
-                            metadata['interpolated'] = True
-                            self._raster_writer.write(dataset, metadata['to_filename'])
-                        except (ValueError, RuntimeError, IndexError) as error:
-                            message = f'interpolation error: {error}'
-                            print(message)
-                            self.logger.warning(message)
-                    else:
-                        if self._read_type == 'ehydro' or self._read_type == 'bps':
-                            outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
-                            self._point_writer.write(dataset, outfilename)
-                            metadata['to_filename'] = outfilename
-                        elif self._read_type == 'bag':
-                            # only write out the bag if the file was transformed
-                            if 'to_filename' not in metadata:
-                                metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
-                                self._raster_writer.write(dataset, metadata['to_filename'])
-
-                        self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
-
-                        message = f'{input_directory} - No interpolation required'
+                    try:
+                        dataset, metadata = self._interpolator.interpolate(dataset, metadata)
+                        metadata['interpolated'] = True
+                        self._raster_writer.write(dataset, metadata['to_filename'])
+                    except (ValueError, RuntimeError, IndexError) as error:
+                        message = f'interpolation error: {error}'
                         print(message)
-                        self.logger.log(_logging.DEBUG, message)
+                        self.logger.warning(message)
                 else:
-                    del dataset
-                    raise ValueError('metadata has no "interpolate" value')
+                    if self._read_type == 'ehydro' or self._read_type == 'bps':
+                        outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
+                        self._point_writer.write(dataset, outfilename)
+                        metadata['to_filename'] = outfilename
+                    elif self._read_type == 'bag':
+                        # only write out the bag if the file was transformed
+                        if 'to_filename' not in metadata:
+                            metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
+                            self._raster_writer.write(dataset, metadata['to_filename'])
+
+                    self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
+
+                    message = f'{input_directory} - No interpolation required'
+                    print(message)
+                    self.logger.log(_logging.DEBUG, message)
+            else:
+                del dataset
+                raise ValueError('metadata has no "interpolate" value')
         else:
             message = 'metadata is missing required datum transformation entries'
             print(message)
