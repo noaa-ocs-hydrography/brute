@@ -26,28 +26,20 @@ if __name__ == '__main__':
         bps = ffp.FuseProcessor(config)
         root = bps.rawdata_path[0]
         top = [os.path.join(root, name) for name in os.listdir(root)]
-        for m, path in enumerate(top):
+        for m,path in enumerate(top):
             print(f'{n}.{m} - Begin working in {path}:')
-            flist = glob(os.path.join(path, '*.xyz'))
-            for m, file in enumerate(flist):
+            paths = bps.read(path)
+            for f in paths:
                 try:
-                    print(f'reading {os.path.basename(file)}', end = ', ')
-                    f = bps.read(file)
-                except Exception as e:
-                    print('\n')
-                    print(f'read error: {e}')
-                    bps.logger.log(_logging.DEBUG, e)
-                    print('\n')
-                try:
-                    print(f'processing @ {datetime.datetime.now()}')
-                    bps.process(file)
+                    print(f'processing {f} @ {datetime.datetime.now()}', end = ', ')
+                    bps.process(f)
                     print(f'done.')
                 except Exception as e:
                     print('\n')
-                    print(f'processing error: {e}')
+                    print(e)
                     bps.logger.log(_logging.DEBUG, e)
                     print('\n')
     end = datetime.datetime.now()
     time_delta = end - start
-#    wx_frame.close()
+    # wx_frame.close()
     print(f'{end}\n{time_delta}')
