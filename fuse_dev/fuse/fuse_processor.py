@@ -413,16 +413,13 @@ class FuseProcessor:
                         self.logger.warning(message)
                 else:
                     if self._read_type == 'ehydro' or self._read_type == 'bps':
-                        outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
-                        self._point_writer.write(dataset, outfilename)
-                        metadata['to_filename'] = outfilename
+                        metadata['to_filename'] = f'{metadata["outpath"]}.{metadata["new_ext"]}'
+                        self._point_writer.write(dataset, metadata['to_filename'])
                     elif self._read_type == 'bag':
                         # only write out the bag if the file was transformed
                         if 'to_filename' not in metadata:
                             metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
                             self._raster_writer.write(dataset, metadata['to_filename'])
-
-                    self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
 
                     message = f'{input_directory} - No interpolation required'
                     print(message)
@@ -430,12 +427,13 @@ class FuseProcessor:
             else:
                 del dataset
                 raise ValueError('metadata has no "interpolate" value')
+
+            self._meta_obj.insert_records(metadata)
         else:
             message = 'metadata is missing required datum transformation entries'
             print(message)
             self.logger.log(_logging.DEBUG, message)
 
-        self._meta_obj.insert_records(metadata)
         self._close_log()
         return metadata['to_filename'] if 'to_filename' in metadata else ''
 
@@ -565,7 +563,7 @@ class FuseProcessor:
         """
         try:
             # file name is the key rather than the path
-            f = _os.path.basename(filename)
+            f = _os.path.splitext(_os.path.basename(filename))[0]
             if 'from_filename' not in self._meta or self._meta['from_filename'] != filename:
                 self._meta = self._meta_obj[f]
             else:
@@ -607,7 +605,7 @@ class FuseProcessor:
         datum_keys = FuseProcessor._datums.copy()
 
         # if geographic input remove the need for a zone key
-        if metadata['from_horiz_type'] == 'geo' and 'from_horiz_key' in datum_keys:
+        if 'from_horiz_type' in metadata and metadata['from_horiz_type'] == 'geo' and 'from_horiz_key' in datum_keys:
             datum_keys.remove('from_horiz_key')
 
         return all(key in metadata for key in datum_keys if key != 'to_horiz_key')

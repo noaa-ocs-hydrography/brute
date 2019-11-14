@@ -353,7 +353,7 @@ class MetadataDatabase(MetadataTable):
                 cursor.execute(f'SELECT * FROM {self.table_name} WHERE {self.primary_key} = %s', [primary_key_value])
                 record = cursor.fetchone()
 
-        if len(record) > 0:
+        if record is not None:
             return self._simplify_record(dict(zip(self.column_names, record)))
         else:
             raise KeyError(f'could not find primary key ("{self.primary_key}") value of \'{primary_key_value}\'')
