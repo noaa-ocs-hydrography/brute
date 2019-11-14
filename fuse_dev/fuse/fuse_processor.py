@@ -422,9 +422,6 @@ class FuseProcessor:
 
                         meta_interp['to_filename'] = output_filename
 
-                        if 'support_files' in meta_interp:
-                            meta_interp = self._transform.reproject_support_files(meta_interp, self._config['outpath'])
-
                         try:
                             dataset = self._interpolator.interpolate(dataset, meta_interp)
                             meta_interp['interpolated'] = True

@@ -8,6 +8,7 @@ Created on Tue Oct 22 16:01:28 2019
 import logging
 import os
 from typing import Union
+
 import fiona
 import numpy
 import rasterio
@@ -15,10 +16,9 @@ from affine import Affine
 from fiona._crs import CRSError
 from fiona.transform import transform_geom
 from fuse.raw_read.noaa.bag import BAGRawReader, Open, BagToGDALConverter
-from fuse.utilities import bounds_from_opposite_corners
 from osgeo import osr, gdal
 from rasterio.crs import CRS
-from rasterio.warp import transform as transform_points, calculate_default_transform
+from rasterio.warp import transform as transform_points
 
 
 def _maxValue(arr: numpy.array):
@@ -72,7 +72,7 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
                 input_crs = osr.SpatialReference(wkt=input_dataset.GetProjectionRef())
                 nodata = input_dataset.GetRasterBand(1).GetNoDataValue()
                 if nodata is None:
-                    nodata =_maxValue(input_dataset.GetRasterBand(1).ReadAsArray())
+                    nodata = _maxValue(input_dataset.GetRasterBand(1).ReadAsArray())
                 del input_dataset
                 output_crs = spatial_reference_from_metadata(metadata)
                 if not input_crs.IsSame(output_crs):
@@ -131,7 +131,7 @@ def _reproject_via_reprojectimage(filename: str, metadata: dict, reader: BAGRawR
     min_x, max_x = min(x_vals), max(x_vals)
     min_y, max_y = min(y_vals), max(y_vals)
 
-    reprojected_shape = [int((max_y - min_y)/input_resolution[0]), int((max_x - min_x)/input_resolution[0])]
+    reprojected_shape = [int((max_y - min_y) / input_resolution[0]), int((max_x - min_x) / input_resolution[0])]
 
     reprojected_geotransform = (min_x, input_resolution[0], 0, max_y, 0, input_resolution[1])
 
@@ -224,11 +224,15 @@ def _reproject_geopackage(input_filename: str, output_filename: str, output_crs:
 
         # check to see if the file is already projected in the given CRS
         if output_crs != input_crs:
-            records = [{'id': record['id'], 'geometry': transform_geom(input_crs, output_crs, record['geometry']),
+            records = [{'id': record['id'], 'geometry': transform_geom(input_crs, output_crs.to_dict(), record['geometry']),
                         'properties': record['properties']} for record in input_layer]
 
-            with fiona.open(output_filename, 'w', 'GPKG', layer=output_layer, schema=input_layer.schema, crs=output_crs) as output_layer:
-                output_layer.writerecords(records)
+            with fiona.open(output_filename, 'w', 'GPKG', layer=output_layer, schema=input_layer.schema,
+                            crs=output_crs.to_dict()) as output_layer:
+                if len(records) == 1:
+                    output_layer.write(records[0])
+                else:
+                    output_layer.writerecords(records)
         else:
             output_filename = input_filename
 

@@ -375,7 +375,8 @@ class MetadataDatabase(MetadataTable):
                     if table_has_record(cursor, self.table_name, record, self.primary_key):
                         columns, values = tuple(zip(*((column, value)
                                                       for column, value in zip(columns, values) if column != self.primary_key)))
-                        cursor.execute(f'UPDATE {self.table_name} SET ({", ".join(columns)}) = %s;', [tuple(values)])
+                        cursor.execute(f'UPDATE {self.table_name} SET ({", ".join(columns)}) = %s WHERE {self.primary_key} = %s;',
+                                       [tuple(values), record[self.primary_key]])
                     else:
                         cursor.execute(f'INSERT INTO {self.table_name} ({", ".join(columns)}) VALUES %s;', [tuple(values)])
 
