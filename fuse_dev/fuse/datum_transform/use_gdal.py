@@ -195,7 +195,7 @@ def reproject_transform(transform: Union[tuple, Affine], input_crs: CRS, output_
         raise NotImplementedError(f'could not parse transform of type "{type(transform)}"')
 
 
-def _reproject_geopackage(input_filename: str, output_filename: str, output_crs: CRS, input_layer=None) -> str:
+def _reproject_geopackage(input_filename: str, output_filename: str, output_crs: CRS, input_layer: str = None) -> str:
     """
     Convert a GeoPackage to the provided reference frame, assuming a single layer.
 
@@ -229,10 +229,7 @@ def _reproject_geopackage(input_filename: str, output_filename: str, output_crs:
 
             with fiona.open(output_filename, 'w', 'GPKG', layer=output_layer, schema=input_layer.schema,
                             crs=output_crs.to_dict()) as output_layer:
-                if len(records) == 1:
-                    output_layer.write(records[0])
-                else:
-                    output_layer.writerecords(records)
+                output_layer.writerecords(records)
         else:
             output_filename = input_filename
 
