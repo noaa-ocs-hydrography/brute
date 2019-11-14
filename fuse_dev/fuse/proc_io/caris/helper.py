@@ -23,7 +23,10 @@ def retrieve_scripts_folder() -> str:
     folder_path = os.path.realpath(os.path.join(install_prefix, os.pardir, os.pardir, "Scripts"))
 
     if not os.path.exists(folder_path):
-        raise RuntimeError("The Scripts folder does not exist at: {}".format(folder_path))
+        folder_path = r'C:\ProgramData\Anaconda3\Scripts'
+
+        if not os.path.exists(folder_path):
+            raise RuntimeError("The Scripts folder does not exist at: {}".format(folder_path))
 
     return folder_path
 
@@ -59,7 +62,7 @@ def retrieve_env_path(env_name: str) -> str:
         name of environment
     """
 
-    desired_env_loc = os.path.join(os.environ['conda_prefix'], os.pardir, env_name)
+    desired_env_loc = os.path.join(sys.exec_prefix, os.pardir, env_name)
 
     if os.path.exists(desired_env_loc):
         return desired_env_loc
