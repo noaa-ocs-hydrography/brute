@@ -3,9 +3,9 @@
 Edited by Juliet Kinney
 extract_ehydro_meta_class_CESAM.py
 
-This script takes as an input the filename and path of an USACE e-Hydro .xyz 
+This script takes as an input the filename and path of an USACE e-Hydro .xyz
 text file and pull the metadata from the xyz header and file name.
-Additionally, it passes the matching .xml file and utilizes 
+Additionally, it passes the matching .xml file and utilizes
 the parse_usace_xml script to pull out the relevant metadata if it
 is either FGDC or ISO FGDC USACE metadata format.
 
@@ -13,82 +13,59 @@ update 4/5/19
 major update April 2, 2019
 update July 12,2019 adding in call to pickle reader
 """
-__version__ = 'FUSE'
-import os as os
+
+import os
 import pickle as _pickle
 import re as _re
-
-#_ussft2m = 0.30480060960121924  # US survey feet to meters
-import dateutil.parser as parser
 from datetime import datetime
+
 import numpy as _np
+from dateutil import parser
+from fuse.raw_read import parse_file_pickle
+from fuse.raw_read.usace.usace import USACERawReader
 
-try:
-    import fuse.raw_read.usace.parse_usace_xml as p_usace_xml
-except:
-    try:
-        from . import parse_usace_xml as p_usace_xml
-    except:
-        print('importing fuse.raw_read.usace.parse_usace_xml as p_usace_xml did not work')
-try:
-    import fuse.raw_read.usace.parse_usace_pickle as parse_usace_pickle
-except:
-    try:
-        from . import parse_usace_pickle as parse_usace_pickle
-    except:
-        print('importing fuse.raw_read.usace.parse_usace_pickle as parse_usace_pickle  did not work')
+__version__ = 'FUSE'
 
 
-##-----------------------------------------------------------------------------
+class CESAMRawReader(USACERawReader):
+    """ This class passes back bathymetry & a metadata dictionary from the e-Hydro files """
 
+    def __init__(self):
+        super().__init__('CESAM')
 
-class CESAMRawReader:
-    """
-    This class passes back bathymetry
-    & a metadata dictionary from the e-Hydro files
-    
-    Parameters
-    ----------
-    
-    Returns
-    -------
-    
-    """
-
-
-    def read_metadata(self, infilename: str) -> dict:
+    def read_metadata(self, filename: str) -> dict:
         """
         Read all available meta data.
         returns dictionary
-        
+
         Parameters
         ----------
-        infilename: str :
-        
-        
+        filename: str :
+
+
         Returns
         -------
         dict
-        
+
         """
         version = 'CESAJ'
         self.version = version
-        return retrieve_meta_for_Ehydro_out_onefile(infilename)
+        return retrieve_meta_for_Ehydro_out_onefile(filename)
 
     def read_bathymetry_dat(self, infilename: str) -> _np.array:
         """
         Read the bathymetry from the .dat file. The dat file is less precise,
         but had no header and is in a standardized format
-        
+
         Parameters
         ----------
         infilename :
-        
-        
+
+
         Returns
         -------
         xyz
-        
+
         """
         # get the dat file for CESAJ# Jacksonville
         stub, ext = os.path.splitext(infilename)
@@ -96,7 +73,7 @@ class CESAMRawReader:
         """
         F-strings provide a way to embed expressions inside string literals, using a minimal syntax.
         It should be noted that an f-string is really an expression evaluated at run time, not a constant
-         value. In Python source code, an f-string is a literal string, prefixed with f, which contains 
+         value. In Python source code, an f-string is a literal string, prefixed with f, which contains
         expressions inside braces. The expressions are replaced with their values.
         https://realpython.com/python-f-strings/
         one can also include expressions within the quoted strings, The expressions in an f-string are evaluated in left-to-right order. This is detectable only if the expressions have side effects:
@@ -107,40 +84,40 @@ class CESAMRawReader:
         self.xy  # remove later using still during debugging
         return xyz
 
-    def read_bathymetry(self, infilename: str) -> _np.array:
+    def read_bathymetry(self, filename: str) -> _np.array:
         """
         Read the bathymetry from the xyz files, this tells it to not include
         the header when reading the file
-        
+
         Note: The high resolution multibeam files are available as .xyz on E-Hydro
-        
+
         Parameters
         ----------
-        infilename: str :
-        
+        filename: str :
+
         Returns
         -------
         xyz
-        
+
         """
         version = 'CESAM'
         self.version = version
-        first_instance, commas_present = _start_xyz(infilename)
-        print(infilename)  # remove debugging
+        first_instance, commas_present = _start_xyz(filename)
+        print(filename)  # remove debugging
         if first_instance != '':
             if commas_present == ',':
-                xyz = _np.loadtxt(infilename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
             elif commas_present == 'tab_instead':
-                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
             else:
-                xyz = _np.loadtxt(infilename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter=' ', skiprows=first_instance, usecols=(0, 1, 2))
         else:
             if commas_present == ',':
-                xyz = _np.loadtxt(infilename, delimiter=',', usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter=',', usecols=(0, 1, 2))
             elif commas_present == 'tab_instead':
-                xyz = _np.loadtxt(infilename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter='\t', skiprows=first_instance, usecols=(0, 1, 2))
             else:
-                xyz = _np.loadtxt(infilename, delimiter=' ', usecols=(0, 1, 2))
+                xyz = _np.loadtxt(filename, delimiter=' ', usecols=(0, 1, 2))
         return xyz
 
     def read_bathymetry_by_point(self, infilename):
@@ -150,7 +127,7 @@ class CESAMRawReader:
         Parameters
         ----------
         infilename :
-            
+
 
         Returns
         -------
@@ -167,17 +144,17 @@ def return_surveyid(filenamepath: str, ex_string: str) -> str:
     """
     strip end of filename off
     surveybasename =return_surveyid(filenamepath, ex_string)
-    
+
     Parameters
     ----------
     filenamepath: str :
         param ex_string:
     ex_string: str :
-    
+
     Returns
     -------
     surveybasename: str:
-    
+
     """
     basename = os.path.basename(filenamepath)
     surveybasename = basename.rstrip(ex_string)
@@ -190,17 +167,17 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
     """
     retrieve metadata for USACE E-Hydro files
     function returns metadata dictionary
-    
+
     input is filename of .xyz file with path
-    
+
     Parameters
     ----------
     filename: str :
-    
+
     Returns
     -------
     dict:
-    
+
     """
     # next if pull the subset of the table in the dataframe related to the list of files passed to it.
     merged_meta = {}
@@ -233,21 +210,21 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
         meta_xml = {}
     meta = e_t.parse_ehydro_xyz(f, meta_source='xyz', version='CESAM', default_meta='')
     meta['special_handling'] = _check_special_handling(basename)
-    #special handling is saved with text meta as it has to do with the text file
+    # special handling is saved with text meta as it has to do with the text file
     if meta['special_handling'] == 'FullRES':
-        meta['interpolate']= False
-    #elif meta['special_handling'] == '.ppxyz':
+        meta['interpolate'] = False
+    # elif meta['special_handling'] == '.ppxyz':
     #    meta['interpolate']= False
     else:
-        meta['interpolate']= True
+        meta['interpolate'] = True
     # bringing ehydro table attributs(from ehydro REST API)saved in pickle during ehydro_move #empty dictionary place holder for future ehydro table ingest (make come from imbetween source TBD)
     meta_from_ehydro = {}
-    
+
     e_pick = EhydroPickleReader(xmlfilename)
     meta_from_ehydro = e_pick._read_pickle()  # to handle files
     meta_from_ehydro = e_pick._when_use_pickle(meta_xml)
     meta_from_ehydro = e_pick._when_use_pickle_startdate(meta_xml)
-    
+
     list_keys_empty = []
     combined_row = {}
     subset_row = {}
@@ -293,69 +270,69 @@ def retrieve_meta_for_Ehydro_out_onefile(filename: str) -> dict:
 class EhydroPickleReader(object):
     """
     Reading in ehydro pickle file, looking for conflicts with other metadata inputs
-    and determining when /how to pass on metadata attributes 
+    and determining when /how to pass on metadata attributes
     """
-    
+
     def __init__(self, infilename: str):
         """
-        Pass filename that matches the pickle file you want to match 
+        Pass filename that matches the pickle file you want to match
         but with any extension
         (Here we tend to pass the xmlfilename as it already has been matched
         in the cases of _A.xyz etc., but one could use a .xyz file)
-          
-          
+
+
         Parameters
         ----------
         infilename: str:
-        
-        
+
+
         Returns
         -------
         self.filename = infilename: str:
-        
+
         """
         self.filename = infilename
-    
+
     def _read_pickle(self) -> dict:
         """
         Read in picklefile that ehydro_move creates from the E-Hydro REST API
         table attributes.
-        
-        
+
+
         Parameters
         ----------
         self.infilename: str:
-        
-        
+
+
         Returns
         -------
         pickle_meta: dict:
-        
+
         """
         print(f'reading in pickle based on: {self.filename}')  # making sure pickle passing is working
-        pickle_meta = parse_usace_pickle.read_pickle(self.filename)
+        pickle_meta = parse_file_pickle.read_pickle(self.filename)
         self.meta_from_ehydro = pickle_meta
         return pickle_meta
 
     def _Check_for_SPCSconflicts(self, meta_xml):
         """
         Checking to see if the SPCS codes conflict between sources
-        
+
         Parameters
         ----------
         meta_xml: dict:
         self.meta_from_ehydro: dict
-        
+
         Returns
         -------
         no_SPCS_conflict: str:
         no_SPCS_conflict_withpickle: str:
         meta_from_ehydro: dict:
-        
+
         """
-        
+
         meta_from_ehydro = self.meta_from_ehydro
-        
+
         no_SPCS_conflict = ''
         no_SPCS_conflict_withpickle = ''
         if 'SPCS_conflict_XML' in meta_xml:
@@ -363,7 +340,7 @@ class EhydroPickleReader(object):
                 no_SPCS_conflict = 'False'
             else:
                 no_SPCS_conflict = 'True'
-        
+
         if 'SOURCEPROJECTION' in meta_from_ehydro:
             if 'from_fips' in meta_xml:
                 meta_xml = p_usace_xml.xml_SPCSconflict_otherspcs(meta_xml,
@@ -378,7 +355,7 @@ class EhydroPickleReader(object):
                 no_SPCS_conflict = 'False'
                 # We know for CEMVN thath this will conflict with some of the SPCS values but have a method that works.
                 # this way we pass on that there are conflicts but do not raise a flag unless the final from_fips disagrees
-        
+
         meta_from_ehydro['no_SPCS_conflict_withpickle'] = no_SPCS_conflict_withpickle
         self.meta_from_ehydro
         return no_SPCS_conflict, no_SPCS_conflict_withpickle, meta_from_ehydro
@@ -386,28 +363,28 @@ class EhydroPickleReader(object):
     def _when_use_pickle(self, meta_xml):
         """
         If there is no SPCS code in the xml, use the pickle/ REST API SPCS code
-        
+
         Additional check to see if their is a conflict. District specific rules on conflict resolution may need to apply.
         1st assumption is that the REST API has the correct SPCS code according to E-Hydro team. (John McKenzie) and reinterated by
         District contacts thus far (as of June 2019) base on E-hydro upload procedures.
-        
+
         Parameters
         ----------
         meta_xml: dict:
         self.meta_from_ehydro : dict:
-        
-        
+
+
         Returns
         -------
         meta_from_ehydro: dict:
-        
-        
+
+
         """
         meta_from_ehydro = self.meta_from_ehydro
         if 'SOURCEPROJECTION' in meta_from_ehydro:
             if 'from_FIPS' in meta_xml:
-                # run check for conflict               
-                meta_xml['xml_from_fips'] = meta_xml['from_FIPS']#record xml
+                # run check for conflict
+                meta_xml['xml_from_fips'] = meta_xml['from_FIPS']  # record xml
                 no_SPCS_conflict, no_SPCS_conflict_withpickle = self._Check_for_SPCSconflicts(meta_xml,
                                                                                               meta_from_ehydro)
                 if no_SPCS_conflict_withpickle == 'False':
@@ -425,13 +402,13 @@ class EhydroPickleReader(object):
         """
         if xml_meta is blank and if meta does not have information use pickle data for date
         next: Check survey start & end date against filename and other locations
-        
+
         Parameters
         ----------
         meta_xml :
         self: # uses meta_from_ehydro :
-        
-        
+
+
         Returns
         """
         meta_from_ehydro = self.meta_from_ehydro
@@ -449,7 +426,7 @@ class EhydroPickleReader(object):
 ###----------------------------------------------------------------------------
 class XYZMetaReader(object):
     """Extract both information from the filename as well as from the text file's header"""
-    
+
     def __init__(self, preloadeddata, version='', filename=''):
         """
         xyz file (the ascii text file) handler for metadata parsing  gets initiated here
@@ -471,8 +448,17 @@ class XYZMetaReader(object):
     def parse_ehydro_xyz(self, infilename: str, meta_source: str = 'xyz', version: str = 'CESAM',
                          default_meta: str = '') -> dict:  # need to change version to None
         """
+        Parse an USACE eHydro file for the available meta data.
+
+        Default metadata (values predetermined for the file but not in the file)
+        can be stored at the location defined by 'default_meta' as a pickled
+        dicitonary.  If no path is provided the dictionary in the same folder as
+        the data but in the file 'default.pkl' will be used.  If this file does
+        not exist no default metadata will be loaded.  If the same keyword for
+        the metadata exists both in the file metadata and in the default location,
+        the file metadata will take precidence.
         'CESAM'
-        
+
         Parameters
         ----------
         infilename :
@@ -483,22 +469,13 @@ class XYZMetaReader(object):
             Default value = '')
         meta_source :
              (Default value = 'xyz')
-        
+
         Returns
         -------
-        
+        dict
+            dictionary of metadata
         """
-        """
-        Parse an USACE eHydro file for the available meta data.
-        
-        Default metadata (values predetermined for the file but not in the file)
-        can be stored at the location defined by 'default_meta' as a pickled
-        dicitonary.  If no path is provided the dictionary in the same folder as
-        the data but in the file 'default.pkl' will be used.  If this file does
-        not exist no default metadata will be loaded.  If the same keyword for
-        the metadata exists both in the file metadata and in the default location,
-        the file metadata will take precidence.
-        """
+
         name_meta = self.parse_ehydro_filename(infilename)
         if 'start_date' in name_meta:
             name_meta['filename_date'] = name_meta['start_date']
@@ -538,15 +515,15 @@ class XYZMetaReader(object):
             optional : this is the contents of the condition field
             from_path : this is named to match other scripts downstream
             from_filename : this is also named to match other file downstream
-        
+
         Parameters
         ----------
         infilename :
-        
-        
+
+
         Returns
         -------
-        
+
         """
         base = os.path.basename(infilename)
         name, ext = os.path.splitext(base)
@@ -582,17 +559,17 @@ class XYZMetaReader(object):
             PROJECT_NAME
             SURVEY_NAME
             DATES_OF_SURVEY
-        
+
         Parameters
         ----------
         infilename :
             param version:  (Default value = None)
         version :
              (Default value = None)
-        
+
         Returns
         -------
-        
+
         """
         header = []
         metalist = []
@@ -648,17 +625,17 @@ class XYZMetaReader(object):
         picked dictionary), look for the default file.  If that files does not
         exist, look for a file named 'default.pkl' in the same directory as the
         provided file name.
-        
+
         Parameters
         ----------
         infilename :
             param default_meta:
         default_meta :
-            
-        
+
+
         Returns
         -------
-        
+
         """
         if len(default_meta) == 0:
             path, infile = os.path.split(infilename)
@@ -678,15 +655,15 @@ def get_xml(filename):
     input USACE .xyz/.XYZ filename or any last extension and return .xml
     xmlname = get_xml(filename) this makes this friendlier to .ppxyz files
     for instance
-    
+
     Parameters
     ----------
     filename :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     basef = filename.rpartition('.')[0]
     xml_name = f'{basef}.xml'
@@ -699,17 +676,17 @@ def get_xml_xt(filename, extension):
     output will be the .xml file name
     (_A.xyz for instance or _FULL.XYZ are examples of extensions)
     xmlname = get_xml_xt(filename, extension)
-    
+
     Parameters
     ----------
     filename :
         param extension:
     extension :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     end_len = len(extension)
     if filename[-end_len:].upper() == extension:
@@ -725,20 +702,20 @@ def get_xml_match(f):
     input USACE .xyz/.XYZ filename or any last extension and return .xml
     it will try to match the non-full survey to the full density survey
     inorder to use the matching xml
-    
+
     Parameters
     ----------
     f :
-        
-    
+
+
     Returns
     -------
-    
+
     """
-    xmlfilename=''
+    xmlfilename = ''
     ext_list = ['_FULL.XYZ', '_A.XYZ', '.PPXYZ']
     for extension in ext_list:
-        if f.upper().find(extension)>0:
+        if f.upper().find(extension) > 0:
             xmlfilename = get_xml_xt(f, extension)
     if xmlfilename == '':
         xmlfilename = get_xml(f)
@@ -750,19 +727,19 @@ def _check_special_handling(basename):
     """
     Doing a check if the xyz file type is full resolution or may have
     other special handling flags that should be passed
-    
+
     Parameters
     ----------
     basename :
-        
-    
+
+
     Returns
     -------
     """
     special_handling = ''
     if basename.find('.ppxyz') > 0:
         special_handling = 'ppxyz'
-    full_res = [ '_A.XYZ', '_FULL.XYZ']#_A.xyz, _FULL.xyz
+    full_res = ['_A.XYZ', '_FULL.XYZ']  # _A.xyz, _FULL.xyz
     for ext_full in full_res:
         if basename.upper().find(ext_full) > 0:
             special_handling = 'FullRES'
@@ -775,14 +752,14 @@ def _start_xyz(infilename):
     """
     looks for the first line of the xyz data after the header
     returns the row number of first line of data
-    
+
     Parameters
     ----------
     infilename :
-    
+
     Returns
     -------
-    
+
     """
     first_instance = ''
     numberofrows = []
@@ -803,17 +780,17 @@ def _start_xyz(infilename):
 def _is_header2(line, version=None):
     """
     looks at header
-    
+
     Parameters
     ----------
     line :
         param version:  (Default value = None)
     version :
          (Default value = None)
-    
+
     Returns
     -------
-    
+
     """
     if version is None:
         version = ''
@@ -840,15 +817,15 @@ def _is_header2(line, version=None):
 def _parse_projectname(line):
     """
     Parse the project name line.
-    
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('=')[-1]
     name = name.strip('\n')
@@ -858,16 +835,16 @@ def _parse_projectname(line):
 
 def _parse_notes_chart(line):
     """
-    
-    
+
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     lines = line.split('\\n')
     metadata = {'notes_chart': line}
@@ -908,15 +885,15 @@ def _parse_notes_chart(line):
 def _parse_note(line):
     """
     Parse the notes line.
-    
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     metadata = {}
     # find the horizontal datum information.
@@ -969,15 +946,15 @@ def _parse_note(line):
 def _parse_surveyname(line):
     """
     Parse the survey name line.
-    
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('=')[-1]
     name = name.strip('\n')
@@ -988,15 +965,15 @@ def _parse_surveyname(line):
 def _parse_surveydates(line):
     """
     Parse the project dates line.
-    
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     metadata = {}
     datestr = line.split('=')[-1]
@@ -1020,15 +997,15 @@ def _xyztext2date(textdate):
     """
     Take the date as provided in a text string as "day month year" as in
     "20 March 2017" and return the format "YearMonthDay" as in "20170320".
-    
+
     Parameters
     ----------
     textdate :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     try:
         date = datetime.strptime(textdate, '%d %B %Y')
@@ -1049,15 +1026,15 @@ def _parse_sounding_frequency(line):
     Note: LOW & HIGH are usually settings for the
     single beam in New Orleans
     400kHz seems to be their multibeam.
-    
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('SOUNDING_FREQUENCY==')[-1].strip('\n')
     metadata = {'sounding_frequency': name}
@@ -1067,15 +1044,15 @@ def _parse_sounding_frequency(line):
 def _parse_survey_type(line):
     """
     returns survey type
-    
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('SURVEY_TYPE==')[-1]
     name = name.strip('\n')
@@ -1086,15 +1063,15 @@ def _parse_survey_type(line):
 def _parse_survey_crew(line):
     """
     returns survey crew
-    
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('SURVEY_CREW==')[-1]
     name = name.strip('\n')
@@ -1105,15 +1082,15 @@ def _parse_survey_crew(line):
 def _parse_sea_condition(line):
     """
     sea conditions
-    
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('SEA_CONDITION==')[-1]
     name = name.strip('\n')
@@ -1124,15 +1101,15 @@ def _parse_sea_condition(line):
 def _parse_vessel_name(line):
     """
     vessel name
-    
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('VESSEL_NAME==')[-1]
     name = name.strip('\n')
@@ -1143,15 +1120,15 @@ def _parse_vessel_name(line):
 def _parse_LWRP_(line):
     """
     Checks to see if its in Low Water Reference Plane
-    
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     name = line.split('LWRP==')[-1]
     name = name.split('LWRP=')[-1]
@@ -1175,16 +1152,16 @@ def _parse_LWRP_(line):
 def _parse_Gage_Reading(line, allcap1):
     """
     Looks for the water level Gage
-    
+
     Parameters
     ----------
     line :
         param allcap1:
     allcap1 :
-    
+
     Returns
     -------
-    
+
     """
     if allcap1 == 1:
         name = line.split('GAGE_READING==')[-1]
@@ -1200,14 +1177,14 @@ def _parse_Gage_Reading(line, allcap1):
 def _parse_sound_velocity(line):
     """
     Looks for Sound Velocity
-    
+
     Parameters
     ----------
     line :
-    
+
     Returns
     -------
-    
+
     """
     name = line.split('SOUND VELOCITY')[-1]
     name = name.strip('\n')
@@ -1218,14 +1195,14 @@ def _parse_sound_velocity(line):
 def _parse_Ranges(line):
     """
     looks at ranges
-    
+
     Parameters
     ----------
     line :
-    
+
     Returns
     -------
-    
+
     """
     name = line.split('Range:')[-1]
     name = name.strip('\n')
@@ -1236,15 +1213,15 @@ def _parse_Ranges(line):
 def _is_RTK(line):
     """
     pulls RTK line
-    
+
     Parameters
     ----------
     line :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     pattern_coordinates = '[RTK]'  # at least six digits# should be seven then . plus two digits
     if _re.findall(pattern_coordinates, line) is not None:
@@ -1256,15 +1233,15 @@ def _is_RTK(line):
 def _is_RTK_Tide(line):
     """
     looks for RTK Tide
-    
+
     Parameters
     ----------
     line :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     if _re.findall('[VRS RTK TIDES]', line) is not None:
         return False
@@ -1275,15 +1252,15 @@ def _is_RTK_Tide(line):
 def _parse_processedBy(line):
     """
     parse ProcessedBy
-    
+
     Parameters
     ----------
     line :
-        
-    
+
+
     Returns
     -------
-    
+
     """
     metadata = {'ProcessedBy': line}
     return metadata
@@ -1292,15 +1269,15 @@ def _parse_processedBy(line):
 def _parse_CheckedBy(line):
     """
     parse_CheckedBy
-    
+
     Parameters
     ----------
     line :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     metadata = {'CheckedBy': line.split('CheckedBy==')[1]}
     return metadata
@@ -1308,65 +1285,67 @@ def _parse_CheckedBy(line):
 
 def _parse_ReviewedBy(line):
     """
-    
+
     Parameters
     ----------
     line :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     metadata = {'ReviewedBy': line.split('ReviewedBy==')[1]}
     return metadata
 
 
 ##-----------------------------------------------------------------------------
-    
-def use_best_spcs(merged_meta:dict) ->dict:
+
+def use_best_spcs(merged_meta: dict) -> dict:
     """
     use_best_spcs()
-    
+
     take merged_meta dictionary and use 'ehydro_from_fips' as
     the from_fips value. if it was produced by the pickle SPCS checker:
     e_pick._when_use_pickle_() it is the winner if it was calculated.
-    
+
     Otherwise if there is a conflict between ehydro and the xml derived spcs,
     both SPCS codes will output to the from_fips attribute
-    
+
     *A conflict in the SPCS codes within the xml alone will not make
-    this occur its only if the final value disagrees 
-    
+    this occur its only if the final value disagrees
+
     Parameters
     ----------
     merged_meta: dict
-        
+
     Returns
-    -------   
+    -------
     merged_meta: dict
-    
+
     """
-    if 'ehdyro_from_fips' in merged_meta:   
+    if 'ehdyro_from_fips' in merged_meta:
         merged_meta['from_fips'] = merged_meta['ehdyro_from_fips']
     return merged_meta
+
+
 ##-----------------------------------------------------------------------------
 
-def check_date_order(m:dict, mm:dict):
+def check_date_order(m: dict, mm: dict):
     """
     ingest dates from e-hydro file name, and xml if available
     do a date check.
-    
+
     Parameters
     ----------
     m :
         param mm:
     mm :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     date_list = []  # date_list = [begdate, enddate,filename_date]
     if 'begdate' in m:
@@ -1409,17 +1388,17 @@ def check_abst_date(filename_date, daterange):
     Expecting values from:
     #filename_date = m['filename_date']
     #dateramge = xml_meta['daterange']
-    
+
     Parameters
     ----------
     filename_date :
         param daterange:
     daterange :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     next_date = []
     mnum = ''
@@ -1498,15 +1477,15 @@ def check_abst_date(filename_date, daterange):
 def check_datelist(next_date):
     """
     checks date list
-    
+
     Parameters
     ----------
     next_date :
-    
-    
+
+
     Returns
     -------
-    
+
     """
     dateonly_list = []
     for day in next_date:
@@ -1518,17 +1497,17 @@ def check_datelist(next_date):
 def check_date_format_hasday(date_string, b_or_e=None):
     """
     check_date_format_hasday
-    
+
     Parameters
     ----------
     date_string :
         param b_or_e:  (Default value = None)
     b_or_e :
          (Default value = None)
-    
+
     Returns
     -------
-    
+
     """
     pattern_missing_valid_day = '[\d][\d][\d][\d][\d][\d][0][0]'
     if b_or_e is None:

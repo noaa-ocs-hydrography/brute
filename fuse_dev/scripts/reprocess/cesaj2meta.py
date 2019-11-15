@@ -23,7 +23,7 @@ if __name__ == '__main__':
             infilename = f['from_path']
             print(f'Begin working on {infilename}')
             processor.process(infilename)
-        if 'interpolate' in f and f['interpolate'].upper() == 'TRUE':
+        if 'interpolate' in f and f['interpolate']:
             interp_name = processor._interpolator.gettag(f['from_filename'])
             if interp_name not in flist:
                 print(f'Begin working on {infilename}')

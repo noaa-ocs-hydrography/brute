@@ -3,15 +3,18 @@ channels:
   - conda-forge
 dependencies:
   - python=3.6.7
-  - conda-forge::gdal=2.4.2
+  - conda-forge::gdal=2.4
   - numpy
   - scipy
   - matplotlib
   - fiona
-  - mongoengine
+  - rasterio
   - astropy
   - pytables
-  - pykrige
+  - conda-forge::pykrige
+  - psycopg2
   - lxml
   - requests
   - spyder
+  - wxpython
+  - numba

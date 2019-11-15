@@ -11,20 +11,31 @@ import pickle as _pickle
 import re as _re
 import sys as _sys
 from datetime import datetime as _datetime
+from glob import glob as _glob
 from typing import Union
 from xml.etree.ElementTree import parse as _parse
 
 import numpy as _np
 from fuse.datum_transform import usefips as _usefips
+from fuse.raw_read.raw_read import RawReader
 
-from . import parse_usace_pickle
-from . import parse_usace_xml
+from fuse.raw_read import parse_file_pickle
+from fuse.raw_read.usace import parse_usace_xml
 
+_ehydro_quality_metrics = {
+    'complete_coverage': False,
+    'bathymetry': True,
+    'vert_uncert_fixed': 0.5,
+    'vert_uncert_vari': 0.1,
+    'horiz_uncert_fixed': 5.0,
+    'horiz_uncert_vari': 0.05,
+    'feat_detect': False,
+}
 
-class USACERawReader:
-    def __init__(self, version: str = None):
-        self.version = version
-        self.ussft2m = 0.30480060960121924  # US survey feet to meters
+class USACERawReader(RawReader):
+    def __init__(self, district: str = None):
+        self.district = district
+        self.survey_feet_per_meter = 0.30480060960121924  # US survey feet to meters
         self.xyz_suffixes = ('_A', '_FULL')
         self.xyz_files = {}
 
@@ -35,7 +46,7 @@ class USACERawReader:
             ch.setLevel(_logging.DEBUG)
             self._logger.addHandler(ch)
 
-    def read_metadata(self, filename: str) -> dict:
+    def read_metadata(self, survey_folder: str) -> dict:
         """
         Read all available meta data.
 
@@ -45,27 +56,38 @@ class USACERawReader:
             3. The survey's ``.xyz`` header.
             4. The metadata pickle pulled from eHydro.
 
+        If the data are to be interpolated two dictionaries are returned, one
+        that represents the interpolated dataset and one that is not.
+
         Parameters
         ----------
-        filename
-            File path of the input ``.xyz`` data
+        survey_folder
+            Folder path of the input ``.xyz`` data
 
         Returns
         -------
-        dict
-            The complete metadata pulled from multiple sources
+        list
+            The complete metadata pulled from multiple sources within the
+            survey as a dict within a list.
         """
 
         meta_supplement = {}
-        basexyzname, suffix = self.name_gen(filename, ext='.xyz')
+        meta_determine, filename = self._data_determination(meta_supplement, survey_folder)
         meta_xml = self._parse_usace_xml(filename)
-        meta_xyz = self._parse_ehydro_xyz_header(basexyzname)
+        meta_xyz = self._parse_ehydro_xyz_header(filename)
         meta_filename = self._parse_filename(filename)
         meta_pickle = self._parse_pickle(filename)
         meta_date = self._parse_start_date(filename, {**meta_pickle, **meta_xyz, **meta_xml})
-        meta_determine = self._data_determination(meta_supplement, filename)
         meta_supplement = {**meta_determine, **meta_date, **meta_supplement}
-        return {**meta_pickle, **meta_xyz, **meta_filename, **meta_xml, **meta_supplement}
+        meta_combined = {**meta_pickle, **meta_xyz, **meta_filename, **meta_xml, **meta_supplement}
+        meta_final = self._finalize_meta(meta_combined)
+        if meta_final['interpolate']:
+            meta_orig = meta_final.copy()
+            meta_orig['interpolate'] = False
+            meta_final['from_filename'] = f"{meta_orig['from_filename']}.interpolate" 
+            return [meta_orig, meta_final]
+        else:
+            return [meta_final]
 
     def read_bathymetry(self, filename: str) -> _np.array:
         """
@@ -83,7 +105,8 @@ class USACERawReader:
             input file
         """
 
-        return self._parse_ehydro_xyz_bathy(filename)
+        bathy = self._parse_ehydro_xyz_bathy(filename)
+        return bathy
 
     def read_bathymetry_by_point(self, filename: str) -> _np.array:
         """
@@ -122,7 +145,7 @@ class USACERawReader:
         root = _os.path.split(filename)[0]
         pickle_name = self.name_gen(filename, ext='.pickle', sfx=False)
         if _os.path.isfile(pickle_name):
-            pickle_dict = parse_usace_pickle.read_pickle(pickle_name, pickle_ext=True)
+            pickle_dict = parse_file_pickle.read_pickle(pickle_name, pickle_ext=True)
             if 'poly_name' in pickle_dict:
                 pickle_dict['support_files'] = [_os.path.join(root, pickle_dict['poly_name'])]
         else:
@@ -256,7 +279,22 @@ class USACERawReader:
         else:
             return base
 
-    def _data_determination(self, meta_dict: dict, infilename: str) -> dict:
+    def _xyz_precedence(self, file_list: [str]) -> (str, bool):
+        xyz_scores = {}
+        file_list = [xyz for xyz in file_list if _os.path.splitext(xyz)[1].lower() == '.xyz']
+        for xyz in file_list:
+            xyz_upper = xyz.upper()
+            if '_FULL.' in xyz_upper:
+                xyz_scores[3] = xyz
+            elif '_A.' in xyz_upper:
+                xyz_scores[2] = xyz
+            else:
+                xyz_scores[1] = xyz
+
+        max_score = max(list(xyz_scores.keys()))
+        return xyz_scores[max_score], True if max_score != 3 else False
+
+    def _data_determination(self, meta_dict: dict, survey_folder: str) -> dict:
         """
         Determines cerain metadata values based on the known quality of the
         data.
@@ -269,7 +307,7 @@ class USACERawReader:
         ----------
         meta_dict
             Dictionary to add values to
-        infilename
+        survey_folder
             Complete filepath of the input data
 
         Returns
@@ -278,18 +316,19 @@ class USACERawReader:
             The metadata assigned via this method
         """
 
-        base, suffix = self.name_gen(infilename)
-        meta_dict['file_size'] = self._size_finder(infilename)
-        if suffix is not None and suffix.upper() == '_FULL':
-            meta_dict['interpolate'] = False
-            meta_dict['from_horiz_reolution'] = 3
-        elif suffix is not None and suffix.upper() == '_A':
-            self._check_grid(infilename)
-            meta_dict['interpolate'] = False
-        else:
-            meta_dict['interpolate'] = True
+        if _os.path.isfile(survey_folder):
+            survey_folder = _os.path.dirname(survey_folder)
 
-        return meta_dict
+        xyz_files = _glob(_os.path.join(survey_folder, '*xyz'))
+        if len(xyz_files) < 1:
+            raise RuntimeError('No files to process in {survey_folder}')
+        filename, meta_dict['interpolate'] = self._xyz_precedence(xyz_files)
+
+        meta_dict['file_size'] = self._size_finder(filename)
+        meta_dict['from_filename'] = self.name_gen(_os.path.split(filename)[1], '', sfx=None)
+        meta_dict['from_path'] = filename
+
+        return meta_dict, filename
 
     def _size_finder(self, filepath: Union[str, _os.PathLike]) -> int:
         """
@@ -309,10 +348,10 @@ class USACERawReader:
         return int(_np.round(_os.path.getsize(filepath) / 1000))
 
     def _check_grid(self, infilename):
-        data = self._parse_ehydro_xyz_bathy(infilename)
+        #        data = self._parse_ehydro_xyz_bathy(infilename)
         ...
 
-    def _parse_ehydro_xyz_header(self, infilename: str, meta_source: str = 'xyz', default_meta: str = '') -> dict:
+    def _parse_ehydro_xyz_header(self, filename: str, meta_source: str = 'xyz', default_meta: str = '') -> dict:
         """
         Parse an USACE eHydro file for the available meta data.
 
@@ -339,29 +378,34 @@ class USACERawReader:
         dict
             The metadata found via this method
         """
-
-        name_sections = ('projid', 'uniqueid', 'subprojid', 'start_date',
-                         'statuscode', 'optional')
-        name_meta = self._parse_filename(infilename)
-        if meta_source == 'xyz':
-            file_meta = self._parse_xyz_header(infilename, mode=self.version)
-        elif meta_source == 'xml':
-            file_meta = self._parse_ehydro_xml(infilename)
-        default_meta = self._load_default_metadata(infilename, default_meta)
-        merged_meta = {**default_meta, **name_meta, **file_meta}
-        if 'from_horiz_unc' in merged_meta:
-            if merged_meta['from_horiz_units'] == 'US Survey Foot':
-                val = self.ussft2m * float(merged_meta['from_horiz_unc'])
-                merged_meta['horiz_uncert'] = val
-        if 'from_vert_unc' in merged_meta:
-            if merged_meta['from_vert_units'] == 'US Survey Foot':
-                val = self.ussft2m * float(merged_meta['from_vert_unc'])
-                merged_meta['vert_uncert_fixed'] = val
-                merged_meta['vert_uncert_vari'] = 0
-        sorind = '_'.join([name_meta[key] for key in name_sections if key in name_meta])
-        merged_meta['source_indicator'] = f'US,US,graph,{sorind}'
-        # merged_meta['script_version'] = __version__
-        return merged_meta
+        meta = {}
+        for file_ext in ('.xyz', '_A.xyz', '_FULL.xyz'):
+            infilename, suffix = self.name_gen(filename, ext=file_ext)
+            if not _os.path.isfile(infilename):
+                continue
+            name_sections = ('projid', 'uniqueid', 'subprojid', 'start_date',
+                             'statuscode', 'optional')
+            name_meta = self._parse_filename(infilename)
+            sorind = '_'.join([name_meta[key] for key in name_sections if key in name_meta])
+            name_meta['source_indicator'] = f'US,US,graph,{sorind}'
+            if meta_source == 'xyz':
+                file_meta = self._parse_xyz_header(infilename, mode=self.district)
+            elif meta_source == 'xml':
+                file_meta = self._parse_ehydro_xml(infilename)
+            default_meta = self._load_default_metadata(infilename, default_meta)
+            merged_meta = {**default_meta, **name_meta, **file_meta}
+            if 'from_horiz_unc' in merged_meta:
+                if merged_meta['from_horiz_units'] == 'US Survey Foot':
+                    val = self.survey_feet_per_meter * float(merged_meta['from_horiz_unc'])
+                    merged_meta['horiz_uncert'] = val
+            if 'from_vert_unc' in merged_meta:
+                if merged_meta['from_vert_units'] == 'US Survey Foot':
+                    val = self.survey_feet_per_meter * float(merged_meta['from_vert_unc'])
+                    merged_meta['vert_uncert_fixed'] = val
+                    merged_meta['vert_uncert_vari'] = 0
+            # merged_meta['script_version'] = __version__
+            meta = {**meta, **merged_meta}
+        return meta
 
     def _parse_filename(self, infilename: str) -> dict:
         """
@@ -449,10 +493,10 @@ class USACERawReader:
         # get the header
         with open(filename, 'r') as xyz_file:
             for line in xyz_file.readlines():
-                if line == '\n':
+                if len(line.strip()) == 0:
                     continue
                 elif self._is_header(line):
-                    header.append(line)
+                    header.append(line.strip())
                 else:
                     break
 
@@ -526,8 +570,10 @@ class USACERawReader:
             metadata['from_horiz_key'] = fips
             metadata['from_wkt'] = _usefips.fips2wkt(fips)
             horiz_units = horiz_datum.split(',')[1]
-            if horiz_units.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+            if horiz_units.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
                 metadata['from_horiz_units'] = 'US Survey Foot'
+            elif horiz_units.strip().upper() in ('INTL FOOT'):
+                metadata['from_horiz_units'] = 'Intl Foot'
             else:
                 metadata['from_horiz_units'] = horiz_units.strip()
             metadata['from_horiz_datum'] = horiz_datum
@@ -667,17 +713,33 @@ class USACERawReader:
             return meta
         if key == 'Horizontal_Datum':
             meta['from_horiz_datum'] = value.strip()
-            fips = value.split(',')[1]
-            fips = fips.strip().split()[0].split('-')[1]
-            meta['from_horiz_key'] = fips
+            if ',' in value and '-' in value:
+                fips = value.split(',')[1]
+                fips = fips.strip().split()[0].split('-')[1]
+            elif ',' not in value and '-' in value:
+                fips = value.split(' ')
+                fips = [segment.strip() for segment in fips if '-' in segment][0]
+                fips = fips.strip().split()[0].split('-')[1]
+            elif _re.compile(r'[0-9]{4}').search(value.strip()):
+                if ',' in value:
+                    value = _re.sub(',', '', value)
+                fips = value.split(' ')
+                fips = [segment.strip() for segment in fips if _re.compile(r'[0-9]{4}').search(segment.strip())][0]
+            try:
+                fips = _re.sub(r'\D', '', fips)
+                meta['from_horiz_key'] = fips
+            except NameError:
+                _logging.debug(_logging.DEBUG, f"Unable to parse 'from_horiz_key' from: {value}")
             try:
                 meta['from_wkt'] = _usefips.fips2wkt(int(fips))
             except ValueError as e:
                 _logging.debug(_logging.DEBUG, f'ValueError: {e}')
                 return meta
         elif key == 'Distance_Units':
-            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
                 meta['from_horiz_units'] = 'US Survey Foot'
+            elif value.strip().upper() in ('INTL FOOT'):
+                meta['from_horiz_units'] = 'Intl Foot'
             else:
                 meta['from_horiz_units'] = value.strip()
         elif key == 'Vertical_Datum':
@@ -687,7 +749,7 @@ class USACERawReader:
                 meta['from_vert_key'] = 'MLLW'
 
         elif key == 'Depth_Units':
-            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET'):
+            if value.strip().upper() in ('US SURVEY FEET', 'U.S. SURVEY FEET', 'FEET'):
                 meta['from_vert_units'] = 'US Survey Foot'
             else:
                 meta['from_vert_units'] = value.strip()
@@ -831,6 +893,52 @@ class USACERawReader:
             txt_meta['fips'] = int(fips.group())
         return txt_meta
 
+    def _finalize_meta(self, meta):
+        """
+        Update the metadata to standard values.
+
+        Parameters
+        ----------
+        meta
+            The combined metadata dictionary to be updated with standard
+            values.
+
+        Returns
+        -------
+        dict
+            The final metadata for return to the metadata requesting method
+
+        """
+        # if the data is coming from this reader these should be true.
+        meta['read_type'] = 'ehydro'
+        meta['posted'] = False
+        meta['interpolated'] = 'False'
+        meta['from_horiz_frame'] = 'NAD83'
+        meta['from_horiz_type'] = 'spc'
+        # make sure the dates are useful
+        if 'end_date' not in meta and 'start_date' in meta:
+            meta['end_date'] = meta['start_date']
+        elif ('end_date' in meta and meta['end_date'] == '') and 'start_date' in meta:
+            meta['end_date'] = meta['start_date']
+        # convert from text to standard values
+        if 'from_horiz_units' in meta:
+            if meta['from_horiz_units'].upper() in ('US SURVEY FOOT'):
+                meta['from_horiz_units'] = 'us_ft'
+            elif meta['from_horiz_units'].upper() in ('INTL FOOT'):
+                meta['from_horiz_units'] = 'ft'
+            else:
+                raise ValueError(f'Input datum units are unknown: {meta["from_horiz_units"]}')
+        if 'from_vert_key' in meta:
+            meta['from_vert_key'] = meta['from_vert_key'].lower()
+        if 'from_vert_units' in meta:
+            if meta['from_vert_units'].upper() == 'US SURVEY FOOT':
+                meta['from_vert_units'] = 'us_ft'
+            else:
+                raise ValueError(f'Input datum units are unknown: {meta["from_vert_units"]}')
+        # add the default quality metrics
+        final_meta = {**_ehydro_quality_metrics, **meta}
+        return final_meta
+
     def _parse_ehydro_xyz_bathy(self, filename: str) -> _np.array:
         """
         Read the best available point bathymetry for the district.
@@ -852,16 +960,24 @@ class USACERawReader:
 
         # get the header
         with open(filename, 'r') as input_file:
+            message = f'{filename}: parser '
+            comma = False
             for line in input_file.readlines():
                 if line not in ('\n', '\x1a', '') and not self._is_header(line):
                     if ',' in line:
-                        message = f'found comma-delimited file "{filename}"'
-                        self._logger.log(_logging.DEBUG, message)
-                        raise ValueError(message)
+                        comma = True
+                        row = [float(entry.strip()) for entry in line.split(',')]
+                        if len(row) == 3:
+                            points.append(row)
                     else:
                         row = [float(entry) for entry in line.split()]
                         if len(row) == 3:
                             points.append(row)
+            if comma:
+                message += f'found comma-delimited file "{filename}"'
+            else:
+                message += f'found whitespace-delimited file (tab or space) "{filename}"'
+            self._logger.log(_logging.DEBUG, message)
 
         points = _np.asarray(points)
         return points

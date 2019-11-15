@@ -15,14 +15,9 @@ update July 12,2019 adding in call to pickle reader
 Fri Aug  9 08:50:35 2019; Casiano Edits
 """
 
-from . import usace
+from fuse.raw_read.usace.usace import USACERawReader
 
 
-class CESPLRawReader(usace.USACERawReader):
-    """An abstract raw data reader."""
-
+class CESPLRawReader(USACERawReader):
     def __init__(self):
-        """
-        No init needed?
-        """
-        usace.USACERawReader.__init__(self, version='CESPL')
+        super().__init__('CESPL')

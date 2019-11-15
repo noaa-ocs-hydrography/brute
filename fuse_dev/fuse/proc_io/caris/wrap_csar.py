@@ -14,7 +14,6 @@ import sys
 import caris.coverage as cc
 import numpy as np
 
-
 def write_csar(dataset, m: dict):
     """
     Convert a gdal dataset into a csar.
@@ -33,26 +32,10 @@ def write_csar(dataset, m: dict):
     -------
 
     """
+    band_names = {0: 'Elevation', 1: 'Uncertainty'}
 
     print('write_csar')
-    dataset = np.array(dataset)
-    # print('{}\n{}\n{}'.format(m, dataset, dataset.shape))
-    dataset[dataset == m['nodata']] = np.nan
-    d_min = np.nanmax(dataset)
-    dataset[dataset == np.nan] = m['nodata']
-    d_max = np.nanmin(dataset)
-    z_dir = cc.Direction.HEIGHT
-    layerName = "Elevation"
-    band_info = cc.BandInfo(name=layerName, type=cc.DataType.FLOAT32, tuple_length=1, direction=z_dir, units='m',
-                            category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.BICUBIC, minimum=d_min,
-                            maximum=d_max)
-    resolution = [m['resy'], m['resx']]
-    origin = [m['originx'], m['originy']]
-    #    origin = [0,0]
-    dimensions = [m['dimx'], m['dimy']]
-    crs = m['crs']
     name = m['outfilename']
-    bands = [band_info]
 
     while os.path.exists(name) and os.path.exists(name + '0'):
         try:
@@ -64,20 +47,75 @@ def write_csar(dataset, m: dict):
         except:
             pass
 
-    raster = cc.create_raster(name, crs, origin, resolution, dimensions, bands)
-    idx = (dataset < m['nodata']).astype(np.int)
+    resolution = [m['resy'], m['resx']]
+    origin = [m['originx'], m['originy']]
+    dimensions = [m['dimx'], m['dimy']]
+    crs = m['crs']
+    name = m['outfilename']
 
-    if not m['z_up']:
-        dataset = np.where(idx, -dataset, raster.band_info['Elevation'].ndv)
+    dataset = np.array(dataset)
+
+    if len(dataset.shape) == 3:
+        print('Two Band Grid')
+        bands = []
+        for band_index, layerName in band_names.items():
+            dataset_band = np.array(dataset[band_index])
+            # print('{}\n{}\n{}'.format(m, dataset, dataset.shape))
+            dataset_band[dataset_band == m['nodata']] = np.nan
+            d_min = np.nanmax(dataset_band)
+            d_max = np.nanmin(dataset_band)
+            dataset_band[dataset_band == np.nan] = m['nodata']
+            z_dir = cc.Direction.HEIGHT
+            band_info = cc.BandInfo(name=layerName, type=cc.DataType.FLOAT32, tuple_length=1, direction=z_dir, units='m',
+                                    category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.MAX, minimum=d_min,
+                                    maximum=d_max)
+            bands.append(band_info)
+
+            del dataset_band
+        raster = cc.create_raster(name, crs, origin, resolution, dimensions, bands)
+
+        for band_index, layerName in band_names.items():
+            dataset_band = dataset[band_index]
+            idx = (dataset_band < m['nodata']).astype(np.int)
+            if not m['z_up']:
+                dataset_band = np.where(idx, -dataset_band, raster.band_info[layerName].ndv)
+            else:
+                dataset_band = np.where(idx, dataset_band, raster.band_info[layerName].ndv)
+
+            # write the data into the csar container
+            band_dtype = raster.band_info[layerName].numpy_dtype
+            area = ((0, 0), (dimensions[0], dimensions[1]))
+            raster.write(layerName, area, dataset_band.astype(band_dtype))
+
+            del dataset_band
+        del raster
+
     else:
-        dataset = np.where(idx, dataset, raster.band_info['Elevation'].ndv)
+        print('Single Band Grid')
+        # print('{}\n{}\n{}'.format(m, dataset, dataset.shape))
+        dataset[dataset == m['nodata']] = np.nan
+        d_min = np.nanmax(dataset)
+        dataset[dataset == np.nan] = m['nodata']
+        d_max = np.nanmin(dataset)
+        z_dir = cc.Direction.HEIGHT
+        band_info = cc.BandInfo(name='Elevation', type=cc.DataType.FLOAT32, tuple_length=1, direction=z_dir, units='m',
+                                    category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.MAX, minimum=d_min,
+                                    maximum=d_max)
+        bands = [band_info]
+        raster = cc.create_raster(name, crs, origin, resolution, dimensions, bands)
+        idx = (dataset < m['nodata']).astype(np.int)
 
-    # write the data into the csar container
-    band_dtype = raster.band_info['Elevation'].numpy_dtype
-    area = ((0, 0), (dimensions[0], dimensions[1]))
-    raster.write("Elevation", area, dataset.astype(band_dtype))
+        if not m['z_up']:
+            dataset = np.where(idx, -dataset, raster.band_info['Elevation'].ndv)
+        else:
+            dataset = np.where(idx, dataset, raster.band_info['Elevation'].ndv)
 
-    del raster
+        # write the data into the csar container
+        band_dtype = raster.band_info['Elevation'].numpy_dtype
+        area = ((0, 0), (dimensions[0], dimensions[1]))
+        raster.write("Elevation", area, dataset.astype(band_dtype))
+
+        del raster
 
 
 def write_cloud(dataset, m: dict):
@@ -118,8 +156,8 @@ def write_cloud(dataset, m: dict):
 
     print(m['z_up'], type(m['z_up']))
 
-    d_min = np.amax(dataset[:, 2])
-    d_max = np.amin(dataset[:, 2])
+    d_min = np.nanmax(dataset[:, 2])
+    d_max = np.nanmin(dataset[:, 2])
     print(d_min, d_max)
     # build CSAR bands
     bandInfo = {}  # Define our bands below
@@ -127,7 +165,7 @@ def write_cloud(dataset, m: dict):
     layerName = "Elevation"
     print(m['z_up'], layerName, z_dir)
     bandInfo[layerName] = cc.BandInfo(type=cc.DataType.FLOAT64, tuple_length=1, name=layerName, direction=z_dir,
-                                      units='m', category=cc.Category.SCALAR, ndv=-1.0, minimum=d_max, maximum=d_min)
+                                      units='m', category=cc.Category.SCALAR, ndv=-1.0, minimum=d_min, maximum=d_max)
     bandInfo['Position'] = cc.BandInfo(type=cc.DataType.FLOAT64, tuple_length=3, name='Position',
                                        direction=cc.Direction.NAP, units='', category=cc.Category.SCALAR,
                                        ndv=(-1.0, -1.0, 0.0))
