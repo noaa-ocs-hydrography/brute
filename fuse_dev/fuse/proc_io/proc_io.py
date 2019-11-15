@@ -101,10 +101,10 @@ class ProcIO:
             whether to show the console of the CARIS subprocess (if writing to a CSAR file)
         """
 
-        self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write to {filename}')
+        self._logger.info(f'Begin {self._out_data_type} write to {filename}')
 
         if os.path.exists(filename) and self.overwrite:
-            self._logger.log(logging.DEBUG, f'Overwriting {filename}')
+            self._logger.info(f'Overwriting {filename}')
             os.remove(filename)
             if self._out_data_type == 'csar':
                 csar_data = f'{filename}0'
@@ -186,33 +186,33 @@ class ProcIO:
                 # data type
                 f'"{self._in_data_type.replace("&", "^&")}"'
             ))
-            self._logger.log(logging.DEBUG, argument_string)
+            self._logger.debug(argument_string)
 
             try:
                 caris_process = subprocess.Popen(argument_string, creationflags=subprocess.CREATE_NEW_CONSOLE if show_console else 0)
             except Exception as error:
-                self._logger.log(logging.DEBUG, f'Error when executing "{argument_string}"\n{error}')
+                self._logger.warning(f'Error when executing "{argument_string}"\n{error}')
 
             try:
                 stdout, stderr = caris_process.communicate()
                 if stdout is not None:
-                    self._logger.log(logging.DEBUG, stdout)
+                    self._logger.debug(stdout)
                 else:
-                    self._logger.log(logging.DEBUG, 'No information returned from csar write process.')
+                    self._logger.info('No information returned from csar write process.')
                 if stderr is not None:
-                    self._logger.log(logging.DEBUG, stderr)
+                    self._logger.warning(stderr)
                 else:
-                    self._logger.log(logging.DEBUG, 'No errors returned from csar write process.')
+                    self._logger.info('No errors returned from csar write process.')
             except Exception as error:
-                self._logger.log(logging.DEBUG, f'Error when logging subprocess error\n{error}')
+                self._logger.warning(f'Error when logging subprocess error\n{error}')
 
             if not os.path.exists(metadata['outfilename']):
                 error_string = f'Unable to create file {metadata["outfilename"]}'
-                self._logger.log(logging.DEBUG, error_string)
+                self._logger.error(error_string)
                 raise RuntimeError(error_string)
         else:
             error_string = f'Unable to overwrite file {metadata["outfilename"]}'
-            self._logger.log(logging.DEBUG, error_string)
+            self._logger.error(error_string)
             raise RuntimeError(error_string)
 
     def _write_bag(self, raster: gdal.Dataset, filename: str, metadata: dict = None):
@@ -244,18 +244,18 @@ class ProcIO:
         try:
             output_raster = bag_driver.CreateCopy(filename, raster)
             del output_raster
-            self._logger.log(logging.DEBUG, 'BAG file created')
+            self._logger.debug('BAG file created')
         except RuntimeError as error:
-            self._logger.log(logging.DEBUG, f'Failed to create bag: {error}\n Attempting to pass correct well-known text using OSR')
+            self._logger.warning(f'Failed to create bag: {error}\n Attempting to pass correct well-known text using OSR')
             old_crs_wkt = raster.GetProjectionRef()
-            self._logger.log(logging.DEBUG, f'Old reference: {old_crs_wkt}')
+            self._logger.debug(f'Old reference: {old_crs_wkt}')
             spatial_reference = osr.SpatialReference(wkt=old_crs_wkt)
             new_crs_wkt = spatial_reference.ExportToWkt()
-            self._logger.log(logging.DEBUG, f'New reference: {new_crs_wkt}')
+            self._logger.debug(f'New reference: {new_crs_wkt}')
             raster.SetProjection(new_crs_wkt)
             output_raster = bag_driver.CreateCopy(filename, raster)
             del output_raster
-            self._logger.log(logging.DEBUG, f'Created BAG file at {filename}')
+            self._logger.info(f'Created BAG file at {filename}')
 
     def _write_points(self, points: gdal.Dataset, filename: str, layer: int = 0, output_layer: str = 'Elevation'):
         """

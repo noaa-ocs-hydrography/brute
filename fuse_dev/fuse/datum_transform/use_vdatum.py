@@ -96,7 +96,7 @@ class VDatum:
             GDAL point cloud dataset
         """
 
-        self._logger.log(_logging.DEBUG, 'Begin datum transformation')
+        self._logger.debug('Begin datum transformation')
         if not _has_required_instructions(instructions):
             instructions['interpolate'] = 'False'
             raise ValueError('The required fields for transforming datums are not available')
@@ -107,7 +107,7 @@ class VDatum:
             vertical_datum = instructions['to_vert_key'].upper()
             # passing UTM zone instead of EPSG code
             dataset = _xyz_to_gdal(points, utm_zone, vertical_datum)
-        self._logger.log(_logging.DEBUG, 'Datum transformation complete')
+        self._logger.debug('Datum transformation complete')
         return dataset
 
     def __translate_xyz(self, filename: str, instructions: dict) -> (_np.array, int):
@@ -295,19 +295,19 @@ class VDatum:
         """
 
         command = f'{self._shell}{filename};{output_directory}'
-        self._logger.log(_logging.DEBUG, command)
+        self._logger.info(command)
         try:
             proc = _subprocess.Popen(command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, cwd=self._vdatum_path)
         except:
-            print(f'Error executing: {command}\nat: {self._vdatum_path}')
+            self._logger.error(f'Error executing: {command}\nat: {self._vdatum_path}')
             raise
         try:
             output, outerr = proc.communicate()
-            self._logger.log(_logging.DEBUG, output.decode('utf-8'))
+            self._logger.debug(output.decode('utf-8'))
             if len(outerr) > 0:
-                self._logger.log(_logging.DEBUG, outerr.decode('utf-8'))
+                self._logger.warning(outerr.decode('utf-8'))
             else:
-                self._logger.log(_logging.DEBUG, 'No datum transformation errors reported')
+                self._logger.info('No datum transformation errors reported')
         except:
             print(output)
             print(outerr)

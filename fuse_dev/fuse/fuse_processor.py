@@ -306,7 +306,7 @@ class FuseProcessor:
             if type(metadata) == dict:
                 metadata = [metadata]
         except (RuntimeError, TypeError) as e:
-            self.logger.log(_logging.DEBUG, e)
+            self.logger.warning(f'{e.__class__.__name__} {e}')
             return []
         from_id = []
         for m in metadata:
@@ -314,10 +314,9 @@ class FuseProcessor:
             m = self._add_config_metadata(m)
             # check to see if the quality metadata is available.
             if not self._quality_metadata_ready(m):
-                msg = f'Not all quality metadata was found during read.'
+                self.logger.warning('Not all quality metadata was found during read.')
             else:
-                msg = f'All quality metadata was found during read.'
-            self.logger.log(_logging.DEBUG, msg)
+                self.logger.info('All quality metadata was found during read.')
             # write out the metadata and close the log
             self._meta_obj.insert_records(m)
             from_id.append(m['from_filename'])
@@ -421,18 +420,14 @@ class FuseProcessor:
                             metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
                             self._raster_writer.write(dataset, metadata['to_filename'])
 
-                    message = f'{input_directory} - No interpolation required'
-                    print(message)
-                    self.logger.log(_logging.DEBUG, message)
+                    self.logger.info(f'{input_directory} - No interpolation required')
             else:
                 del dataset
                 raise ValueError('metadata has no "interpolate" value')
 
             self._meta_obj.insert_records(metadata)
         else:
-            message = 'metadata is missing required datum transformation entries'
-            print(message)
-            self.logger.log(_logging.DEBUG, message)
+            self.logger.warning('metadata is missing required datum transformation entries')
 
         self._close_log()
         return metadata['to_filename']
@@ -478,11 +473,10 @@ class FuseProcessor:
             s57_meta = self._metadata_to_s57(metadata)
             s57_meta['dcyscr'] = dscore
             self._db.write(procfile, 'metadata', s57_meta)
-            log = f'Posting new decay score of {dscore} to database.'
+            self.logger.info(f'Posting new decay score of {dscore} to database.')
         else:
-            log = 'Insertion of decay score failed.'
+            self.logger.warning('Insertion of decay score failed.')
 
-        self.logger.log(_logging.DEBUG, log)
         self._close_log()
 
     def _connect_to_db(self):
@@ -633,26 +627,26 @@ class FuseProcessor:
             feature_ready = False
 
         if not feature_ready:
-            self.logger.log(_logging.DEBUG, 'Quality metadata for features is not yet available.')
+            self.logger.warning('Quality metadata for features is not yet available.')
         else:
-            self.logger.log(_logging.DEBUG, 'Quality metadata for features was found')
+            self.logger.info('Quality metadata for features was found')
 
         # check the uncertainty metadata
         vert_uncert_ready = 'vert_uncert_fixed' in metadata and 'vert_uncert_vari' in metadata
         horiz_uncert_ready = 'horiz_uncert_fixed' in metadata and 'horiz_uncert_vari' in metadata
 
         if not vert_uncert_ready or not horiz_uncert_ready:
-            self.logger.log(_logging.DEBUG, 'Quality metadata for uncertainty is not yet available.')
+            self.logger.warning('Quality metadata for uncertainty is not yet available.')
         else:
-            self.logger.log(_logging.DEBUG, 'Quality metadata for uncertainty was found')
+            self.logger.info('Quality metadata for uncertainty was found')
 
         # check the coverage
         coverage_ready = 'complete_coverage' in metadata and 'bathymetry' in metadata
 
         if not coverage_ready:
-            self.logger.log(_logging.DEBUG, 'Coverage metadata is not yet available.')
+            self.logger.warning('Coverage metadata is not yet available.')
         else:
-            self.logger.log(_logging.DEBUG, 'Coverage metadata was found')
+            self.logger.info('Coverage metadata was found')
 
         return feature_ready and vert_uncert_ready and horiz_uncert_ready and coverage_ready
 

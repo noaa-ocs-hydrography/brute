@@ -17,9 +17,8 @@ from xml.etree.ElementTree import parse as _parse
 
 import numpy as _np
 from fuse.datum_transform import usefips as _usefips
-from fuse.raw_read.raw_read import RawReader
-
 from fuse.raw_read import parse_file_pickle
+from fuse.raw_read.raw_read import RawReader
 from fuse.raw_read.usace import parse_usace_xml
 
 _ehydro_quality_metrics = {
@@ -977,7 +976,7 @@ class USACERawReader(RawReader):
                 message += f'found comma-delimited file "{filename}"'
             else:
                 message += f'found whitespace-delimited file (tab or space) "{filename}"'
-            self._logger.log(_logging.DEBUG, message)
+            self._logger.debug(message)
 
         points = _np.asarray(points)
         return points
