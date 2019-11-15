@@ -7,6 +7,7 @@ Created on Wed Oct  2 16:54:19 2019
 
 import logging as _logging
 import os
+import sys
 from datetime import datetime
 from glob import glob
 
@@ -34,16 +35,32 @@ if __name__ == '__main__':
             print(f'config {config_index + 1} of {len(config_filenames)}, ' +
                   f'survey {survey_index + 1} of {len(survey_directories)} - ' +
                   f'Begin working in {survey_directory}:')
-            xyz_filename = bps_processor.read(survey_directory)
 
+            xyz_filenames = None
             try:
-                print(f'{datetime.now()}: processing {xyz_filename}', end=', ')
-                bps_processor.process(xyz_filename)
+                xyz_filenames = bps_processor.read(survey_directory)
+            except Exception as error:
+                _, _, error_traceback = sys.exc_info()
+                message = f'read error: {error.__class__.__name__} {error} ({os.path.split(error_traceback.tb_frame.f_code.co_filename)[1]}:{error_traceback.tb_lineno})'
+                print(message)
+                bps_processor.logger.log(_logging.DEBUG, message)
+
+            if xyz_filenames is None or len(xyz_filenames) == 0:
+                message = '\nNo file ID returned by fuse read.\n'
+                print(message)
+                bps_processor.logger.log(_logging.DEBUG, message)
+            else:
+                for xyz_filename in xyz_filenames:
+                    try:
+                        print(f'{datetime.now()}: processing {xyz_filename}', end=', ')
+                        bps_processor.process(xyz_filename)
+                    except Exception as error:
+                        _, _, error_traceback = sys.exc_info()
+                        message = f'processing error: {error.__class__.__name__} {error} ({os.path.split(error_traceback.tb_frame.f_code.co_filename)[1]}:{error_traceback.tb_lineno})'
+                        print(message)
+                        bps_processor.logger.log(_logging.DEBUG, message)
                 print(f'completed survey {survey_index + 1} of {len(survey_directories)}; ' +
                       f'{(datetime.now() - start_time) / ((survey_index + 1) / (total_files + (len(survey_directories) * (len(config_filenames) - (config_index + 1)))))} remaining')
-            except Exception as error:
-                print(f'\n{error}\n')
-                bps_processor.logger.log(_logging.DEBUG, error)
 
     end_time = datetime.now()
     print(f'completed BPS processing at {end_time} (took {end_time - start_time})')

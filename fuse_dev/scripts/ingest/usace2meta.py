@@ -27,7 +27,7 @@ if __name__ == '__main__':
     # wx_frame = wx_window.Open_Frame('USACE')
     start_time = datetime.now()
     print(f'starting USACE processing at {start_time}')
-    config_filenames = glob(os.path.join(SCRIPT_DIRECTORY, 'usace_configs', 'cenan.config'))
+    config_filenames = glob(os.path.join(SCRIPT_DIRECTORY, 'usace_configs', 'cena*.config'))
 
     total_files = 0
 
@@ -51,7 +51,7 @@ if __name__ == '__main__':
                 print(message)
                 usace_processor.logger.log(_logging.DEBUG, message)
 
-            if xyz_filenames is None:
+            if xyz_filenames is None or len(xyz_filenames) == 0:
                 message = '\nNo file ID returned by fuse read.\n'
                 print(message)
                 usace_processor.logger.log(_logging.DEBUG, message)
@@ -60,13 +60,13 @@ if __name__ == '__main__':
                     try:
                         print(f'{datetime.now()}: processing {xyz_filename}', end=', ')
                         usace_processor.process(xyz_filename)
-                        print(f'completed survey {survey_index + 1} of {len(survey_directories)}; ' +
-                              f'{(datetime.now() - start_time) / ((survey_index + 1) / (total_files + (len(survey_directories) * (len(config_filenames) - (config_index + 1)))))} remaining')
                     except Exception as error:
                         _, _, error_traceback = sys.exc_info()
                         message = f'processing error: {error.__class__.__name__} {error} ({os.path.split(error_traceback.tb_frame.f_code.co_filename)[1]}:{error_traceback.tb_lineno})'
                         print(message)
                         usace_processor.logger.log(_logging.DEBUG, message)
+                print(f'completed survey {survey_index + 1} of {len(survey_directories)}; ' +
+                      f'{(datetime.now() - start_time) / ((survey_index + 1) / (total_files + (len(survey_directories) * (len(config_filenames) - (config_index + 1)))))} remaining')
 
     end_time = datetime.now()
     print(f'completed USACE processing at {end_time} (took {end_time - start_time})')

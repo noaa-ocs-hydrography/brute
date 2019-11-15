@@ -44,7 +44,7 @@ if __name__ == '__main__':
                 print(message)
                 bag_processor.logger.log(_logging.DEBUG, message)
 
-            if bag_filenames is None:
+            if bag_filenames is None or len(bag_filenames) == 0:
                 message = '\nNo file ID returned by fuse read.\n'
                 print(message)
                 bag_processor.logger.log(_logging.DEBUG, message)
