@@ -4,721 +4,576 @@ point_interpolator.py
 
 grice 20180625
 
-V0.0.3 20190211
+V0.0.4 201901115
 
 This is a collection of functions for creating interpolated bathymetry for the
 national bathymetry.
 
-The objective is to interpolate both XYZ data and BAGs.
-
-
-Sources:
-    Make ogr dataset from numpy array:
-        https://pcjericks.github.io/py-gdalogr-cookbook/geometry.html
-    ogr data set to gdal for gridding:
-        http://osgeo-org.1560.x6.nabble.com/gdal-dev-DataSource-Dataset-using-
-        gdal-Grid-td5322689.html
-    GDAL gridding information:
-        http://www.gdal.org/grid_tutorial.html#grid_tutorial_interpolation
-    gdal_grid:
-        http://www.gdal.org/gdal_grid.html
-
+This is a rework of the original point interpolator.
 """
 
-# __version__ = 'point_interpolator 0.0.1'
-
-import os
-from typing import Tuple, Any
-
-import matplotlib.pyplot as plt
+from datetime import datetime
+from types import GeneratorType
+from typing import Union, Tuple
 import numpy as np
-import scipy
-from osgeo import gdal, ogr, osr
-from fuse.utilities import gdal_to_xyz, maximum_nearest_neighbor_distance, shape_from_cell_size
 
+import fiona
+from osgeo import gdal, osr
+from scipy.spatial.ckdtree import cKDTree
+from scipy.spatial.qhull import Delaunay
+from shapely.geometry import GeometryCollection, MultiPolygon, Polygon, MultiPoint, Point, MultiLineString, JOIN_STYLE
+from shapely.ops import unary_union, polygonize
+from shapely.geometry import shape as shapely_shape
 
-def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, float]:
+CATZOC = {
+    'A1': [.01, .5],
+    'A2': [.02, 1],
+    'B': [.02, 1],
+    'C': [.05, 2]
+}
+
+#============================================================================
+
+def interpolate(dataset: gdal.Dataset, resolution: float, ancillary_coverage_files: [str] = None, catzoc: str = 'B', nodata = 1000000) -> gdal.Dataset:
+
     """
-    This is a small utility for inspecting values and seeing they
-    contribute to a min or max estimate.
+    Generate a raster from the input data using the given interpolation method.
 
     Parameters
     ----------
-    val: float :
-        TODO write description
-    valmin: float :
-        TODO write description
-    valmax: float :
+    dataset
+        GDAL dataset (point cloud)
+    ancillary_coverage_files
+        filenames of USACE survey frameworks
+    resolution
+        output raster resolution 
+    catzoc
+        CATZOC score ('A1', 'A2'. 'B', or 'C') for the output uncertainty layer
+
+    Returns
+    -------
+    gdal.Dataset
+        interpolated GDAL raster dataset
+    """
+    catzoc = catzoc.upper()
+    assert catzoc in CATZOC, f'CATZOC score "{catzoc}" not supported'
+
+    points = _gdal_to_xyz(dataset)[:, :2]
+
+    # get the data bounds as (ulx,uly,lrx,lry)
+    tmp = np.concatenate((np.min(points, axis=0), np.max(points, axis=0)))
+    input_bounds = tmp[[0,3,2,1]]
+
+    # set the size of the interpolation window size to be the maximum of all nearest neighbor distances
+    max_neighbor_distance = maximum_nearest_neighbor_distance(points)
+    # but if the number is stupid small (single beam), default to resolution for interpolation
+    atomic_length = max((max_neighbor_distance, resolution))
+    
+    start_time = datetime.now()
+    # get the concave hull of the survey points
+    approximate_alpha_hull = alpha_hull(points, max_length=atomic_length, tolerance=resolution / 2,
+                                        max_nn=max_neighbor_distance, iterations=1)
+
+    # if there is one reulting polygon we think we know where to interpolate
+    if type(approximate_alpha_hull) is Polygon:
+        interpolation_region = approximate_alpha_hull
+    else:
+        # but if there are many, see if we can sort out if this is a set line spacing survey
+        uniform_density = ((np.sqrt(approximate_alpha_hull.area) / max_neighbor_distance) - 1) ** 2 / approximate_alpha_hull.area
+        actual_density = len(points) / approximate_alpha_hull.area
+        # if the point density is less than if uniformly distributed, this is set line spacing
+        if actual_density < max((uniform_density, max_neighbor_distance)):
+            interpolation_region = buffer_hull(points, buffer=atomic_length, tolerance=resolution / 2,
+                                               max_nn=max_neighbor_distance)
+        else:
+            interpolation_region = alpha_hull(points, max_length=atomic_length, tolerance=resolution / 2,
+                                              max_nn=max_neighbor_distance)
+
+    print(f'concave hull calculation took {datetime.now() - start_time}')
+
+    # Make sure the channel has no bathymetry holes
+    if ancillary_coverage_files is not None and len(ancillary_coverage_files) > 0:
+        ancillary_coverage = []
+        for ancillary_coverage_filename in ancillary_coverage_files:
+            with fiona.open(ancillary_coverage_filename) as ancillary_coverage_file:
+                ancillary_coverage.extend(shapely_shape(feature['geometry']) for feature in ancillary_coverage_file)
+                
+    interpolation_region = unary_union([interpolation_region] + ancillary_coverage)
+    
+    output_shape, output_bounds = _get_raster_properties(resolution, input_bounds)
+        
+    interpolated_raster = gdal.Grid('', dataset, format='MEM', width=output_shape[1], height=output_shape[0], outputBounds=output_bounds,
+                                    algorithm=f'linear:radius=0:nodata={int(nodata)}')
+    interpolated_band = interpolated_raster.GetRasterBand(1)
+    interpolated_values = interpolated_band.ReadAsArray()
+    geotransform = interpolated_raster.GetGeoTransform()
+    
+    uncertainty = _uncertainty(np.where(interpolated_values != nodata, interpolated_values, np.nan), catzoc)
+
+    uncertainty[np.isnan(uncertainty)] = nodata
+
+    output_raster = gdal.GetDriverByName('MEM').Create('', int(output_shape[1]), int(output_shape[0]), 2, gdal.GDT_Float32)
+    output_raster.SetGeoTransform(geotransform)
+    output_raster.SetProjection(crs_wkt_from_gdal(dataset))
+
+    band_1 = output_raster.GetRasterBand(1)
+    band_1.SetNoDataValue(nodata)
+    band_1.WriteArray(interpolated_values)
+    del band_1
+
+    band_2 = output_raster.GetRasterBand(2)
+    band_2.SetNoDataValue(nodata)
+    band_2.WriteArray(uncertainty)
+    del band_2
+    
+    interpolation_mask = raster_mask_like(interpolation_region, output_raster)
+    interpolated_dataset = apply_raster_mask(output_raster, interpolation_mask)
+
+    return interpolated_dataset
+    
+
+def _gdal_to_xyz(dataset: gdal.Dataset) -> np.array:
+    """
+    Take a gdal vector xyz point cloud and return a numpy array.
+
+    Parameters
+    ----------
+    dataset: gdal.Dataset :
         TODO write description
 
     Returns
     -------
+    type
+        vector dataset
 
     """
 
-    if np.isnan(valmin):
-        valmin = val
-    elif val < valmin:
-        valmin = val
-
-    if np.isnan(valmax):
-        valmax = val
-    elif val > valmax:
-        valmax = val
-
-    return valmin, valmax
-
-
-class PointInterpolator:
-    """Interpolation methods for creating a raster from points."""
-
-    def __init__(self, window_scalar: float = 1.1):
-        """
-        Set some of the precondition, but make them over writable.
-        """
-
-        self.window_scale = window_scalar
-
-    def interpolate(self, dataset: gdal.Dataset, interpolation_type: str, resolution: float, shapefile: str = None,
-                    shrink: bool = True) -> gdal.Dataset:
-        """
-        Interpolate the provided dataset.
-
-        Currently this is assumed to be a gdal dataset.  At some point perhaps
-        this should become something more native to python.
-
-        Parameters
-        ----------
-        dataset: gdal.Dataset :
-            TODO write description
-        interpolation_type: str :
-            TODO write description
-        resolution: float :
-            TODO write description
-        shapefile: str :
-            TODO write description (Default value = None)
-        shrink: bool :
-            TODO write description (Default value = True)
-
-        Returns
-        -------
-        type
-            interpolated dataset
-
-        """
-
-        linear = False
-        natural = False
-        invlin = False
-        invdist = False
-
-        if interpolation_type == 'linear':
-            linear = True
-        elif interpolation_type == 'invdist_scilin':
-            if shapefile is None:
-                raise ValueError('Supporting shapefile required')
-            invlin = True
-        elif interpolation_type == 'invdist':
-            invdist = True
-        else:
-            raise ValueError('interpolation type not implemented.')
-
-        data_array = gdal_to_xyz(dataset)[:, :2]
-
-        # get the bounds (min X, min Y, max X, max Y)
-        input_bounds = np.concatenate((np.min(data_array, axis=0), np.max(data_array, axis=0)))
-
-        # set the size of the interpolation window size to be the minimum of all nearest neighbor distances
-        window = self.window_scale * maximum_nearest_neighbor_distance(data_array)
-
-        if linear:
-            # do the triangulation interpolation
-            ds2 = self._gdal_linear_interp_points(dataset, resolution, input_bounds)
-        elif invlin:
-            ds2 = self._gdal_invdist_scilin_interp_points(dataset, resolution,
-                                                          input_bounds, window)
-            if shrink:
-                ds4 = self._shrink_coverage(ds2, resolution, window)
-        elif invdist:
-            # do the inverse distance interpolation
-            ds3 = self._gdal_invdist_interp_points(dataset, resolution, input_bounds, window)
-            # shrink the coverage back on the edges and in the holidays on the
-            # inv dist
-            if shrink:
-                ds4 = self._shrink_coverage(ds3, resolution, window)
-        else:
-            print('No interpolation method recognized')
-
-        if linear:
-            # trim the triangulated interpolation back using the inv dist as a
-            # mask
-            ds3 = self._get_mask(dataset, resolution, input_bounds, window)
-            ds5 = self._mask_with_raster(ds2, ds3)
-        elif invlin:
-            ds3 = self._get_shape_mask(ds2, shapefile, resolution)
-            if shrink:
-                ds5 = self._mask_with_raster(ds4, ds3)
-            else:
-                ds5 = self._mask_with_raster(ds2, ds3)
-
-        # write the files out using the above function
-        if linear or invlin:
-            return ds5
-        elif invdist:
-            if shrink:
-                return ds4
-            else:
-                return ds3
-        else:
-            raise ValueError('Interpolation type not understood')
-
-    def _gdal2vector(self, dataset: gdal.Dataset) -> np.array:
-        """
-        Take a gdal vector xyz point cloud and return a numpy array.
-
-        Parameters
-        ----------
-        dataset: gdal.Dataset :
-            TODO write description
-
-        Returns
-        -------
-        type
-            vector dataset
-
-        """
-
-        # get the data out of the gdal data structure
-        lyr = dataset.GetLayerByIndex(0)
-        count = lyr.GetFeatureCount()
-        data = np.zeros((count, 3))
-
-        for n in np.arange(count):
-            f = lyr.GetFeature(n)
-            data[n, :] = f.geometry().GetPoint()
-
-        return data
-
-    def _get_point_spacing(self, dataset: np.array) -> Tuple[float, float, float]:
-        """
-        Take a numpy xyz array and return the min, mean, and max spacing
-        between different points in the XY direction for interpolation without
-        holes.  The returned units will be the same as the provided horizontal
-        coordinate system.
-
-        Parameters
-        ----------
-        dataset: np.array :
-            TODO write description
-
-        Returns
-        -------
-        type
-            minimum, mean, and maximum
-
-        """
-
-        count = len(dataset)
-        min_dist = np.zeros(count) + np.inf
-
-        # roll the array through, comparing all points and saving the minimum dist.
-        for n in np.arange(1, count):
-            tmp = np.roll(dataset, n, axis=0)
-            dist = (np.sqrt(np.square(dataset[:, 0] - tmp[:, 0])
-                            + np.square(dataset[:, 1] - tmp[:, 1])))
-            idx = np.nonzero(dist < min_dist)[0]
-            if len(idx) > 0:
-                min_dist[idx] = dist[idx]
-
-        return min_dist.min(), min_dist.mean(), min_dist.max()
-
-    def _get_mask(self, dataset: gdal.Dataset, resolution: float, input_bounds: (float, float, float, float), window: float) -> gdal.Dataset:
-        """
-        Currently using the shrunk invdist method as a mask.
-
-        Parameters
-        ----------
-        dataset: gdal.Dataset :
-            TODO write description
-        resolution: float :
-            TODO write description
-        window: float :
-            TODO write description
-
-        Returns
-        -------
-        type
-            mask
-
-        """
-
-        data = self._gdal_invdist_interp_points(dataset, resolution, input_bounds, window)
-        mask = self._shrink_coverage(data, resolution, window)
-        return mask
-
-    def _getShpRast(self, file: str, to_proj: str, to_gt: tuple, to_res: int, to_shape, nodata: float = 0) -> Tuple[
-        gdal.Dataset, Any]:
-        """
-        Import shapefile
-
-        Parameters
-        ----------
-        file: str :
-            Shapefile file location
-        to_proj: str:
-            WKT object with destination spatial reference system
-        to_gt: tuple:
-            gdal.GeoTransform object of the interpolated dataset
-        to_res: int :
-            Resolution of the input dataset
-        shape : tuple(int, int)
-            Shape of the the input dataset
-        nodata: float :
-            Nodata value for the ouput gdal.Dataset object (Default value = 0)
-
-        Returns
-        -------
-        type
-            dataset and geotransform
-
-        """
-
-        print('getShpRast', file)
-        fName = os.path.split(file)[-1]
-        splits = os.path.splitext(fName)
-        name = splits[0]
-        # tif = f'{splits[0]}.tif'
-
-        # Open the data source and read in the extent
-        source_ds = ogr.Open(file)
-        source_layer = source_ds.GetLayer()
-        source_srs = source_layer.GetSpatialRef()
-
-        for feature in source_layer:
-            if feature is not None:
-                geom = feature.GetGeometryRef()
-                #                print(geom.ExportToWkt())
-                ds_geom = ogr.CreateGeometryFromWkt(geom.ExportToWkt())
-                #                print(source_srs, to_proj, sep='\n')
-                coordTrans = osr.CoordinateTransformation(source_srs, to_proj)
-                ds_geom.Transform(coordTrans)
-                driver = ogr.GetDriverByName('Memory')
-                ds = driver.CreateDataSource('temp')
-                layer = ds.CreateLayer(name, to_proj, ogr.wkbMultiPolygon)
-
-                # Add one attribute
-                layer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
-                defn = layer.GetLayerDefn()
-
-                # Create a new feature (attribute and geometry)
-                feat = ogr.Feature(defn)
-                feat.SetField('id', 123)
-
-                # Make a geometry, from Shapely object
-                feat.SetGeometry(ds_geom)
-
-                layer.CreateFeature(feat)
-                del feat, geom  # destroy these
-                break
-
-        x_min, x_max, y_min, y_max = ds_geom.GetEnvelope()
-        meta = ([x_min, y_max], [x_max, y_min])
-        print(meta)
-
-        # Create the destination data source
-        x_dim = int((x_max - x_min) / to_res)
-        y_dim = int((y_max - y_min) / to_res)
-        print(x_dim, y_dim)
-        target_ds = gdal.GetDriverByName('MEM').Create('', x_dim, y_dim, gdal.GDT_Byte)
-        x_orig, y_orig = to_gt[0], to_gt[3]
-        target_gt = (x_orig, to_res, 0, y_orig, 0, to_res)
-        target_ds.SetGeoTransform(target_gt)
-        band = target_ds.GetRasterBand(1)
-        band.SetNoDataValue(nodata)
-
-        # Rasterize
-        gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[1])
-        newarr = band.ReadAsArray()
-
-        # clip resampled coverage data to the bounds of the BAG
-        output_array = np.full(to_shape, nodata)
-
-        cov_ul, cov_lr = np.array(x_orig), np.array(y_orig)
-        bag_ul, bag_lr = np.array(x_min), np.array(y_min)
-
-        if bag_ul[0] > cov_lr[0] or bag_lr[0] < cov_ul[0] or bag_lr[1] > cov_ul[1] or bag_ul[1] < cov_lr[1]:
-            raise ValueError('bag dataset is outside the bounds of coverage dataset')
-
-        ul_index_delta = np.round((bag_ul - cov_ul) / np.array(to_res)).astype(int)
-        lr_index_delta = np.round((bag_lr - cov_ul) / np.array(to_res)).astype(int)
-
-        # indices to be written onto the output array
-        output_array_index_slices = [slice(0, None), slice(0, None)]
-
-        # BAG leftmost X is to the left of coverage leftmost X
-        if ul_index_delta[0] < 0:
-            output_array_index_slices[1] = slice(ul_index_delta[0] * -1, output_array_index_slices[1].stop)
-            ul_index_delta[0] = 0
-
-        # BAG topmost Y is above coverage topmost Y
-        if ul_index_delta[1] < 0:
-            output_array_index_slices[0] = slice(ul_index_delta[1] * -1, output_array_index_slices[0].stop)
-            ul_index_delta[1] = 0
-
-        # BAG rightmost X is to the right of coverage rightmost X
-        if lr_index_delta[0] > newarr.shape[1]:
-            output_array_index_slices[1] = slice(output_array_index_slices[1].start,
-                                                 newarr.shape[1] - lr_index_delta[0])
-            lr_index_delta[0] = newarr.shape[1]
-
-        # BAG bottommost Y is lower than coverage bottommost Y
-        if lr_index_delta[1] > newarr.shape[0]:
-            output_array_index_slices[0] = slice(output_array_index_slices[0].start,
-                                                 newarr.shape[0] - lr_index_delta[1])
-            lr_index_delta[1] = newarr.shape[0]
-
-        # write the relevant coverage data to a slice of the output array corresponding to the coverage extent
-        output_array[output_array_index_slices[0], output_array_index_slices[1]] = newarr[
-                                                                                   ul_index_delta[1]:lr_index_delta[1],
-                                                                                   ul_index_delta[0]:lr_index_delta[0]]
-
-        del newarr, band, source_ds, target_ds
-
-        ax_y, ax_x = output_array.shape
-
-        target_ds = gdal.GetDriverByName('MEM').Create('', ax_x, ax_y, 1, gdal.GDT_Float32)
-        x_orig, y_orig = to_gt[0], to_gt[3]
-        target_gt = (x_orig, to_res, 0, y_orig, 0, to_res)
-        target_ds.SetGeoTransform(target_gt)
-        band = target_ds.GetRasterBand(1)
-        band.SetNoDataValue(nodata)
-        band.WriteArray(output_array)
-
-        target_gt = target_ds.GetGeoTransform()
-
-        return target_ds, target_gt
-
-    def _get_shape_mask(self, grid: gdal.Grid, shapefile: str, resolution: float) -> gdal.Dataset:
-        """
-        TODO write description
-
-        Parameters
-        ----------
-        grid: gdal.Grid :
-            TODO write description
-        shapefile: str :
-            TODO write description
-        resolution: float :
-            TODO write description
-
-        Returns
-        -------
-        type
-            shape mask
-
-        """
-
-        band = grid.GetRasterBand(1)
-        shape = (grid.RasterYSize, grid.RasterXSize)
-        raster = band.ReadAsArray()
-        plt.figure()
-        plt.imshow(raster)
-        plt.show()
-        del band
-        grid_ref = grid.GetProjectionRef()
-        grid_gt = grid.GetGeoTransform()
-        proj = osr.SpatialReference(wkt=grid_ref)
-        proj.MorphFromESRI()
-        print(grid_ref, grid_gt)
-        shape_ds, shape_gt = self._getShpRast(shapefile, proj, grid_gt, int(resolution), shape)
-        print('transformed', shape_gt)
-        return shape_ds
-
-    def _gdal_linear_interp_points(self, dataset: gdal.Dataset, resolution: float, input_bounds: (float, float, float, float),
-                                   nodata: float = 1000000) -> gdal.Grid:
-        """
-        Interpolate the provided gdal vector points and return the interpolated
-        data.
-
-        Parameters
-        ----------
-        dataset: gdal.Dataset :
-            TODO write description
-        resolution: float :
-            TODO write description
-        nodata: float :
-            TODO write description (Default value = 1000000)
-
-        Returns
-        -------
-        type
-            interpolated dataset
-
-        """
-
-
-        (numrows, numcolumns), bounds = shape_from_cell_size(resolution, input_bounds)
-        algorithm = f"linear:radius=0:nodata={int(nodata)}"
-        interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
-                                algorithm=algorithm)
-
-        print(interp_data.GetGeoTransform())
-        return interp_data
-
-    def _gdal_invdist_scilin_interp_points(self, dataset: gdal.Dataset, resolution: float, input_bounds: (float, float, float, float), radius: float,
-                                           nodata: float = 1000000) -> gdal.Dataset:
-        """
-        Interpolate the provided gdal vector points and return the interpolated
-        data.
-
-        Parameters
-        ----------
-        dataset: gdal.Dataset :
-            TODO write description
-        resolution: float :
-            TODO write description
-        radius: float :
-            TODO write description
-        nodata: float :
-            TODO write description (Default value = 1000000)
-
-        Returns
-        -------
-        type
-            interpolated dataset
-
-        """
-
-        print('_gdal_invdist_scilin_interp_points')
-        (numrows, numcolumns), bounds = shape_from_cell_size(resolution, input_bounds)
-        algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}" + \
-                    f":angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
-        interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
-                                algorithm=algorithm)
-        arr = interp_data.ReadAsArray()
-        ycoord, xcoord = np.where(arr != nodata)
-        zvals = arr[ycoord[:], xcoord[:]]
-        del arr
-
-        print('start')
-        xa, ya = np.arange(numcolumns), np.arange(numrows)
-        xi, yi = np.meshgrid(xa, ya)
-        interp_grid = scipy.interpolate.griddata((xcoord, ycoord), zvals, (xi, yi), method='linear', fill_value=nodata)
-
-        interp_grid[np.isnan(interp_grid)] = nodata
-        plt.figure()
-        plt.imshow(interp_grid)
-        plt.show()
-        print('stop')
-
-        band = interp_data.GetRasterBand(1)
-        band.SetNoDataValue(float(nodata))
-        band.WriteArray(interp_grid)
-        del band
-
-        return interp_data
-
-    def _gdal_invdist_interp_points(self, dataset: gdal.Dataset, resolution: float, input_bounds: (float, float, float, float), radius: float,
-                                    nodata: float = 1000000) -> gdal.Dataset:
-        """
-        Interpolate the provided gdal vector points and return the interpolated
-        data.
-
-        Parameters
-        ----------
-        dataset: gdal.Dataset :
-            TODO write description
-        resolution: float :
-            TODO write description
-        radius: float :
-            TODO write description
-        nodata: float :
-            TODO write description(Default value = 1000000)
-
-        Returns
-        -------
-        type
-            interpolated grid
-
-        """
-
-        (numrows, numcolumns), bounds = shape_from_cell_size(resolution, input_bounds)
-        algorithm = f"invdist:power=2.0:smoothing=0.0:radius1={radius}:radius2={radius}" + \
-                    f":angle=0.0:max_points=0:min_points=1:nodata={int(nodata)}"
-        interp_data = gdal.Grid('', dataset, format='MEM', width=numcolumns, height=numrows, outputBounds=bounds,
-                                algorithm=algorithm)
-        return interp_data
-
-    def _get_nodes(self, resolution: float, bounds: Tuple[float, float, float, float]) -> Tuple[
-        int, int, Tuple[float, float, float, float]]:
-        """
-        Get the bounds and number of rows and columns. The desired resolution
-        and the data max and min in X and Y are required.  This algorithm uses
-        the average of the data min and max and centers the grid on this
-        location.
-
-        Parameters
-        ----------
-        resolution: float :
-            TODO write description
-        bounds: Tuple[float, float, float, float] :
-            TODO write description
-
-        Returns
-        -------
-        type
-            number of rows, number of columns, and bounds
-
-        """
-
-        xmin, ymin, xmax, ymax = bounds
-        numcolumns = int(np.ceil((1. * (xmax - xmin) / resolution)))
-        xmean = np.mean([xmin, xmax])
-        xnmin = xmean - numcolumns / 2. * resolution
-        xnmax = xmean + numcolumns / 2. * resolution
-        numrows = int(np.ceil((1. * (ymax - ymin) / resolution)))
-        ymean = np.mean([ymin, ymax])
-        ynmin = ymean - numrows / 2. * resolution
-        ynmax = ymean + numrows / 2. * resolution
-        return numrows, numcolumns, (xnmin, ynmin, xnmax, ynmax)
-
-    def _get_nodes2(self, resolution: float, bounds: Tuple[float, float, float, float]) -> Tuple[
-        int, int, Tuple[float, float, float, float]]:
-        """
-        Get the bounds and number of rows and columns. The desired resolution
-        and the data max and min in X and Y are required.  This algorithm use
-        the data min as the anchor for the rows and columns, thus the max data
-        values may contain sparse data.
-
-        Parameters
-        ----------
-        resolution: float :
-            TODO write description
-        bounds: Tuple[float, float, float, float] :
-            TODO write description
-
-        Returns
-        -------
-        type
-            number of rows, number of columns, and bounds
-
-        """
-
-        xmin, ymin, xmax, ymax = bounds
-        numcolumns = int(np.ceil((1. * (xmax - xmin) / resolution)))
-        xnmin = xmin
-        xnmax = xmin + 1. * numcolumns * resolution
-        numrows = int(np.ceil((1. * (ymax - ymin) / resolution)))
-        ynmin = ymin
-        ynmax = ymin + 1. * numrows * resolution
-        return numrows, numcolumns, (xnmin, ynmin, xnmax, ynmax)
-
-    def _get_nodes3(self, resolution: float, bounds: Tuple[float, float, float, float]) -> Tuple[
-        int, int, Tuple[float, float, float, float]]:
-        """
-        Get the bounds and number of rows and columns. The desired resolution
-        and the data max and min in X and Y are required.  This algorithm use
-        the data min as the anchor for the rows and columns, but floored to the
-        nearest multiple of the resolution.
-
-        Parameters
-        ----------
-        resolution: float :
-
-        bounds: Tuple[float, float, float, float] :
-
-
-        Returns
-        -------
-        type
-            number of rows, number of columns, and bounds
-
-        """
-
-        xmin, ymin, xmax, ymax = bounds
-        numcolumns = int(np.ceil((1. * (xmax - xmin) / resolution)))
-        xrem = xmin % resolution
-        xnmin = xmin - xrem
-        xnmax = xnmin + 1. * numcolumns * resolution
-        numrows = int(np.ceil((1. * (ymax - ymin) / resolution)))
-        yrem = ymin % resolution
-        ynmin = ymin - yrem
-        ynmax = ynmin + 1. * numrows * resolution
-        return numrows, numcolumns, (xnmin, ynmin, xnmax, ynmax)
-
-    def _mask_with_raster(self, dataset: gdal.Dataset, maskraster: gdal.Dataset) -> gdal.Dataset:
-        """
-        Read two rasters and use the nodata values from one to mask the other.
-        These files are assumed to be collocated as all operation are conducted
-        on the pixel level.
-
-        Parameters
-        ----------
-        dataset: gdal.Dataset :
-
-        maskraster: gdal.Dataset :
-
-
-        Returns
-        -------
-        type
-            masked dataset
-
-        """
-
-        data = dataset.ReadAsArray()
-        data_rb = dataset.GetRasterBand(1)
-        data_nd = data_rb.GetNoDataValue()
-        mask = maskraster.ReadAsArray()
-        mask_rb = maskraster.GetRasterBand(1)
-        mask_nd = mask_rb.GetNoDataValue()
-        idx = np.nonzero(mask == mask_nd)
-        data[idx] = data_nd
-        data_rb.WriteArray(data)
-        return dataset
-
-    def _shrink_coverage(self, dataset: gdal.Dataset, resolution: float, radius: float) -> gdal.Dataset:
-        """
-        Shrink coverage of a dataset by the original coverage radius.
-
-        Parameters
-        ----------
-        dataset: gdal.Dataset :
-
-        resolution: float :
-
-        radius: float :
-
-
-        Returns
-        -------
-        type
-            gdal.Dataset
-
-        shrunken dataset
-
-        """
-
-        data = dataset.ReadAsArray()
-        data_rb = dataset.GetRasterBand(1)
-        nodata = data_rb.GetNoDataValue()
-        idx = np.nonzero(data == nodata)
-        data[idx] = np.nan
-        # divide the window size by the resolution to get the number of cells
-        rem_cells = int(np.round(radius / resolution))
-        # print(f'Shrinking coverage back {rem_cells} cells.')
-
-        for n in np.arange(rem_cells):
-            ew = np.diff(data, axis=0)
-            idx_ew = np.nonzero(np.isnan(ew))
-            ns = np.diff(data, axis=1)
-            idx_ns = np.nonzero(np.isnan(ns))
-            data[idx_ew] = np.nan
-            data[idx_ew[0] + 1, idx_ew[1]] = np.nan
-            data[idx_ns] = np.nan
-            data[idx_ns[0], idx_ns[1] + 1] = np.nan
-
-        idx = np.nonzero(np.isnan(data))
-        data[idx] = nodata
-        data_rb.WriteArray(data)
-        return dataset
+    # get the data out of the gdal data structure
+    lyr = dataset.GetLayerByIndex(0)
+    count = lyr.GetFeatureCount()
+    data = np.zeros((count, 3))
+
+    for n in np.arange(count):
+        f = lyr.GetFeature(n)
+        data[n, :] = f.geometry().GetPoint()
+
+    return data
+
+
+def nearest_neighbors(points: np.array) -> (np.array, np.array):
+    """
+    Get the nearest neighbors to each of the given points.
+
+    Parameters
+    ----------
+    points
+        N x M array of points
+
+    Returns
+    -------
+    numpy.array, numpy.array
+        distances to and indices of each nearest neighbor
+    """
+
+    if type(points) is GeneratorType:
+        points = MultiPoint(list(points))
+
+    return cKDTree(points).query(points, k=[2])
+
+
+def maximum_nearest_neighbor_distance(points: np.array) -> float:
+    """
+    Get the maximum of all closest neighbor distances within the given set of points.
+
+    Parameters
+    ----------
+    points
+        N x M array of points
+
+    Returns
+    -------
+    float
+        maximum nearest neighbor distance
+    """
+
+    return np.max(nearest_neighbors(points)[0])
+
+
+def _get_raster_properties(resolution: float, data_bounds: Tuple[float, float, float, float]) -> Tuple[
+    int, int, Tuple[float, float, float, float]]:
+    """
+    Get the bounds and number of rows and columns for a raster given the
+    desired resolution and the data max and min in X and Y values.  This algorithm use
+    the data min as the anchor for the rows and columns, but floored to the
+    nearest multiple of the resolution.
+
+    Parameters
+    ----------
+    resolution:
+        Resolution of the desired raster grid.
+
+    data_bounds:
+        Data bounds as (ulx,uly,lrx,lry)
+
+
+    Returns
+    -------
+    type
+        output shape as (number of rows, number of columns), and bounds as
+        (ulx,uly,lrx,lry)
+
+    """
+
+    xmin, ymin, xmax, ymax = data_bounds
+    numcolumns = int(np.ceil((1. * (xmax - xmin) / resolution)))
+    xrem = xmin % resolution
+    xnmin = xmin - xrem
+    xnmax = xnmin + 1. * numcolumns * resolution
+    numrows = int(np.ceil((1. * (ymax - ymin) / resolution)))
+    yrem = ymin % resolution
+    ynmin = ymin - yrem
+    ynmax = ynmin + 1. * numrows * resolution
+    return (numrows, numcolumns), (xnmin, ynmax, xnmax, ynmin)
+
+
+def alpha_hull(points: np.array, max_length: float = None, tolerance: float = None, max_nn: float = None, iterations: int = 50,
+               triangles: Delaunay = None) -> MultiPolygon:
+    """
+    Calculate the concave hull of the given points using triangulation.
+    inspired by https://sgillies.net/2012/10/13/the-fading-shape-of-alpha.html
+
+    Parameters
+    ----------
+    points
+        N x M array of points
+    max_length
+        maximum length to include in the convex boundary
+    tolerance
+        distance within generated hull to dissolve points
+    max_nn
+        maximum of nearest neighbor distances in the given points
+    iterations
+        number of iterations to complete (default will continue until all points are within the hull)
+    triangles
+        Delaunay triangulation of points
+
+    Returns
+    ----------
+    MultiPolygon
+        alpha shape (concave hull) of points
+    """
+
+    if len(points) < 4:
+        return MultiPoint(points).convex_hull
+
+    if max_nn is None:
+        max_nn = maximum_nearest_neighbor_distance(points)
+
+    if max_length is None:
+        max_length = max_nn
+
+    if tolerance is None:
+        tolerance = max_nn / 2
+
+    if triangles is None:
+        triangles = Delaunay(points)
+
+    indices = np.stack(((triangles.simplices[:, 0], triangles.simplices[:, 1]),
+                           (triangles.simplices[:, 1], triangles.simplices[:, 2]),
+                           (triangles.simplices[:, 2], triangles.simplices[:, 0])), axis=1).T
+    edges = points[indices]
+    vectors = np.squeeze(np.diff(edges, axis=2))
+    lengths = np.hypot(vectors[:, :, 0], vectors[:, :, 1])
+    semiperimeters = np.sum(lengths, axis=1) / 2
+    areas = np.sqrt(semiperimeters * np.product(np.expand_dims(semiperimeters, axis=1) - lengths, axis=1))
+    circumcircle_radii = np.product(lengths, axis=1) / (4 * areas)
+    indices = indices[circumcircle_radii <= max_length]
+
+    if len(indices) > 0:
+        indices = np.sort(np.reshape(indices, (indices.shape[0] * indices.shape[1], indices.shape[2])), axis=1)
+        boundary_edge_indices, counts = np.unique(indices, axis=0, return_counts=True)
+        boundary_edge_indices = boundary_edge_indices[counts == 1]
+
+        polygons = remove_interior_duplicates(polygonize(MultiLineString(points[boundary_edge_indices].tolist())))
+        output_hull = MultiPolygon(polygons).buffer(0)
+        if output_hull.area == 0:
+            output_hull = unary_union(polygons)
+
+        points_geometry = MultiPoint(points)
+
+        points_outside_hull = points_geometry.difference(output_hull)
+        if type(points_outside_hull) is Point:
+            points_outside_hull = GeometryCollection([points_outside_hull])
+
+        if len(points_outside_hull) > 0:
+            segments_before_dissolve = len(output_hull) if type(output_hull) is MultiPolygon else 1
+            output_hull = GeometryCollection((output_hull, points_outside_hull)).buffer(max_nn)
+
+            if iterations > 1:
+                output_hull = output_hull.buffer(-max_nn, join_style=JOIN_STYLE.mitre)
+                segments_after_dissolve = len(output_hull) if type(output_hull) is MultiPolygon else 1
+
+                points_outside_hull = points_geometry.difference(output_hull.buffer(tolerance))
+                if type(points_outside_hull) is Point:
+                    points_outside_hull = GeometryCollection([points_outside_hull])
+
+                if segments_after_dissolve > segments_before_dissolve or len(points_outside_hull) > 0:
+                    print(f'alpha hull created from length threshold {max_length:.5} contains ' +
+                          f'{(len(points) - len(points_outside_hull)) / len(points) * 100:.5}% of points ({len(points_outside_hull)} exist outside of the current hull)')
+                    output_hull = alpha_hull(points, max_length + max_nn, tolerance, max_nn, iterations - 1, triangles)
+    else:
+        print(f'no edges were found to be shorter than the length threshold ({max_length:.5})')
+        output_hull = alpha_hull(points, max_length + max_nn, tolerance, max_nn, iterations, triangles)
+
+    return output_hull
+
+def remove_interior_duplicates(polygons: [Polygon]) -> [Polygon]:
+    """
+    Given a list of polygons, return a list without polygons whose exteriors represent the interior of another polygon.
+
+    Parameters
+    ----------
+    polygons
+        list of polygons
+
+    Returns
+    -------
+    [Polygon]
+        polygons without duplicates of interiors
+    """
+
+    if type(polygons) is not list:
+        polygons = list(polygons)
+
+    for polygon_with_interiors in (polygon for polygon in polygons if len(polygon.interiors) > 0):
+        for interior in polygon_with_interiors.interiors:
+            interior_polygon = Polygon(interior)
+            duplicate_polygons = []
+
+            for polygon_index in range(len(polygons)):
+                polygon = polygons[polygon_index]
+                if polygon.equals(interior_polygon):
+                    duplicate_polygons.append(polygon)
+
+            for polygon in duplicate_polygons:
+                polygons.remove(polygon)
+
+    return polygons
+
+
+
+def buffer_hull(points: Union[MultiPoint, np.array], buffer: float = None, tolerance: float = None, iterations: int = 50,
+                max_nn: float = None):
+    """
+    Calculate the concave hull of the given points by buffering from points.
+
+    Parameters
+    ----------
+    points
+        N x 3 array of XYZ points
+    buffer
+        length by which to expand
+    tolerance
+        distance within generated hull to dissolve points
+    iterations
+        number of iterations to complete (default will continue until all points are within the hull)
+    max_nn
+        maximum of nearest neighbor distances in the given points
+
+    Returns
+    ----------
+    MultiPolygon
+        alpha shape (concave hull) of points
+    """
+
+    if type(points) is not MultiPoint:
+        points = MultiPoint(points)
+
+    if max_nn is None:
+        max_nn = maximum_nearest_neighbor_distance(points)
+
+    if buffer is None:
+        buffer = max_nn
+
+    if tolerance is None:
+        tolerance = max_nn / 2
+
+    max_cluster_distance = max_nn * 10
+
+    output_hull = points.buffer(buffer)
+
+    if type(output_hull) is MultiPolygon:
+        cluster_distances = [distance for distance in polygon_nearest_neighbor_distances(output_hull) if distance < max_cluster_distance]
+        if len(cluster_distances) > 0:
+            cluster_max_nn = np.max(cluster_distances)
+            output_hull = output_hull.buffer(cluster_max_nn / 2).buffer(-cluster_max_nn / 2)
+
+    output_hull = output_hull.buffer(-buffer, join_style=JOIN_STYLE.mitre)
+
+    points_outside_hull = points.difference(output_hull.buffer(tolerance))
+    if type(points_outside_hull) is Point:
+        points_outside_hull = GeometryCollection([points_outside_hull])
+
+    if len(points_outside_hull) > 0:
+        output_hull = GeometryCollection((output_hull, points_outside_hull)).buffer(max_nn)
+
+        if iterations > 1:
+            output_hull.buffer(-max_nn, join_style=JOIN_STYLE.mitre)
+
+            points_outside_hull = points.difference(output_hull.buffer(tolerance))
+            if type(points_outside_hull) is Point:
+                points_outside_hull = GeometryCollection([points_outside_hull])
+
+            if len(points_outside_hull) > 0:
+                print(f'buffer hull created by expanding and shrinking by {buffer:.5} contains ' +
+                      f'{(len(points) - len(points_outside_hull)) / len(points) * 100:.5}% of points ({len(points_outside_hull)} exist outside of the current hull)')
+                output_hull = buffer_hull(points, buffer + max_nn, tolerance, iterations - 1, max_nn)
+
+    if type(output_hull) is MultiPolygon:
+        cluster_distances = [distance for distance in polygon_nearest_neighbor_distances(output_hull) if distance < max_cluster_distance]
+        if len(cluster_distances) > 0:
+            cluster_max_nn = max(np.ravel(cluster_distances)) / 2
+            output_hull = output_hull.buffer(cluster_max_nn).buffer(-cluster_max_nn)
+
+    return output_hull
+
+
+def polygon_nearest_neighbor_distances(polygons: [Polygon]) -> [float]:
+    """
+    Get nearest neighbor distances within the given polygons.
+
+    Parameters
+    ----------
+    polygons
+        list of Shapely polygons
+
+    Returns
+    -------
+    [float]
+        distances to the nearest neighbor
+    """
+
+    # return [min(polygon.distance(other_polygon) for other_polygon in polygons if not other_polygon.equals(polygon)) for polygon in polygons]
+    return nearest_neighbors(polygon.centroid for polygon in polygons)[0]
+
+
+def _uncertainty(values: np.array, catzoc: str) -> np.array:
+    """
+    Calculate the uncertainty from the given interpolated values.
+
+    Parameters
+    ----------
+    values
+        array of data
+    catzoc
+        CATZOC score
+
+    Returns
+    -------
+    numpy.array
+        array of uncertainty values
+    """
+
+    m, b = CATZOC[catzoc]
+    return (values * m) + b
+
+
+def raster_mask(polygon: Union[Polygon, MultiPolygon], shape: (float, float), origin: (float, float), resolution: (float, float),
+                nodata: float, crs_wkt: str) -> gdal.Dataset:
+    """
+    Convert the given Shapely polygon into a GDAL raster dataset mask (with values outside of the polygon set to `nodata`).
+
+    Parameters
+    ----------
+    polygon
+        Shapely polygon (or multipolygon) with which to create mask
+    shape
+        shape of mask
+    resolution
+        cell size of mask
+    origin
+        raster origin
+    crs_wkt
+        spatial reference of mask
+    nodata
+        value for no data in mask
+
+    Returns
+    -------
+    gdal.Dataset
+        GDAL raster dataset
+    """
+
+    mask, transform = rasterize_polygon(polygon, shape, origin, resolution)
+
+    output_dataset = gdal.GetDriverByName('MEM').Create('', int(shape[1]), int(shape[0]), 1, gdal.GDT_Float32)
+    output_dataset.SetProjection(crs_wkt)
+    output_dataset.SetGeoTransform(transform.to_gdal())
+    output_band = output_dataset.GetRasterBand(1)
+    output_band.SetNoDataValue(nodata)
+    output_band.WriteArray(np.where(mask, 1, nodata))
+
+    return output_dataset
+
+
+def raster_mask_like(polygon: Union[Polygon, MultiPolygon], like_raster: gdal.Dataset, band: int = 0) -> gdal.Dataset:
+    """
+    Get a mask of the survey area with the same properties as the given raster.
+
+    Parameters
+    ----------
+    polygon
+        Shapely polygon with which to create mask
+    like_raster
+        raster to copy
+    band
+        zero-based index of raster band
+
+    Returns
+    -------
+    gdal.Dataset
+        mask
+    """
+
+    geotransform = like_raster.GetGeoTransform()
+    raster_band = like_raster.GetRasterBand(band + 1)
+    return raster_mask(polygon, shape=(like_raster.RasterYSize, like_raster.RasterXSize), origin=(geotransform[0], geotransform[3]),
+                       resolution=(geotransform[1], geotransform[5]), nodata=raster_band.GetNoDataValue(),
+                       crs_wkt=crs_wkt_from_gdal(like_raster))
+
+
+def apply_raster_mask(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: float = None, band: int = 0) -> gdal.Dataset:
+    """
+    Mask a raster using the given mask values in the given mask band.
+    Both rasters are assumed to be collocated, as all operations are conducted on the pixel level.
+
+    Parameters
+    ----------
+    raster
+        GDAL raster dataset
+    mask
+        GDAL raster dataset of mask to apply
+    mask_value
+        value to use as mask
+    band
+        zero-based index of raster band of mask
+
+    Returns
+    -------
+    gdal.Dataset
+        GDAL raster dataset with mask applied
+    """
+
+    band = mask.GetRasterBand(band + 1)
+    mask_array = band.ReadAsArray()
+
+    if mask_value is None:
+        mask_value = band.GetNoDataValue()
+
+    for band_index in range(1, raster.RasterCount + 1):
+        raster_band = raster.GetRasterBand(band_index)
+        raster_array = raster_band.ReadAsArray()
+        raster_array[mask_array == mask_value] = raster_band.GetNoDataValue()
+        raster_band.WriteArray(raster_array)
+
+    return raster
