@@ -294,7 +294,7 @@ class FuseProcessor:
 
         Returns
         ----------
-        str
+        [str]
             input survey path
         """
 
@@ -307,7 +307,7 @@ class FuseProcessor:
                 metadata = [metadata]
         except (RuntimeError, TypeError) as e:
             self.logger.log(_logging.DEBUG, e)
-            return None
+            return []
         from_id = []
         for m in metadata:
             # get the config file information
@@ -394,6 +394,17 @@ class FuseProcessor:
 
             self._meta_obj.insert_records(metadata)
 
+            output_directory = _os.path.dirname(metadata["outpath"])
+            output_filename = _os.path.join(output_directory, metadata['from_filename'])
+            if self._read_type in ['ehydro', 'bps']:
+                metadata['to_filename'] = f'{output_filename}.{metadata["new_ext"]}'
+                self._point_writer.write(dataset, metadata['to_filename'])
+            elif self._read_type == 'bag':
+                # only write out the bag if the file was transformed
+                if 'to_filename' not in metadata:
+                    metadata['to_filename'] = f"{output_filename}.{self._raster_extension}"
+                    self._raster_writer.write(dataset, metadata['to_filename'])
+
             if 'interpolate' in metadata:
                 if metadata['interpolate'] and self._read_type == 'bag':
                     if ('support_files' not in metadata or len(metadata['support_files']) < 1):
@@ -412,15 +423,6 @@ class FuseProcessor:
                         print(message)
                         self.logger.warning(message)
                 else:
-                    if self._read_type == 'ehydro' or self._read_type == 'bps':
-                        metadata['to_filename'] = f'{metadata["outpath"]}.{metadata["new_ext"]}'
-                        self._point_writer.write(dataset, metadata['to_filename'])
-                    elif self._read_type == 'bag':
-                        # only write out the bag if the file was transformed
-                        if 'to_filename' not in metadata:
-                            metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
-                            self._raster_writer.write(dataset, metadata['to_filename'])
-
                     message = f'{input_directory} - No interpolation required'
                     print(message)
                     self.logger.log(_logging.DEBUG, message)
