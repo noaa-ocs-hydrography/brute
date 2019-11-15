@@ -70,7 +70,7 @@ class Interpolator:
 
         # Point Interpolation
         if self._interp_engine == 'point':
-            if not support_files:
+            if len(support_files) == 0:
                 interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution)
                 metadata['from_filename'] = self.gettag(base)
                 metadata['interpolated'] = True
@@ -80,13 +80,16 @@ class Interpolator:
 
         # Raster Interpolation
         elif self._interp_engine == 'raster':
-            if not support_files:
+            if len(support_files) == 0:
                 raise ValueError("No coverage files provided; no interpolation can occur")
             else:
                 interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, support_files, file_size)
                 metadata['from_filename'] = self.gettag(base)
                 metadata['interpolated'] = True
 
+        resolution = interpolated_dataset.GetGeoTransform()[1]
+        metadata['to_filename'] = f"{_os.path.join(root, base)}_{int(resolution if resolution >= 1 else resolution * 100)}" + \
+                                  f"{'m' if resolution >= 1 else 'cm'}_interp.{metadata['new_ext']}"
 
         return interpolated_dataset, metadata
 

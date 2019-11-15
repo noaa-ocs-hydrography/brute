@@ -108,7 +108,15 @@ class FuseProcessor:
         self.rawdata_path = self._config['rawpaths']
         self.procdata_path = self._config['outpath']
         self._cols = FuseProcessor._paths + FuseProcessor._dates + FuseProcessor._datums + FuseProcessor._quality_metrics + FuseProcessor._scores + FuseProcessor._source_info + FuseProcessor._processing_info
-        self._meta_obj = _mr.MetaReviewer(self._config['metapath'], self._cols)
+
+        if 'metatable' in self._config:
+            hostname, database, table = self._config['metatable'].split('/')
+            self._meta_obj = _mr.MetadataDatabase(hostname, database, table, self._cols)
+        elif 'metapath' in self._config:
+            self._meta_obj = _mr.MetadataFile(self._config['metapath'], self._cols)
+        else:
+            raise ConfigParseError('configuration does not specify metadata table or file')
+
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()
@@ -127,7 +135,7 @@ class FuseProcessor:
         outpath
         to_horiz_datum
         to_vert_datum
-        metapath
+        metapath or metatable
 
         Parameters
         ----------
@@ -161,14 +169,12 @@ class FuseProcessor:
         if 'rootpath' in config:
             root = config['rootpath']
             # raw paths first
-            rawtmp = []
-            for p in config['rawpaths']:
-                rawtmp.append(_os.path.join(root, p))
-            config['rawpaths'] = rawtmp
+            config['rawpaths'] = [_os.path.join(root, path) for path in config['rawpaths']]
             # output paths
             config['outpath'] = _os.path.join(root, config['outpath'])
             # metapath
-            config['metapath'] = _os.path.join(root, config['metapath'])
+            if 'metapath' in config:
+                config['metapath'] = _os.path.join(root, config['metapath'])
         if len(config) == 0:
             raise ValueError('Failed to read configuration file.')
         else:
@@ -197,19 +203,22 @@ class FuseProcessor:
             'to_vert_key': 'EPSG of output vertical datum',
             'to_vert_units': 'units of output vertical datum units',
             'to_vert_direction': 'vertical direction of output vertical datum',
-            'to_vert_datum': 'output vertical datum',
-            'metapath': 'file path to CSV of metadata',
+            'to_vert_datum': 'output vertical datum'
         }
         for required_config_key in required_config_keys:
             if required_config_key not in config_dict:
-                raise ValueError(
-                    f'no {required_config_keys[required_config_key]} ("{required_config_key}") found in configuration file')
+                raise ConfigParseError(
+                    f'configuration does not specify a {required_config_keys[required_config_key]} ("{required_config_key}")')
+
+        if 'metapath' not in config_dict and 'metatable' not in config_dict:
+            raise ConfigParseError('configuration does not specify a metadata location ("metapath" or "metatable")')
+
         # check the paths
         for p in config_dict['rawpaths']:
             if not _os.path.isdir(p):
-                raise ValueError(f'Invalid input path: {p}')
+                raise ConfigParseError(f'Invalid input path: {p}')
         if not _os.path.isdir(config_dict['outpath']):
-            raise ValueError(f'Invalid output data path: {config_dict["outpath"]}')
+            raise ConfigParseError(f'Invalid output data path: {config_dict["outpath"]}')
 
     def _set_data_reader(self):
         """
@@ -274,18 +283,18 @@ class FuseProcessor:
         self._raster_writer = ProcIO('gdal', self._raster_extension)
         self._point_writer = ProcIO('point', self._point_extension)
 
-    def read(self, dataid: str) -> str:
+    def read(self, dataid: str) -> [str]:
         """
         Read survey bathymetry and metadata into useable forms.
 
         Parameters
         ----------
         dataid
-            Filename of survey bathymetry.
+            survey name
 
         Returns
         ----------
-        str
+        [str]
             input survey path
         """
 
@@ -293,13 +302,12 @@ class FuseProcessor:
 
         # get the metadata
         try:
-            raw_meta = self._reader.read_metadata(dataid)
-            metadata = raw_meta.copy()
+            metadata = self._reader.read_metadata(dataid).copy()
             if type(metadata) == dict:
                 metadata = [metadata]
         except (RuntimeError, TypeError) as e:
             self.logger.log(_logging.DEBUG, e)
-            return None
+            return []
         from_id = []
         for m in metadata:
             # get the config file information
@@ -311,7 +319,7 @@ class FuseProcessor:
                 msg = f'All quality metadata was found during read.'
             self.logger.log(_logging.DEBUG, msg)
             # write out the metadata and close the log
-            self._meta_obj.write_meta_record(m)
+            self._meta_obj.insert_records(m)
             from_id.append(m['from_filename'])
         self._close_log()
         return from_id
@@ -375,57 +383,59 @@ class FuseProcessor:
             metadata['outpath'] = _os.path.join(self._config['outpath'], input_directory)
             metadata['new_ext'] = self._point_extension
 
+            dataset = None
             try:
                 dataset, metadata, transformed = self._transform.reproject(frompath, metadata)
             except (ValueError, RuntimeError, IndexError) as error:
                 message = f' Transformation error: {error}'
+                print(message)
                 self.logger.warning(message)
-                metadata['interpolate'] = 'False'
+                metadata['interpolate'] = False
+
+            self._meta_obj.insert_records(metadata)
 
             if 'interpolate' in metadata:
-                interpolate = metadata['interpolate'].lower()
-
-                if self._read_type == 'bag' and interpolate == 'true':
+                if metadata['interpolate'] and self._read_type == 'bag':
                     if ('support_files' not in metadata or len(metadata['support_files']) < 1):
-                        interpolate = 'false'
+                        metadata['interpolate'] = False
                         self.logger.warning("No coverage files provided; no interpolation can occur")
 
-                root, filename = _os.path.split(metadata['outpath'])
-                base, ext = _os.path.splitext(filename)
-
-                if interpolate == 'true':
+                if metadata['interpolate']:
                     metadata = self._transform.reproject_support_files(metadata, self._config['outpath'])
-                    
+
                     try:
                         dataset, metadata = self._interpolator.interpolate(dataset, metadata)
+                        metadata['interpolated'] = True
                         self._raster_writer.write(dataset, metadata['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
-                        message = f' Interpolation error: {error}'
+                        message = f'interpolation error: {error}'
+                        print(message)
                         self.logger.warning(message)
-                        metadata['interpolated'] = False
-
-                elif interpolate == 'false':
-
-                    if self._read_type == 'ehydro' or self._read_type == 'bps':
-                        outfilename = f"{metadata['outpath']}.{metadata['new_ext']}"
-                        self._point_writer.write(dataset, outfilename)
-                        metadata['to_filename'] = outfilename
+                else:
+                    if self._read_type in ['ehydro', 'bps']:
+                        metadata['to_filename'] = f'{metadata["outpath"]}.{metadata["new_ext"]}'
+                        self._point_writer.write(dataset, metadata['to_filename'])
                     elif self._read_type == 'bag':
                         # only write out the bag if the file was transformed
                         if 'to_filename' not in metadata:
                             metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
                             self._raster_writer.write(dataset, metadata['to_filename'])
 
-                    self.logger.log(_logging.DEBUG, f'{input_directory} - No interpolation required')
-                else:
-                    raise ValueError(f'metadata interpolate flag has an ambigious state: {interpolate}')
+                    message = f'{input_directory} - No interpolation required'
+                    print(message)
+                    self.logger.log(_logging.DEBUG, message)
             else:
                 del dataset
                 raise ValueError('metadata has no "interpolate" value')
+
+            self._meta_obj.insert_records(metadata)
         else:
-            self.logger.log(_logging.DEBUG, 'metadata is missing required datum transformation entries')
-        self._meta_obj.write_meta_record(metadata)
+            message = 'metadata is missing required datum transformation entries'
+            print(message)
+            self.logger.log(_logging.DEBUG, message)
+
         self._close_log()
+        return metadata['to_filename']
 
     def post(self, filename):
         """
@@ -448,7 +458,7 @@ class FuseProcessor:
             s57_meta = self._metadata_to_s57(metadata)
             self._db.write(procfile, 'new', s57_meta)
             # need to check for proper insertion...
-            self._meta_obj.write_meta_record(metadata)
+            self._meta_obj.insert_records(metadata)
         self._close_log()
 
     def score(self, filename, date):
@@ -514,7 +524,9 @@ class FuseProcessor:
         root, extension = _os.path.splitext(filename)
         if extension == '.interpolated':
             filename = root
-        log_filename = _os.path.join(_os.path.dirname(self._config['metapath']),
+
+        log_filename = _os.path.join(_os.path.dirname(self._config['metapath'])
+                                     if 'metapath' in self._config else self._config['outpath'],
                                      f'{_os.path.splitext(_os.path.split(filename)[-1])[0]}.log')
         self._meta['logfilename'] = log_filename
 
@@ -552,16 +564,14 @@ class FuseProcessor:
         try:
             # file name is the key rather than the path
             f = _os.path.basename(filename)
-            if 'from_filename' not in self._meta:
-                self._meta = self._meta_obj.read_meta_record(f)
-            elif self._meta['from_filename'] is not filename:
-                self._meta = self._meta_obj.read_meta_record(f)
+            if 'from_filename' not in self._meta or self._meta['from_filename'] != filename:
+                self._meta = self._meta_obj[f]
             else:
                 # need to catch if this file is not in the metadata record yet here.
                 raise KeyError(f'File not referenced in stored metadata: {f}')
             return self._meta
-        except KeyError as e:
-            return None
+        except KeyError:
+            return {}
 
     def _metadata_to_s57(self, metadata) -> dict:
         """
@@ -577,7 +587,7 @@ class FuseProcessor:
             dictionary of metadata
         """
 
-        return self._meta_obj.csv_to_s57(metadata)
+        return _mr.csv_to_s57(metadata)
 
     def _datum_metadata_ready(self, metadata) -> bool:
         """
@@ -591,12 +601,14 @@ class FuseProcessor:
         ----------
             whether metadata has all datum fields
         """
-        test_keys = FuseProcessor._datums.copy()
+
+        datum_keys = FuseProcessor._datums.copy()
+
         # if geographic input remove the need for a zone key
-        if metadata['from_horiz_type'] == 'geo' and 'from_horiz_key' in test_keys:
-            idx = test_keys.index('from_horiz_key')
-            test_keys.pop(idx)
-        return all(key in metadata for key in test_keys if key != 'to_horiz_key')
+        if 'from_horiz_type' in metadata and metadata['from_horiz_type'] == 'geo' and 'from_horiz_key' in datum_keys:
+            datum_keys.remove('from_horiz_key')
+
+        return all(key in metadata for key in datum_keys if key != 'to_horiz_key')
 
     def _quality_metadata_ready(self, metadata):
         """
@@ -657,11 +669,7 @@ class FuseProcessor:
             whether metadata has all date fields
         """
 
-        for key in FuseProcessor._dates:
-            if key not in metadata:
-                return False
-        else:
-            return True
+        return all(key in metadata for key in FuseProcessor._dates)
 
     def _score_metadata_ready(self, metadata):
         """
@@ -676,8 +684,8 @@ class FuseProcessor:
             whether metadata has all score fields
         """
 
-        for key in FuseProcessor._scores:
-            if key not in metadata:
-                return False
-        else:
-            return True
+        return all(key in metadata for key in FuseProcessor._scores)
+
+
+class ConfigParseError(Exception):
+    pass

@@ -14,7 +14,7 @@ import fuse.fuse_ehydro as ffe
 
 if __name__ == '__main__':
     processor = ffe.FuseProcessor_eHydro('ceswg.config')  # this config is local for testing
-    flist = processor._meta_obj.read_metadata()
+    flist = processor._meta_obj.records
     for f in flist:
         if 'to_filename' not in f:
             infilename = f['from_path']
