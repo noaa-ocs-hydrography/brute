@@ -133,6 +133,9 @@ class VDatum:
         points = self._reader.read_bathymetry(filename)
         points = self.__filter_xyz(points, instructions)
 
+        if len(points) == 0:
+            raise ValueError(f'no valid points read from {filename} in {__file__}')
+
         # save point array to file
         points_file_directory = TemporaryDirectory()
         points_filename = _os.path.join(points_file_directory.name, 'outfile.txt')
