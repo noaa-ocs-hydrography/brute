@@ -7,6 +7,7 @@ Created on Tue Aug 13 11:09:10 2019
 
 import logging as _logging
 import os
+import sys
 from datetime import datetime
 from glob import glob
 
@@ -33,27 +34,36 @@ if __name__ == '__main__':
             print(f'config {config_index + 1}/{len(config_filenames)}, ' +
                   f'survey {survey_index + 1}/{len(survey_directories)} - ' +
                   f'Begin working in {survey_directory}:')
-            bag_filenames = glob(os.path.join(survey_directory, '*.bag'))
 
-            for bag_index, bag_filename in enumerate(bag_filenames):
-                total_files += len(bag_filenames)
+            bag_filenames = None
+            try:
+                bag_filenames = bag_processor.read(survey_directory)
+            except Exception as error:
+                _, _, error_traceback = sys.exc_info()
+                message = f'read error: {error.__class__.__name__} {error} ({os.path.split(error_traceback.tb_frame.f_code.co_filename)[1]}:{error_traceback.tb_lineno})'
+                print(message)
+                bag_processor.logger.log(_logging.DEBUG, message)
 
-                try:
-                    print(f'file {bag_index}/{len(bag_filenames)}: reading {os.path.basename(bag_filename)}', end=', ')
-                    bag_processor.read(bag_filename)
-                except Exception as error:
-                    print(f'\nread error: {error}\n')
-                    bag_processor.logger.log(_logging.DEBUG, error)
+            if bag_filenames is None:
+                message = '\nNo file ID returned by fuse read.\n'
+                print(message)
+                bag_processor.logger.log(_logging.DEBUG, message)
+            else:
+                for bag_index, bag_filename in enumerate(bag_filenames):
+                    total_files += len(bag_filenames)
 
-                try:
-                    print(f'{datetime.now()}: processing {bag_filename}', end=', ')
-                    bag_processor.process(bag_filename)
-                    print(f'completed BAG {bag_index + 1} of {len(bag_filenames)} ' +
-                          f'of survey {survey_index + 1} of {len(survey_directories)}; ' +
-                          f'{(datetime.now() - start_time) / ((bag_index + 1) / (total_files + (len(bag_filenames) * len(survey_directories) * (len(config_filenames) - (config_index + 1)))))} remaining')
-                except Exception as error:
-                    print(f'\n{error}\n')
-                    bag_processor.logger.log(_logging.DEBUG, error)
+                    try:
+                        print(f'file {bag_index}/{len(bag_filenames)}: reading {os.path.basename(bag_filename)}', end=', ')
+                        print(f'{datetime.now()}: processing {bag_filename}', end=', ')
+                        bag_processor.process(bag_filename)
+                        print(f'completed BAG {bag_index + 1} of {len(bag_filenames)} ' +
+                              f'of survey {survey_index + 1} of {len(survey_directories)}; ' +
+                              f'{(datetime.now() - start_time) / ((bag_index + 1) / (total_files + (len(bag_filenames) * len(survey_directories) * (len(config_filenames) - (config_index + 1)))))} remaining')
+                    except Exception as error:
+                        _, _, error_traceback = sys.exc_info()
+                        message = f'processing error: {error.__class__.__name__} {error} ({os.path.split(error_traceback.tb_frame.f_code.co_filename)[1]}:{error_traceback.tb_lineno})'
+                        print(message)
+                        bag_processor.logger.log(_logging.DEBUG, message)
 
     end_time = datetime.now()
     print(f'completed NOAA BAG processing at {end_time} (took {end_time - start_time})')
