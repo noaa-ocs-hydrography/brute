@@ -435,7 +435,7 @@ class FuseProcessor:
             self.logger.log(_logging.DEBUG, message)
 
         self._close_log()
-        return metadata['to_filename'] if 'to_filename' in metadata else ''
+        return metadata['to_filename']
 
     def post(self, filename):
         """
