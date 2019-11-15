@@ -268,7 +268,7 @@ class MetadataDatabase(MetadataTable):
         'to_horiz_resolution': 'REAL',
         'feat_size': 'REAL',
         'feat_detect': 'BOOL',
-        'feat_least_depth': 'REAL',
+        'feat_least_depth': 'BOOL',
         'catzoc': 'VARCHAR',
         'supersession_score': 'VARCHAR',
         'agency': 'VARCHAR',
