@@ -563,7 +563,7 @@ class FuseProcessor:
         """
         try:
             # file name is the key rather than the path
-            f = _os.path.splitext(_os.path.basename(filename))[0]
+            f = _os.path.basename(filename)
             if 'from_filename' not in self._meta or self._meta['from_filename'] != filename:
                 self._meta = self._meta_obj[f]
             else:
