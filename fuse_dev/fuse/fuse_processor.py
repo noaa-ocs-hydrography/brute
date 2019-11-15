@@ -283,7 +283,7 @@ class FuseProcessor:
         self._raster_writer = ProcIO('gdal', self._raster_extension)
         self._point_writer = ProcIO('point', self._point_extension)
 
-    def read(self, dataid: str) -> str:
+    def read(self, dataid: str) -> [str]:
         """
         Read survey bathymetry and metadata into useable forms.
 
