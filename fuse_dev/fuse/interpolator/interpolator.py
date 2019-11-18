@@ -33,7 +33,7 @@ class Interpolator:
         """Set up and configure the interpolation tools."""
 
         if self._interp_engine == 'point':
-            self._engine = pinterp.PointInterpolator()
+            self._engine = pinterp
         elif self._interp_engine == 'raster':
             self._engine = binterp.process.RasterInterpolator()
         else:
