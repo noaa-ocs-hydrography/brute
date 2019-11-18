@@ -15,12 +15,14 @@ This is a rework of the original point interpolator.
 from datetime import datetime
 from types import GeneratorType
 from typing import Union, Tuple
+from re import match
 import numpy as np
-
-import fiona
-from osgeo import gdal, osr
 from scipy.spatial.ckdtree import cKDTree
 from scipy.spatial.qhull import Delaunay
+from osgeo import gdal, osr
+import fiona
+from affine import Affine
+from rasterio.features import geometry_mask
 from shapely.geometry import GeometryCollection, MultiPolygon, Polygon, MultiPoint, Point, MultiLineString, JOIN_STYLE
 from shapely.ops import unary_union, polygonize
 from shapely.geometry import shape as shapely_shape
@@ -34,7 +36,8 @@ CATZOC = {
 
 #============================================================================
 
-def interpolate(dataset: gdal.Dataset, resolution: float, ancillary_coverage_files: [str] = None, catzoc: str = 'B', nodata = 1000000) -> gdal.Dataset:
+def interpolate(dataset: gdal.Dataset, resolution: float, ancillary_coverage_files: [str] = None, 
+                catzoc: str = 'B', nodata = 1000000) -> gdal.Dataset:
 
     """
     Generate a raster from the input data using the given interpolation method.
@@ -578,6 +581,7 @@ def apply_raster_mask(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: floa
 
     return raster
 
+
 def crs_wkt_from_gdal(dataset: gdal.Dataset, layer: int = 0) -> str:
     """
     Extract the well-known text of the CRS from the given GDAL dataset.
@@ -608,8 +612,9 @@ def crs_wkt_from_gdal(dataset: gdal.Dataset, layer: int = 0) -> str:
 
     return crs_wkt
 
+
 def rasterize_polygon(polygon: Union[Polygon, MultiPolygon], shape: (float, float), origin: (float, float),
-                      resolution: (float, float)) -> (numpy.array, Affine):
+                      resolution: (float, float)) -> (np.array, Affine):
     """
     Convert the given Shapely polygon into a boolean mask with its requisite transform.
 
@@ -635,3 +640,53 @@ def rasterize_polygon(polygon: Union[Polygon, MultiPolygon], shape: (float, floa
 
     transform = affine_from_georeference(origin, resolution)
     return ~geometry_mask(polygon, shape, transform), transform
+
+
+def crs_wkt_from_epsg(crs: Union[int, str]) -> str:
+    """
+    Get the well-known text of a CRS from EPSG code, SPCS string, Esri string, or well-known text of CRS.
+
+    Parameters
+    ----------
+    crs
+        EPSG code, SPCS string, Esri string, or well-known text of CRS
+
+    Returns
+    -------
+    str
+        well-known text of CRS
+    """
+
+    if type(crs) is str:
+        spatial_reference = osr.SpatialReference(wkt=crs)
+        spatial_reference.MorphFromESRI()
+    else:
+        spatial_reference = osr.SpatialReference()
+        spatial_reference.ImportFromEPSG(crs)
+
+    return spatial_reference.ExportToWkt()
+    
+
+def affine_from_georeference(origin: (float, float), resolution: (float, float), rotation: (float, float) = None) -> Affine:
+    """
+    Calculate the affine transformation from the given geographic parameters.
+
+    Parameters
+    ----------
+    origin
+        XY coordinates of origin
+    resolution
+        XY cell size
+
+    Returns
+    -------
+        Affine transform
+    """
+
+    if type(resolution) is float:
+        resolution = resolution, resolution
+
+    if rotation is None:
+        rotation = 0, 0
+
+    return Affine.translation(*origin) * Affine.scale(*resolution) * Affine.rotation(rotation[0])
