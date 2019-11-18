@@ -266,6 +266,19 @@ class BPSRawReader(RawReader):
         return metadata
 
     def _format_a93_z(self, z_string: str) -> str:
+        """
+        Parses the z value from the h93 formatting style in order to determine
+        both the depth value and what type of data it represents
+
+        Parameters
+        ----------
+        z_string : str
+            String representing the z value of a h93 format coordinate point
+
+        returns : str
+            The parsed value of that string
+
+        """
         negative = False
         if '-' in z_string:
             z_string = z_string[1:]
@@ -336,25 +349,88 @@ class BPSRawReader(RawReader):
         active = xyz[active_bool == 0, :]
         return active[:, [0, 1, 2]]
 
-    def _data_lookup(self, infilename: str) -> [str]:
-        data_files = [infilename]
-        base, ext = _os.path.splitext(infilename)
+    def _data_lookup(self, data_pointer: str) -> [str]:
+        """
+        Using an input filepath or folder path, attempts to locate relevant xyz
+        file types.
+
+        Parameters
+        ----------
+        data_pointer : str
+            input file or folder path
+
+        Returns
+        -------
+        [str]
+            a list of files found
+
+        """
+        data_files = []
+        base, ext = _os.path.splitext(data_pointer)
         if ext == '.a93':
+            data_files.append(data_pointer)
             xyz = f"{base}.xyz"
             if _os.path.isfile(xyz):
                 data_files.append(xyz)
         elif ext == '.xyz':
+            data_files.append(data_pointer)
             a93 = f"{base}.a93"
             if _os.path.isfile(a93):
                 data_files.append(a93)
+        elif ext == '' and _os.path.isdir(base):
+            name = _os.path.basename(base)
+            xyz = _os.path.join(base, f"{name}.xyz")
+            if _os.path.isfile(xyz):
+                data_files.append(xyz)
+            a93 = _os.path.join(base, f"{name}.a93")
+            if _os.path.isfile(a93):
+                data_files.append(a93)
+
         return data_files
 
-    def _data_check(self, infilename: str) -> _np.array:
+    def _prune_points(self, point_dict: {_np.array}) -> _np.array:
         """
-        Reads in all available data files and returns the data
+        Using a93 data, prunes points not found also found in xyz data (active
+        soundings)
+
+        Parameters
+        ----------
+        point_dict : dict
+            dict of numpy.arrays containing point data from both a93 and xyz
+            file types
+
+        Returns
+        -------
+        _np.array
+            array of valid points between the data
+
         """
 
-        data_files = self._data_lookup(infilename)
+        points = []
+
+        for point in point_dict['.a93']:
+            if point in point_dict['.xyz']:
+                points.append(point)
+
+        return _np.array(points)
+
+    def _data_check(self, data_pointer: str) -> _np.array:
+        """
+        Reads in all available data files and returns the data
+
+        Parameters
+        ----------
+        data_pointer : str
+            input file or folder path
+
+        Returns
+        -------
+        _np.array
+            array of valid points between the data
+
+        """
+
+        data_files = self._data_lookup(data_pointer)
 
         data_hold = {}
         for data in data_files:
@@ -364,16 +440,25 @@ class BPSRawReader(RawReader):
             elif ext == '.xyz':
                 data_hold[ext] = self._parse_xyz(data)
 
-        return data_hold
+        if '.a93' in data_hold and '.xyz' in data_hold:
+            points = self._prune_points(data_hold)
+        elif '.a93' in data_hold:
+            points = data_hold['.a93']
+        elif '.xyz' in data_hold:
+            points = data_hold['.xyz']
+        else:
+            points = _np.array([])
 
-    def read_bathymetry(self, infilename: str) -> _np.array:
+        return points
+
+    def read_bathymetry(self, data_pointer: str) -> _np.array:
         """
-        Returns a numpy array
+        Returns a numpy array of the valid bathymetry for the input survey
 
         Parameters
         ----------
-        infilename : str
-            data filepath
+        data_pointer : str
+            input file or folder path
 
         Returns
         -------
@@ -382,4 +467,4 @@ class BPSRawReader(RawReader):
         """
 
 
-        return self._data_check(infilename)
+        return self._data_check(data_pointer)
