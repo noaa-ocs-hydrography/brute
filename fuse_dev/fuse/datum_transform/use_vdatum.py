@@ -145,6 +145,7 @@ class VDatum:
         reprojected_directory = TemporaryDirectory()
         self.__setup_vdatum(instructions, 'points')
         self.__convert_file(points_filename, reprojected_directory.name)
+        points_file_directory.cleanup()
         reprojected_filename = _os.path.join(reprojected_directory.name, 'outfile.txt')
         log_filename = _os.path.join(reprojected_directory.name, 'outfile.txt.log')
 
@@ -164,7 +165,9 @@ class VDatum:
         if not _os.path.isfile(reprojected_filename):
             raise RuntimeError(f'VDatum was unable to reproject survey from {filename} to {reprojected_filename}')
 
-        return _np.loadtxt(reprojected_filename, delimiter=','), utm_zone
+        reprojected_points = _np.loadtxt(reprojected_filename, delimiter=',')
+        reprojected_directory.cleanup()
+        return reprojected_points, utm_zone
 
     def __filter_xyz(self, xyz: _np.array, instructions: dict) -> _np.array:
         """
@@ -227,6 +230,8 @@ class VDatum:
         # translate points with VDatum
         self.__setup_vdatum(instructions, 'geotiff')
         self.__convert_file(output_filename, reprojected_directory.name)
+        original_directory.cleanup()
+
         if 'to_horiz_key' in instructions:
             utm_zone = int(instructions['to_horiz_key'])
         else:
@@ -239,7 +244,10 @@ class VDatum:
                         break
                 else:
                     raise ValueError(f'no UTM zone found in file "{filename}"')
-        return gdal.Open(reprojected_filename), utm_zone
+
+        dataset = gdal.Open(reprojected_filename), utm_zone
+        reprojected_directory.cleanup()
+        return dataset
 
     def __setup_vdatum(self, instructions: dict, mode: str = 'points'):
         """
