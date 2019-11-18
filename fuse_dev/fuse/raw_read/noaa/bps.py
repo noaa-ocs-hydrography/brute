@@ -129,7 +129,8 @@ class BPSRawReader(RawReader):
             The filename of the data chosen data source
 
         """
-        data_files = _glob(_os.path.join(survey_folder, '*xyz', '*a93'))
+        data_files = []
+        [data_files.extend(_glob(_os.path.join(survey_folder, data_type))) for data_type in ('*a93', '*xyz')]
 
         return self._xyz_precedence(data_files)
 
