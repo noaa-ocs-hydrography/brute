@@ -577,3 +577,61 @@ def apply_raster_mask(raster: gdal.Dataset, mask: gdal.Dataset, mask_value: floa
         raster_band.WriteArray(raster_array)
 
     return raster
+
+def crs_wkt_from_gdal(dataset: gdal.Dataset, layer: int = 0) -> str:
+    """
+    Extract the well-known text of the CRS from the given GDAL dataset.
+
+    Parameters
+    ----------
+    dataset
+        GDAL dataset (vector or raster)
+    layer
+        index of vector layer
+
+    Returns
+    -------
+    str
+        well-known text of CRS
+    """
+
+    crs_wkt = dataset.GetProjectionRef()
+
+    if crs_wkt == '':
+        vector_layer = dataset.GetLayerByIndex(layer)
+        if vector_layer is not None:
+            crs_wkt = vector_layer.GetSpatialRef().ExportToWkt()
+        else:
+            raise ValueError("No Spatial Ref Found?")
+    elif match('^EPSG:[0-9]+$', crs_wkt):
+        crs_wkt = crs_wkt_from_epsg(int(crs_wkt[5:]))
+
+    return crs_wkt
+
+def rasterize_polygon(polygon: Union[Polygon, MultiPolygon], shape: (float, float), origin: (float, float),
+                      resolution: (float, float)) -> (numpy.array, Affine):
+    """
+    Convert the given Shapely polygon into a boolean mask with its requisite transform.
+
+    Parameters
+    ----------
+    polygon
+        Shapely polygon (or multipolygon) with which to create mask
+    shape
+        shape of output mask
+    resolution
+        cell size of output mask
+    origin
+        origin of raster
+
+    Returns
+    -------
+    numpy.array, Affine
+        boolean array mask (True is within the polygon, False outside) and its affine transform
+    """
+
+    if type(polygon) is Polygon:
+        polygon = MultiPolygon([polygon])
+
+    transform = affine_from_georeference(origin, resolution)
+    return ~geometry_mask(polygon, shape, transform), transform
