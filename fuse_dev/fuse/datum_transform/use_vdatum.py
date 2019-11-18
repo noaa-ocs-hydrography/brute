@@ -18,13 +18,12 @@ import subprocess as _subprocess
 from tempfile import TemporaryDirectory as tempdir
 
 import numpy as _np
-from osgeo import gdal
+from osgeo import gdal, ogr, osr
 
 from_hdatum = [
     'from_horiz_frame',
     'from_horiz_type',
     'from_horiz_units',
-    'from_horiz_key'
 ]
 
 from_vdatum = [
@@ -82,8 +81,6 @@ class VDatum:
 
         NSRS2007 is assumed for the out EPSG code.
 
-        TODO rename to reproject
-
         Parameters
         ----------
         filename
@@ -93,7 +90,6 @@ class VDatum:
 
         Returns
         -------
-        gdal.Dataset
             GDAL point cloud dataset
         """
 
@@ -115,8 +111,6 @@ class VDatum:
         """
         Reproject XYZ from the given filename.
 
-        TODO rename to __reproject_xyz
-
         Parameters
         ----------
         filename
@@ -126,13 +120,14 @@ class VDatum:
 
         Returns
         -------
-        numpy.array, int
-            N x 3 array of XYZ points and UTM zone
+            array of XYZ points and UTM zone
         """
 
         # read the points and put it in a temp file for VDatum to read
         points = self._reader.read_bathymetry(filename)
         points = self.__filter_xyz(points, instructions)
+        if points.shape[0] == 0:
+            raise ValueError(f'no valid points read from {filename} in {__file__}')
         original_directory = tempdir()
         output_filename = _os.path.join(original_directory.name, 'outfile.txt')
         reprojected_directory = tempdir()
@@ -145,51 +140,56 @@ class VDatum:
         self.__convert_file(output_filename, reprojected_directory.name)
         if 'to_horiz_key' in instructions:
             utm_zone = int(instructions['to_horiz_key'])
+#        else:
+#            # read out UTM Zone from VDatum log file
+#
+#            with open(log_filename, 'r') as logfile:
+#                for line in logfile.readlines():
+#                    if line.startswith('Zone:'):
+#                        # input_zone = line[27:53].strip()
+#                        utm_zone = int(line[54:82].strip())
+#                        break
+#                else:
+#                    raise ValueError(f'No UTM zone found in file "{filename}"')
+        if _os.path.isfile(reprojected_filename):
+            transformed_data = _np.loadtxt(reprojected_filename, delimiter=',')
         else:
-            # read out UTM Zone from VDatum log file
-            with open(log_filename, 'r') as logfile:
-                for line in logfile.readlines():
-                    if line.startswith('Zone:'):
-                        # input_zone = line[27:53].strip()
-                        utm_zone = int(line[54:82].strip())
-                        break
-                else:
-                    raise ValueError(f'no UTM zone found in file "{filename}"')
-        return _np.loadtxt(reprojected_filename, delimiter=','), utm_zone
+            raise RuntimeError(f'No output returned from vdatum')
+        return transformed_data, utm_zone
 
-    def __filter_xyz(self, xyz: _np.array, instructions: dict) -> _np.array:
+    def __filter_xyz(self, xyz: _np.array, metadata: dict) -> _np.array:
         """
-        Filter the given geographic XYZ points to exclude points outside the UTM zone of the given spatial reference frame.
-        If the provided data is not geographic, or the given frame is not a UTM zone, no filter is applied.
+        Return a filtered geographic xyz array.  The provided geographic xyz
+        array is filtered to remove any data not in the zone of the destination
+        spatial reference frame.  If the provided data is not geographic or the
+        destiaion frame is not UTM the provided array is returned.
 
         Parameters
         ----------
         xyz
-            N x 3 array of XYZ points
-        instructions
-            dictionary of metadata defining geographic frame
+            data as an xyz n by 3 numpy array in a geographic frame
+
+        metadata
+            the metadata dict assocated with the xyz data
 
         Returns
-        ----------
-        numpy.array
-            N x 3 array of XYZ points, filtered to only include the given UTM zone
+        -------
+        numpy array
         """
-
-        if instructions['from_horiz_type'] == 'geo' and instructions['to_horiz_type'] == 'utm':
-            srs = spatial_reference_from_metadata(instructions)
+        if metadata['from_horiz_type'] == 'geo' and metadata['to_horiz_type'] == 'utm':
+            srs = spatial_reference_from_metadata(metadata)
             c_meridian = srs.GetProjParm(gdal.osr.SRS_PP_CENTRAL_MERIDIAN)
             west = c_meridian - 3
             east = c_meridian + 3
-            x = xyz[:, 0]
-            xyz = xyz[(x > west) & (x < east),:]
-
+            x = xyz[:,0]
+            idx = _np.nonzero((x > west) & (x < east))[0]
+            xyz = xyz[idx,:]
         return xyz
+
 
     def __translate_bag(self, filename: str, instructions: dict) -> (gdal.Dataset, int):
         """
         Reproject BAG bathy from the given filename.
-
-        TODO rename to __reproject_bag
 
         Parameters
         ----------
@@ -200,8 +200,7 @@ class VDatum:
 
         Returns
         -------
-        numpy.array, int
-            N x 3 array of XYZ points and UTM zone
+            array of XYZ points and UTM zone
         """
 
         # create a gdal.Dataset and assign a temp file name for VDatum to read
@@ -249,23 +248,28 @@ class VDatum:
         instructions
             dictionary of metadata
         """
-
         # having the input zone is optional if the input type is geographic
         local_from_datum = from_hdatum.copy()
         if instructions['from_horiz_type'] != 'geo':
             local_from_datum.append('from_horiz_key')
-
+        if ":".join(instructions[key] for key in from_vdatum).lower() == ":".join(instructions[key] for key in to_vdatum).lower():
+            vert = False
+        else:
+            vert = True
         # having the output zone is optional
         local_to_hdatum = to_hdatum.copy()
         if 'to_horiz_key' in instructions:
             local_to_hdatum.append('to_horiz_key')
-
-        self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
-                      f'ihorz:{":".join(instructions[key] for key in local_from_datum)} ' + \
-                      f'ivert:{":".join(instructions[key] for key in from_vdatum)} ' + \
-                      f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
-                      f'overt:{":".join(instructions[key] for key in to_vdatum)} '
-
+        if vert:
+            self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
+                          f'ihorz:{":".join(instructions[key] for key in local_from_datum)} ' + \
+                          f'ivert:{":".join(instructions[key] for key in from_vdatum)} ' + \
+                          f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
+                          f'overt:{":".join(instructions[key] for key in to_vdatum)} '
+        else:
+            self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
+                          f'ihorz:{":".join(instructions[key] for key in local_from_datum)} ' + \
+                          f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} '
         if mode == 'points':
             self._shell += f'-file:txt:comma,0,1,2,skip0:'
         elif mode == 'geotiff':
@@ -285,7 +289,7 @@ class VDatum:
             output directory
         """
 
-        command = f'{self._shell}{filename};{output_directory}'
+        command = f'{self._shell}{filename};{output_directory} -nodata'
         self._logger.log(_logging.DEBUG, command)
         try:
             proc = _subprocess.Popen(command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, cwd=self._vdatum_path)
