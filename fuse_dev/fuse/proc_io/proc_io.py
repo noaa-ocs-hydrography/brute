@@ -240,6 +240,11 @@ class ProcIO:
         # Prepare destination file
         bag_driver = gdal.GetDriverByName("BAG")
 
+        # template_xml_dir = tempdir()
+        # template_xml_filename = os.path.join(template_xml_dir.name, 'bag_template.xml')
+        # with open(template_xml_filename, 'w') as template_xml:
+        #     template_xml.write(requests.get('https://raw.githubusercontent.com/OSGeo/gdal/master/gdal/data/bag_template.xml').text)
+
         # write and close output raster dataset
         try:
             output_raster = bag_driver.CreateCopy(filename, raster)
@@ -256,6 +261,8 @@ class ProcIO:
             output_raster = bag_driver.CreateCopy(filename, raster)
             del output_raster
             self._logger.log(logging.DEBUG, f'Created BAG file at {filename}')
+
+        # template_xml_dir.cleanup()
 
     def _write_points(self, points: gdal.Dataset, filename: str, layer: int = 0, output_layer: str = 'Elevation'):
         """
