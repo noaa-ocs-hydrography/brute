@@ -372,6 +372,9 @@ class FuseProcessor:
         str
             output filename
         """
+
+        output_filename = ''
+
         metadata = self._get_stored_meta(dataid)
         self._set_log(dataid)
         metadata['read_type'] = self._read_type
@@ -429,13 +432,14 @@ class FuseProcessor:
                 raise ValueError('metadata has no "interpolate" value')
 
             self._meta_obj.insert_records(metadata)
+            output_filename = metadata['to_filename']
         else:
             message = 'metadata is missing required datum transformation entries'
             print(message)
             self.logger.log(_logging.DEBUG, message)
 
         self._close_log()
-        return metadata['to_filename']
+        return output_filename
 
     def post(self, filename):
         """
