@@ -13,7 +13,7 @@ import pickle
 import subprocess
 import sys
 from tempfile import TemporaryDirectory as tempdir
-from typeing import Union
+from typing import Union
 
 import fiona
 import fiona.crs
