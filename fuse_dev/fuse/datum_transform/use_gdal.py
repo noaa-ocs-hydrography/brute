@@ -63,7 +63,7 @@ def reproject_support_files(metadata: dict, output_directory: str, logger: loggi
     """
 
     if logger is None:
-        logger = logging.getLogger()
+        logger = logging.getLogger('fuse')
 
     if 'support_files' in metadata:
         support_filenames = metadata['support_files']

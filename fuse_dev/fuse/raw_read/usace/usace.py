@@ -38,7 +38,7 @@ class USACERawReader(RawReader):
         self.xyz_suffixes = ('_A', '_FULL')
         self.xyz_files = {}
 
-        self._logger = _logging.getLogger(f'fuse')
+        self._logger = _logging.getLogger('fuse')
 
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)

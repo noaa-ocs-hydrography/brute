@@ -30,7 +30,8 @@ class ProcIO:
     """ A class to abstract the reading and writing of bathymetry data. """
 
     def __init__(self, in_data_type: str, out_data_type: str, work_dir: str = None, z_up: bool = True, nodata: float = 1000000.0,
-                 caris_env_name: str = 'CARIS35', overwrite: bool = True, db_loc: str = None, db_name: str = None):
+                 caris_env_name: str = 'CARIS35', overwrite: bool = True, db_loc: str = None, db_name: str = None,
+                 logger: logging.Logger = None):
         """
         Create a new bathymetric data input / output object, reading and writing in the given input and output formats.
 
@@ -69,12 +70,7 @@ class ProcIO:
         else:
             self._work_dir_name = work_dir
 
-        self._logger = logging.getLogger('fuse')
-
-        if len(self._logger.handlers) == 0:
-            console = logging.StreamHandler()
-            console.setLevel(logging.DEBUG)
-            self._logger.addHandler(console)
+        self._logger = logger if logger is not None else logging.getLogger('fuse')
 
         if self._out_data_type == "carisbdb51":
             if db_name is not None and db_loc is not None:

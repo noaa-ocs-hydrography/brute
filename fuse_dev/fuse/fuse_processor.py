@@ -123,7 +123,8 @@ class FuseProcessor:
         self._set_data_writer()
         self._db = None
         self._meta = {}  # initialize the metadata holder
-        self.logger = self._set_log(_os.path.join(self.procdata_path, f'{__name__}.log'))
+
+        self.logger = self._set_log('fuse')
 
     def _read_configfile(self, configuration_file: str):
         """
@@ -279,8 +280,8 @@ class FuseProcessor:
             self._point_extension = 'csar'
         else:
             self._point_extension = self._raster_extension
-        self._raster_writer = ProcIO('gdal', self._raster_extension)
-        self._point_writer = ProcIO('point', self._point_extension)
+        self._raster_writer = ProcIO('gdal', self._raster_extension, logger=self.logger)
+        self._point_writer = ProcIO('point', self._point_extension, logger=self.logger)
 
     def read(self, dataid: str) -> [str]:
         """
@@ -422,7 +423,7 @@ class FuseProcessor:
                             metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
                             self._raster_writer.write(dataset, metadata['to_filename'])
 
-                    logger.info(f'{input_directory} - No interpolation required')
+                    logger.info('No interpolation required')
             else:
                 del dataset
                 raise ValueError('metadata has no "interpolate" value')
@@ -512,21 +513,19 @@ class FuseProcessor:
             else:
                 raise ValueError('No database location defined in the configuration file.')
 
-    def _set_log(self, filename: str, file_level: str = _logging.DEBUG, console_level: str = _logging.INFO,
-                 name: str = None) -> _logging.Logger:
+    def _set_log(self, name: str, file_level: str = _logging.DEBUG, console_level: str = _logging.INFO) -> _logging.Logger:
         """
         Set the global logger to the given filename.
 
         Parameters
         ----------
-        filename
-            filename to set logger to
+        name
+            name of logger / log file
         file_level
             logging level of logfile
         console_level
             logging level of console
-        name
-            name of logger
+
 
         Returns
         ----------
@@ -534,13 +533,8 @@ class FuseProcessor:
             logging object
         """
 
-        filename = _os.path.splitext(filename)[0]
-
-        if name is None:
-            name = _os.path.basename(filename)
-
-        log_filename = _os.path.join(_os.path.dirname(self._config['metapath']) if 'metapath' in self._config else self._config['outpath'],
-                                     f'{name}.log')
+        log_directory = _os.path.dirname(self._config['metapath']) if 'metapath' in self._config else self._config['outpath']
+        log_filename = _os.path.join(log_directory, f'{name}.log')
         self._meta['logfilename'] = log_filename
 
         logger = _logging.Logger(name)

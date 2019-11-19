@@ -7,12 +7,12 @@ Created on Wed Aug 22 12:27:39 2018
 
 Use VDatum for conversions.
 """
+import logging
 
 from fuse.datum_transform.use_gdal import _xyz_to_gdal, spatial_reference_from_metadata
 
 __version__ = 'use_vdatum 0.0.1'
 
-import logging as _logging
 import os as _os
 import subprocess as _subprocess
 from tempfile import TemporaryDirectory
@@ -48,7 +48,7 @@ TO_VDATUM = [
 class VDatum:
     """An object for working with VDatum."""
 
-    def __init__(self, vdatum_path: str, java_path: str, reader):
+    def __init__(self, vdatum_path: str, java_path: str, reader, logger: logging.Logger = None):
         """
         Create a new object for using VDatum.
 
@@ -58,6 +58,8 @@ class VDatum:
             dictionary of configuration
         reader
             reader object
+        logger
+            logging object
         """
 
         self._reader = reader
@@ -72,7 +74,7 @@ class VDatum:
         else:
             raise ValueError(f'Invalid java path: {java_path}')
 
-        self._logger = _logging.getLogger('vdatum')
+        self._logger = logger if logger is not None else logging.getLogger('fuse')
 
     def translate(self, filename: str, instructions: dict) -> gdal.Dataset:
         """

@@ -23,15 +23,14 @@ metadata is available.
 """
 
 import logging as _logging
-import lxml.html as _html
-import numpy as _np
 import os as _os
 import sys as _sys
-
 from glob import glob as _glob
 
-from fuse.raw_read.raw_read import RawReader
+import lxml.html as _html
+import numpy as _np
 from fuse.raw_read import parse_file_pickle
+from fuse.raw_read.raw_read import RawReader
 
 h93_to_meta = {'Surv Id': 'survey',
                'Strt Yr': 'start_date',
@@ -75,7 +74,7 @@ class BPSRawReader(RawReader):
         """
         Initialize the logger for the read process.
         """
-        self._logger = _logging.getLogger(f'fuse')
+        self._logger = _logging.getLogger('fuse')
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)
             ch.setLevel(_logging.DEBUG)
