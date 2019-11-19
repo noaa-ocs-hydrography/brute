@@ -11,7 +11,6 @@ import logging
 import os
 import pickle
 import subprocess
-import sys
 from tempfile import TemporaryDirectory as tempdir
 
 import fiona
@@ -73,9 +72,9 @@ class ProcIO:
         self._logger = logging.getLogger('fuse')
 
         if len(self._logger.handlers) == 0:
-            ch = logging.StreamHandler(sys.stdout)
-            ch.setLevel(logging.DEBUG)
-            self._logger.addHandler(ch)
+            console = logging.StreamHandler()
+            console.setLevel(logging.DEBUG)
+            self._logger.addHandler(console)
 
         if self._out_data_type == "carisbdb51":
             if db_name is not None and db_loc is not None:

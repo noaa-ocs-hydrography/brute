@@ -535,7 +535,7 @@ class FuseProcessor:
         # create file handler for this filename
         file_handler = _logging.FileHandler(log_filename)
         file_handler.setLevel(_logging.DEBUG)
-        file_handler.setFormatter(_logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        file_handler.setFormatter(_logging.Formatter('%(asctime)s %(name)-8s %(levelname)-8s: %(message)s'))
         self.logger.addHandler(file_handler)
 
     def _close_log(self):

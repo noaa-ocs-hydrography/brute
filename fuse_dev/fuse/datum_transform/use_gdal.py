@@ -43,7 +43,7 @@ def _maxValue(arr: numpy.array):
     return int(nums[index])
 
 
-def reproject_support_files(metadata: dict, output_directory: str) -> dict:
+def reproject_support_files(metadata: dict, output_directory: str, logger: logging.Logger = None) -> dict:
     """
     Horizontally transform the given support files, writing reprojected files to the given output directory.
 
@@ -53,12 +53,17 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
         dictionary of metadata
     output_directory
         path to directory for transformed files
+    logger
+        logging object
 
     Returns
     -------
     dict
         dictionary of metadata with updated list of support files
     """
+
+    if logger is None:
+        logger = logging.getLogger()
 
     if 'support_files' in metadata:
         support_filenames = metadata['support_files']
@@ -79,7 +84,7 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
                     options = gdal.WarpOptions(format='GTiff', srcSRS=input_crs, dstSRS=output_crs, srcNodata=nodata, dstNodata=nodata)
                     gdal.Warp(output_filename, input_filename, options=options)
                     if not os.path.exists(output_filename):
-                        logging.warning(f'file not created: {output_filename}')
+                        logger.warning(f'file not created: {output_filename}')
                     else:
                         reprojected_filenames.append(output_filename)
             elif extension == '.gpkg':
@@ -88,7 +93,7 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
                 reprojected_filenames.append(output_filename)
             else:
                 if extension != '.tfw':
-                    logging.warning(f'unsupported file format "{extension}"')
+                    logger.warning(f'unsupported file format "{extension}"')
                 reprojected_filenames.append(input_filename)
         metadata['support_files'] = reprojected_filenames
 

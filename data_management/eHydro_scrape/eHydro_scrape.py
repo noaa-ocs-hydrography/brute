@@ -62,7 +62,7 @@ else:
     ``\\downloads\\CEMVN``, ``\\downloads\\CENWP``, etc.)
     """
 
-logging = os.path.join(progLoc, 'logs')
+log_directory = os.path.join(progLoc, 'logs')
 """Default location for individual query logs. These are named like
 ``YYYYMMDD_0_eHydro_log.txt``
 """
@@ -77,8 +77,8 @@ versioning = os.path.join(progLoc, 'versions')
 # check to see if the downloaded data folder exists, will create it if not
 if not os.path.exists(holding):
     os.mkdir(holding)
-if not os.path.exists(logging):
-    os.mkdir(logging)
+if not os.path.exists(log_directory):
+    os.mkdir(log_directory)
 if not os.path.exists(running):
     os.mkdir(running)
 
@@ -1005,7 +1005,7 @@ def logOpen(logType: Union[str, bool], to=None) -> Tuple[Tuple[TextIO, Any], str
 
         while True:
             name = f'{datestamp}_{x}_{logName}'
-            logPath = os.path.join(logging, name)
+            logPath = os.path.join(log_directory, name)
 
             if os.path.exists(logPath):
                 x += 1

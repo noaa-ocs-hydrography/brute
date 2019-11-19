@@ -18,7 +18,7 @@ import subprocess as _subprocess
 from tempfile import TemporaryDirectory
 
 import numpy as _np
-from osgeo import gdal, ogr, osr
+from osgeo import gdal
 
 FROM_HDATUM = [
     'from_horiz_frame',
@@ -72,7 +72,7 @@ class VDatum:
         else:
             raise ValueError(f'Invalid java path: {java_path}')
 
-        self._logger = _logging.getLogger('fuse')
+        self._logger = _logging.getLogger('vdatum')
 
     def translate(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
