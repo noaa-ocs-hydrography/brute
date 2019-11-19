@@ -21,7 +21,7 @@ if __name__ == '__main__':
     # wx_frame = wx_window.Open_Frame('BAG')
     start_time = datetime.now()
     print(f'starting NOAA BAG processing at {start_time}')
-    config_filenames = glob(os.path.join(SCRIPT_DIRECTORY, 'bag_configs', 'pbc_*.config'))
+    config_filenames = glob(os.path.join(SCRIPT_DIRECTORY, 'bag_*.config'))
 
     total_files = 0
 
