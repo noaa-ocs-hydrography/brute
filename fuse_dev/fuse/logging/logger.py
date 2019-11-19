@@ -5,10 +5,10 @@ Created on Fri Aug 30 15:21:05 2019
 @author: Casiano.Koprowski
 """
 
-import datetime as _dt
 import logging as _logging
 import os as _os
-import sys as _sys
+from datetime import datetime
+
 
 class Log:
     """
@@ -16,24 +16,23 @@ class Log:
 
     """
 
-    def __init__(self, log_output_path: str, log_filename: str, name: str = 'fuse', incl_date: bool = True):
+    def __init__(self, log_filename: str, name: str = 'fuse', incl_date: bool = True):
 
-        date_time = ''
-        if incl_date:
-            today = _dt.datetime.now()
-            date_time = f'{today:%Y%m%d_%H%M}_'
+        datetime_string = f'{datetime.now():%Y%m%d_%H%M}_' if incl_date else ''
         self.logger = _logging.getLogger(name)
-#        metapath, metafile = _os.path.split(log_output_path)
-        logname = _os.path.join(log_output_path, f'{date_time}{log_filename}.log')
-        self.name = logname
+        # metapath, metafile = _os.path.split(log_output_path)
+
+        log_directory, log_filename = _os.path.split(log_filename)
+        log_filename = _os.path.join(log_directory, f'{datetime_string}{_os.path.splitext(log_filename)[0]}.log')
+
         # remove handlers that might have existed from previous files
         for h in self.logger.handlers:
             self.logger.removeHandler(h)
-         # create file handler for this filename
-        fh = _logging.FileHandler(logname)
-        formatter = _logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        self.handler = fh.setFormatter(formatter)
-        self.logger.addHandler(fh)
+        # create file handler for this filename
+        file_handler = _logging.FileHandler(log_filename)
+        formatter = _logging.Formatter('%(asctime)s %(name)-8s %(levelname)-8s: %(message)s')
+        self.handler = file_handler.setFormatter(formatter)
+        self.logger.addHandler(file_handler)
 
     def close(self):
         """
@@ -70,10 +69,9 @@ class LoggingProcessor:
     loggers = {}
 
     def __init__(self, log_output_path: str, log_filename: str, handler_name: str = 'fuse'):
-
         self.log_output_path = log_output_path
         self.process_handler = handler_name
-        self.loggers[handler_name] = Log(log_output_path, log_filename, name=handler_name)
+        self.loggers[handler_name] = Log(_os.path.join(log_output_path, log_filename), name=handler_name)
 
     def add_logger(self, log_filename: str, log_output_path: str = None, handler_name: str = None, incl_date: bool = False):
 
@@ -83,7 +81,7 @@ class LoggingProcessor:
         if log_output_path is None:
             log_output_path = self.log_output_path
 
-        self.loggers[handler_name] = Log(log_output_path, log_filename, handler_name, incl_date=incl_date)
+        self.loggers[handler_name] = Log(_os.path.join(log_output_path, log_filename), handler_name, incl_date=incl_date)
 
     def close_logger(self, log_key):
 
@@ -99,6 +97,7 @@ class LoggingProcessor:
 
     def _get_log_list(self):
         return list(self.loggers.keys())
+
 
 #    def debug(self, log, message):
 #        self.loggers[log].debug(message)
