@@ -18,7 +18,7 @@ import subprocess as _subprocess
 from tempfile import TemporaryDirectory
 
 import numpy as _np
-from osgeo import gdal
+from osgeo import gdal, ogr, osr
 
 FROM_HDATUM = [
     'from_horiz_frame',
@@ -169,7 +169,7 @@ class VDatum:
         reprojected_directory.cleanup()
         return reprojected_points, utm_zone
 
-    def __filter_xyz(self, xyz: _np.array, instructions: dict) -> _np.array:
+    def __filter_xyz(self, xyz: _np.array, metadata: dict) -> _np.array:
         """
         Filter the given geographic XYZ points to exclude points outside the UTM zone of the given spatial reference frame.
         If the provided data is not geographic, or the given frame is not a UTM zone, no filter is applied.
@@ -187,11 +187,12 @@ class VDatum:
             N x 3 array of XYZ points, filtered to only include the given UTM zone
         """
 
-        if instructions['from_horiz_type'] == 'geo' and instructions['to_horiz_type'] == 'utm':
-            srs = spatial_reference_from_metadata(instructions)
+        if metadata['from_horiz_type'] == 'geo' and metadata['to_horiz_type'] == 'utm':
+            srs = spatial_reference_from_metadata(metadata)
             c_meridian = srs.GetProjParm(gdal.osr.SRS_PP_CENTRAL_MERIDIAN)
             west = c_meridian - 3
             east = c_meridian + 3
+
             x = xyz[:, 0]
             xyz = xyz[(x > west) & (x < east), :]
 
@@ -271,17 +272,26 @@ class VDatum:
         local_from_hdatum = FROM_HDATUM.copy()
         if instructions['from_horiz_type'] != 'geo':
             local_from_hdatum.append('from_horiz_key')
+        if ":".join(instructions[key] for key in FROM_VDATUM).lower() == ":".join(instructions[key] for key in TO_VDATUM).lower():
+            vert = False
+        else:
+            vert = True
 
         # having the output zone is optional
         local_to_hdatum = TO_HDATUM.copy()
         if 'to_horiz_key' in instructions:
             local_to_hdatum.append('to_horiz_key')
 
-        self._shell = f'{_os.path.join(self._java_path, "java")} -jar {_os.path.join(self._vdatum_path, "vdatum.jar")} ' + \
-                      f'ihorz:{":".join(instructions[key] for key in local_from_hdatum)} ' + \
-                      f'ivert:{":".join(instructions[key] for key in FROM_VDATUM)} ' + \
-                      f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
-                      f'overt:{":".join(instructions[key] for key in TO_VDATUM)} '
+        if vert:
+            self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
+                          f'ihorz:{":".join(instructions[key] for key in local_from_hdatum)} ' + \
+                          f'ivert:{":".join(instructions[key] for key in FROM_VDATUM)} ' + \
+                          f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
+                          f'overt:{":".join(instructions[key] for key in TO_VDATUM)} '
+        else:
+            self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
+                          f'ihorz:{":".join(instructions[key] for key in local_from_hdatum)} ' + \
+                          f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} '
 
         if mode == 'points':
             self._shell += f'-file:txt:comma,0,1,2,skip0:'
@@ -302,7 +312,7 @@ class VDatum:
             output directory
         """
 
-        command = f'{self._shell}{filename};{output_directory}'
+        command = f'{self._shell}{filename};{output_directory} -nodata'
         self._logger.info(command)
         try:
             proc = _subprocess.Popen(command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, cwd=self._vdatum_path)

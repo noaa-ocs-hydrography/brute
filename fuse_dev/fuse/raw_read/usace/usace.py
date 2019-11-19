@@ -83,7 +83,7 @@ class USACERawReader(RawReader):
         if meta_final['interpolate']:
             meta_orig = meta_final.copy()
             meta_orig['interpolate'] = False
-            meta_final['from_filename'] = f"{meta_orig['from_filename']}.interpolate" 
+            meta_final['from_filename'] = f"{meta_orig['from_filename']}.interpolate"
             return [meta_orig, meta_final]
         else:
             return [meta_final]
@@ -293,7 +293,7 @@ class USACERawReader(RawReader):
         max_score = max(list(xyz_scores.keys()))
         return xyz_scores[max_score], True if max_score != 3 else False
 
-    def _data_determination(self, meta_dict: dict, survey_folder: str) -> dict:
+    def _data_determination(self, meta_dict: dict, survey_folder: str) -> (str, dict):
         """
         Determines cerain metadata values based on the known quality of the
         data.
@@ -313,6 +313,8 @@ class USACERawReader(RawReader):
         -------
         dict
             The metadata assigned via this method
+        str
+            The filename of the data chosen data source
         """
 
         if _os.path.isfile(survey_folder):
