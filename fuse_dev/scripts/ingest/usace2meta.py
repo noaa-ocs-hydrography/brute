@@ -38,7 +38,7 @@ if __name__ == '__main__':
         survey_directories = [os.path.join(config_input_root, filename) for filename in os.listdir(config_input_root)]
         total_files += len(survey_directories)
         for survey_index, survey_directory in enumerate(survey_directories):
-            print(f'config {config_index + 1} of {len(config_filenames)}, ' +
+            print(f'\n\nconfig {config_index + 1} of {len(config_filenames)}, ' +
                   f'survey {survey_index + 1} of {len(survey_directories)} - ' +
                   f'Begin working in {survey_directory}:')
 

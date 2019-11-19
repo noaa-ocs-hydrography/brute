@@ -75,8 +75,7 @@ class Interpolator:
                 metadata['from_filename'] = self.gettag(base)
                 metadata['interpolated'] = True
             else:
-                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution,
-                                                                support_files[0])
+                interpolated_dataset = self._engine.interpolate(dataset, self._resolution, support_files)
 
         # Raster Interpolation
         elif self._interp_engine == 'raster':

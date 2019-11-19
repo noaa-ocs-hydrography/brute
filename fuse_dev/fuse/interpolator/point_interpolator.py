@@ -227,7 +227,7 @@ def _get_raster_properties(resolution: float, data_bounds: Tuple[float, float, f
 
     """
 
-    xmin, ymin, xmax, ymax = data_bounds
+    xmin, ymax, xmax, ymin = data_bounds
     numcolumns = int(np.ceil((1. * (xmax - xmin) / resolution)))
     xrem = xmin % resolution
     xnmin = xmin - xrem
