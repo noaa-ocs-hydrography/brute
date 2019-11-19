@@ -537,7 +537,7 @@ class FuseProcessor:
         log_filename = _os.path.join(log_directory, f'{name}.log')
         self._config['logfilename'] = log_filename
 
-        logger = _logging.Logger(name)
+        logger = _logging.getLogger(name)
 
         # remove handlers that might have existed from previous files
         self._close_log(logger)
