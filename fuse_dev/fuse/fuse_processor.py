@@ -117,14 +117,14 @@ class FuseProcessor:
         else:
             raise ConfigParseError('configuration does not specify metadata table or file')
 
+        self.logger = self._set_log('fuse')
+
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()
         self._set_data_writer()
         self._db = None
         self._meta = {}  # initialize the metadata holder
-
-        self.logger = self._set_log('fuse')
 
     def _read_configfile(self, configuration_file: str):
         """
