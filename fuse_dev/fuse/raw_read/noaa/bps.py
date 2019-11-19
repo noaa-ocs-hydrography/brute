@@ -97,7 +97,7 @@ class BPSRawReader(RawReader):
         meta_h93 = self._parse_htm(filename)
         meta_pickle = parse_file_pickle.read_pickle(filename)
         meta_default = self._defualt_meta(filename)
-        meta_combined = {**meta_default, **meta_h93, **meta_pickle}
+        meta_combined = {**meta_default, **meta_pickle, **meta_h93}
         meta_final = self._finalize_meta(meta_combined)
         return meta_final
 
