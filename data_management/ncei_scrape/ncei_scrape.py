@@ -111,7 +111,7 @@ csv_to_meta = {'Survey': 'survey',
                }
 h93_to_vert_datum = {
         'MEAN LOW WATER SPRINGS': 'MLLW', #11/13/2019 Decision to change recognize the more conservative MLWS as the less conservative MLLW
-        'MEAN LOWER LOW WATER SPRINGS': 'MLLWS',
+        'MEAN LOWER LOW WATER SPRINGS': 'MLLW', #11/19/2019 Decision to change recognize the more conservative MLWS as the less conservative MLLW
         'MEAN SEA LEVEL': 'MSL',
         'LOWER LOW WATER': 'LLW',
         'MEAN LOW WATER': 'MLW',
@@ -129,7 +129,8 @@ h93_to_vert_datum = {
         }
 h93_to_horiz_datum = {
         'NORTH AMERICAN DATUM OF 1983': 'NAD83',
-        'NORTH AMERICAN DATUM 1983': 'NAD83'
+        'NORTH AMERICAN DATUM 1983': 'NAD83',
+        'UNDETERMINED DATUM': 'NAD83' #11/19/2019 Decision to change recognize Undetermined Datum as NAD83
         }
 h93_vert_datum = {
         0: 'Undetermined vertical datum',
