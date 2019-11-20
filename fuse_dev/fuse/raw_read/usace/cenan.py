@@ -9,6 +9,9 @@ Created on Fri Feb  1 16:35:18 2019
 Read the various data sources available for a particular data stream such that
 any available bathymetry or metadata can be accessed.
 """
+
+import logging
+
 from fuse.raw_read.usace.usace import USACERawReader
 
 
