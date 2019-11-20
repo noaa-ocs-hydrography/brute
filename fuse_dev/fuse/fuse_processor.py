@@ -533,6 +533,7 @@ class FuseProcessor:
             logging object
         """
 
+        name = _os.path.splitext(_os.path.basename(name))[0]
         log_directory = _os.path.dirname(self._config['metapath']) if 'metapath' in self._config else self._config['outpath']
         log_filename = _os.path.join(log_directory, f'{name}.log')
         self._config['logfilename'] = log_filename
@@ -540,7 +541,7 @@ class FuseProcessor:
         logger = _logging.Logger(name)
 
         # remove handlers that might have existed from previous files
-        self._close_log(logger)
+        # self._close_log(logger)
 
         log_format = '%(asctime)s %(name)-30s %(levelname)-8s: %(message)s'
 
