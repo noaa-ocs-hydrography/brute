@@ -118,6 +118,10 @@ class FuseProcessor:
             raise ConfigParseError('configuration does not specify metadata table or file')
 
         self.logger = self._set_log('fuse')
+        self.logger.info(f'configuration file: {self._config_filename}')
+        self.logger.info(f'data input: {self.rawdata_path}')
+        self.logger.info(f'data output: {self.procdata_path}')
+        self.logger.info(f'metadata output: {self._config["metatable" if "metatable" in self._config else "metapath"]}')
 
         self._set_data_reader()
         self._set_data_transform()
@@ -125,6 +129,8 @@ class FuseProcessor:
         self._set_data_writer()
         self._db = None
         self._meta = {}  # initialize the metadata holder
+
+        self.logger.info('ready to start processing')
 
     def _read_configfile(self, configuration_file: str):
         """
@@ -322,6 +328,8 @@ class FuseProcessor:
             # write out the metadata and close the log
             self._meta_obj.insert_records(m)
             from_id.append(m['from_filename'])
+
+        logger.debug(from_id)
         self._close_log(logger)
         return from_id
 
@@ -379,6 +387,7 @@ class FuseProcessor:
 
         metadata = self._get_stored_meta(dataid)
         logger = self._set_log(dataid)
+        logger.info(f'processing {dataid}')
         metadata['read_type'] = self._read_type
 
         if self._datum_metadata_ready(metadata):
@@ -433,6 +442,7 @@ class FuseProcessor:
         else:
             logger.warning('metadata is missing required datum transformation entries')
 
+        logger.info(f'processed -> {output_filename}')
         self._close_log(logger)
         return output_filename
 
@@ -448,6 +458,7 @@ class FuseProcessor:
 
         metadata = self._get_stored_meta(filename)
         logger = self._set_log(filename)
+        logger.info(f'posting {filename}')
         if self._quality_metadata_ready(metadata):
             if not self._score_metadata_ready(metadata):
                 metadata['catzoc'] = score.catzoc(metadata)
@@ -460,6 +471,8 @@ class FuseProcessor:
             self._db.write(procfile, 'new', s57_meta)
             # need to check for proper insertion...
             self._meta_obj.insert_records(metadata)
+
+        logger.info('posted')
         self._close_log(logger)
 
     def score(self, filename, date):
@@ -472,6 +485,7 @@ class FuseProcessor:
 
         metadata = self._get_stored_meta(filename)
         logger = self._set_log(filename)
+        logger.info(f'scoring {filename}')
 
         if metadata['posted'].upper() == 'TRUE':
             dscore = score.decay(metadata, date)
@@ -485,6 +499,7 @@ class FuseProcessor:
         else:
             logger.warning('Insertion of decay score failed.')
 
+        logger.info('scored')
         self._close_log(logger)
 
     def _connect_to_db(self):
