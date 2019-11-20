@@ -21,7 +21,7 @@ if __name__ == '__main__':
     # wx_frame = wx_window.Open_Frame('USACE')
     start_time = datetime.now()
     print(f'starting BPS processing at {start_time}')
-    config_filenames = glob(os.path.join(SCRIPT_DIRECTORY, 'bps_configs', 'pbc_*.config'))
+    config_filenames = glob(os.path.join(SCRIPT_DIRECTORY, 'bps_*.config'))
 
     total_files = 0
 
