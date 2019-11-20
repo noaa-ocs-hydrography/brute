@@ -15,11 +15,12 @@ from fuse.raw_read.usace.usace import USACERawReader
 class CENANRawReader(USACERawReader):
     """An abstract raw data reader."""
 
-    def __init__(self):
-        """
-        No init needed?
-        """
-        super().__init__('CENAN')
+    def __init__(self, logger: logging.Logger = None):
+        if logger is None:
+            logger = logging.getLogger('fuse')
+        self.logger = logger
+
+        super().__init__('CENAN', self.logger)
 
     def read_metadata(self, survey_folder: str) -> dict:
         """
@@ -56,11 +57,11 @@ class CENANRawReader(USACERawReader):
         if meta_final['interpolate']:
             meta_orig = meta_final.copy()
             meta_orig['interpolate'] = False
-            meta_final['from_filename'] = f"{meta_orig['from_filename']}.interpolate" 
+            meta_final['from_filename'] = f"{meta_orig['from_filename']}.interpolate"
             return [meta_orig, meta_final]
         else:
             return [meta_final]
-    
+
     def _cenan_defaults(self):
         """
         Return default expectations for this disctrict.
@@ -80,4 +81,3 @@ class CENANRawReader(USACERawReader):
         meta = {}
         meta['from_vert_direction'] = 'height'
         return meta
-        

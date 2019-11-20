@@ -229,31 +229,31 @@ class FuseProcessor:
         try:
             reader_type = self._config['raw_reader_type'].casefold()
             if reader_type == 'cenan':
-                self._reader = _usace.cenan.CENANRawReader()
+                self._reader = _usace.cenan.CENANRawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'cemvn':
-                self._reader = _usace.cemvn.CEMVNRawReader()
+                self._reader = _usace.cemvn.CEMVNRawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'cesaj':
-                self._reader = _usace.cesaj.CESAJRawReader()
+                self._reader = _usace.cesaj.CESAJRawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'cesam':
-                self._reader = _usace.cesam.CESAMRawReader()
+                self._reader = _usace.cesam.CESAMRawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'ceswg':
-                self._reader = _usace.ceswg.CESWGRawReader()
+                self._reader = _usace.ceswg.CESWGRawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'cespl':
-                self._reader = _usace.cespl.CESPLRawReader()
+                self._reader = _usace.cespl.CESPLRawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'cenae':
-                self._reader = _usace.cenae.CENAERawReader()
+                self._reader = _usace.cenae.CENAERawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'bag':
-                self._reader = _noaa.bag.BAGSurvey(self._config['outpath'])
+                self._reader = _noaa.bag.BAGSurvey(self._config['outpath'], self.logger)
                 self._read_type = 'bag'
             elif reader_type == 'bps':
-                self._reader = _noaa.bps.BPSRawReader()
+                self._reader = _noaa.bps.BPSRawReader(self.logger)
                 self._read_type = 'bps'
             else:
                 raise ValueError('reader type not implemented')

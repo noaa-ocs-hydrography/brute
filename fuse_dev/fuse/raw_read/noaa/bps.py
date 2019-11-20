@@ -70,11 +70,15 @@ class BPSRawReader(RawReader):
     An object for handling Bathy Point Store data is the same fashion as other
     data types.
     """
-    def __init__(self):
+
+    def __init__(self, logger: _logging.Logger = None):
         """
         Initialize the logger for the read process.
         """
-        self._logger = _logging.getLogger('fuse')
+
+        if logger is None:
+            logger = _logging.getLogger('fuse')
+        self._logger = logger
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)
             ch.setLevel(_logging.DEBUG)

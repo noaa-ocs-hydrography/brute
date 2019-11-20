@@ -15,9 +15,15 @@ update July 12,2019 adding in call to pickle reader
 Fri Aug  9 08:50:35 2019; Casiano Edits
 """
 
+import logging
+
 from fuse.raw_read.usace.usace import USACERawReader
 
 
 class CESPLRawReader(USACERawReader):
-    def __init__(self):
-        super().__init__('CESPL')
+    def __init__(self, logger: logging.Logger = None):
+        if logger is None:
+            logger = logging.getLogger('fuse')
+        self.logger = logger
+
+        super().__init__('CESPL', self.logger)
