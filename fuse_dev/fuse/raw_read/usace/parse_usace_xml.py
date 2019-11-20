@@ -100,7 +100,7 @@ class XMLMetadata:
 
     """
 
-    def __init__(self, meta_xml, version='', filename=''):
+    def __init__(self, meta_xml, version='', filename='', logger: _logging.Logger = None):
         """
         Provided an xml string for parsing, a tree will be created and the
         name speace parsed from the second line.  Values are then extracted
@@ -110,6 +110,10 @@ class XMLMetadata:
         versions, most scenarios are guessing the version based on information
         in the file otherwise
         """
+
+        if logger is None:
+            logger = _logging.getLogger('fuse')
+        self.logger = logger
 
         self.filename = filename
         self.xml_tree = et.fromstring(meta_xml)
@@ -471,7 +475,7 @@ class XMLMetadata:
                     else:  # if no dictionary exists yet populate
                         Survey_Instruments[si_key] = si_value
                 except Exception as error:
-                    print(f'error finding instruments: {error}')
+                    self.logger.error(f'error finding instruments: {error.__class__.__name__} - {error}')
         return Survey_Instruments
 
     def get_fields(self):
@@ -1632,7 +1636,8 @@ def extract_from_iso_meta(xml_meta):
                 pass
 
         horiz_datum_items = []
-        for key, value in {'Projected_Coordinate_System': 'from_hoirz_frame', 'Horizontal_Zone': 'from_horiz_datum', 'Units': 'from_horiz_units'}.items():
+        for key, value in {'Projected_Coordinate_System': 'from_hoirz_frame', 'Horizontal_Zone': 'from_horiz_datum',
+                           'Units': 'from_horiz_units'}.items():
             try:
                 horiz_datum_items.append(xml_meta[key].strip())
                 xml_meta[value] = xml_meta[key].strip()

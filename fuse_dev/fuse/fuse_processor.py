@@ -526,7 +526,6 @@ class FuseProcessor:
         console_level
             logging level of console
 
-
         Returns
         ----------
         logging.Logger

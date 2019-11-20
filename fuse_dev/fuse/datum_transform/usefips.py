@@ -4,12 +4,12 @@ Created on Thu Aug 16 15:26:20 2018
 
 @author: grice
 """
-
+import logging
 import os as _os
 import sys
 
 
-def fips2wkt(fips: int, units: str = 'FEET') -> str:
+def fips2wkt(fips: int, units: str = 'FEET', logger: logging.Logger = None) -> str:
     """
     Given an ESRI FIPS code, return the associated wkt string as found in the
     gdal module data file 'esri_StatePlane_extra.wkt'.
@@ -24,6 +24,8 @@ def fips2wkt(fips: int, units: str = 'FEET') -> str:
         ESRI FIPS code
     units
         (Default value = 'FEET')
+    logger
+        logging object
 
     Returns
     -------
@@ -31,13 +33,16 @@ def fips2wkt(fips: int, units: str = 'FEET') -> str:
         well-known text of FIPS
     """
 
+    if logger is None:
+        logger = logging.getLogger('fuse')
+
     # combine the fips code with units to get the ERSI code
     if units == 'FEET':
         esri_code = f'{fips}2,'
     elif units == 'METER':
         esri_code = f'{fips}1,'
     else:
-        print("Unit type not recognized")
+        logger.warning("Unit type not recognized")
         esri_code = "-1"
     # search the file 'esri_StatePlane_extra.wkt' for the code
     # path to the gdal data

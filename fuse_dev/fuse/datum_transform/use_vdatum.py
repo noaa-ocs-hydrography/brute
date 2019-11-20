@@ -321,16 +321,17 @@ class VDatum:
         except:
             self._logger.error(f'Error executing: {command}\nat: {self._vdatum_path}')
             raise
+
+        output, outerr = proc.communicate()
         try:
-            output, outerr = proc.communicate()
             self._logger.debug(output.decode('utf-8'))
             if len(outerr) > 0:
                 self._logger.warning(outerr.decode('utf-8'))
             else:
                 self._logger.info('No datum transformation errors reported')
         except:
-            print(output)
-            print(outerr)
+            self._logger.debug(output)
+            self._logger.error(outerr)
 
 
 def _has_required_instructions(instructions: dict) -> bool:

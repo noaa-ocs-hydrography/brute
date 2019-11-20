@@ -14,6 +14,7 @@ major update April 2, 2019
 update July 12,2019 adding in call to pickle reader
 """
 
+import logging
 import os
 import pickle as _pickle
 import re as _re
@@ -30,8 +31,12 @@ __version__ = 'FUSE'
 class CESAJRawReader(USACERawReader):
     """ This class passes back bathymetry & a metadata dictionary from the e-Hydro files """
 
-    def __init__(self):
-        super().__init__('CESAJ')
+    def __init__(self, logger: logging.Logger = None):
+        if logger is None:
+            logger = logging.getLogger('fuse')
+        self.logger = logger
+
+        super().__init__('CESAJ', self.logger)
 
     def read_metadata(self, filename: str) -> dict:
         """
@@ -81,7 +86,7 @@ class CESAJRawReader(USACERawReader):
         """
 
         xyz = _np.loadtxt(bathyfilename, delimiter=' ')
-        self.xy  # remove later using still during debugging
+        self.logger.debug(self.xy)  # remove later using still during debugging
         return xyz
 
     def read_bathymetry(self, filename: str) -> _np.array:
@@ -103,7 +108,7 @@ class CESAJRawReader(USACERawReader):
         version = 'CESAJ'
         self.version = version
         first_instance, commas_present = _start_xyz(filename)
-        print(filename)  # remove later
+        self.logger.debug(filename)  # remove later
         if first_instance != '':
             if commas_present == ',':
                 xyz = _np.loadtxt(filename, delimiter=',', skiprows=first_instance, usecols=(0, 1, 2))
@@ -262,7 +267,7 @@ class EhydroPickleReader(object):
     and determining when /how to pass on metadata attributes
     """
 
-    def __init__(self, infilename: str):
+    def __init__(self, infilename: str, logger: logging.Logger):
         """
         Pass filename that matches the pickle file you want to match
         but with any extension
@@ -273,13 +278,14 @@ class EhydroPickleReader(object):
         Parameters
         ----------
         infilename: str:
-
-
-        Returns
-        -------
-        self.filename = infilename: str:
-
+        logger
+            logging object
         """
+
+        if logger is None:
+            logger = logging.getLogger('fuse')
+        self.logger = logger
+
         self.filename = infilename
 
     def _read_pickle(self) -> dict:
@@ -298,7 +304,8 @@ class EhydroPickleReader(object):
         pickle_meta: dict:
 
         """
-        print(f'reading in pickle based on: {self.filename}')  # making sure pickle passing is working
+
+        self.logger.debug(f'reading in pickle based on: {self.filename}')  # making sure pickle passing is working
         pickle_meta = parse_file_pickle.read_pickle(self.filename)
         self.meta_from_ehydro = pickle_meta
         # pickle = parse_file_pickle.pickle_file(infilename)
@@ -403,7 +410,7 @@ class EhydroPickleReader(object):
         meta_from_ehydro = self.meta_from_ehydro
         if meta_from_ehydro:  # check if dictionary empty
             if meta_xml:  # check if dictionary empty
-                print(meta_from_ehydro['SURVEYDATEEND'])
+                self.logger.debug(meta_from_ehydro['SURVEYDATEEND'])
                 # Check survey start & end date against filename and other locations
             else:  # if xml_meta is blank and if meta does not have information use pickle data:
                 meta_from_ehydro['start_date'] = meta_from_ehydro['SURVEYDATESTART']
@@ -416,7 +423,7 @@ class EhydroPickleReader(object):
 class XYZMetaReader(object):
     """Extract both information from the filename as well as from the text file's header"""
 
-    def __init__(self, preloadeddata, version='', filename=''):
+    def __init__(self, preloadeddata, version='', filename='', logger: logging.Logger = None):
         """
         xyz file (the ascii text file) handler for metadata parsing  gets initiated here
         Parameters
@@ -424,7 +431,13 @@ class XYZMetaReader(object):
         preloadeddata
         version
         filename
+        logger
         """
+
+        if logger is None:
+            logger = logging.getLogger('fuse')
+        self.logger = logger
+
         self.filename = preloadeddata
         if filename != "" or None:
             self.filename_1 = filename
@@ -537,7 +550,7 @@ class XYZMetaReader(object):
             else:
                 meta['statuscode'] = ''
         else:
-            print(f'{name} appears to have a nonstandard naming convention.')
+            self.logger.warning(f'{name} appears to have a nonstandard naming convention.')
         return meta
 
     def parse_xyz_header(self, infilename, version=None):
@@ -920,7 +933,7 @@ def _parse_surveydates(line):
     elif len(dateout) == 2:
         metadata['end_date'] = _xyztext2date(dateout[1])
     else:
-        print('ambiguous date found!')
+        logging.warning('ambiguous date found!')
     return metadata
 
 
@@ -1076,7 +1089,7 @@ def _parse_LWRP_(line):
         metadata = {'LWRP': name}
         metadata = {'from_vert_datum': name}
         metadata = {'from_vert_key': 'LWRP'}
-        print('Data in LWRP')
+        logging.debug('Data in LWRP')
     return metadata
 
 
@@ -1255,7 +1268,7 @@ def check_date_order(m, mm):
             for day in next_date:
                 date_list.append(day)
         except:
-            print('unusual date format')
+            logging.warning('unusual date format')
     date_list.sort()
     date_list2 = []
     for d in date_list:
