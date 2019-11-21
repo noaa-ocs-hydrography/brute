@@ -53,9 +53,9 @@ def write_raster(dataset, m: dict):
         print('Single Band Grid')
         dimy, dimx = dataset.shape
         numlayers = 1
-        dataset.shape = (1,shape[0],shape[1])
+        dataset.shape = (1,dimx,dimy)
     else:
-        mgs = 'Array with shape {} provided to csar write process'.format(dataset.shape)
+        msg = 'Array with shape {} provided to csar write process'.format(dataset.shape)
         raise ValueError(msg)
     if numlayers > len(band_names):
         raise ValueError('Too many layers provided: {}'.format(numlayers))
