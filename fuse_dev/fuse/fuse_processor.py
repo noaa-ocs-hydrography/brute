@@ -395,7 +395,8 @@ class FuseProcessor:
             frompath = metadata['from_path']
             input_directory = _os.path.splitext(_os.path.basename(frompath))[0]
             metadata['outpath'] = _os.path.join(self._config['outpath'], input_directory)
-            metadata['new_ext'] = self._point_extension
+            metadata['point_ext'] = self._point_extension
+            metadata['raster_ext'] = self._raster_extension
 
             dataset = None
             try:
@@ -424,12 +425,12 @@ class FuseProcessor:
 
                 else:
                     if self._read_type in ['ehydro', 'bps']:
-                        metadata['to_filename'] = f'{metadata["outpath"]}.{metadata["new_ext"]}'
+                        metadata['to_filename'] = f"{metadata['outpath']}.{metadata['point_ext']}"
                         self._point_writer.write(dataset, metadata['to_filename'])
                     elif self._read_type == 'bag':
                         # only write out the bag if the file was transformed
                         if 'to_filename' not in metadata:
-                            metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
+                            metadata['to_filename'] = f"{metadata['outpath']}.{metadata['raster_ext']}"
                             self._raster_writer.write(dataset, metadata['to_filename'])
 
                     logger.info('No interpolation required')
