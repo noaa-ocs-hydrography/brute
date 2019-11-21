@@ -212,7 +212,7 @@ class MetadataTable(ABC):
                         metadata_key = column_name.replace(prefix, '')
                         if type(value) is str and metadata_key == 'support_files':
                             entries_by_prefix[prefix_name][metadata_key] = _ast.literal_eval(value)
-                        elif type(value) is str and (value.capitalize() == 'True' or value.capitalize() == 'False'):
+                        elif type(value) is str and (value.capitalize() in ['True', 'False']):
                             entries_by_prefix[prefix_name][metadata_key] = _ast.literal_eval(value.capitalize())
                         else:
                             entries_by_prefix[prefix_name][metadata_key] = value

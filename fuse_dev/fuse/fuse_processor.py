@@ -487,7 +487,7 @@ class FuseProcessor:
         logger = self._set_log(filename)
         logger.info(f'scoring {filename}')
 
-        if metadata['posted'].upper() == 'TRUE':
+        if metadata['posted']:
             dscore = score.decay(metadata, date)
             if self._db == None:
                 self._connect_to_db()
