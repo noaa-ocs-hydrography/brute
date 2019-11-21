@@ -117,14 +117,20 @@ class FuseProcessor:
         else:
             raise ConfigParseError('configuration does not specify metadata table or file')
 
+        self.logger = self._set_log('fuse')
+        self.logger.info(f'configuration file: {self._config_filename}')
+        self.logger.info(f'data input: {self.rawdata_path}')
+        self.logger.info(f'data output: {self.procdata_path}')
+        self.logger.info(f'metadata output: {self._config["metatable" if "metatable" in self._config else "metapath"]}')
+
         self._set_data_reader()
         self._set_data_transform()
         self._set_data_interpolator()
         self._set_data_writer()
         self._db = None
         self._meta = {}  # initialize the metadata holder
-        self.logger = _logging.getLogger('fuse')
-        self.logger.setLevel(_logging.DEBUG)
+
+        self.logger.info('ready to start processing')
 
     def _read_configfile(self, configuration_file: str):
         """
@@ -229,31 +235,31 @@ class FuseProcessor:
         try:
             reader_type = self._config['raw_reader_type'].casefold()
             if reader_type == 'cenan':
-                self._reader = _usace.cenan.CENANRawReader()
+                self._reader = _usace.cenan.CENANRawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'cemvn':
-                self._reader = _usace.cemvn.CEMVNRawReader()
+                self._reader = _usace.cemvn.CEMVNRawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'cesaj':
-                self._reader = _usace.cesaj.CESAJRawReader()
+                self._reader = _usace.cesaj.CESAJRawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'cesam':
-                self._reader = _usace.cesam.CESAMRawReader()
+                self._reader = _usace.cesam.CESAMRawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'ceswg':
-                self._reader = _usace.ceswg.CESWGRawReader()
+                self._reader = _usace.ceswg.CESWGRawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'cespl':
-                self._reader = _usace.cespl.CESPLRawReader()
+                self._reader = _usace.cespl.CESPLRawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'cenae':
-                self._reader = _usace.cenae.CENAERawReader()
+                self._reader = _usace.cenae.CENAERawReader(self.logger)
                 self._read_type = 'ehydro'
             elif reader_type == 'bag':
-                self._reader = _noaa.bag.BAGSurvey(self._config['outpath'])
+                self._reader = _noaa.bag.BAGSurvey(self._config['outpath'], self.logger)
                 self._read_type = 'bag'
             elif reader_type == 'bps':
-                self._reader = _noaa.bps.BPSRawReader()
+                self._reader = _noaa.bps.BPSRawReader(self.logger)
                 self._read_type = 'bps'
             else:
                 raise ValueError('reader type not implemented')
@@ -280,8 +286,8 @@ class FuseProcessor:
             self._point_extension = 'csar'
         else:
             self._point_extension = self._raster_extension
-        self._raster_writer = ProcIO('gdal', self._raster_extension)
-        self._point_writer = ProcIO('point', self._point_extension)
+        self._raster_writer = ProcIO('gdal', self._raster_extension, logger=self.logger)
+        self._point_writer = ProcIO('point', self._point_extension, logger=self.logger)
 
     def read(self, dataid: str) -> [str]:
         """
@@ -298,30 +304,33 @@ class FuseProcessor:
             input survey path
         """
 
-        self._set_log(dataid)
+        self.logger.info(f'reading {dataid}')
+
+        logger = self._set_log(dataid)
 
         # get the metadata
         try:
             metadata = self._reader.read_metadata(dataid).copy()
             if type(metadata) == dict:
                 metadata = [metadata]
-        except (RuntimeError, TypeError) as e:
-            self.logger.log(_logging.DEBUG, e)
+        except (RuntimeError, TypeError) as error:
+            logger.warning(f'{error.__class__.__name__} {error}')
             return []
         from_id = []
         for m in metadata:
             # get the config file information
             m = self._add_config_metadata(m)
             # check to see if the quality metadata is available.
-            if not self._quality_metadata_ready(m):
-                msg = f'Not all quality metadata was found during read.'
+            if not self._quality_metadata_ready(m, logger):
+                logger.warning('Not all quality metadata was found during read.')
             else:
-                msg = f'All quality metadata was found during read.'
-            self.logger.log(_logging.DEBUG, msg)
+                logger.info('All quality metadata was found during read.')
             # write out the metadata and close the log
             self._meta_obj.insert_records(m)
             from_id.append(m['from_filename'])
-        self._close_log()
+
+        logger.debug(from_id)
+        self._close_log(logger)
         return from_id
 
     def _add_config_metadata(self, metadata):
@@ -359,7 +368,6 @@ class FuseProcessor:
         the data reader since there will be cases where we get full res data
         from the reader and interlation is not necessary.
 
-
         TODO: need to add checks to make sure the metadata is ready. Perhaps this should be added to the metadata object?
 
         Parameters
@@ -373,10 +381,13 @@ class FuseProcessor:
             output filename
         """
 
+        self.logger.info(f'processing {dataid}')
+
         output_filename = ''
 
         metadata = self._get_stored_meta(dataid)
-        self._set_log(dataid)
+        logger = self._set_log(dataid)
+        logger.info(f'processing {dataid}')
         metadata['read_type'] = self._read_type
 
         if self._datum_metadata_ready(metadata):
@@ -390,9 +401,7 @@ class FuseProcessor:
             try:
                 dataset, metadata, transformed = self._transform.reproject(frompath, metadata)
             except (ValueError, RuntimeError, IndexError) as error:
-                message = f' Transformation error: {error}'
-                print(message)
-                self.logger.warning(message)
+                logger.warning(f'transformation error: {error.__class__.__name__} - {error}')
                 metadata['interpolate'] = False
 
             self._meta_obj.insert_records(metadata)
@@ -401,7 +410,7 @@ class FuseProcessor:
                 if metadata['interpolate'] and self._read_type == 'bag':
                     if ('support_files' not in metadata or len(metadata['support_files']) < 1):
                         metadata['interpolate'] = False
-                        self.logger.warning("No coverage files provided; no interpolation can occur")
+                        logger.warning("No coverage files provided; no interpolation can occur")
 
                 if metadata['interpolate']:
                     metadata = self._transform.reproject_support_files(metadata, self._config['outpath'])
@@ -411,9 +420,8 @@ class FuseProcessor:
                         metadata['interpolated'] = True
                         self._raster_writer.write(dataset, metadata['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
-                        message = f'interpolation error: {error}'
-                        print(message)
-                        self.logger.warning(message)
+                        logger.warning(f'interpolation error: {error.__class__.__name__} - {error}')
+
                 else:
                     if self._read_type in ['ehydro', 'bps']:
                         metadata['to_filename'] = f'{metadata["outpath"]}.{metadata["new_ext"]}'
@@ -424,9 +432,7 @@ class FuseProcessor:
                             metadata['to_filename'] = f"{metadata['outpath']}.{self._raster_extension}"
                             self._raster_writer.write(dataset, metadata['to_filename'])
 
-                    message = f'{input_directory} - No interpolation required'
-                    print(message)
-                    self.logger.log(_logging.DEBUG, message)
+                    logger.info('No interpolation required')
             else:
                 del dataset
                 raise ValueError('metadata has no "interpolate" value')
@@ -434,11 +440,10 @@ class FuseProcessor:
             self._meta_obj.insert_records(metadata)
             output_filename = metadata['to_filename']
         else:
-            message = 'metadata is missing required datum transformation entries'
-            print(message)
-            self.logger.log(_logging.DEBUG, message)
+            logger.warning('metadata is missing required datum transformation entries')
 
-        self._close_log()
+        logger.info(f'processed -> {output_filename}')
+        self._close_log(logger)
         return output_filename
 
     def post(self, filename):
@@ -449,8 +454,11 @@ class FuseProcessor:
             Perhaps this should be added to the metadata object?
         """
 
+        self.logger.info(f'posting {filename}')
+
         metadata = self._get_stored_meta(filename)
-        self._set_log(filename)
+        logger = self._set_log(filename)
+        logger.info(f'posting {filename}')
         if self._quality_metadata_ready(metadata):
             if not self._score_metadata_ready(metadata):
                 metadata['catzoc'] = score.catzoc(metadata)
@@ -463,7 +471,9 @@ class FuseProcessor:
             self._db.write(procfile, 'new', s57_meta)
             # need to check for proper insertion...
             self._meta_obj.insert_records(metadata)
-        self._close_log()
+
+        logger.info('posted')
+        self._close_log(logger)
 
     def score(self, filename, date):
         """
@@ -471,10 +481,13 @@ class FuseProcessor:
         database, making the information available for amalgamation.
         """
 
-        metadata = self._get_stored_meta(filename)
-        self._set_log(filename)
+        self.logger.info(f'scoring {filename}')
 
-        if metadata['posted'].upper() == 'TRUE':
+        metadata = self._get_stored_meta(filename)
+        logger = self._set_log(filename)
+        logger.info(f'scoring {filename}')
+
+        if metadata['posted']:
             dscore = score.decay(metadata, date)
             if self._db == None:
                 self._connect_to_db()
@@ -482,12 +495,12 @@ class FuseProcessor:
             s57_meta = self._metadata_to_s57(metadata)
             s57_meta['dcyscr'] = dscore
             self._db.write(procfile, 'metadata', s57_meta)
-            log = f'Posting new decay score of {dscore} to database.'
+            logger.info(f'Posting new decay score of {dscore} to database.')
         else:
-            log = 'Insertion of decay score failed.'
+            logger.warning('Insertion of decay score failed.')
 
-        self.logger.log(_logging.DEBUG, log)
-        self._close_log()
+        logger.info('scored')
+        self._close_log(logger)
 
     def _connect_to_db(self):
         """ Connect to the database defined in the configuration dictionary. """
@@ -515,41 +528,56 @@ class FuseProcessor:
             else:
                 raise ValueError('No database location defined in the configuration file.')
 
-    def _set_log(self, filename: str):
+    def _set_log(self, name: str, file_level: str = _logging.DEBUG, console_level: str = _logging.INFO) -> _logging.Logger:
         """
         Set the global logger to the given filename.
 
         Parameters
         ----------
-        filename
-            filename to set logger to
+        name
+            name of logger / log file
+        file_level
+            logging level of logfile
+        console_level
+            logging level of console
+
+        Returns
+        ----------
+        logging.Logger
+            logging object
         """
 
-        root, extension = _os.path.splitext(filename)
-        if extension == '.interpolated':
-            filename = root
+        name = _os.path.splitext(_os.path.basename(name))[0]
+        log_directory = _os.path.dirname(self._config['metapath']) if 'metapath' in self._config else self._config['outpath']
+        log_filename = _os.path.join(log_directory, f'{name}.log')
+        self._config['logfilename'] = log_filename
 
-        log_filename = _os.path.join(_os.path.dirname(self._config['metapath'])
-                                     if 'metapath' in self._config else self._config['outpath'],
-                                     f'{_os.path.splitext(_os.path.split(filename)[-1])[0]}.log')
-        self._meta['logfilename'] = log_filename
+        logger = _logging.Logger(name)
 
         # remove handlers that might have existed from previous files
-        for handler in self.logger.handlers:
-            self.logger.removeHandler(handler)
+        # self._close_log(logger)
 
-        # create file handler for this filename
-        file_handler = _logging.FileHandler(log_filename)
-        file_handler.setLevel(_logging.DEBUG)
-        file_handler.setFormatter(_logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-        self.logger.addHandler(file_handler)
+        log_format = '%(asctime)s %(name)-30s %(levelname)-8s: %(message)s'
 
-    def _close_log(self):
+        # create handlers for this filename
+        log_file = _logging.FileHandler(log_filename)
+        log_file.setLevel(file_level)
+        log_file.setFormatter(_logging.Formatter(log_format))
+        logger.addHandler(log_file)
+
+        console = _logging.StreamHandler()
+        console.setLevel(console_level)
+        console.setFormatter(_logging.Formatter(log_format))
+        logger.addHandler(console)
+
+        return logger
+
+    def _close_log(self, logger: _logging.Logger):
         """ Close the object logging file. """
 
         # remove handlers
-        for handler in self.logger.handlers:
-            self.logger.removeHandler(handler)
+        for handler in logger.handlers:
+            logger.removeHandler(handler)
 
     def _get_stored_meta(self, filename: str) -> dict:
         """
@@ -601,6 +629,7 @@ class FuseProcessor:
         ----------
         metadata
             dictionary of metadata
+
         Returns
         ----------
             whether metadata has all datum fields
@@ -614,7 +643,7 @@ class FuseProcessor:
 
         return all(key in metadata for key in datum_keys if key != 'to_horiz_key')
 
-    def _quality_metadata_ready(self, metadata):
+    def _quality_metadata_ready(self, metadata, logger: _logging.Logger = None):
         """
         Check the metadata to see if the required fields are populated.
 
@@ -622,10 +651,16 @@ class FuseProcessor:
         ----------
         metadata
             dictionary of metadata
+        logger
+            logging object
+
         Returns
         ----------
             whether metadata has all quality fields
         """
+
+        if logger is None:
+            logger = self._set_log(metadata['from_filename'])
 
         # check the feature metadata
         if 'feat_detect' in metadata:
@@ -637,26 +672,26 @@ class FuseProcessor:
             feature_ready = False
 
         if not feature_ready:
-            self.logger.log(_logging.DEBUG, 'Quality metadata for features is not yet available.')
+            logger.warning('Quality metadata for features is not yet available.')
         else:
-            self.logger.log(_logging.DEBUG, 'Quality metadata for features was found')
+            logger.info('Quality metadata for features was found')
 
         # check the uncertainty metadata
         vert_uncert_ready = 'vert_uncert_fixed' in metadata and 'vert_uncert_vari' in metadata
         horiz_uncert_ready = 'horiz_uncert_fixed' in metadata and 'horiz_uncert_vari' in metadata
 
         if not vert_uncert_ready or not horiz_uncert_ready:
-            self.logger.log(_logging.DEBUG, 'Quality metadata for uncertainty is not yet available.')
+            logger.warning('Quality metadata for uncertainty is not yet available.')
         else:
-            self.logger.log(_logging.DEBUG, 'Quality metadata for uncertainty was found')
+            logger.info('Quality metadata for uncertainty was found')
 
         # check the coverage
         coverage_ready = 'complete_coverage' in metadata and 'bathymetry' in metadata
 
         if not coverage_ready:
-            self.logger.log(_logging.DEBUG, 'Coverage metadata is not yet available.')
+            logger.warning('Coverage metadata is not yet available.')
         else:
-            self.logger.log(_logging.DEBUG, 'Coverage metadata was found')
+            logger.info('Coverage metadata was found')
 
         return feature_ready and vert_uncert_ready and horiz_uncert_ready and coverage_ready
 

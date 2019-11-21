@@ -7,18 +7,18 @@ Created on Wed Aug 22 12:27:39 2018
 
 Use VDatum for conversions.
 """
+import logging
 
 from fuse.datum_transform.use_gdal import _xyz_to_gdal, spatial_reference_from_metadata
 
 __version__ = 'use_vdatum 0.0.1'
 
-import logging as _logging
 import os as _os
 import subprocess as _subprocess
 from tempfile import TemporaryDirectory
 
 import numpy as _np
-from osgeo import gdal, ogr, osr
+from osgeo import gdal
 
 FROM_HDATUM = [
     'from_horiz_frame',
@@ -48,7 +48,7 @@ TO_VDATUM = [
 class VDatum:
     """An object for working with VDatum."""
 
-    def __init__(self, vdatum_path: str, java_path: str, reader):
+    def __init__(self, vdatum_path: str, java_path: str, reader, logger: logging.Logger = None):
         """
         Create a new object for using VDatum.
 
@@ -58,6 +58,8 @@ class VDatum:
             dictionary of configuration
         reader
             reader object
+        logger
+            logging object
         """
 
         self._reader = reader
@@ -72,7 +74,7 @@ class VDatum:
         else:
             raise ValueError(f'Invalid java path: {java_path}')
 
-        self._logger = _logging.getLogger('fuse')
+        self._logger = logger if logger is not None else logging.getLogger('fuse')
 
     def translate(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
@@ -80,6 +82,8 @@ class VDatum:
         datums and return a gdal object.
 
         NSRS2007 is assumed for the out EPSG code.
+
+        TODO rename to reproject
 
         Parameters
         ----------
@@ -90,10 +94,11 @@ class VDatum:
 
         Returns
         -------
+        gdal.Dataset
             GDAL point cloud dataset
         """
 
-        self._logger.log(_logging.DEBUG, 'Begin datum transformation')
+        self._logger.debug('Begin datum transformation')
         if not _has_required_instructions(instructions):
             instructions['interpolate'] = 'False'
             raise ValueError('The required fields for transforming datums are not available')
@@ -104,12 +109,14 @@ class VDatum:
             vertical_datum = instructions['to_vert_key'].upper()
             # passing UTM zone instead of EPSG code
             dataset = _xyz_to_gdal(points, utm_zone, vertical_datum)
-        self._logger.log(_logging.DEBUG, 'Datum transformation complete')
+        self._logger.debug('Datum transformation complete')
         return dataset
 
     def __translate_xyz(self, filename: str, instructions: dict) -> (_np.array, int):
         """
         Reproject XYZ from the given filename.
+
+        TODO rename to __reproject_xyz
 
         Parameters
         ----------
@@ -120,7 +127,8 @@ class VDatum:
 
         Returns
         -------
-            array of XYZ points and UTM zone
+        numpy.array, int
+            N x 3 array of XYZ points and UTM zone
         """
 
         # read the points and put it in a temp file for VDatum to read
@@ -165,23 +173,22 @@ class VDatum:
 
     def __filter_xyz(self, xyz: _np.array, metadata: dict) -> _np.array:
         """
-        Return a filtered geographic xyz array.  The provided geographic xyz
-        array is filtered to remove any data not in the zone of the destination
-        spatial reference frame.  If the provided data is not geographic or the
-        destiaion frame is not UTM the provided array is returned.
+        Filter the given geographic XYZ points to exclude points outside the UTM zone of the given spatial reference frame.
+        If the provided data is not geographic, or the given frame is not a UTM zone, no filter is applied.
 
         Parameters
         ----------
         xyz
-            data as an xyz n by 3 numpy array in a geographic frame
-
-        metadata
-            the metadata dict assocated with the xyz data
+            N x 3 array of XYZ points
+        instructions
+            dictionary of metadata defining geographic frame
 
         Returns
-        -------
-        numpy array
+        ----------
+        numpy.array
+            N x 3 array of XYZ points, filtered to only include the given UTM zone
         """
+
         if metadata['from_horiz_type'] == 'geo' and metadata['to_horiz_type'] == 'utm':
             srs = spatial_reference_from_metadata(metadata)
             c_meridian = srs.GetProjParm(gdal.osr.SRS_PP_CENTRAL_MERIDIAN)
@@ -193,10 +200,11 @@ class VDatum:
 
         return xyz
 
-
     def __translate_bag(self, filename: str, instructions: dict) -> (gdal.Dataset, int):
         """
         Reproject BAG bathy from the given filename.
+
+        TODO rename to __reproject_bag
 
         Parameters
         ----------
@@ -207,7 +215,8 @@ class VDatum:
 
         Returns
         -------
-            array of XYZ points and UTM zone
+        numpy.array, int
+            N x 3 array of XYZ points and UTM zone
         """
 
         # create a gdal.Dataset and assign a temp file name for VDatum to read
@@ -260,6 +269,7 @@ class VDatum:
         instructions
             dictionary of metadata
         """
+
         # having the input zone is optional if the input type is geographic
         local_from_hdatum = FROM_HDATUM.copy()
         if instructions['from_horiz_type'] != 'geo':
@@ -305,22 +315,23 @@ class VDatum:
         """
 
         command = f'{self._shell}{filename};{output_directory} -nodata'
-        self._logger.log(_logging.DEBUG, command)
+        self._logger.info(command)
         try:
             proc = _subprocess.Popen(command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, cwd=self._vdatum_path)
         except:
-            print(f'Error executing: {command}\nat: {self._vdatum_path}')
+            self._logger.error(f'Error executing: {command}\nat: {self._vdatum_path}')
             raise
+
+        output, outerr = proc.communicate()
         try:
-            output, outerr = proc.communicate()
-            self._logger.log(_logging.DEBUG, output.decode('utf-8'))
+            self._logger.debug(output.decode('utf-8'))
             if len(outerr) > 0:
-                self._logger.log(_logging.DEBUG, outerr.decode('utf-8'))
+                self._logger.warning(outerr.decode('utf-8'))
             else:
-                self._logger.log(_logging.DEBUG, 'No datum transformation errors reported')
+                self._logger.info('No datum transformation errors reported')
         except:
-            print(output)
-            print(outerr)
+            self._logger.debug(output)
+            self._logger.error(outerr)
 
 
 def _has_required_instructions(instructions: dict) -> bool:

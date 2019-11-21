@@ -18,6 +18,7 @@ update July 12,2019 adding in call to pickle reader
 update July 22, 2019 adding in vertical datum read from filename
 """
 
+import logging
 import os
 import pickle as _pickle
 import re as _re
@@ -33,8 +34,12 @@ __version__ = 'FUSE'
 class CESWGRawReader(USACERawReader):
     """ This class passes back bathymetry & a metadata dictionary from the e-Hydro files """
 
-    def __init__(self):
-        super().__init__('CESWG')
+    def __init__(self, logger: logging.Logger = None):
+        if logger is None:
+            logger = logging.getLogger('fuse')
+        self.logger = logger
+
+        super().__init__('CESWG', self.logger)
 
     def read_metadata(self, filename: str):
         """
@@ -255,7 +260,7 @@ def retrieve_meta_for_Ehydro_out_onefile(filename):
 ###----------------------------------------------------------------------------
 class EhydroPickleReader(object):
 
-    def __init__(self, infilename):
+    def __init__(self, infilename, logger: logging.Logger = None):
 
         """
         Pass filename that matches the pickle file you want to match
@@ -267,12 +272,13 @@ class EhydroPickleReader(object):
         Parameters
         ----------
         infilename :
-
-
-        Returns
-        -------
-        self.filename = infilename
+        logger
+            logging object
         """
+
+        if logger is None:
+            logger = logging.getLogger('fuse')
+        self.logger = logger
         self.filename = infilename
 
     def _read_pickle(self):
@@ -290,7 +296,7 @@ class EhydroPickleReader(object):
         -------
 
         """
-        print(f'reading in pickle based on: {self.filename}')  # making sure pickle passing is working
+        self.logger.debug(f'reading in pickle based on: {self.filename}')  # making sure pickle passing is working
         pickle_meta = parse_file_pickle.read_pickle(self.filename)
         self.meta_from_ehydro = pickle_meta
         # pickle = parse_file_pickle.pickle_file(infilename)
@@ -389,7 +395,7 @@ class EhydroPickleReader(object):
         meta_from_ehydro = self.meta_from_ehydro
         if meta_from_ehydro:  # check if dictionary empty
             if meta_xml:  # check if dictionary empty
-                print(meta_from_ehydro['SURVEYDATEEND'])
+                self.logger.debug(meta_from_ehydro['SURVEYDATEEND'])
                 # Check survey start & end date against filename and other locations
             else:  # if xml_meta is blank and if meta does not have information use pickle data:
                 meta_from_ehydro['start_date'] = meta_from_ehydro['SURVEYDATESTART']
@@ -402,7 +408,7 @@ class EhydroPickleReader(object):
 class XYZMetaReader(object):
     """Extract both information from the filename as well as from the text file's header"""
 
-    def __init__(self, preloadeddata, version='', filename=''):
+    def __init__(self, preloadeddata, version='', filename='', logger: logging.Logger = None):
         """
         xyz file (the ascii text file) handler for metadata parsing  gets initiated here
         Parameters
@@ -411,6 +417,10 @@ class XYZMetaReader(object):
         version
         filename
         """
+
+        if logger is None:
+            logger = logging.getLogger('fuse')
+        self.logger = logger
         self.filename = preloadeddata
         if filename != "" or None:
             self.filename_1 = filename
@@ -524,7 +534,7 @@ class XYZMetaReader(object):
             else:
                 meta['statuscode'] = ''
         else:
-            print(f'{name} appears to have a nonstandard naming convention.')
+            self.logger.warning(f'{name} appears to have a nonstandard naming convention.')
         return meta
 
     def parse_xyz_header(self, infilename, version=None):
@@ -993,7 +1003,7 @@ def _parse_surveydates(line):
     elif len(dateout) == 2:
         metadata['end_date'] = _xyztext2date(dateout[1])
     else:
-        print('ambiguous date found!')
+        logging.warning('ambiguous date found!')
     return metadata
 
 
@@ -1149,7 +1159,7 @@ def _parse_LWRP_(line):
         metadata = {'LWRP': name}
         metadata = {'from_vert_datum': name}
         metadata = {'from_vert_key': 'LWRP'}
-        print('Data in LWRP')
+        logging.debug('Data in LWRP')
     return metadata
 
 

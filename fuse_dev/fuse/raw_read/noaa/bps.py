@@ -23,15 +23,14 @@ metadata is available.
 """
 
 import logging as _logging
-import lxml.html as _html
-import numpy as _np
 import os as _os
 import sys as _sys
-
 from glob import glob as _glob
 
-from fuse.raw_read.raw_read import RawReader
+import lxml.html as _html
+import numpy as _np
 from fuse.raw_read import parse_file_pickle
+from fuse.raw_read.raw_read import RawReader
 
 h93_to_meta = {'Surv Id': 'survey',
                'Strt Yr': 'start_date',
@@ -42,12 +41,13 @@ h93_to_meta = {'Surv Id': 'survey',
 
 horiz_datum = {
         'NORTH AMERICAN DATUM OF 1983': 'NAD83',
-        'NORTH AMERICAN DATUM 1983': 'NAD83'
+        'NORTH AMERICAN DATUM 1983': 'NAD83',
+        'UNDETERMINED DATUM': 'NAD83' #11/19/2019 Decision to change recognize Undetermined Datum as NAD83
         }
 
 vert_datum = {
-    'MEAN LOW WATER SPRINGS': 'MLWS',
-    'MEAN LOWER LOW WATER SPRINGS': 'MLLWS',
+    'MEAN LOW WATER SPRINGS': 'MLLW', #11/13/2019 Decision to change recognize the more conservative MLWS as the less conservative MLLW
+    'MEAN LOWER LOW WATER SPRINGS': 'MLLW', #11/19/2019 Decision to change recognize the more conservative MLWS as the less conservative MLLW
     'MEAN SEA LEVEL': 'MSL',
     'LOWER LOW WATER': 'LLW',
     'MEAN LOW WATER': 'MLW',
@@ -71,11 +71,15 @@ class BPSRawReader(RawReader):
     An object for handling Bathy Point Store data is the same fashion as other
     data types.
     """
-    def __init__(self):
+
+    def __init__(self, logger: _logging.Logger = None):
         """
         Initialize the logger for the read process.
         """
-        self._logger = _logging.getLogger(f'fuse')
+
+        if logger is None:
+            logger = _logging.getLogger('fuse')
+        self._logger = logger
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)
             ch.setLevel(_logging.DEBUG)
@@ -148,9 +152,9 @@ class BPSRawReader(RawReader):
                 for index in columns:
                     try:
                         header = table[0][index].text.strip() if table[0][index].text is not None else None
-                        value = table[1][index][0].text.strip()
+                        value = table[1][index][0].text.strip() if table[1][index].text != '\xa0' else None
                         if header is None or header.lower() in ('', 'seq', 'c', 'code'):
-                            pass
+                            continue
                         elif header in ('Surv Id'):
                             metadata[h93_to_meta[header]] = value
                         elif header in ('Strt Yr', 'End Yr'):
@@ -171,7 +175,7 @@ class BPSRawReader(RawReader):
                         else:
                             metadata[header] = value
                     except IndexError as e:
-                        self._logger.warning(f"{e}: {index}")
+                        self._logger.warning(f"{e}: {index, header, value}")
         else:
             self._logger.warning(f"Unable to find {file_htm} to read {filename} metadata")
         return metadata
@@ -286,8 +290,8 @@ class BPSRawReader(RawReader):
             negative = True
         if len(z_string) == 6 and z_string.count('9') == 6:
             z_string = z_string
-        elif len(z_string) > 2:
-            z_string = f"{z_string[:2]}.{z_string[2:]}"
+        elif len(z_string) > 1:
+            z_string = f"{z_string[:-1]}.{z_string[-1:]}"
         if negative:
             z_string = f"-{z_string}"
         return z_string
@@ -306,27 +310,15 @@ class BPSRawReader(RawReader):
         _np.array
             xyz data
         """
-        xyz = []
-        a93 = open(infilename, mode='r')
-        non_sounding_found = False
-        line = 0
-        for row in a93:
-            snum = row[:8].strip()
-            y = float(f"{row[8:11]}.{row[11:17]}".strip())
-            x = float(f"{row[17:21]}.{row[21:26]}".strip())
-            pre_format_z = f"{row[27:33]}".strip()
-            z = float(self._format_a93_z(pre_format_z))
-            depth_code, carto_code = float(row[33].strip()), float(row[34:].strip())
-            if z == 999999 or carto_code != 711:
-                non_sounding_found = True
-                _logging.warning(f"Non-sounding data. Line {line} --> {x, y, z, carto_code}")
-            else:
-                xyz.append([x, y, z])
-            line += 1
-        if non_sounding_found:
-            _logging.info(f"For more info on non-sounding points, see APPENDIX A: {bps_spec}")
-        a93.close()
-        return _np.array(xyz)
+        a93 = _np.genfromtxt(infilename,
+                             delimiter = (8,9,10,6,1,3),
+                             usecols = range(1,6))
+        a93[:, [0, 1]] = a93[:, [1, 0]]/1000000
+        a93 = a93[_np.where(a93[:, 2] != 999999)]
+        a93[:, 2] = a93[:, 2]/10
+        a93 = a93[_np.where(a93[:, 4] == 711)]
+
+        return a93[:, [0, 1, 2]]
 
     def _parse_xyz(self, infilename: str) -> _np.array:
         """
@@ -347,8 +339,8 @@ class BPSRawReader(RawReader):
                           usecols=(1, 2, 3, 5))
         xyz[:, [0, 1]] = xyz[:, [1, 0]]
         active_bool = (xyz[:, 3] == 0)
-        active = xyz[active_bool == 0, :]
-        return active[:, [0, 1, 2]]
+        xyz = xyz[active_bool == 0, :]
+        return xyz[:, [0, 1, 2]]
 
     def _data_lookup(self, data_pointer: str) -> [str]:
         """
@@ -407,13 +399,14 @@ class BPSRawReader(RawReader):
 
         """
 
-        points = []
+        a93 = point_dict['.a93'][:, [0, 1]]
+        xyz = point_dict['.xyz'][:, [0, 1]]
 
-        for point in point_dict['.a93']:
-            if point in point_dict['.xyz']:
-                points.append(point)
+        # https://stackoverflow.com/a/38674038
+        active_bool = _np.where((a93==xyz[:, None]).all(-1))[1]
+        active = point_dict['.a93'][active_bool]
 
-        return _np.array(points)
+        return active
 
     def _data_check(self, data_pointer: str) -> _np.array:
         """

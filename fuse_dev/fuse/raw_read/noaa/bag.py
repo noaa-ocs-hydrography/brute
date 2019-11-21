@@ -12,30 +12,28 @@ a general sense, and also for specific S57 needs.
 
 """
 
-import ast as _ast
-import csv as _csv
 import datetime as _datetime
 import logging as _logging
-import lxml.etree as _et
-from numba import jit
-import numpy as _np
 import os as _os
 import re as _re
 import sys as _sys
-import tables as _tb
-from scipy.ndimage import binary_closing
-from scipy.interpolate import Rbf
-import rasterio as _rio
 from glob import glob as _glob
+
+import lxml.etree as _et
+import numpy as _np
+import rasterio as _rio
+import tables as _tb
+from fuse.raw_read import parse_file_pickle
+from fuse.raw_read.raw_read import RawReader
+from numba import jit
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
-from fuse.raw_read.raw_read import RawReader
-from fuse.raw_read import parse_file_pickle
+from scipy.ndimage import binary_closing
 
 try:
     import dateutil.parser as _parser
 except ModuleNotFoundError as e:
-    print(f"{e}")
+    _logging.error(f'{e.__class__.__name__} - {e}')
 
 _gdal.UseExceptions()
 
@@ -86,6 +84,7 @@ _ns2 = {
     'smXML': 'http://metadata.dgiwg.org/smXML',
 }
 
+
 def parse_namespace(meta_str):
     """
     Catch the xml and read the second line assuming it is the namespace
@@ -107,6 +106,7 @@ def parse_namespace(meta_str):
             site = info.split('"')[1]
             namespace[name] = site
     return namespace
+
 
 class BAGRawReader(RawReader):
     """
@@ -1117,7 +1117,10 @@ class BAGSurvey(BAGRawReader):
     """
     survey_meta = []
 
-    def __init__(self, out_file_location):
+    def __init__(self, out_file_location, logger: _logging.Logger = None):
+        if logger is None:
+            logger = _logging.getLogger('fuse')
+        self.logger = logger
         BAGRawReader.__init__(self, out_file_location)
 
     def read_metadata(self, survey_folder: str) -> [dict]:
@@ -1147,13 +1150,12 @@ class BAGSurvey(BAGRawReader):
 
         combine = any([meta['interpolate'] for meta in survey_meta if (len(survey_meta) > 0) and 'interpolate' in meta])
         if combine:
-            print(f'combine: {combine}')
+            self.logger.debug(f'combine: {combine}')
             survey_meta = self._parse_groups(survey_meta)
 
         self.survey_meta = survey_meta
 
         return survey_meta
-
 
     def __file_meta(self, filename: str) -> dict:
         """
@@ -1214,7 +1216,7 @@ class BAGSurvey(BAGRawReader):
         Zoom the provided array with a node centered (not pixel_is_area)
         approach.
         """
-        print('Zooming...')
+        self.logger.debug('Zooming...')
         start = _datetime.datetime.now()
         # build the expanded array
         shape = data_array.shape
@@ -1228,25 +1230,25 @@ class BAGSurvey(BAGRawReader):
         idx = _np.nonzero(elev != ndv)
         bin_arr[idx] = 1
         dim = 2 * zoom_factor - 1
-        struct = _np.ones((dim,dim), dtype = _np.bool)
-        mask = binary_closing(bin_arr, structure = struct)
+        struct = _np.ones((dim, dim), dtype=_np.bool)
+        mask = binary_closing(bin_arr, structure=struct)
 
         # interpolate the gaps in the expanded array
-        rel_idx = _np.arange(dim, dtype = _np.int)-int(zoom_factor/2)
-        footprint = _np.tile(rel_idx,(dim,1))
+        rel_idx = _np.arange(dim, dtype=_np.int) - int(zoom_factor / 2)
+        footprint = _np.tile(rel_idx, (dim, 1))
         x_fp = footprint.flatten()
         y_fp = footprint.T.flatten()
         elev = _interpolate_gaps(elev, mask, y_fp, x_fp, ndv)
 
         dt = _datetime.datetime.now() - start
-        print(f'Zooming completed in {dt} seconds')
+        self.logger.debug(f'Zooming completed in {dt} seconds')
         return elev
 
     def _insert_raster(self, bag_name, comb_bounds, comb_array, comb_res):
         """
         Insert the provided BAG file into the provided array.
         """
-        print(f'Inserting {bag_name}')
+        self.logger.debug(f'Inserting {bag_name}')
         # open this file and extract the needed metadata
         bagfile_obj = Open(bag_name, pixel_is_area=False)
         nw, se = bagfile_obj.bounds
@@ -1255,7 +1257,7 @@ class BAGSurvey(BAGRawReader):
         # if the data is lower res, expand array and fill in missing nodes
         if res > comb_res:
             if res % comb_res != 0:
-                print(f'WARNING!!! Combine process will produce unintended results with {bag_name}')
+                self.logger.warning(f'WARNING!!! Combine process will produce unintended results with {bag_name}')
             zoom_factor = int(res / comb_res)
             elev = self._zoom_array(bagfile_obj.elevation, zoom_factor, ndv)
         else:
@@ -1294,15 +1296,15 @@ class BAGSurvey(BAGRawReader):
                 have_support_files = True
             bagfile_obj = Open(f, pixel_is_area=False)
             nw, se = bagfile_obj.bounds
-            x.append([nw[0],se[0]])
-            y.append([se[1],nw[1]])
+            x.append([nw[0], se[0]])
+            y.append([se[1], nw[1]])
             proj.append(bagfile_obj.wkt)
             ndv = bagfile_obj.nodata
             del bagfile_obj
         x = _np.array(x).flatten()
         y = _np.array(y).flatten()
         res = _np.array(res)
-        resx = res[:,0]
+        resx = res[:, 0]
         minres = _np.abs(resx).min()
 
         # sort the file names by accending resolution
@@ -1320,7 +1322,7 @@ class BAGSurvey(BAGRawReader):
             # build an array to house the combined dataset
 
             comb_bounds = ((min(x), max(y)), (max(x), min(y)))
-            comb_shape = (int((max(y) - min(y))/minres + 1), int((max(x) - min(x))/minres + 1))
+            comb_shape = (int((max(y) - min(y)) / minres + 1), int((max(x) - min(x)) / minres + 1))
             comb_array = _np.zeros((2, comb_shape[0], comb_shape[1])) + ndv
 
             for n in order[::-1]:
@@ -1328,15 +1330,15 @@ class BAGSurvey(BAGRawReader):
                 comb_array = self._insert_raster(bag_file, comb_bounds, comb_array, minres)
 
             # convert the bounds to cell, aka pixel_is_area, and to (nw, se) format
-            bounds = ((comb_bounds[0][0] - minres/2., comb_bounds[0][1] + minres/2.),
-                      (comb_bounds[1][0] + minres/2., comb_bounds[1][1] - minres/2.))
+            bounds = ((comb_bounds[0][0] - minres / 2., comb_bounds[0][1] + minres / 2.),
+                      (comb_bounds[1][0] + minres / 2., comb_bounds[1][1] - minres / 2.))
             dataset_wkt = proj[order[0]]
             convert_dataset = BagToGDALConverter()
             convert_dataset.components2gdal(comb_array, bounds, res[order[0]], dataset_wkt)
             output_driver = _gdal.GetDriverByName('BAG')
             output_driver.CreateCopy(combined_surface_metadata['from_path'], convert_dataset.dataset)
         else:
-            print('No support files found. Creating metadata entry but not creating combined surface for interpoaltion.')
+            self.logger.warning('No support files found. Creating metadata entry but not creating combined surface for interpoaltion.')
 
         for bag_file in metadata_list:
             bag_file['interpolate'] = False if 'interpolate' in bag_file else False
@@ -1357,11 +1359,14 @@ class BAGSurvey(BAGRawReader):
             return metadata_list
 
 
-
 class BagFile:
     """This class serves as the main container for BAG data."""
 
-    def __init__(self, pixel_is_area = True):
+    def __init__(self, pixel_is_area=True, logger: _logging.Logger = None):
+        if logger is None:
+            logger = _logging.getLogger('fuse')
+        self.logger = logger
+
         self.name = None
         self.nodata = 1000000.0
         self.elevation = None
@@ -1600,8 +1605,8 @@ class BagFile:
         # res = (_np.round(meta[1], 2), _np.round(meta[5], 2))
         if not self.pixel_is_area:
             # shift from cell bounds to node bounds
-            ulx, lry = ulx - res[0]/2., lry - res[1]/2.
-            lrx, uly = lrx + res[0]/2., uly + res[1]/2.
+            ulx, lry = ulx - res[0] / 2., lry - res[1] / 2.
+            lrx, uly = lrx + res[0] / 2., uly + res[1] / 2.
         return ([ulx, uly], [lrx, lry]), res
 
     def _gdalreadarray(self, bag_obj, band: int) -> _np.array:
@@ -1673,7 +1678,7 @@ class BagFile:
                                  'gmd:axisDimensionProperties/gmd:MD_Dimension/gmd:resolution/gco:Measure',
                                  namespaces=_ns)
         except _et.Error as e:
-            print(f"unable to read res x and y: {e}")
+            self.logger.error(f"unable to read res x and y: {e}")
             return
 
         if len(ret) == 0:
@@ -1683,7 +1688,7 @@ class BagFile:
                                      'smXML:Measure/smXML:value',
                                      namespaces=_ns2)
             except _et.Error as e:
-                print(f"unable to read res x and y: {e}")
+                self.logger.error(f"unable to read res x and y: {e}")
                 return
 
         try:
@@ -1691,7 +1696,7 @@ class BagFile:
             res_y = -float(ret[1].text)
             return res_x, res_y
         except (ValueError, IndexError) as e:
-            print(f"unable to read res x and y: {e}")
+            self.logger.error(f"unable to read res x and y: {e}")
             return
 
     def _read_corners_sw_and_ne(self, xml_tree):
@@ -1706,14 +1711,14 @@ class BagFile:
                                      'cornerPoints/gml:Point/gml:coordinates',
                                      namespaces=_ns2)[0].text.split()
             except (_et.Error, IndexError) as e:
-                print(f"unable to read corners SW and NE: {e}")
+                self.logger.error(f"unable to read corners SW and NE: {e}")
                 return
         try:
             sw = [float(c) for c in ret[0].split(',')]
             ne = [float(c) for c in ret[1].split(',')]
             return sw, ne
         except (ValueError, IndexError) as e:
-            print(f"unable to read corners SW and NE: {e}")
+            self.logger.error(f"unable to read corners SW and NE: {e}")
             return
 
     def _read_wkt_prj(self, xml_tree):
@@ -1723,24 +1728,24 @@ class BagFile:
                                  'gmd:referenceSystemIdentifier/gmd:RS_Identifier/gmd:code/gco:CharacterString',
                                  namespaces=_ns)
         except _et.Error as e:
-            print(f"unable to read the WKT projection string: {e}")
+            self.logger.error(f"unable to read the WKT projection string: {e}")
             return
         if len(ret) == 0:
             try:
                 ret = xml_tree.xpath('//*/referenceSystemInfo/smXML:MD_CRS',
                                      namespaces=_ns2)
             except _et.Error as e:
-                print(f"unable to read the WKT projection string: %s: {e}")
+                self.logger.error(f"unable to read the WKT projection string: %s: {e}")
                 return
             if len(ret) != 0:
-                print("unsupported method to describe CRS")
+                self.logger.warning("unsupported method to describe CRS")
                 return
 
         try:
             wkt_srs = ret[0].text
             return wkt_srs
         except (ValueError, IndexError) as e:
-            print(f"unable to read the WKT projection string: {e}")
+            self.logger.error(f"unable to read the WKT projection string: {e}")
             return
 
 
@@ -1750,7 +1755,7 @@ class Open(BagFile):
     :func:`BagFile.from_gdal` method
     """
 
-    def __init__(self, dataset, pixel_is_area = True):
+    def __init__(self, dataset, pixel_is_area=True):
         BagFile.__init__(self, pixel_is_area)
         if type(dataset) == str:
             self.open_file(dataset, 'hack')
@@ -1769,8 +1774,8 @@ def _from_rasterio(bag_file: str) -> _rio.MemoryFile:
 
     with _rio.MemoryFile() as memfile:
         with memfile.open(**{'driver': 'GTiff', 'dtype': dtype, 'nodata': 1000000.0,
-                           'width': width, 'height': height, 'count': 2, 'crs': _rio.crs.CRS.from_wkt(bagfile_obj.wkt),
-                           'transform': transform, 'tiled': False, 'compress': 'lzw', 'interleave': 'band'}) as dataset:
+                             'width': width, 'height': height, 'count': 2, 'crs': _rio.crs.CRS.from_wkt(bagfile_obj.wkt),
+                             'transform': transform, 'tiled': False, 'compress': 'lzw', 'interleave': 'band'}) as dataset:
             dataset.write(_np.array([bagfile_obj.elevation, bagfile_obj.uncertainty]))
             del bagfile_obj
 
@@ -1893,6 +1898,7 @@ class BagToGDALConverter:
         self.dataset = target_ds
         del target_ds
 
+
 @jit(nopython=True)
 def _interpolate_gaps(data, mask, y_footprint, x_footprint, ndv):
     """
@@ -1908,12 +1914,12 @@ def _interpolate_gaps(data, mask, y_footprint, x_footprint, ndv):
         count = 0
         tmp = 0
         for m in range(x_footprint.shape[0]):
-            val = data[y[m],x[m]]
+            val = data[y[m], x[m]]
             if val != ndv:
                 count = count + 1
                 tmp = tmp + val
         if count != 0:
             interp_vals[n] = tmp / count
     for n in range(numpts):
-        data[y_idx[n],x_idx[n]] = interp_vals[n]
+        data[y_idx[n], x_idx[n]] = interp_vals[n]
     return data

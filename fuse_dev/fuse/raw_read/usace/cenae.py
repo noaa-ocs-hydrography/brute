@@ -5,12 +5,18 @@ Created on Tue Jul 16 13:36:08 2019
 @author: Casiano.Koprowski
 """
 
+import logging
+
 from fuse.raw_read.usace.usace import USACERawReader
 
 
 class CENAERawReader(USACERawReader):
-    def __init__(self):
-        super().__init__('CENAE')
+    def __init__(self, logger: logging.Logger = None):
+        if logger is None:
+            logger = logging.getLogger('fuse')
+        self.logger = logger
+
+        super().__init__('CENAE', self.logger)
 
     def read_metadata(self, survey_folder: str) -> dict:
         """
@@ -49,7 +55,7 @@ class CENAERawReader(USACERawReader):
         if meta_final['interpolate']:
             meta_orig = meta_final.copy()
             meta_orig['interpolate'] = False
-            meta_final['from_filename'] = f"{meta_orig['from_filename']}.interpolate" 
+            meta_final['from_filename'] = f"{meta_orig['from_filename']}.interpolate"
             return [meta_orig, meta_final]
         else:
             return [meta_final]
@@ -73,4 +79,3 @@ class CENAERawReader(USACERawReader):
         meta = {}
         meta['from_vert_direction'] = 'sounding'
         return meta
-        

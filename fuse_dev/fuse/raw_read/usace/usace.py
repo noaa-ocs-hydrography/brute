@@ -4,7 +4,6 @@ Created on Wed Jul 17 12:49:10 2019
 
 @author: Casiano.Koprowski
 """
-
 import logging as _logging
 import os as _os
 import pickle as _pickle
@@ -17,9 +16,8 @@ from xml.etree.ElementTree import parse as _parse
 
 import numpy as _np
 from fuse.datum_transform import usefips as _usefips
-from fuse.raw_read.raw_read import RawReader
-
 from fuse.raw_read import parse_file_pickle
+from fuse.raw_read.raw_read import RawReader
 from fuse.raw_read.usace import parse_usace_xml
 
 _ehydro_quality_metrics = {
@@ -32,14 +30,17 @@ _ehydro_quality_metrics = {
     'feat_detect': False,
 }
 
+
 class USACERawReader(RawReader):
-    def __init__(self, district: str = None):
+    def __init__(self, district: str = None, logger: _logging.Logger = None):
         self.district = district
         self.survey_feet_per_meter = 0.30480060960121924  # US survey feet to meters
         self.xyz_suffixes = ('_A', '_FULL')
         self.xyz_files = {}
 
-        self._logger = _logging.getLogger(f'fuse')
+        if logger is None:
+            logger = _logging.getLogger('fuse')
+        self._logger = logger
 
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)
@@ -467,7 +468,7 @@ class USACERawReader(RawReader):
             for index in range(len(splitname)):
                 meta[split_sections[index]] = splitname[index]
         else:
-            print(f'{name} appears to have a nonstandard naming convention.')
+            self._logger.warning(f'{name} appears to have a nonstandard naming convention.')
         return meta
 
     def _parse_xyz_header(self, filename: str, mode: str = None) -> dict:
@@ -680,7 +681,7 @@ class USACERawReader(RawReader):
         elif len(dateout) == 2:
             metadata['end_date'] = self._xyztext2date(dateout[1])
         else:
-            print('ambiguous date found!')
+            self._logger.warning('ambiguous date found!')
         return metadata
 
     def _xyztext2date(self, textdate: str) -> str:
@@ -979,7 +980,7 @@ class USACERawReader(RawReader):
                 message += f'found comma-delimited file "{filename}"'
             else:
                 message += f'found whitespace-delimited file (tab or space) "{filename}"'
-            self._logger.log(_logging.DEBUG, message)
+            self._logger.debug(message)
 
         points = _np.asarray(points)
         return points

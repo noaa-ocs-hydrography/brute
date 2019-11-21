@@ -11,7 +11,6 @@ import logging
 import os
 import pickle
 import subprocess
-import sys
 from tempfile import TemporaryDirectory as tempdir
 from typing import Union
 
@@ -34,7 +33,8 @@ class ProcIO:
     """ A class to abstract the reading and writing of bathymetry data. """
 
     def __init__(self, in_data_type: str, out_data_type: str, work_dir: str = None, z_up: bool = True, nodata: float = 1000000.0,
-                 caris_env_name: str = 'CARIS35', overwrite: bool = True, db_loc: str = None, db_name: str = None):
+                 caris_env_name: str = 'CARIS35', overwrite: bool = True, db_loc: str = None, db_name: str = None,
+                 logger: logging.Logger = None):
         """
         Create a new bathymetric data input / output object, reading and writing in the given input and output formats.
 
@@ -73,12 +73,7 @@ class ProcIO:
         else:
             self._work_dir_name = work_dir
 
-        self._logger = logging.getLogger('fuse')
-
-        if len(self._logger.handlers) == 0:
-            ch = logging.StreamHandler(sys.stdout)
-            ch.setLevel(logging.DEBUG)
-            self._logger.addHandler(ch)
+        self._logger = logger if logger is not None else logging.getLogger('fuse')
 
         if self._out_data_type == "carisbdb51":
             if db_name is not None and db_loc is not None:
@@ -105,10 +100,10 @@ class ProcIO:
             whether to show the console of the CARIS subprocess (if writing to a CSAR file)
         """
 
-        self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write to {filename}')
+        self._logger.info(f'Begin {self._out_data_type} write to {filename}')
 
         if os.path.exists(filename) and self.overwrite:
-            self._logger.log(logging.DEBUG, f'Overwriting {filename}')
+            self._logger.info(f'Overwriting {filename}')
             os.remove(filename)
             if self._out_data_type == 'csar':
                 csar_data = f'{filename}0'
@@ -192,33 +187,33 @@ class ProcIO:
                 # data type
                 f'"{self._in_data_type.replace("&", "^&")}"'
             ))
-            self._logger.log(logging.DEBUG, argument_string)
+            self._logger.debug(argument_string)
 
             try:
                 caris_process = subprocess.Popen(argument_string, creationflags=subprocess.CREATE_NEW_CONSOLE if show_console else 0)
             except Exception as error:
-                self._logger.log(logging.DEBUG, f'Error when executing "{argument_string}"\n{error}')
+                self._logger.warning(f'Error when executing "{argument_string}"\n{error}')
 
             try:
                 stdout, stderr = caris_process.communicate()
                 if stdout is not None:
-                    self._logger.log(logging.DEBUG, stdout)
+                    self._logger.debug(stdout)
                 else:
-                    self._logger.log(logging.DEBUG, 'No information returned from csar write process.')
+                    self._logger.info('No information returned from csar write process.')
                 if stderr is not None:
-                    self._logger.log(logging.DEBUG, stderr)
+                    self._logger.warning(stderr)
                 else:
-                    self._logger.log(logging.DEBUG, 'No errors returned from csar write process.')
+                    self._logger.info('No errors returned from csar write process.')
             except Exception as error:
-                self._logger.log(logging.DEBUG, f'Error when logging subprocess error\n{error}')
+                self._logger.warning(f'Error when logging subprocess error\n{error}')
 
             if not os.path.exists(metadata['outfilename']):
                 error_string = f'Unable to create file {metadata["outfilename"]}'
-                self._logger.log(logging.DEBUG, error_string)
+                self._logger.error(error_string)
                 raise RuntimeError(error_string)
         else:
             error_string = f'Unable to overwrite file {metadata["outfilename"]}'
-            self._logger.log(logging.DEBUG, error_string)
+            self._logger.error(error_string)
             raise RuntimeError(error_string)
 
 
@@ -256,18 +251,18 @@ class ProcIO:
         try:
             output_raster = bag_driver.CreateCopy(filename, raster)
             del output_raster
-            self._logger.log(logging.DEBUG, 'BAG file created')
+            self._logger.debug('BAG file created')
         except RuntimeError as error:
-            self._logger.log(logging.DEBUG, f'Failed to create bag: {error}\n Attempting to pass correct well-known text using OSR')
+            self._logger.warning(f'Failed to create bag: {error}\n Attempting to pass correct well-known text using OSR')
             old_crs_wkt = raster.GetProjectionRef()
-            self._logger.log(logging.DEBUG, f'Old reference: {old_crs_wkt}')
+            self._logger.debug(f'Old reference: {old_crs_wkt}')
             spatial_reference = osr.SpatialReference(wkt=old_crs_wkt)
             new_crs_wkt = spatial_reference.ExportToWkt()
-            self._logger.log(logging.DEBUG, f'New reference: {new_crs_wkt}')
+            self._logger.debug(f'New reference: {new_crs_wkt}')
             raster.SetProjection(new_crs_wkt)
             output_raster = bag_driver.CreateCopy(filename, raster)
             del output_raster
-            self._logger.log(logging.DEBUG, f'Created BAG file at {filename}')
+            self._logger.info(f'Created BAG file at {filename}')
 
         # template_xml_dir.cleanup()
 
