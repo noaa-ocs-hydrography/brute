@@ -7,39 +7,38 @@ Created on Wed Aug 22 12:27:39 2018
 
 Use VDatum for conversions.
 """
+import logging
 
 from fuse.datum_transform.use_gdal import _xyz_to_gdal, spatial_reference_from_metadata
 
 __version__ = 'use_vdatum 0.0.1'
 
-import logging as _logging
 import os as _os
 import subprocess as _subprocess
-from tempfile import TemporaryDirectory as tempdir
+from tempfile import TemporaryDirectory
 
 import numpy as _np
 from osgeo import gdal
 
-from_hdatum = [
+FROM_HDATUM = [
     'from_horiz_frame',
     'from_horiz_type',
-    'from_horiz_units',
-    'from_horiz_key'
+    'from_horiz_units'
 ]
 
-from_vdatum = [
+FROM_VDATUM = [
     'from_vert_key',
     'from_vert_units',
     'from_vert_direction'
 ]
 
-to_hdatum = [
+TO_HDATUM = [
     'to_horiz_frame',
     'to_horiz_type',
     'to_horiz_units'
 ]
 
-to_vdatum = [
+TO_VDATUM = [
     'to_vert_key',
     'to_vert_units',
     'to_vert_direction'
@@ -49,7 +48,7 @@ to_vdatum = [
 class VDatum:
     """An object for working with VDatum."""
 
-    def __init__(self, vdatum_path: str, java_path: str, reader):
+    def __init__(self, vdatum_path: str, java_path: str, reader, logger: logging.Logger = None):
         """
         Create a new object for using VDatum.
 
@@ -59,6 +58,8 @@ class VDatum:
             dictionary of configuration
         reader
             reader object
+        logger
+            logging object
         """
 
         self._reader = reader
@@ -73,7 +74,7 @@ class VDatum:
         else:
             raise ValueError(f'Invalid java path: {java_path}')
 
-        self._logger = _logging.getLogger('fuse')
+        self._logger = logger if logger is not None else logging.getLogger('fuse')
 
     def translate(self, filename: str, instructions: dict) -> gdal.Dataset:
         """
@@ -97,7 +98,7 @@ class VDatum:
             GDAL point cloud dataset
         """
 
-        self._logger.log(_logging.DEBUG, 'Begin datum transformation')
+        self._logger.debug('Begin datum transformation')
         if not _has_required_instructions(instructions):
             instructions['interpolate'] = 'False'
             raise ValueError('The required fields for transforming datums are not available')
@@ -108,7 +109,7 @@ class VDatum:
             vertical_datum = instructions['to_vert_key'].upper()
             # passing UTM zone instead of EPSG code
             dataset = _xyz_to_gdal(points, utm_zone, vertical_datum)
-        self._logger.log(_logging.DEBUG, 'Datum transformation complete')
+        self._logger.debug('Datum transformation complete')
         return dataset
 
     def __translate_xyz(self, filename: str, instructions: dict) -> (_np.array, int):
@@ -133,16 +134,23 @@ class VDatum:
         # read the points and put it in a temp file for VDatum to read
         points = self._reader.read_bathymetry(filename)
         points = self.__filter_xyz(points, instructions)
-        original_directory = tempdir()
-        output_filename = _os.path.join(original_directory.name, 'outfile.txt')
-        reprojected_directory = tempdir()
+
+        if len(points) == 0:
+            raise ValueError(f'no valid points read from {filename} in {__file__}')
+
+        # save point array to file
+        points_file_directory = TemporaryDirectory()
+        points_filename = _os.path.join(points_file_directory.name, 'outfile.txt')
+        _np.savetxt(points_filename, points, delimiter=',')
+
+        # translate points with VDatum
+        reprojected_directory = TemporaryDirectory()
+        self.__setup_vdatum(instructions, 'points')
+        self.__convert_file(points_filename, reprojected_directory.name)
+        points_file_directory.cleanup()
         reprojected_filename = _os.path.join(reprojected_directory.name, 'outfile.txt')
         log_filename = _os.path.join(reprojected_directory.name, 'outfile.txt.log')
-        # save point array to file
-        _np.savetxt(output_filename, points, delimiter=',')
-        # translate points with VDatum
-        self.__setup_vdatum(instructions, 'points')
-        self.__convert_file(output_filename, reprojected_directory.name)
+
         if 'to_horiz_key' in instructions:
             utm_zone = int(instructions['to_horiz_key'])
         else:
@@ -155,9 +163,15 @@ class VDatum:
                         break
                 else:
                     raise ValueError(f'no UTM zone found in file "{filename}"')
-        return _np.loadtxt(reprojected_filename, delimiter=','), utm_zone
 
-    def __filter_xyz(self, xyz: _np.array, instructions: dict) -> _np.array:
+        if not _os.path.isfile(reprojected_filename):
+            raise RuntimeError(f'VDatum was unable to reproject survey from {filename} to {reprojected_filename}')
+
+        reprojected_points = _np.loadtxt(reprojected_filename, delimiter=',')
+        reprojected_directory.cleanup()
+        return reprojected_points, utm_zone
+
+    def __filter_xyz(self, xyz: _np.array, metadata: dict) -> _np.array:
         """
         Filter the given geographic XYZ points to exclude points outside the UTM zone of the given spatial reference frame.
         If the provided data is not geographic, or the given frame is not a UTM zone, no filter is applied.
@@ -175,13 +189,14 @@ class VDatum:
             N x 3 array of XYZ points, filtered to only include the given UTM zone
         """
 
-        if instructions['from_horiz_type'] == 'geo' and instructions['to_horiz_type'] == 'utm':
-            srs = spatial_reference_from_metadata(instructions)
+        if metadata['from_horiz_type'] == 'geo' and metadata['to_horiz_type'] == 'utm':
+            srs = spatial_reference_from_metadata(metadata)
             c_meridian = srs.GetProjParm(gdal.osr.SRS_PP_CENTRAL_MERIDIAN)
             west = c_meridian - 3
             east = c_meridian + 3
+
             x = xyz[:, 0]
-            xyz = xyz[(x > west) & (x < east),:]
+            xyz = xyz[(x > west) & (x < east), :]
 
         return xyz
 
@@ -206,9 +221,9 @@ class VDatum:
 
         # create a gdal.Dataset and assign a temp file name for VDatum to read
         dataset = self._reader.read_bathymetry(filename, out_verdat=None)
-        original_directory = tempdir()
+        original_directory = TemporaryDirectory()
         output_filename = _os.path.join(original_directory.name, 'outfile.tif')
-        reprojected_directory = tempdir()
+        reprojected_directory = TemporaryDirectory()
         reprojected_filename = _os.path.join(reprojected_directory.name, 'outfile.tif')
         log_filename = _os.path.join(reprojected_directory.name, 'outfile.tif.log')
         # save dataset to file
@@ -218,6 +233,8 @@ class VDatum:
         # translate points with VDatum
         self.__setup_vdatum(instructions, 'geotiff')
         self.__convert_file(output_filename, reprojected_directory.name)
+        original_directory.cleanup()
+
         if 'to_horiz_key' in instructions:
             utm_zone = int(instructions['to_horiz_key'])
         else:
@@ -230,7 +247,10 @@ class VDatum:
                         break
                 else:
                     raise ValueError(f'no UTM zone found in file "{filename}"')
-        return gdal.Open(reprojected_filename), utm_zone
+
+        dataset = gdal.Open(reprojected_filename), utm_zone
+        reprojected_directory.cleanup()
+        return dataset
 
     def __setup_vdatum(self, instructions: dict, mode: str = 'points'):
         """
@@ -251,20 +271,29 @@ class VDatum:
         """
 
         # having the input zone is optional if the input type is geographic
-        local_from_datum = from_hdatum.copy()
+        local_from_hdatum = FROM_HDATUM.copy()
         if instructions['from_horiz_type'] != 'geo':
-            local_from_datum.append('from_horiz_key')
+            local_from_hdatum.append('from_horiz_key')
+        if ":".join(instructions[key] for key in FROM_VDATUM).lower() == ":".join(instructions[key] for key in TO_VDATUM).lower():
+            vert = False
+        else:
+            vert = True
 
         # having the output zone is optional
-        local_to_hdatum = to_hdatum.copy()
+        local_to_hdatum = TO_HDATUM.copy()
         if 'to_horiz_key' in instructions:
             local_to_hdatum.append('to_horiz_key')
 
-        self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
-                      f'ihorz:{":".join(instructions[key] for key in local_from_datum)} ' + \
-                      f'ivert:{":".join(instructions[key] for key in from_vdatum)} ' + \
-                      f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
-                      f'overt:{":".join(instructions[key] for key in to_vdatum)} '
+        if vert:
+            self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
+                          f'ihorz:{":".join(instructions[key] for key in local_from_hdatum)} ' + \
+                          f'ivert:{":".join(instructions[key] for key in FROM_VDATUM)} ' + \
+                          f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} ' + \
+                          f'overt:{":".join(instructions[key] for key in TO_VDATUM)} '
+        else:
+            self._shell = f'{_os.path.join(self._java_path, "java")} -jar vdatum.jar ' + \
+                          f'ihorz:{":".join(instructions[key] for key in local_from_hdatum)} ' + \
+                          f'ohorz:{":".join(instructions[key] for key in local_to_hdatum)} '
 
         if mode == 'points':
             self._shell += f'-file:txt:comma,0,1,2,skip0:'
@@ -285,25 +314,24 @@ class VDatum:
             output directory
         """
 
-        command = f'{self._shell}{filename};{output_directory}'
-        self._logger.log(_logging.DEBUG, command)
+        command = f'{self._shell}{filename};{output_directory} -nodata'
+        self._logger.info(command)
         try:
             proc = _subprocess.Popen(command, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE, cwd=self._vdatum_path)
         except:
-            print(f'Error executing: {command}\nat: {self._vdatum_path}')
+            self._logger.error(f'Error executing: {command}\nat: {self._vdatum_path}')
             raise
+
+        output, outerr = proc.communicate()
         try:
-            (output, outerr) = proc.communicate()
-            output_str = output.decode('utf-8')
-            outerr_str = outerr.decode('utf-8')
-            self._logger.log(_logging.DEBUG, output_str)
-            if len(outerr_str) > 0:
-                self._logger.log(_logging.DEBUG, outerr_str)
+            self._logger.debug(output.decode('utf-8'))
+            if len(outerr) > 0:
+                self._logger.warning(outerr.decode('utf-8'))
             else:
-                self._logger.log(_logging.DEBUG, 'No datum transformation errors reported')
+                self._logger.info('No datum transformation errors reported')
         except:
-            print(output)
-            print(outerr)
+            self._logger.debug(output)
+            self._logger.error(outerr)
 
 
 def _has_required_instructions(instructions: dict) -> bool:
@@ -316,7 +344,7 @@ def _has_required_instructions(instructions: dict) -> bool:
         dictionary of metadata
     """
 
-    for key in from_hdatum + from_vdatum + to_hdatum + to_vdatum:
+    for key in FROM_HDATUM + FROM_VDATUM + TO_HDATUM + TO_VDATUM:
         if key not in instructions:
             return False
     else:

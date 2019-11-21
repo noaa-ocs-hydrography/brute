@@ -8,6 +8,7 @@ Created on Tue Oct 22 16:01:28 2019
 import logging
 import os
 from typing import Union
+
 import fiona
 import numpy
 import rasterio
@@ -15,10 +16,9 @@ from affine import Affine
 from fiona._crs import CRSError
 from fiona.transform import transform_geom
 from fuse.raw_read.noaa.bag import BAGRawReader, Open, BagToGDALConverter
-from fuse.utilities import bounds_from_opposite_corners
 from osgeo import osr, gdal
 from rasterio.crs import CRS
-from rasterio.warp import transform as transform_points, calculate_default_transform
+from rasterio.warp import transform as transform_points
 
 
 def _maxValue(arr: numpy.array):
@@ -43,7 +43,7 @@ def _maxValue(arr: numpy.array):
     return int(nums[index])
 
 
-def reproject_support_files(metadata: dict, output_directory: str) -> dict:
+def reproject_support_files(metadata: dict, output_directory: str, logger: logging.Logger = None) -> dict:
     """
     Horizontally transform the given support files, writing reprojected files to the given output directory.
 
@@ -53,12 +53,17 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
         dictionary of metadata
     output_directory
         path to directory for transformed files
+    logger
+        logging object
 
     Returns
     -------
     dict
         dictionary of metadata with updated list of support files
     """
+
+    if logger is None:
+        logger = logging.getLogger('fuse')
 
     if 'support_files' in metadata:
         support_filenames = metadata['support_files']
@@ -72,14 +77,14 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
                 input_crs = osr.SpatialReference(wkt=input_dataset.GetProjectionRef())
                 nodata = input_dataset.GetRasterBand(1).GetNoDataValue()
                 if nodata is None:
-                    nodata =_maxValue(input_dataset.GetRasterBand(1).ReadAsArray())
+                    nodata = _maxValue(input_dataset.GetRasterBand(1).ReadAsArray())
                 del input_dataset
                 output_crs = spatial_reference_from_metadata(metadata)
                 if not input_crs.IsSame(output_crs):
                     options = gdal.WarpOptions(format='GTiff', srcSRS=input_crs, dstSRS=output_crs, srcNodata=nodata, dstNodata=nodata)
                     gdal.Warp(output_filename, input_filename, options=options)
                     if not os.path.exists(output_filename):
-                        logging.warning(f'file not created: {output_filename}')
+                        logger.warning(f'file not created: {output_filename}')
                     else:
                         reprojected_filenames.append(output_filename)
             elif extension == '.gpkg':
@@ -88,7 +93,7 @@ def reproject_support_files(metadata: dict, output_directory: str) -> dict:
                 reprojected_filenames.append(output_filename)
             else:
                 if extension != '.tfw':
-                    logging.warning(f'unsupported file format "{extension}"')
+                    logger.warning(f'unsupported file format "{extension}"')
                 reprojected_filenames.append(input_filename)
         metadata['support_files'] = reprojected_filenames
 
@@ -131,7 +136,7 @@ def _reproject_via_reprojectimage(filename: str, metadata: dict, reader: BAGRawR
     min_x, max_x = min(x_vals), max(x_vals)
     min_y, max_y = min(y_vals), max(y_vals)
 
-    reprojected_shape = [int((max_y - min_y)/input_resolution[0]), int((max_x - min_x)/input_resolution[0])]
+    reprojected_shape = [int((max_y - min_y) / input_resolution[0]), int((max_x - min_x) / input_resolution[0])]
 
     reprojected_geotransform = (min_x, input_resolution[0], 0, max_y, 0, input_resolution[1])
 
@@ -195,7 +200,7 @@ def reproject_transform(transform: Union[tuple, Affine], input_crs: CRS, output_
         raise NotImplementedError(f'could not parse transform of type "{type(transform)}"')
 
 
-def _reproject_geopackage(input_filename: str, output_filename: str, output_crs: CRS, input_layer=None) -> str:
+def _reproject_geopackage(input_filename: str, output_filename: str, output_crs: CRS, input_layer: str = None) -> str:
     """
     Convert a GeoPackage to the provided reference frame, assuming a single layer.
 
@@ -224,10 +229,11 @@ def _reproject_geopackage(input_filename: str, output_filename: str, output_crs:
 
         # check to see if the file is already projected in the given CRS
         if output_crs != input_crs:
-            records = [{'id': record['id'], 'geometry': transform_geom(input_crs, output_crs, record['geometry']),
+            records = [{'id': record['id'], 'geometry': transform_geom(input_crs, output_crs.to_dict(), record['geometry']),
                         'properties': record['properties']} for record in input_layer]
 
-            with fiona.open(output_filename, 'w', 'GPKG', layer=output_layer, schema=input_layer.schema, crs=output_crs) as output_layer:
+            with fiona.open(output_filename, 'w', 'GPKG', layer=output_layer, schema=input_layer.schema,
+                            crs=output_crs.to_dict()) as output_layer:
                 output_layer.writerecords(records)
         else:
             output_filename = input_filename

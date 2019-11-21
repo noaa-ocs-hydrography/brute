@@ -703,10 +703,10 @@ def align2grid(coverage, bounds: ((float, float), (float, float)), shape: (int, 
     if resolution_ratio == 1:
         resampled_coverage_array = coverage.array
     else:
-        print('_zoom', _dt.now())
-        resampled_coverage_array = _zoom(coverage.array, zoom=[resolution_ratio, resolution_ratio], order=3,
-                                         prefilter=False)
-        print('zoomed', _dt.now())
+        # resampled_coverage_array = _zoom(coverage.array, zoom=[resolution_ratio, resolution_ratio], order=3,
+        #                                 prefilter=False)
+        resampled_coverage_array = _np.kron(coverage.array, _np.ones((resolution_ratio, resolution_ratio)))
+
     resampled_coverage_array = resampled_coverage_array.astype('float64')
     resampled_coverage_array[resampled_coverage_array > 0] = _np.nan
     resampled_coverage_array[resampled_coverage_array < 1] = float(nodata)

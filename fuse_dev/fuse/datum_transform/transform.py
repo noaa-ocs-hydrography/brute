@@ -6,6 +6,7 @@ transform.py
 
 Abstract datum transformation.
 """
+import logging
 
 import gdal
 from fuse.datum_transform import use_vdatum as uv
@@ -41,13 +42,14 @@ class DatumTransformer:
         'to_vert_direction',
     ]
 
-    def __init__(self, vdatum_path: str, java_path: str, reader):
+    def __init__(self, vdatum_path: str, java_path: str, reader, logger: logging.Logger = None):
         """
         Set up and configure the transformation tools based on the information provided in the configruation file.
         """
 
         self._reader = reader
-        self._engine = uv.VDatum(vdatum_path, java_path, self._reader)
+        self._logger = logger if logger is not None else logging.getLogger('fuse')
+        self._engine = uv.VDatum(vdatum_path, java_path, self._reader, self._logger)
 
     def reproject(self, filename: str, metadata: dict) -> (gdal.Dataset, dict, bool):
         """
