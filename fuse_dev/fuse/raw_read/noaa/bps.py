@@ -382,7 +382,7 @@ class BPSRawReader(RawReader):
 
         return data_files
 
-    def _prune_points(self, point_dict: {_np.array}, float_precision: float = 1.0) -> _np.array:
+    def _prune_points(self, point_dict: {_np.array}, float_precision: float = None) -> _np.array:
         """
         Using a93 data, prunes points not found also found in xyz data (active
         soundings)
@@ -403,10 +403,11 @@ class BPSRawReader(RawReader):
         a93 = point_dict['.a93'][:, [0, 1]]
         xyz = point_dict['.xyz'][:, [0, 1]]
 
-        min_x_precision = min([len(str(x).split('.')[1]) for x in a93[:, 0]])
-        min_y_precision = min([len(str(y).split('.')[1]) for y in a93[:, 1]])
-        min_precision = min((min_x_precision, min_y_precision))
-        float_precision /= 10 ** min_precision
+        if float_precision is None:
+            min_x_precision = min([len(str(x).split('.')[1]) for x in a93[:, 0]])
+            min_y_precision = min([len(str(y).split('.')[1]) for y in a93[:, 1]])
+            min_precision = min((min_x_precision, min_y_precision))
+            float_precision /= 10 ** min_precision
 
         # https://stackoverflow.com/a/38674038
         active_bool = _np.where(_np.isclose(a93, xyz[:, None], rtol=0.0, atol=float_precision).all(-1))[1]
