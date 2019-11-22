@@ -343,6 +343,19 @@ class BPSRawReader(RawReader):
         xyz = xyz[active_bool == 0, :]
         return xyz[:, [0, 1, 2]]
 
+    def _active_points(self, point_dict: {_np.array}) -> _np.array:
+        """
+
+        """
+
+        a93 = point_dict['.a93']
+        xyz = point_dict['.xyz']
+
+        active_bool = _prune_points(a93[:, [0, 1]], xyz[:, [0, 1]])
+
+        return a93[active_bool]
+
+
     def _data_lookup(self, data_pointer: str) -> [str]:
         """
         Using an input filepath or folder path, attempts to locate relevant xyz
@@ -382,45 +395,6 @@ class BPSRawReader(RawReader):
 
         return data_files
 
-    def _prune_points(self, point_dict: {_np.array}, float_precision: float = None) -> _np.array:
-        """
-        Using a93 data, prunes points not found also found in xyz data (active
-        soundings)
-
-        Parameters
-        ----------
-        point_dict : dict
-            dict of numpy.arrays containing point data from both a93 and xyz
-            file types
-
-        Returns
-        -------
-        _np.array
-            array of valid points between the data
-
-        """
-
-        a93 = point_dict['.a93'][:, [0, 1]]
-        xyz = point_dict['.xyz'][:, [0, 1]]
-
-        if float_precision is None:
-            float_precision = 1.0
-            min_x_precision = min([len(str(x).split('.')[1]) for x in a93[:, 0]])
-            min_y_precision = min([len(str(y).split('.')[1]) for y in a93[:, 1]])
-            min_precision = min((min_x_precision, min_y_precision))
-            float_precision /= 10 ** min_precision
-
-        # https://stackoverflow.com/a/38674038
-        active_bool = _np.where(_np.isclose(a93, xyz[:, None], rtol=0.0, atol=float_precision).all(-1))[1]
-
-        # atol = minimum precision floating point
-        # rtol = 0.0
-        # min([len(str(x).split('.')[1]) for x in a93[:, 0]])
-
-        active = point_dict['.a93'][active_bool]
-
-        return active
-
     def _data_check(self, data_pointer: str) -> _np.array:
         """
         Reads in all available data files and returns the data
@@ -448,7 +422,7 @@ class BPSRawReader(RawReader):
                 data_hold[ext] = self._parse_xyz(data)
 
         if '.a93' in data_hold and '.xyz' in data_hold:
-            points = self._prune_points(data_hold)
+            points = self._active_points(data_hold)
         elif '.a93' in data_hold:
             points = data_hold['.a93']
         elif '.xyz' in data_hold:
@@ -473,5 +447,38 @@ class BPSRawReader(RawReader):
             numpy array
         """
 
-
         return self._data_check(data_pointer)
+
+
+@jit(nopython=True)
+def _prune_points(a93, xyz):
+    """
+    Using a93 data, prunes points not found also found in xyz data (active
+    soundings)
+
+    Given the precision of the A93 data (6 points) a mathing point must be less
+    than or equal to np.sqrt(0.000001**2 + 0.000001**2) or 1.414213562373095e-06
+
+    Parameters
+    ----------
+    point_dict : dict
+        dict of numpy.arrays containing point data from both a93 and xyz
+        file types
+
+    Returns
+    -------
+    _np.array
+        array of valid points between the data
+
+    """
+
+    active = _np.zeros(a93.shape[0])
+
+    for idx in range(a93.shape[0]):
+        point = a93[idx]
+        residual = xyz - point
+        distance = _np.min(_np.sqrt(_np.square(residual[:, 0]) + _np.square(residual[:, 1])))
+        if distance <= 1.414213562373095e-06:
+            active[idx] = 1
+
+    return active
