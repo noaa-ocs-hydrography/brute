@@ -404,6 +404,7 @@ class BPSRawReader(RawReader):
         xyz = point_dict['.xyz'][:, [0, 1]]
 
         if float_precision is None:
+            float_precision = 1.0
             min_x_precision = min([len(str(x).split('.')[1]) for x in a93[:, 0]])
             min_y_precision = min([len(str(y).split('.')[1]) for y in a93[:, 1]])
             min_precision = min((min_x_precision, min_y_precision))
