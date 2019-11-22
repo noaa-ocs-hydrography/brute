@@ -13,19 +13,20 @@ This is a rework of the original point interpolator.
 """
 
 from datetime import datetime
+from re import match
 from types import GeneratorType
 from typing import Union, Tuple
-from re import match
+
+import fiona
 import numpy as np
+from affine import Affine
+from osgeo import gdal, osr
+from rasterio.features import geometry_mask
 from scipy.spatial.ckdtree import cKDTree
 from scipy.spatial.qhull import Delaunay
-from osgeo import gdal, osr
-import fiona
-from affine import Affine
-from rasterio.features import geometry_mask
 from shapely.geometry import GeometryCollection, MultiPolygon, Polygon, MultiPoint, Point, MultiLineString, JOIN_STYLE
-from shapely.ops import unary_union, polygonize
 from shapely.geometry import shape as shapely_shape
+from shapely.ops import unary_union, polygonize
 
 CATZOC = {
     'A1': [.01, .5],
@@ -34,11 +35,11 @@ CATZOC = {
     'C': [.05, 2]
 }
 
-#============================================================================
 
-def interpolate(dataset: gdal.Dataset, resolution: float, ancillary_coverage_files: [str] = None, 
-                catzoc: str = 'B', nodata = 1000000) -> gdal.Dataset:
+# ============================================================================
 
+def interpolate(dataset: gdal.Dataset, resolution: float, ancillary_coverage_files: [str] = None,
+                catzoc: str = 'B', nodata=1000000) -> gdal.Dataset:
     """
     Generate a raster from the input data using the given interpolation method.
 
@@ -58,6 +59,10 @@ def interpolate(dataset: gdal.Dataset, resolution: float, ancillary_coverage_fil
     gdal.Dataset
         interpolated GDAL raster dataset
     """
+
+    if type(resolution) is not float:
+        resolution = float(resolution)
+
     catzoc = catzoc.upper()
     assert catzoc in CATZOC, f'CATZOC score "{catzoc}" not supported'
 
@@ -65,13 +70,13 @@ def interpolate(dataset: gdal.Dataset, resolution: float, ancillary_coverage_fil
 
     # get the data bounds as (ulx,uly,lrx,lry)
     tmp = np.concatenate((np.min(points, axis=0), np.max(points, axis=0)))
-    input_bounds = tmp[[0,3,2,1]]
+    input_bounds = tmp[[0, 3, 2, 1]]
 
     # set the size of the interpolation window size to be the maximum of all nearest neighbor distances
     max_neighbor_distance = maximum_nearest_neighbor_distance(points)
     # but if the number is stupid small (single beam), default to resolution for interpolation
     atomic_length = max((max_neighbor_distance, resolution))
-    
+
     start_time = datetime.now()
     # get the concave hull of the survey points
     approximate_alpha_hull = alpha_hull(points, max_length=atomic_length, tolerance=resolution / 2,
@@ -100,17 +105,17 @@ def interpolate(dataset: gdal.Dataset, resolution: float, ancillary_coverage_fil
         for ancillary_coverage_filename in ancillary_coverage_files:
             with fiona.open(ancillary_coverage_filename) as ancillary_coverage_file:
                 ancillary_coverage.extend(shapely_shape(feature['geometry']) for feature in ancillary_coverage_file)
-                
+
     interpolation_region = unary_union([interpolation_region] + ancillary_coverage)
-    
+
     output_shape, output_bounds = _get_raster_properties(resolution, input_bounds)
-        
+
     interpolated_raster = gdal.Grid('', dataset, format='MEM', width=output_shape[1], height=output_shape[0], outputBounds=output_bounds,
                                     algorithm=f'linear:radius=0:nodata={int(nodata)}')
     interpolated_band = interpolated_raster.GetRasterBand(1)
     interpolated_values = interpolated_band.ReadAsArray()
     geotransform = interpolated_raster.GetGeoTransform()
-    
+
     uncertainty = _uncertainty(np.where(interpolated_values != nodata, interpolated_values, np.nan), catzoc)
 
     uncertainty[np.isnan(uncertainty)] = nodata
@@ -128,12 +133,12 @@ def interpolate(dataset: gdal.Dataset, resolution: float, ancillary_coverage_fil
     band_2.SetNoDataValue(nodata)
     band_2.WriteArray(uncertainty)
     del band_2
-    
+
     interpolation_mask = raster_mask_like(interpolation_region, output_raster)
     interpolated_dataset = apply_raster_mask(output_raster, interpolation_mask)
 
     return interpolated_dataset
-    
+
 
 def _gdal_to_xyz(dataset: gdal.Dataset) -> np.array:
     """
@@ -282,8 +287,8 @@ def alpha_hull(points: np.array, max_length: float = None, tolerance: float = No
         triangles = Delaunay(points)
 
     indices = np.stack(((triangles.simplices[:, 0], triangles.simplices[:, 1]),
-                           (triangles.simplices[:, 1], triangles.simplices[:, 2]),
-                           (triangles.simplices[:, 2], triangles.simplices[:, 0])), axis=1).T
+                        (triangles.simplices[:, 1], triangles.simplices[:, 2]),
+                        (triangles.simplices[:, 2], triangles.simplices[:, 0])), axis=1).T
     edges = points[indices]
     vectors = np.squeeze(np.diff(edges, axis=2))
     lengths = np.hypot(vectors[:, :, 0], vectors[:, :, 1])
@@ -330,6 +335,7 @@ def alpha_hull(points: np.array, max_length: float = None, tolerance: float = No
 
     return output_hull
 
+
 def remove_interior_duplicates(polygons: [Polygon]) -> [Polygon]:
     """
     Given a list of polygons, return a list without polygons whose exteriors represent the interior of another polygon.
@@ -362,7 +368,6 @@ def remove_interior_duplicates(polygons: [Polygon]) -> [Polygon]:
                 polygons.remove(polygon)
 
     return polygons
-
 
 
 def buffer_hull(points: Union[MultiPoint, np.array], buffer: float = None, tolerance: float = None, iterations: int = 50,
@@ -665,7 +670,7 @@ def crs_wkt_from_epsg(crs: Union[int, str]) -> str:
         spatial_reference.ImportFromEPSG(crs)
 
     return spatial_reference.ExportToWkt()
-    
+
 
 def affine_from_georeference(origin: (float, float), resolution: (float, float), rotation: (float, float) = None) -> Affine:
     """
