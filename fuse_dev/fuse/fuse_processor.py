@@ -557,7 +557,7 @@ class FuseProcessor:
         # remove handlers that might have existed from previous files
         # self._close_log(logger)
 
-        log_format = '%(asctime)s %(name)-30s %(levelname)-8s: %(message)s'
+        log_format = '[%(asctime)s] %(name)-30s %(levelname)-8s: %(message)s'
 
         # create handlers for this filename
         log_file = _logging.FileHandler(log_filename)
