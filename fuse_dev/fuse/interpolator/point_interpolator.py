@@ -12,10 +12,12 @@ national bathymetry.
 This is a rework of the original point interpolator.
 """
 
+import sys as _sys
 from datetime import datetime
 from re import match
 from types import GeneratorType
 from typing import Union, Tuple
+import logging as _logging
 
 import fiona
 import numpy as np
@@ -35,6 +37,11 @@ CATZOC = {
     'C': [.05, 2]
 }
 
+_logger = _logging.getLogger('data_log')
+if len(_logger.handlers) == 0:
+    ch = _logging.StreamHandler(_sys.stdout)
+    ch.setLevel(_logging.DEBUG)
+    _logger.addHandler(ch)
 
 # ============================================================================
 
@@ -59,7 +66,7 @@ def interpolate(dataset: gdal.Dataset, resolution: float, ancillary_coverage_fil
     gdal.Dataset
         interpolated GDAL raster dataset
     """
-
+    _logger.info(f'Begin point interpolation')
     if type(resolution) is not float:
         resolution = float(resolution)
 
@@ -77,33 +84,40 @@ def interpolate(dataset: gdal.Dataset, resolution: float, ancillary_coverage_fil
     # but if the number is stupid small (single beam), default to resolution for interpolation
     atomic_length = max((max_neighbor_distance, resolution))
 
+    _logger.info(f'input bounds : {input_bounds}, max neighbor distance : {max_neighbor_distance}, first interpolation radius used : {atomic_length}')
+
     start_time = datetime.now()
     # get the concave hull of the survey points
     approximate_alpha_hull = alpha_hull(points, max_length=atomic_length, tolerance=resolution / 2,
                                         max_nn=max_neighbor_distance, iterations=1)
 
-    # if there is one reulting polygon we think we know where to interpolate
+    # if there is one resulting polygon we think we know where to interpolate
     if type(approximate_alpha_hull) is Polygon:
+        _logger.info('One area found using the initial interpolation radius.  Assuming success...')
         interpolation_region = approximate_alpha_hull
     else:
         # but if there are many, see if we can sort out if this is a set line spacing survey
         uniform_density = ((np.sqrt(approximate_alpha_hull.area) / max_neighbor_distance) - 1) ** 2 / approximate_alpha_hull.area
         actual_density = len(points) / approximate_alpha_hull.area
+        _logger.info('Many areas found using initial interpolation radius.  Estimated point density : {uniform_density}, Calculated point density : {actual_density}')
         # if the point density is less than if uniformly distributed, this is set line spacing
         if actual_density < max((uniform_density, max_neighbor_distance)):
+            _logger.info('Assuming set line spacing survey since calculated density appears low.')
             interpolation_region = buffer_hull(points, buffer=atomic_length, tolerance=resolution / 2,
                                                max_nn=max_neighbor_distance)
         else:
+            _logger.info('Assuming reasonably spaced data.')
             interpolation_region = alpha_hull(points, max_length=atomic_length, tolerance=resolution / 2,
                                               max_nn=max_neighbor_distance)
 
-    print(f'concave hull calculation took {datetime.now() - start_time}')
+    _logger.info(f'concave hull calculation took {datetime.now() - start_time}')
 
     # Make sure the channel has no bathymetry holes
     if ancillary_coverage_files is not None and len(ancillary_coverage_files) > 0:
         ancillary_coverage = []
         for ancillary_coverage_filename in ancillary_coverage_files:
             with fiona.open(ancillary_coverage_filename) as ancillary_coverage_file:
+                _logger.info('Adding {ancillary_coverage_filename} to coverage to ensure holes in channel are coverged.')
                 ancillary_coverage.extend(shapely_shape(feature['geometry']) for feature in ancillary_coverage_file)
 
     interpolation_region = unary_union([interpolation_region] + ancillary_coverage)
