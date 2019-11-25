@@ -1293,7 +1293,10 @@ class BAGSurvey(BAGRawReader):
             files.append(f)
             res.append(m['res'])
             if 'support_files' in m:
-                have_support_files = True
+                for support_file in m['support_files']:
+                    root, ext = _os.path.splitext(support_file)
+                    if ext.lower() in ('.tif', '.tiff', '.gpkg'):
+                        have_support_files = True
             bagfile_obj = Open(f, pixel_is_area=False)
             nw, se = bagfile_obj.bounds
             x.append([nw[0], se[0]])
