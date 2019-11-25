@@ -217,9 +217,12 @@ class MetadataTable(ABC):
                                 value = _ast.literal_eval(value.capitalize())
                             else:
                                 try:
-                                    value = float(value)
+                                    value = int(value)
                                 except ValueError:
-                                    pass
+                                    try:
+                                        value = float(value)
+                                    except ValueError:
+                                        pass
                         entries_by_prefix[prefix_name][metadata_key] = value
                         break
                 else:
