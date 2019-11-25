@@ -55,7 +55,7 @@ if __name__ == '__main__':
             else:
                 for xyz_filename in xyz_filenames:
                     try:
-                        logger.info(f'{datetime.now()}: processing {xyz_filename}', end=', ')
+                        logger.info(f'{datetime.now()}: processing {xyz_filename}')
                         bps_processor.process(xyz_filename)
                     except Exception as error:
                         _, _, error_traceback = sys.exc_info()
