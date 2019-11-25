@@ -1,12 +1,17 @@
 import os
 import unittest
 
-from tests.utilities import process_USACE_points, process_NOAA_raster
+from tests.utilities import process_USACE_points, process_NOAA_raster, process_NOAA_points
 
 
 class TestPointLinear(unittest.TestCase):
     def test_small(self):
         output_paths = process_USACE_points('NY_05_RHF_20181227_CS_4787_45X', 'linear', 'bag')
+        for output_path in output_paths:
+            assert os.path.exists(output_path), f'output file not created {output_path}'
+
+    def test_small_bps(self):
+        output_paths = process_NOAA_points('H11322', 'linear', 'bag')
         for output_path in output_paths:
             assert os.path.exists(output_path), f'output file not created {output_path}'
 
