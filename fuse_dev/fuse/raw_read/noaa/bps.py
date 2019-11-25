@@ -351,7 +351,8 @@ class BPSRawReader(RawReader):
         a93 = point_dict['.a93']
         xyz = point_dict['.xyz']
 
-        active_bool = _prune_points(a93[:, [0, 1]], xyz[:, [0, 1]])
+        active_bool = _prune_points(a93[:, [0, 1]], xyz[:, [0, 1]]).astype(_np.bool)
+        print(active_bool.shape)
 
         return a93[active_bool]
 
