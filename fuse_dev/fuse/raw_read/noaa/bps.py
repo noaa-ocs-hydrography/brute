@@ -250,9 +250,9 @@ class BPSRawReader(RawReader):
                 metadata['vert_uncert_vari'] = 0.02
                 metadata['horiz_uncert_fixed'] = 50
                 metadata['horiz_uncert_vari'] = 0
-                metadata['feat_size'] = 9999
+                # metadata['feat_size'] =
                 metadata['feat_detect'] = False
-                metadata['feat_least_depth'] = False
+                # metadata['feat_least_depth'] =
             else:
                 # CATZOC C quality
                 metadata['from_horiz_unc'] = 500
@@ -264,9 +264,9 @@ class BPSRawReader(RawReader):
                 metadata['vert_uncert_vari'] = 0.05
                 metadata['horiz_uncert_fixed'] = 500
                 metadata['horiz_uncert_vari'] = 0
-                metadata['feat_size'] = 9999
+                # metadata['feat_size'] =
                 metadata['feat_detect'] = False
-                metadata['feat_least_depth'] = False
+                # metadata['feat_least_depth'] =
         else:
             self._logger.warning(f"Could not finalize metadata due to missing 'year' assignment")
         return metadata
