@@ -18,7 +18,7 @@ from fuse.fuse_processor import FuseProcessor
 SCRIPT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 
 if __name__ == '__main__':
-    logger = logging.Logger('usace2meta')
+    logger = logging.Logger('bps2meta')
     console = logging.StreamHandler()
     console.setLevel(logging.DEBUG)
     console.setFormatter(logging.Formatter('[%(asctime)s] %(name)-30s %(levelname)-8s: %(message)s'))
@@ -55,7 +55,7 @@ if __name__ == '__main__':
             else:
                 for xyz_filename in xyz_filenames:
                     try:
-                        logger.info(f'{datetime.now()}: processing {xyz_filename}', end=', ')
+                        logger.info(f'{datetime.now()}: processing {xyz_filename}')
                         bps_processor.process(xyz_filename)
                     except Exception as error:
                         _, _, error_traceback = sys.exc_info()
