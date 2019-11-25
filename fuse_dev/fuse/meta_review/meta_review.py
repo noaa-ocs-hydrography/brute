@@ -210,12 +210,17 @@ class MetadataTable(ABC):
                 for prefix_name, prefix in self.column_prefixes.items():
                     if prefix in column_name:
                         metadata_key = column_name.replace(prefix, '')
-                        if type(value) is str and metadata_key == 'support_files':
-                            entries_by_prefix[prefix_name][metadata_key] = _ast.literal_eval(value)
-                        elif type(value) is str and (value.capitalize() in ['True', 'False']):
-                            entries_by_prefix[prefix_name][metadata_key] = _ast.literal_eval(value.capitalize())
-                        else:
-                            entries_by_prefix[prefix_name][metadata_key] = value
+                        if type(value) is str:
+                            if metadata_key == 'support_files':
+                                value = _ast.literal_eval(value)
+                            elif value.capitalize() in ['True', 'False']:
+                                value = _ast.literal_eval(value.capitalize())
+                            else:
+                                try:
+                                    value = float(value)
+                                except ValueError:
+                                    pass
+                        entries_by_prefix[prefix_name][metadata_key] = value
                         break
                 else:
                     entries_by_prefix['base'][column_name] = value
