@@ -33,8 +33,8 @@ from typing import Tuple, Any
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy
-from osgeo import gdal, ogr, osr
 from fuse.utilities import gdal_to_xyz, maximum_nearest_neighbor_distance, shape_from_cell_size
+from osgeo import gdal, ogr, osr
 
 
 def _compare_vals(val: float, valmin: float, valmax: float) -> Tuple[float, float]:

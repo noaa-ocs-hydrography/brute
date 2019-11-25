@@ -215,7 +215,7 @@ class MetadataTable(ABC):
                                 value = _ast.literal_eval(value)
                             elif value.capitalize() in ['True', 'False']:
                                 value = _ast.literal_eval(value.capitalize())
-                            else:
+                            elif metadata_key not in ['from_horiz_key', 'from_vert_key', 'to_horiz_key', 'to_vert_key']:
                                 try:
                                     value = float(value)
                                 except ValueError:
