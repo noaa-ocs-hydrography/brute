@@ -77,6 +77,8 @@ S57_HORIZONTAL_DATUM_TRANSLATIONS = {
 
 FIELDS_EXCLUDED_FROM_PREFIX = ('from_filename', 'from_path')
 
+CATZOC_UNCERTAINTY = {'A1': 5, 'A2': 20, 'B': 50, 'C': 500}
+
 
 class MetadataTable(ABC):
     """abstract class representing a table containing metadata records of bathymetric surveys"""
@@ -372,7 +374,18 @@ class MetadataDatabase(MetadataTable):
         with self.connection:
             with self.connection.cursor() as cursor:
                 for record in records:
+                    if 'script_feat_size' in record:
+                        if record['script_feat_size'] == 9999:
+                            del record['script_feat_size']
+
                     fields_in_record = [field for field in self.metadata_fields if field in record]
+
+                    for uncertainty_field in [field for field in fields_in_record if 'unc' in field]:
+                        value = record[uncertainty_field]
+                        if type(value) is str and 'CATZOC' in value:
+                            catzoc_score = value.split()[-1]
+                            record[uncertainty_field] = CATZOC_UNCERTAINTY[catzoc_score]
+
                     columns = [self.column_prefixes["script"] + field if field not in FIELDS_EXCLUDED_FROM_PREFIX else field
                                for field in fields_in_record]
                     values = [record[field] for field in fields_in_record]
