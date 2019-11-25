@@ -351,8 +351,7 @@ class BPSRawReader(RawReader):
         a93 = point_dict['.a93']
         xyz = point_dict['.xyz']
 
-        active_bool = _prune_points(a93[:, [0, 1]], xyz[:, [0, 1]]).astype(_np.bool)
-        print(active_bool.shape)
+        active_bool = _intersect_point_arrays(a93[:, [0, 1]], xyz[:, [0, 1]]).astype(_np.bool)
 
         return a93[active_bool]
 
@@ -452,7 +451,7 @@ class BPSRawReader(RawReader):
 
 
 @jit(nopython=True)
-def _prune_points(a93, xyz):
+def _intersect_point_arrays(a93, xyz):
     """
     Using a93 data, prunes points not found also found in xyz data (active
     soundings)
