@@ -264,19 +264,23 @@ class MetadataTable(ABC):
                 for prefix_name, prefix in self.column_prefixes.items():
                     if prefix in column_name:
                         metadata_key = column_name.replace(prefix, '')
-                        if type(value) is str:
-                            if FIELD_TYPES[metadata_key] is [str]:
-                                value = _ast.literal_eval(value)
-                            elif FIELD_TYPES[metadata_key] is bool:
-                                value = _ast.literal_eval(value.capitalize())
-                            elif FIELD_TYPES[metadata_key] is float:
-                                value = float(value)
-                            elif FIELD_TYPES[metadata_key] is int:
-                                value = int(value)
-                        entries_by_prefix[prefix_name][metadata_key] = value
+                        prefix_key = prefix_name
                         break
                 else:
-                    entries_by_prefix['base'][column_name] = value
+                    metadata_key = column_name
+                    prefix_key = 'base'
+
+                if type(value) is str:
+                    if FIELD_TYPES[metadata_key] is list:
+                        value = _ast.literal_eval(value)
+                    elif FIELD_TYPES[metadata_key] is bool:
+                        value = _ast.literal_eval(value.capitalize())
+                    elif FIELD_TYPES[metadata_key] is float:
+                        value = float(value)
+                    elif FIELD_TYPES[metadata_key] is int:
+                        value = int(value)
+
+                entries_by_prefix[prefix_key][metadata_key] = value
 
         # combine the dictionaries, overwriting the prefixed columns according to the order specified in the class attribute
         simplified_row = entries_by_prefix['base']
