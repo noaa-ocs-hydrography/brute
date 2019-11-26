@@ -73,28 +73,16 @@ def reproject_support_files(metadata: dict, output_directory: str, logger: loggi
             basename = os.path.basename(basename)
             output_filename = os.path.join(output_directory, basename + extension)
             if '.tif' in extension:
-                input_dataset = gdal.Open(input_filename)
-                input_crs = osr.SpatialReference(wkt=input_dataset.GetProjectionRef())
-                nodata = input_dataset.GetRasterBand(1).GetNoDataValue()
-                if nodata is None:
-                    nodata = _maxValue(input_dataset.GetRasterBand(1).ReadAsArray())
-                del input_dataset
                 output_crs = spatial_reference_from_metadata(metadata)
-                if not input_crs.IsSame(output_crs):
-                    options = gdal.WarpOptions(format='GTiff', srcSRS=input_crs, dstSRS=output_crs, srcNodata=nodata, dstNodata=nodata)
-                    gdal.Warp(output_filename, input_filename, options=options)
-                    if not os.path.exists(output_filename):
-                        logger.warning(f'file not created: {output_filename}')
-                    else:
-                        reprojected_filenames.append(output_filename)
+                output_filename = _reproject_geotiff(input_filename, output_filename, output_crs, logger)
+                reprojected_filenames.append(output_filename)
             elif extension == '.gpkg':
                 output_crs = spatial_reference_from_metadata(metadata, fiona_crs=True)
                 output_filename = _reproject_geopackage(input_filename, output_filename, output_crs)
                 reprojected_filenames.append(output_filename)
             else:
-                if extension != '.tfw':
-                    logger.warning(f'unsupported file format "{extension}"')
-                reprojected_filenames.append(input_filename)
+                logger.warning(f'unsupported file format "{extension}"')
+
         metadata['support_files'] = reprojected_filenames
 
     return metadata
@@ -239,6 +227,56 @@ def _reproject_geopackage(input_filename: str, output_filename: str, output_crs:
             output_filename = input_filename
 
     return output_filename
+
+
+def _reproject_geotiff(input_filename: str, output_filename: str, output_crs: osr.SpatialReference, input_layer: str = None, logger: logging.Logger = None) -> str:
+    """
+    Horizontally transform the given support files, writing reprojected files to the given output file.
+
+    Non-transformed files will still be rewritten to the output file in order to eliminate old '.tfw's.
+
+    Parameters
+    ----------
+    input_filename
+        file path of the input coverage file
+    output_filename
+        file path to which to save reprojected file
+    output_crs
+        OSR spatial reference of output
+    logger
+        logging object
+
+    Returns
+    -------
+    str
+        file name of the resulting file
+    """
+    # Transform data if needed
+    if not input_crs.IsSame(output_crs):
+
+        # Determine nodata value of the input geotiff
+        input_dataset = gdal.Open(input_filename)
+        input_crs = osr.SpatialReference(wkt=input_dataset.GetProjectionRef())
+        nodata = input_dataset.GetRasterBand(1).GetNoDataValue()
+
+        if nodata is None:
+            nodata = _maxValue(input_dataset.GetRasterBand(1).ReadAsArray())
+        del input_dataset
+
+        # Use gdal.Warp
+        options = gdal.WarpOptions(format='GTiff', srcSRS=input_crs, dstSRS=output_crs, srcNodata=nodata, dstNodata=nodata)
+        gdal.Warp(output_filename, input_filename, options=options)
+
+    # If no transformation is needed, still output a new geotiff
+    else:
+        input_dataset = gdal.Open(input_filename)
+        output_driver = gdal.GetDriverByName('GTiff')
+        output_driver.CreateCopy(output_filename, input_dataset)
+
+    if not os.path.exists(output_filename) and logger is not None:
+        logger.warning(f'file not created: {output_filename}')
+    else:
+        return output_filename
 
 
 def spatial_reference_from_metadata(metadata: dict, fiona_crs: bool = False) -> Union[CRS, osr.SpatialReference]:
