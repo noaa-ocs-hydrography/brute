@@ -1,12 +1,17 @@
 import os
 import unittest
 
-from tests.utilities import process_USACE_points, process_NOAA_raster
+from tests.utilities import process_USACE_points, process_NOAA_raster, process_NOAA_points
 
 
 class TestPointLinear(unittest.TestCase):
     def test_small(self):
         output_paths = process_USACE_points('NY_05_RHF_20181227_CS_4787_45X', 'linear', 'bag')
+        for output_path in output_paths:
+            assert os.path.exists(output_path), f'output file not created {output_path}'
+
+    def test_small_bps(self):
+        output_paths = process_NOAA_points('H11322', 'linear', 'bag')
         for output_path in output_paths:
             assert os.path.exists(output_path), f'output file not created {output_path}'
 
@@ -21,21 +26,21 @@ class TestPointLinear(unittest.TestCase):
             assert os.path.exists(output_path), f'output file not created {output_path}'
 
 
-class TestPointKriging(unittest.TestCase):
-    def test_small(self):
-        output_paths = process_USACE_points('NY_05_RHF_20181227_CS_4787_45X', 'kriging', 'bag')
-        for output_path in output_paths:
-            assert os.path.exists(output_path), f'output file not created {output_path}'
-
-    def test_bounds_error(self):
-        output_paths = process_USACE_points('BR_01_BRH_20130821_BD_4041_30X', 'kriging', 'bag')
-        for output_path in output_paths:
-            assert os.path.exists(output_path), f'output file not created {output_path}'
-
-    def test_issue_survey(self):
-        output_paths = process_USACE_points('BR_01_BRH_20190117_CS_4788_40X', 'kriging', 'bag')
-        for output_path in output_paths:
-            assert os.path.exists(output_path), f'output file not created {output_path}'
+# class TestPointKriging(unittest.TestCase):
+#     def test_small(self):
+#         output_paths = process_USACE_points('NY_05_RHF_20181227_CS_4787_45X', 'kriging', 'bag')
+#         for output_path in output_paths:
+#             assert os.path.exists(output_path), f'output file not created {output_path}'
+#
+#     def test_bounds_error(self):
+#         output_paths = process_USACE_points('BR_01_BRH_20130821_BD_4041_30X', 'kriging', 'bag')
+#         for output_path in output_paths:
+#             assert os.path.exists(output_path), f'output file not created {output_path}'
+#
+#     def test_issue_survey(self):
+#         output_paths = process_USACE_points('BR_01_BRH_20190117_CS_4788_40X', 'kriging', 'bag')
+#         for output_path in output_paths:
+#             assert os.path.exists(output_path), f'output file not created {output_path}'
 
 
 class TestRasterLinear(unittest.TestCase):
@@ -75,11 +80,11 @@ class TestRasterLinear(unittest.TestCase):
             assert os.path.exists(output_path), f'output file not created {output_path}'
 
 
-class TestRasterKriging(unittest.TestCase):
-    def test_small(self):
-        output_paths = process_NOAA_raster('H12607', 'kriging', 'bag')
-        for output_path in output_paths:
-            assert os.path.exists(output_path), f'output file not created {output_path}'
+# class TestRasterKriging(unittest.TestCase):
+#     def test_small(self):
+#         output_paths = process_NOAA_raster('H12607', 'kriging', 'bag')
+#         for output_path in output_paths:
+#             assert os.path.exists(output_path), f'output file not created {output_path}'
 
 
 if __name__ == '__main__':

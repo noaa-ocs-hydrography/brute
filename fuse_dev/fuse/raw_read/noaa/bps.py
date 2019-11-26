@@ -31,6 +31,7 @@ import lxml.html as _html
 import numpy as _np
 from fuse.raw_read import parse_file_pickle
 from fuse.raw_read.raw_read import RawReader
+from numba import jit
 
 h93_to_meta = {'Surv Id': 'survey',
                'Strt Yr': 'start_date',
@@ -247,9 +248,9 @@ class BPSRawReader(RawReader):
                 metadata['vert_uncert_vari'] = 0.02
                 metadata['horiz_uncert_fixed'] = 50
                 metadata['horiz_uncert_vari'] = 0
-                metadata['feat_size'] = 9999
+                # metadata['feat_size'] =
                 metadata['feat_detect'] = False
-                metadata['feat_least_depth'] = False
+                # metadata['feat_least_depth'] =
             else:
                 # CATZOC C quality
                 metadata['from_horiz_unc'] = 500
@@ -261,9 +262,9 @@ class BPSRawReader(RawReader):
                 metadata['vert_uncert_vari'] = 0.05
                 metadata['horiz_uncert_fixed'] = 500
                 metadata['horiz_uncert_vari'] = 0
-                metadata['feat_size'] = 9999
+                # metadata['feat_size'] =
                 metadata['feat_detect'] = False
-                metadata['feat_least_depth'] = False
+                # metadata['feat_least_depth'] =
         else:
             self._logger.warning(f"Could not finalize metadata due to missing 'year' assignment")
         return metadata
@@ -340,6 +341,19 @@ class BPSRawReader(RawReader):
         xyz = xyz[active_bool == 0, :]
         return xyz[:, [0, 1, 2]]
 
+    def _active_points(self, point_dict: {_np.array}) -> _np.array:
+        """
+
+        """
+
+        a93 = point_dict['.a93']
+        xyz = point_dict['.xyz']
+
+        active_bool = _intersect_point_arrays(a93[:, [0, 1]], xyz[:, [0, 1]]).astype(_np.bool)
+
+        return a93[active_bool]
+
+
     def _data_lookup(self, data_pointer: str) -> [str]:
         """
         Using an input filepath or folder path, attempts to locate relevant xyz
@@ -379,33 +393,6 @@ class BPSRawReader(RawReader):
 
         return data_files
 
-    def _prune_points(self, point_dict: {_np.array}) -> _np.array:
-        """
-        Using a93 data, prunes points not found also found in xyz data (active
-        soundings)
-
-        Parameters
-        ----------
-        point_dict : dict
-            dict of numpy.arrays containing point data from both a93 and xyz
-            file types
-
-        Returns
-        -------
-        _np.array
-            array of valid points between the data
-
-        """
-
-        a93 = point_dict['.a93'][:, [0, 1]]
-        xyz = point_dict['.xyz'][:, [0, 1]]
-
-        # https://stackoverflow.com/a/38674038
-        active_bool = _np.where((a93==xyz[:, None]).all(-1))[1]
-        active = point_dict['.a93'][active_bool]
-
-        return active
-
     def _data_check(self, data_pointer: str) -> _np.array:
         """
         Reads in all available data files and returns the data
@@ -433,7 +420,7 @@ class BPSRawReader(RawReader):
                 data_hold[ext] = self._parse_xyz(data)
 
         if '.a93' in data_hold and '.xyz' in data_hold:
-            points = self._prune_points(data_hold)
+            points = self._active_points(data_hold)
         elif '.a93' in data_hold:
             points = data_hold['.a93']
         elif '.xyz' in data_hold:
@@ -458,5 +445,38 @@ class BPSRawReader(RawReader):
             numpy array
         """
 
-
         return self._data_check(data_pointer)
+
+
+@jit(nopython=True)
+def _intersect_point_arrays(a93, xyz):
+    """
+    Using a93 data, prunes points not found also found in xyz data (active
+    soundings)
+
+    Given the precision of the A93 data (6 points) a matching point must be less
+    than or equal to np.sqrt(0.000001**2 + 0.000001**2) or 1.414213562373095e-06
+
+    Parameters
+    ----------
+    point_dict : dict
+        dict of numpy.arrays containing point data from both a93 and xyz
+        file types
+
+    Returns
+    -------
+    _np.array
+        array of valid points between the data
+
+    """
+
+    active = _np.zeros(a93.shape[0])
+
+    for idx in range(a93.shape[0]):
+        point = a93[idx]
+        residual = xyz - point
+        distance = _np.min(_np.sqrt(_np.square(residual[:, 0]) + _np.square(residual[:, 1])))
+        if distance <= 1.414213562373095e-06:
+            active[idx] = 1
+
+    return active

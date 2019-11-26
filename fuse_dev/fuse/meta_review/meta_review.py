@@ -77,6 +77,8 @@ S57_HORIZONTAL_DATUM_TRANSLATIONS = {
 
 FIELDS_EXCLUDED_FROM_PREFIX = ('from_filename', 'from_path')
 
+CATZOC_UNCERTAINTY = {'A1': 5, 'A2': 20, 'B': 50, 'C': 500}
+
 
 class MetadataTable(ABC):
     """abstract class representing a table containing metadata records of bathymetric surveys"""
@@ -210,12 +212,17 @@ class MetadataTable(ABC):
                 for prefix_name, prefix in self.column_prefixes.items():
                     if prefix in column_name:
                         metadata_key = column_name.replace(prefix, '')
-                        if type(value) is str and metadata_key == 'support_files':
-                            entries_by_prefix[prefix_name][metadata_key] = _ast.literal_eval(value)
-                        elif type(value) is str and (value.capitalize() in ['True', 'False']):
-                            entries_by_prefix[prefix_name][metadata_key] = _ast.literal_eval(value.capitalize())
-                        else:
-                            entries_by_prefix[prefix_name][metadata_key] = value
+                        if type(value) is str:
+                            if metadata_key == 'support_files':
+                                value = _ast.literal_eval(value)
+                            elif value.capitalize() in ['True', 'False']:
+                                value = _ast.literal_eval(value.capitalize())
+                            elif metadata_key not in ['from_horiz_key', 'from_vert_key', 'to_horiz_key', 'to_vert_key']:
+                                try:
+                                    value = float(value)
+                                except ValueError:
+                                    pass
+                        entries_by_prefix[prefix_name][metadata_key] = value
                         break
                 else:
                     entries_by_prefix['base'][column_name] = value
@@ -367,7 +374,18 @@ class MetadataDatabase(MetadataTable):
         with self.connection:
             with self.connection.cursor() as cursor:
                 for record in records:
+                    if 'script_feat_size' in record:
+                        if record['script_feat_size'] == 9999:
+                            del record['script_feat_size']
+
                     fields_in_record = [field for field in self.metadata_fields if field in record]
+
+                    for uncertainty_field in [field for field in fields_in_record if 'unc' in field]:
+                        value = record[uncertainty_field]
+                        if type(value) is str and 'CATZOC' in value:
+                            catzoc_score = value.split()[-1]
+                            record[uncertainty_field] = CATZOC_UNCERTAINTY[catzoc_score]
+
                     columns = [self.column_prefixes["script"] + field if field not in FIELDS_EXCLUDED_FROM_PREFIX else field
                                for field in fields_in_record]
                     values = [record[field] for field in fields_in_record]
