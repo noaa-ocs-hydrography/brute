@@ -346,7 +346,7 @@ class BAGRawReader(RawReader):
         dir_files = [_os.path.join(root, name) for name in _os.listdir(root) if
                      (_os.path.isfile(_os.path.join(root, name)) and snum in name)]
         meta['support_files'] = [support_file for support_file in dir_files if
-                                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.tfw', '.gpkg')]
+                                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
         exts = [_os.path.splitext(support_file)[1].lower() for support_file in dir_files if
                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
         return meta
