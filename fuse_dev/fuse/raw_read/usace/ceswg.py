@@ -34,12 +34,8 @@ __version__ = 'FUSE'
 class CESWGRawReader(USACERawReader):
     """ This class passes back bathymetry & a metadata dictionary from the e-Hydro files """
 
-    def __init__(self, logger: logging.Logger = None):
-        if logger is None:
-            logger = logging.getLogger('fuse')
-        self.logger = logger
-
-        super().__init__('CESWG', self.logger)
+    def __init__(self):
+        super().__init__('CESWG')
 
     def read_metadata(self, filename: str):
         """

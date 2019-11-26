@@ -18,12 +18,8 @@ from fuse.raw_read.usace.usace import USACERawReader
 class CENANRawReader(USACERawReader):
     """An abstract raw data reader."""
 
-    def __init__(self, logger: logging.Logger = None):
-        if logger is None:
-            logger = logging.getLogger('fuse')
-        self.logger = logger
-
-        super().__init__('CENAN', self.logger)
+    def __init__(self):
+        super().__init__('CENAN')
 
     def read_metadata(self, survey_folder: str) -> dict:
         """
