@@ -430,7 +430,7 @@ class MetadataFile(MetadataTable):
     @property
     def records(self) -> [dict]:
         with open(self.filename, 'r', encoding='utf-8') as csv_file:
-            return [self._simplify_record(row) for row in _csv.DictReader(csv_file)]
+            return [parse_record_values(self._simplify_record(row)) for row in _csv.DictReader(csv_file)]
 
     def records_where(self, where: dict) -> [dict]:
         records = []
@@ -445,7 +445,7 @@ class MetadataFile(MetadataTable):
         with open(self.filename, 'r', encoding='utf-8') as csv_file:
             for row in _csv.DictReader(csv_file):
                 if row['from_filename'] == primary_key_value:
-                    return self._simplify_record(row)
+                    return parse_record_values(self._simplify_record(row))
             else:
                 raise KeyError(f'could not find primary key ("{self.primary_key}") value of \'{primary_key_value}\'')
 
@@ -542,6 +542,9 @@ def parse_record_values(record: dict, field_types: dict = None) -> dict:
     dict
         metadata record with values parsed into their respective types
     """
+
+    if field_types is None:
+        field_types = FIELD_TYPES
 
     for key, value in record.items():
         field_type = field_types[key]
