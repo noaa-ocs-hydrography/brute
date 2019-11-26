@@ -5,13 +5,13 @@ Created on Thu Jan 31 10:47:59 2019
 @author: grice
 """
 
-import ast as _ast
 import csv as _csv
 import os
 import shutil as _shutil
 from abc import ABC, abstractmethod
+from ast import literal_eval
 from collections import OrderedDict
-from datetime import date
+from datetime import date, datetime
 from tempfile import NamedTemporaryFile as _NamedTemporaryFile
 from typing import Union, Any
 
@@ -270,16 +270,6 @@ class MetadataTable(ABC):
                     metadata_key = column_name
                     prefix_key = 'base'
 
-                if type(value) is str:
-                    if FIELD_TYPES[metadata_key] is list:
-                        value = _ast.literal_eval(value)
-                    elif FIELD_TYPES[metadata_key] is bool:
-                        value = _ast.literal_eval(value.capitalize())
-                    elif FIELD_TYPES[metadata_key] is float:
-                        value = float(value)
-                    elif FIELD_TYPES[metadata_key] is int:
-                        value = int(value)
-
                 entries_by_prefix[prefix_key][metadata_key] = value
 
         # combine the dictionaries, overwriting the prefixed columns according to the order specified in the class attribute
@@ -449,7 +439,7 @@ class MetadataFile(MetadataTable):
                 if all(row[key] == value for key, value in where):
                     records.append(row)
 
-        return [self._simplify_record(record) for record in records]
+        return [parse_record_values(self._simplify_record(record)) for record in records]
 
     def __getitem__(self, primary_key_value: str) -> dict:
         with open(self.filename, 'r', encoding='utf-8') as csv_file:
@@ -534,6 +524,43 @@ class MetadataFile(MetadataTable):
 
     def __repr__(self):
         return f'{self.__class__.__name__}(r"{self.filename}", {self.metadata_fields}, "{self.primary_key}")'
+
+
+def parse_record_values(record: dict, field_types: dict = None) -> dict:
+    """
+    Parse the values in the given metadata record into their respective field types.
+
+    Parameters
+    ----------
+    record
+        dictionary mapping metadata fields to values
+    field_types
+        dictionary mapping metadata fields to types
+
+    Returns
+    -------
+    dict
+        metadata record with values parsed into their respective types
+    """
+
+    for key, value in record.items():
+        field_type = field_types[key]
+
+        if type(value) is not field_type:
+            if field_type is list:
+                value = literal_eval(str(value))
+            elif field_type is bool:
+                value = literal_eval(str(value).capitalize())
+            elif field_type is date:
+                value = datetime.strptime(value, '%Y%m%d').date()
+            elif field_type is int:
+                value = int(value)
+            elif field_type is float:
+                value = float(value)
+
+        record[key] = value
+
+    return record
 
 
 def csv_to_s57(row: dict) -> dict:
