@@ -14,6 +14,7 @@ import sys
 import caris.coverage as cc
 import numpy as np
 
+
 def write_raster(dataset, m: dict):
     """
     Convert a gdal dataset into a csar.
@@ -33,7 +34,7 @@ def write_raster(dataset, m: dict):
 
     """
     # set the names of the layers in an assumed order
-    band_names = ['Elevation', 'Uncertainty','NBSa','NBSb','NBSc']
+    band_names = ['Elevation', 'Uncertainty', 'NBSa', 'NBSb', 'NBSc']
     # make sure the file does not exist before we write because it corrupts the file.
     csarname = m['outfilename']
     while os.path.exists(csarname):
@@ -48,12 +49,12 @@ def write_raster(dataset, m: dict):
             raise RuntimeError('Unable to remove csar0 file: {}'.format(csarname))
     # make sure the data has the assumed shape and get the number of layers
     if len(dataset.shape) == 3:
-        numlayers,dimy,dimx = dataset.shape
+        numlayers, dimy, dimx = dataset.shape
     elif len(dataset.shape) == 2:
         print('Single Band Grid')
         dimy, dimx = dataset.shape
         numlayers = 1
-        dataset.shape = (1,dimx,dimy)
+        dataset.shape = (1, dimx, dimy)
     else:
         msg = 'Array with shape {} provided to csar write process'.format(dataset.shape)
         raise ValueError(msg)
@@ -70,30 +71,31 @@ def write_raster(dataset, m: dict):
     bands = []
     for n in range(numlayers):
         # get the min / max, and change the vertical direction if needed.
-        dataset_band = np.flipud(dataset[n,:,:])
+        dataset_band = np.flipud(dataset[n, :, :])
         ndv_idx = np.nonzero(dataset_band == ndv)
         dataset_band[ndv_idx] = np.nan
         if n == 0:
             z_type = cc.Direction.HEIGHT
-            d_min = np.nanmax(dataset_band) 
+            d_min = np.nanmax(dataset_band)
             d_max = np.nanmin(dataset_band)
             if not m['z_up']:
                 print('Reversing vertical direction of data')
                 dataset_band *= -1
         else:
             z_type = cc.Direction.NAP
-            d_min = np.nanmin(dataset_band) 
-            d_max = np.nanmax(dataset_band) 
-       
-        # build the band and create the layer
-        
-        band_info = cc.BandInfo(name=band_names[n], type=cc.DataType.FLOAT32, tuple_length=1, direction=z_type, units='m', category=cc.Category.SCALAR, minimum=d_min, maximum=d_max, level_policy=cc.LevelPolicy.MAX)
-        
+            d_min = np.nanmin(dataset_band)
+            d_max = np.nanmax(dataset_band)
+
+            # build the band and create the layer
+
+        band_info = cc.BandInfo(name=band_names[n], type=cc.DataType.FLOAT32, tuple_length=1, direction=z_type, units='m',
+                                category=cc.Category.SCALAR, minimum=d_min, maximum=d_max, level_policy=cc.LevelPolicy.MAX)
+
         bands.append(band_info)
-        
+
     raster = cc.create_raster(csarname, crs, origin, resolution, dimensions, bands)
     for n in range(numlayers):
-        dataset_band = np.flipud(dataset[n,:,:])
+        dataset_band = np.flipud(dataset[n, :, :])
         # set no data value and write the data to the layer
         dataset_band[ndv_idx] = raster.band_info[band_names[n]].ndv
         band_dtype = band_info.numpy_dtype
@@ -234,10 +236,13 @@ def main():
     # read the metadata into variables and send to the write method
     check_metadata(metadata, outfile_type)
 
-    if outfile_type == 'gdal':
-        write_raster(data, metadata)
-    elif outfile_type == 'point':
-        write_points(data, metadata)
+    try:
+        if outfile_type == 'gdal':
+            write_raster(data, metadata)
+        elif outfile_type == 'point':
+            write_points(data, metadata)
+    except Exception as error:
+        print('{}: {}'.format(error.__class__.__name__, error), file=sys.stderr)
 
 
 if __name__ == '__main__':

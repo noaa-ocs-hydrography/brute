@@ -10,6 +10,7 @@ Created on Thu Jan 31 10:03:30 2019
 import configparser as _cp
 import logging as _logging
 import os as _os
+from datetime import datetime as _datetime
 
 import fuse.datum_transform.transform as _trans
 import fuse.interpolator.interpolator as _interp
@@ -92,7 +93,7 @@ class FuseProcessor:
         'supersession_score',
     ]
 
-    def __init__(self, config_filename: str = 'generic.config'):
+    def __init__(self, config_filename: str = 'generic.config', log_filename: str = None):
         """
         Initialize with the metadata file to use and the horizontal and
         vertical datums of the workflow.
@@ -116,8 +117,16 @@ class FuseProcessor:
             self._meta_obj = _mr.MetadataFile(self._config['metapath'], self._cols)
         else:
             raise ConfigParseError('configuration does not specify metadata table or file')
-
-        self.logger = self._set_log('fuse')
+        
+        # build the process logger
+        now = _datetime.now()
+        now_str = now.strftime("%Y%m%d_%H%M%S")
+        if log_filename == None:
+            self.process_log_name = f'fuse_process_{now_str}.log'
+        else:
+            self.process_log_name = log_filename
+        self.logger = self._set_log(self.process_log_name)
+        self.logger.info(now_str)
         self.logger.info(f'configuration file: {self._config_filename}')
         self.logger.info(f'data input: {self.rawdata_path}')
         self.logger.info(f'data output: {self.procdata_path}')
@@ -235,31 +244,31 @@ class FuseProcessor:
         try:
             reader_type = self._config['raw_reader_type'].casefold()
             if reader_type == 'cenan':
-                self._reader = _usace.cenan.CENANRawReader(self.logger)
+                self._reader = _usace.cenan.CENANRawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'cemvn':
-                self._reader = _usace.cemvn.CEMVNRawReader(self.logger)
+                self._reader = _usace.cemvn.CEMVNRawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'cesaj':
-                self._reader = _usace.cesaj.CESAJRawReader(self.logger)
+                self._reader = _usace.cesaj.CESAJRawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'cesam':
-                self._reader = _usace.cesam.CESAMRawReader(self.logger)
+                self._reader = _usace.cesam.CESAMRawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'ceswg':
-                self._reader = _usace.ceswg.CESWGRawReader(self.logger)
+                self._reader = _usace.ceswg.CESWGRawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'cespl':
-                self._reader = _usace.cespl.CESPLRawReader(self.logger)
+                self._reader = _usace.cespl.CESPLRawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'cenae':
-                self._reader = _usace.cenae.CENAERawReader(self.logger)
+                self._reader = _usace.cenae.CENAERawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'bag':
-                self._reader = _noaa.bag.BAGSurvey(self._config['outpath'], self.logger)
+                self._reader = _noaa.bag.BAGSurvey(self._config['outpath'])
                 self._read_type = 'bag'
             elif reader_type == 'bps':
-                self._reader = _noaa.bps.BPSRawReader(self.logger)
+                self._reader = _noaa.bps.BPSRawReader()
                 self._read_type = 'bps'
             else:
                 raise ValueError('reader type not implemented')
@@ -286,8 +295,8 @@ class FuseProcessor:
             self._point_extension = 'csar'
         else:
             self._point_extension = self._raster_extension
-        self._raster_writer = ProcIO('gdal', self._raster_extension, logger=self.logger)
-        self._point_writer = ProcIO('point', self._point_extension, logger=self.logger)
+        self._raster_writer = ProcIO('gdal', self._raster_extension)
+        self._point_writer = ProcIO('point', self._point_extension)
 
     def read(self, dataid: str) -> [str]:
         """
@@ -315,6 +324,7 @@ class FuseProcessor:
                 metadata = [metadata]
         except (RuntimeError, TypeError) as error:
             logger.warning(f'{error.__class__.__name__} {error}')
+            self.logger.warning(f'{error.__class__.__name__} {error}')
             return []
         from_id = []
         for m in metadata:
@@ -402,6 +412,7 @@ class FuseProcessor:
                 dataset, metadata, transformed = self._transform.reproject(frompath, metadata)
             except (ValueError, RuntimeError, IndexError) as error:
                 logger.warning(f'transformation error: {error.__class__.__name__} - {error}')
+                self.logger.warning(f'transformation error: {error.__class__.__name__} - {error}')
                 metadata['interpolate'] = False
 
             self._meta_obj.insert_records(metadata)
@@ -421,7 +432,7 @@ class FuseProcessor:
                         self._raster_writer.write(dataset, metadata['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
                         logger.warning(f'interpolation error: {error.__class__.__name__} - {error}')
-
+                        self.logger.warning(f'interpolation error: {error.__class__.__name__} - {error}')
                 else:
                     if self._read_type in ['ehydro', 'bps']:
                         metadata['to_filename'] = f'{metadata["outpath"]}.{metadata["new_ext"]}'
@@ -551,11 +562,12 @@ class FuseProcessor:
         log_directory = _os.path.dirname(self._config['metapath']) if 'metapath' in self._config else self._config['outpath']
         log_filename = _os.path.join(log_directory, f'{name}.log')
         self._config['logfilename'] = log_filename
-
-        logger = _logging.Logger(name)
-
-        # remove handlers that might have existed from previous files
-        # self._close_log(logger)
+        if name == self.process_log_name:
+            logger = _logging.Logger(name)
+        else:
+            logger = _logging.Logger('data_log')
+            # remove handlers that might have existed from previous files
+            self._close_log(logger)
 
         log_format = '%(asctime)s %(name)-30s %(levelname)-8s: %(message)s'
 
@@ -564,11 +576,12 @@ class FuseProcessor:
         log_file.setLevel(file_level)
         log_file.setFormatter(_logging.Formatter(log_format))
         logger.addHandler(log_file)
-
-        console = _logging.StreamHandler()
-        console.setLevel(console_level)
-        console.setFormatter(_logging.Formatter(log_format))
-        logger.addHandler(console)
+        
+        if name == self.process_log_name:
+            console = _logging.StreamHandler()
+            console.setLevel(console_level)
+            console.setFormatter(_logging.Formatter(log_format))
+            logger.addHandler(console)
 
         return logger
 
@@ -643,7 +656,7 @@ class FuseProcessor:
 
         return all(key in metadata for key in datum_keys if key != 'to_horiz_key')
 
-    def _quality_metadata_ready(self, metadata, logger: _logging.Logger = None):
+    def _quality_metadata_ready(self, metadata):
         """
         Check the metadata to see if the required fields are populated.
 
@@ -659,8 +672,7 @@ class FuseProcessor:
             whether metadata has all quality fields
         """
 
-        if logger is None:
-            logger = self._set_log(metadata['from_filename'])
+        logger = self._set_log(metadata['data_log'])
 
         # check the feature metadata
         if 'feat_detect' in metadata:
