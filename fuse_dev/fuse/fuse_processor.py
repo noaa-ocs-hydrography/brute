@@ -110,6 +110,7 @@ class FuseProcessor:
         self.procdata_path = self._config['outpath']
         self._cols = FuseProcessor._paths + FuseProcessor._dates + FuseProcessor._datums + FuseProcessor._quality_metrics + FuseProcessor._scores + FuseProcessor._source_info + FuseProcessor._processing_info
 
+        self._meta = {}  # initialize the metadata holder
         if 'metatable' in self._config:
             hostname, database, table = self._config['metatable'].split('/')
             self._meta_obj = _mr.MetadataDatabase(hostname, database, table, self._cols)
@@ -119,14 +120,11 @@ class FuseProcessor:
             raise ConfigParseError('configuration does not specify metadata table or file')
         
         # build the process logger
-        now = _datetime.now()
-        now_str = now.strftime("%Y%m%d_%H%M%S")
         if log_filename == None:
-            self.process_log_name = f'fuse_process_{now_str}.log'
+            self.process_log_name = f'fuse_process_{_datetime.now():%Y%m%d_%H%M%S}.log'
         else:
             self.process_log_name = log_filename
         self.logger = self._set_log(self.process_log_name)
-        self.logger.info(now_str)
         self.logger.info(f'configuration file: {self._config_filename}')
         self.logger.info(f'data input: {self.rawdata_path}')
         self.logger.info(f'data output: {self.procdata_path}')
@@ -137,7 +135,6 @@ class FuseProcessor:
         self._set_data_interpolator()
         self._set_data_writer()
         self._db = None
-        self._meta = {}  # initialize the metadata holder
 
         self.logger.info('ready to start processing')
 
@@ -331,7 +328,7 @@ class FuseProcessor:
             # get the config file information
             m = self._add_config_metadata(m)
             # check to see if the quality metadata is available.
-            if not self._quality_metadata_ready(m, logger):
+            if not self._quality_metadata_ready(m):
                 logger.warning('Not all quality metadata was found during read.')
             else:
                 logger.info('All quality metadata was found during read.')
@@ -539,7 +536,7 @@ class FuseProcessor:
             else:
                 raise ValueError('No database location defined in the configuration file.')
 
-    def _set_log(self, name: str, file_level: str = _logging.DEBUG, console_level: str = _logging.INFO) -> _logging.Logger:
+    def _set_log(self, name: str, file_level: str = _logging.NOTSET, console_level: str = _logging.NOTSET) -> _logging.Logger:
         """
         Set the global logger to the given filename.
 
@@ -557,17 +554,20 @@ class FuseProcessor:
         logging.Logger
             logging object
         """
-
-        name = _os.path.splitext(_os.path.basename(name))[0]
-        log_directory = _os.path.dirname(self._config['metapath']) if 'metapath' in self._config else self._config['outpath']
-        log_filename = _os.path.join(log_directory, f'{name}.log')
-        self._config['logfilename'] = log_filename
+        if 'logfilename' in self._meta:
+            log_filename = self._meta['logfilename']
+        else:
+            name = _os.path.splitext(_os.path.basename(name))[0]
+            log_directory = _os.path.dirname(self._config['metapath']) if 'metapath' in self._config else self._config['outpath']
+            log_filename = _os.path.join(log_directory, f'{name}.log')
+        
         if name == self.process_log_name:
             logger = _logging.Logger(name)
         else:
             logger = _logging.Logger('data_log')
+            self._meta['logfilename'] = log_filename
             # remove handlers that might have existed from previous files
-            self._close_log(logger)
+            # self._close_log(logger)
 
         log_format = '[%(asctime)s] %(name)-30s %(levelname)-8s: %(message)s'
 
@@ -672,7 +672,7 @@ class FuseProcessor:
             whether metadata has all quality fields
         """
 
-        logger = self._set_log(metadata['data_log'])
+        logger = self._set_log(metadata['from_filename'])
 
         # check the feature metadata
         if 'feat_detect' in metadata:

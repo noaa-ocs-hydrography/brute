@@ -40,7 +40,6 @@ CATZOC = {
 _logger = _logging.getLogger('data_log')
 if len(_logger.handlers) == 0:
     ch = _logging.StreamHandler(_sys.stdout)
-    ch.setLevel(_logging.DEBUG)
     _logger.addHandler(ch)
 
 # ============================================================================
