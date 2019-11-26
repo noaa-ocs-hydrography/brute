@@ -141,13 +141,12 @@ def _gdal_to_xyz(dataset: gdal.Dataset) -> np.array:
 
     Parameters
     ----------
-    dataset: gdal.Dataset :
-        TODO write description
+    dataset: 
+        xyz gdal ogr point data in the first layer.
 
     Returns
     -------
-    type
-        vector dataset
+    numpy nx3 array
 
     """
 
