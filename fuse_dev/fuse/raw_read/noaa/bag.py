@@ -314,7 +314,6 @@ class BAGRawReader(RawReader):
         Parameters
         ----------
         filepath : str, os.Pathlike
-            TODO write description
 
         Returns
         -------
@@ -1338,6 +1337,8 @@ class BAGSurvey(BAGRawReader):
             convert_dataset.components2gdal(comb_array, bounds, res[order[0]], dataset_wkt)
             output_driver = _gdal.GetDriverByName('BAG')
             output_driver.CreateCopy(combined_surface_metadata['from_path'], convert_dataset.dataset)
+
+            combined_surface_metadata['size'] = self._size_finder(combined_surface_metadata['from_path'])
         else:
             self.logger.warning('No support files found. Creating metadata entry but not creating combined surface for interpoaltion.')
 
