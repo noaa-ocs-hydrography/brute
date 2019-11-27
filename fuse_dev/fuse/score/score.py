@@ -69,10 +69,9 @@ def _get_feature_detection(metadata: dict) -> float:
     Determine the feature detection capability from the ability to detect
     features, detect the least depth, and the size of the feature.
     """
-    detected = metadata['feat_detect'].upper() == 'TRUE'
-    least_depth = detected and metadata['feat_least_depth'].upper() == 'TRUE'
+    least_depth = metadata['feat_detect'] and metadata['feat_least_depth']
     size_okay = 'feat_size' in metadata and float(metadata['feat_size']) <= 2
-    if detected and least_depth and size_okay:
+    if metadata['feat_detect'] and least_depth and size_okay:
         return 100
     else:
         return 80
@@ -82,8 +81,7 @@ def _get_coverage(metadata: dict) -> float:
     """
     Determine the coverage score and return.
     """
-    cov = metadata['complete_coverage'].upper() == 'TRUE'
-    if cov:
+    if metadata['complete_coverage']:
         return 100
     else:
         return 80

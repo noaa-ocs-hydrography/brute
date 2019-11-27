@@ -1,0 +1,11 @@
+﻿Region,Processing Branch,USACE District,Shape
+Alaska,PBA,"CEPOA","MCD_ProcessingBranches\MCD_PBA_WGS84.gpkg"
+Southeast,PBB,"CESAC, CESAS, CESAJ, CESAM","MCD_ProcessingBranches\MCD_PBB_WGS84.gpkg"
+Northeast_UTM18N_HRD,PBC,"CENAN","MCD_ProcessingBranches\MCD_PBC18N_HRD_WGS84.gpkg"
+Northeast_UTM18N_MLLW,PBC,"CENAE, CENAN","MCD_ProcessingBranches\MCD_PBC18N_MLLW_WGS84.gpkg"
+Northeast_UTM19N,PBC,"CENAE","MCD_ProcessingBranches\MCD_PBC19N_WGS84.gpkg"
+Northeast_UTM20N,PBC,"CENAE","MCD_ProcessingBranches\MCD_PBC20N_WGS84.gpkg"
+Pacific,PBD,"CENWS, CENWP, CESPN, CESPL, CEPOH","MCD_ProcessingBranches\MCD_PBD_WGS84.gpkg"
+MidAtlantic,PBE,"CENAP, CENAB, CENAO, CESAW, CESAC","MCD_ProcessingBranches\MCD_PBE_WGS84.gpkg"
+GulfCoast_PR_VI,PBG,"CESAM, CEMVK, CEMVN, CESWG","MCD_ProcessingBranches\MCD_PBG_WGS84.gpkg"
+GreatLakes,GL,"CELRE, CELRB","MCD_ProcessingBranches\MCD_GL_WGS84.gpkg"

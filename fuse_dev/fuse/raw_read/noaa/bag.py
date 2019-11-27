@@ -12,26 +12,30 @@ a general sense, and also for specific S57 needs.
 
 """
 
+import datetime as _datetime
 import logging as _logging
 import os as _os
 import re as _re
 import sys as _sys
+from glob import glob as _glob
 
-# from xml.etree import ElementTree as _et
 import lxml.etree as _et
 import numpy as _np
+import rasterio as _rio
 import tables as _tb
+from fuse.raw_read import parse_file_pickle
+from fuse.raw_read.raw_read import RawReader
+from numba import jit
 from osgeo import gdal as _gdal
 from osgeo import osr as _osr
+from scipy.ndimage import binary_closing
 
 try:
     import dateutil.parser as _parser
 except ModuleNotFoundError as e:
-    print(f"{e}")
+    _logging.error(f'{e.__class__.__name__} - {e}')
 
 _gdal.UseExceptions()
-
-__version__ = 'BAG'
 
 vert_datum = {
     'MLWS': '1',
@@ -104,7 +108,7 @@ def parse_namespace(meta_str):
     return namespace
 
 
-class BAGRawReader:
+class BAGRawReader(RawReader):
     """
     Helper class to manage BAG xml metadata. This class takes an xml string and
     parses the string based on a dictionary (named 'source') with keys that
@@ -114,16 +118,15 @@ class BAGRawReader:
     (named 'data').
     """
 
-    def __init__(self, version=__version__):
+    def __init__(self, out_file_location):
         """
         Provided a BAG xml string for parsing, a tree will be created and the
         name speace parsed from the second line.  Values are then extracted
         based on the source dictionary.  If this dictionary
         """
         self.data = {}
-        self.version = version
-
-        self._logger = _logging.getLogger(f'fuse')
+        self.out_file_location = out_file_location
+        self._logger = _logging.getLogger('fuse.read')
 
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)
@@ -148,12 +151,15 @@ class BAGRawReader:
             meta_gdal, bag_version = self._parse_bag_gdal(filename)
             meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
             meta_support = self._known_meta(filename)
-            return {**meta_xml, **meta_gdal, **meta_support}
+            meta_pickle = parse_file_pickle.read_pickle(filename)
+            meta_combined = {**meta_pickle, **meta_xml, **meta_gdal, **meta_support}
+            meta_final = self._finalize_meta(meta_combined)
+            return meta_final
         except ValueError as error:
-            print(error)
+            _logging.warning(f'Error in reading metadata for {filename}: {error}')
             return {}
 
-    def read_bathy_data(self, infilename: str, out_verdat: str) -> _gdal.Dataset:
+    def read_bathymetry(self, infilename: str, out_verdat: str = None) -> _gdal.Dataset:
         """
         Returns a BagFile data object
 
@@ -217,9 +223,9 @@ class BAGRawReader:
             elif spacial_ref.GetAttrValue('unit').lower() in ('feet', 'ft'):
                 metadata['from_horiz_units'] = 'f'
 
-            #            metadata['elevation'] = self._read_gdal_array(bag_file, 1)
-            #            metadata['uncertainty'] = self._read_gdal_array(bag_file, 2)
-            #            metadata['nodata'] = 1000000.0
+            # metadata['elevation'] = self._read_gdal_array(bag_file, 1)
+            # metadata['uncertainty'] = self._read_gdal_array(bag_file, 2)
+            # metadata['nodata'] = 1000000.0
 
             del bag_file
         except RuntimeError as e:
@@ -267,6 +273,11 @@ class BAGRawReader:
             self.namespace = self._assign_namspace(bag_version=bag_version)
             self.bag_format = self._set_format(infilename, bag_version)
             self.get_fields()
+            if 'from_vert_datum' not in self.data or 'from_vert_key' not in self.data:
+                for datum in vert_datum.keys():
+                    if datum in infilename:
+                        self.data['from_vert_datum'], self.data['from_vert_key'] = datum, datum
+                        break
 
             return self.data
         except _tb.HDF5ExtError as e:
@@ -289,8 +300,8 @@ class BAGRawReader:
         """
         meta = {}
         coverage = self._find_coverage(infilename)
-        root, name = _os.path.split(infilename)
-        meta['from_filename'] = name
+        basename = _os.path.splitext(_os.path.basename(infilename))[0]
+        meta['from_filename'] = basename
         meta['from_path'] = infilename
         meta['file_size'] = self._size_finder(infilename)
 
@@ -335,11 +346,31 @@ class BAGRawReader:
         dir_files = [_os.path.join(root, name) for name in _os.listdir(root) if
                      (_os.path.isfile(_os.path.join(root, name)) and snum in name)]
         meta['support_files'] = [support_file for support_file in dir_files if
-                                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.tfw', '.gpkg')]
+                                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
         exts = [_os.path.splitext(support_file)[1].lower() for support_file in dir_files if
                 _os.path.splitext(support_file)[1].lower() in ('.tiff', '.tif', '.gpkg')]
-        meta['interpolate'] = len(exts) > 0
-        print(meta['support_files'])
+        return meta
+
+    def _finalize_meta(self, meta):
+        if ('from_vert_datum' not in meta or meta['from_vert_datum'] == '') and 'from_vert_key' not in meta:
+            for datum in vert_datum.keys():
+                if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
+                    meta['from_vert_datum'], meta['from_vert_key'] = datum, datum
+                    break
+        elif 'from_vert_datum' in meta and 'from_vert_key' not in meta:
+            for datum in vert_datum.keys():
+                if datum in meta['from_filename'] and datum == meta['from_filename'].split('_')[3]:
+                    meta['from_vert_key'] = datum
+                    break
+        # this should be moved to the reader.
+        meta['read_type'] = 'bag'
+        # translate from the reader to common metadata keys for datum transformations
+        if 'from_vert_direction' not in meta:
+            meta['from_vert_direction'] = 'height'
+        if 'from_vert_units' not in meta:
+            meta['from_vert_units'] = 'm'
+        meta['interpolated'] = 'False'
+        meta['posted'] = False
         return meta
 
     def _assign_namspace(self, bag_version=None, xml=None):
@@ -401,6 +432,7 @@ class BAGRawReader:
             source['lat_max'] = './/gmd:EX_GeographicBoundingBox/gmd:northBoundLatitude/gco:Decimal'
             source['abstract'] = './/gmd:abstract/gco:CharacterString'
             source['date'] = './/gmd:CI_Date/gmd:date/gco:Date'
+            source['date_stamp'] = './/gmd:dateStamp/gco:Date'
             source['unc_type'] = './/bag:verticalUncertaintyType/bag:BAG_VertUncertCode'
             source[
                 'z_min'] = './/gmd:identificationInfo/bag:BAG_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:verticalElement/gmd:EX_VerticalExtent/gmd:minimumValue/gco:Real'
@@ -426,6 +458,7 @@ class BAGRawReader:
 
         elif bag_version < 1.5 and bag_version > 0:
             source['abstract'] = './/identificationInfo/smXML:BAG_DataIdentification/abstract'
+            source['date_stamp'] = './/dateStamp'
             source[
                 'SORDAT'] = './/identificationInfo/smXML:BAG_DataIdentification/citation/smXML:CI_Citation/date/smXML:CI_Date/date'
             source[
@@ -463,6 +496,8 @@ class BAGRawReader:
             self._read_abstract()
         if 'date' in self.bag_format:
             self._read_date()
+        if 'date_stamp' in self.bag_format:
+            self._read_date_stamp()
         if 'unc_type' in self.bag_format:
             self._read_uncertainty_type()
         if 'z_min' in self.bag_format:
@@ -537,7 +572,6 @@ class BAGRawReader:
                 if self.data[key] in horz_datum:
                     s57[key] = horz_datum[self.data[key]]
                 else:
-                    # print (self.data[key])
                     s57[key] = horz_datum['Local']
         # try to find a source for SORIND
         p = _re.compile(r'[A-Z]([0-9]{5})')
@@ -707,24 +741,59 @@ class BAGRawReader:
             _logging.warning(f"unable to read the date string: {e}")
             return
 
+        if ret is not None:
+            try:
+                text_date = ret.text
+            except (ValueError, IndexError, AttributeError) as e:
+                _logging.warning(f"unable to read the date string: {e}")
+                return
+
+            tm_date = None
+            try:
+                parsed_date = _parser.parse(text_date)
+                tm_date = parsed_date.strftime('%Y%m%d')
+            except Exception:
+                pass
+                # _logging.warning("unable to handle the date string: %s" % text_date)
+
+            if tm_date is None and text_date != '':
+                self.data['date'] = text_date
+            elif tm_date != '':
+                self.data['date'] = tm_date
+        else:
+            _logging.warning(f"unable to read the `date` date string: {ret}")
+
+    def _read_date_stamp(self):
+        """ attempts to read the date_stamp string """
+
         try:
-            text_date = ret.text
-        except (ValueError, IndexError, AttributeError) as e:
-            _logging.warning(f"unable to read the date string: {e}")
+            ret = self.xml_tree.find(self.bag_format['date_stamp'],
+                                     namespaces=self.namespace)
+        except _et.Error as e:
+            _logging.warning(f"unable to read the date_stamp string: {e}")
             return
 
-        tm_date = None
-        try:
-            parsed_date = _parser.parse(text_date)
-            tm_date = parsed_date.strftime('%Y-%m-%d')
-        except Exception:
-            pass
-            # _logging.warning("unable to handle the date string: %s" % text_date)
+        if ret is not None:
+            try:
+                text_date = ret.text
+            except (ValueError, IndexError, AttributeError) as e:
+                _logging.warning(f"unable to read the date_stamp string: {e}")
+                return
 
-        if tm_date is None:
-            self.data['date'] = text_date
+            tm_date = None
+            try:
+                parsed_date = _parser.parse(text_date)
+                tm_date = parsed_date.strftime('%Y%m%d')
+            except Exception:
+                pass
+                # _logging.warning("unable to handle the date string: %s" % text_date)
+
+            if tm_date is None and text_date != '':
+                self.data['date_stamp'] = text_date
+            elif tm_date != '':
+                self.data['date_stamp'] = tm_date
         else:
-            self.data['date'] = tm_date
+            _logging.warning(f"unable to read the `date_stamp` date string: {ret}")
 
     def _read_uncertainty_type(self):
         """ attempts to read the uncertainty type """
@@ -799,24 +868,27 @@ class BAGRawReader:
             _logging.warning(f"unable to read the SORDAT date string: {e}")
             return
 
-        try:
-            text_date = ret.text
-        except (ValueError, IndexError, AttributeError) as e:
-            _logging.warning(f"unable to read the SORDAT date string: {e}")
-            return
+        if ret is not None:
+            try:
+                text_date = ret.text
+            except (ValueError, IndexError, AttributeError) as e:
+                _logging.warning(f"unable to read the SORDAT date string: {e}")
+                return
 
-        tm_date = None
-        try:
-            parsed_date = _parser.parse(text_date)
-            tm_date = parsed_date.strftime('%Y%m%d')
-        except Exception:
-            _logging.warning("unable to handle the date string: %s" % text_date)
-            pass
+            tm_date = None
+            try:
+                parsed_date = _parser.parse(text_date)
+                tm_date = parsed_date.strftime('%Y%m%d')
+            except Exception:
+                _logging.warning("unable to handle the date string: %s" % text_date)
+                pass
 
-        if tm_date is None:
-            self.data['source_date'] = text_date
+            if tm_date is None and text_date != '':
+                self.data['source_date'] = text_date
+            elif tm_date != '':
+                self.data['source_date'] = tm_date
         else:
-            self.data['source_date'] = tm_date
+            _logging.warning(f"unable to read the SORDAT date string: {ret}")
 
     def _read_survey_authority(self):
         """
@@ -862,13 +934,15 @@ class BAGRawReader:
                 parsed_date = _parser.parse(text_start_date)
                 tms_date = parsed_date.strftime('%Y%m%d')
             except Exception:
-                pass
-                # _logging.warning("unable to handle the survey start string: %s" % text_start_date)
+                # pass
+                _logging.warning("unable to handle the survey start string: %s" % text_start_date)
 
-            if tms_date is None:
+            if tms_date is None and text_start_date != '':
                 self.data['start_date'] = text_start_date
-            else:
+            elif tms_date != '':
                 self.data['start_date'] = tms_date
+        else:
+            _logging.warning(f"unable to read the survey start date string: {rets}")
 
     def _read_survey_end_date(self):
         """
@@ -880,27 +954,27 @@ class BAGRawReader:
                                       namespaces=self.namespace)
         except _et.Error as e:
             _logging.warning(f"unable to read the survey end date string: {e}")
-            return
 
         if rete is not None:
             try:
                 text_end_date = rete.text
             except (ValueError, IndexError, AttributeError) as e:
                 _logging.warning(f"unable to read the survey end date string: {e}")
-                return
 
             tme_date = None
             try:
                 parsed_date = _parser.parse(text_end_date)
                 tme_date = parsed_date.strftime('%Y%m%d')
             except Exception:
-                pass
-                # _logging.warning("unable to handle the survey end string: %s" % text_end_date)
+                # pass
+                _logging.warning("unable to handle the survey end string: %s" % text_end_date)
 
-            if tme_date is None:
+            if tme_date is None and text_end_date != '':
                 self.data['end_date'] = text_end_date
-            else:
+            elif tme_date != '':
                 self.data['end_date'] = tme_date
+        else:
+            _logging.warning(f"unable to read the survey end date string: {rete}")
 
     def _read_vertical_datum(self):
         """
@@ -936,12 +1010,14 @@ class BAGRawReader:
 
         try:
             if val.lower() == 'unknown':
-                val = ''
-            elif val.lower() in ('mean_lower_low_water', 'mean lower low water', 'mllw'):
+                raise ValueError(f'Invalid vertical datum assignment --> {val}')
+            elif val.lower() in ('mean_lower_low_water', 'mean lower low water', 'mllw', 'mllw depth'):
                 self.data['from_vert_key'] = 'MLLW'
+            elif val.lower() in ('hudson river datum', 'hrd'):
+                self.data['from_vert_key'] = 'HRD'
             self.data['from_vert_datum'] = val
         except (ValueError, IndexError, AttributeError) as e:
-            _logging.warning(f"unable to read the survey vertical datum name attribute: {e}")
+            _logging.warning(f"Unable to read the survey vertical datum name attribute: {e}")
             return
 
     def _read_horizontal_datum(self):
@@ -973,7 +1049,6 @@ class BAGRawReader:
                                 loc = d.find('DATUM')
                                 if loc > -1:
                                     datum = d.split('"')[1]
-                                    # print (datum)
                         else:
                             continue
         except _et.Error as e:
@@ -1035,15 +1110,270 @@ class BAGRawReader:
             return
 
 
+class BAGSurvey(BAGRawReader):
+    """
+
+
+    """
+    survey_meta = []
+
+    def __init__(self, out_file_location):
+        self.logger = _logging.getLogger('data.read')
+        BAGRawReader.__init__(self, out_file_location)
+
+    def read_metadata(self, survey_folder: str) -> [dict]:
+        """
+        Compiles the complete metadata of a survey
+
+        Parameters
+        ----------
+        survey_folder : str
+            Folder path containing contents of a single survey
+
+        Returns
+        -------
+        [dict]
+            List of survey metadata dicts
+
+        """
+        survey_meta = []
+
+        if _os.path.isfile(survey_folder):
+            survey_folder = _os.path.dirname(survey_folder)
+
+        bag_files = _glob(_os.path.join(survey_folder, '*.bag'))
+
+        for bag in bag_files:
+            survey_meta.append(self.__file_meta(bag))
+
+        combine = any([meta['interpolate'] for meta in survey_meta if (len(survey_meta) > 0) and 'interpolate' in meta])
+        if combine:
+            self.logger.debug(f'combine: {combine}')
+            survey_meta = self._parse_groups(survey_meta)
+
+        self.survey_meta = survey_meta
+
+        return survey_meta
+
+    def __file_meta(self, filename: str) -> dict:
+        """
+        read metadata from file
+
+        Parameters
+        ----------
+        filename
+            file to read
+
+        Returns
+        -------
+            dict
+
+        """
+
+        try:
+            meta_gdal, bag_version = self._parse_bag_gdal(filename)
+            meta_xml = self._parse_bag_xml(filename, bag_version=bag_version)
+            meta_support = self._known_meta(filename)
+            meta_pickle = parse_file_pickle.read_pickle(filename)
+            meta_combined = {**meta_pickle, **meta_xml, **meta_gdal, **meta_support}
+            meta_final = self._finalize_meta(meta_combined)
+            return meta_final
+        except ValueError as error:
+            _logging.warning(f'Error in reading metadata for {filename}: {error}')
+            return {}
+
+    def _parse_groups(self, metadata_list: [dict]) -> [dict]:
+        """
+        Put the BAGs into groups since some of the old BAGs persist on NCEI.
+        This avoids combining data that should not go together, but does not
+        solve the problem of adding in data that is not correct (need to
+        fix this on NCEI)
+        """
+        files = [bag_file['from_path'] for bag_file in metadata_list if 'from_path' in bag_file]
+        number_groups = {}
+
+        for bag_file in files:
+            numbers = _os.path.splitext(bag_file)[0].split('_')[-1].split('of')
+            file_meta = [meta_entry for meta_entry in metadata_list if meta_entry['from_path'] == bag_file][0]
+            if numbers[-1] in number_groups:
+                number_groups[numbers[-1]].append(file_meta)
+            else:
+                number_groups[numbers[-1]] = [file_meta]
+
+        return_list = []
+        for group_number, group_list in number_groups.items():
+            if len(group_list) == 1:
+                return_list.extend(self._single_surface(group_list))
+            else:
+                return_list.extend(self._combined_surface(group_list))
+
+        return return_list
+
+    def _zoom_array(self, data_array, zoom_factor, ndv):
+        """
+        Zoom the provided array with a node centered (not pixel_is_area)
+        approach.
+        """
+        self.logger.debug('Zooming...')
+        start = _datetime.datetime.now()
+        # build the expanded array
+        shape = data_array.shape
+        x_dim = zoom_factor * shape[1] - (zoom_factor - 1)
+        y_dim = zoom_factor * shape[0] - (zoom_factor - 1)
+        elev = _np.zeros((y_dim, x_dim)) + ndv
+        elev[::zoom_factor, ::zoom_factor] = data_array
+
+        # build a mask using binary morphology
+        bin_arr = _np.zeros(elev.shape)
+        idx = _np.nonzero(elev != ndv)
+        bin_arr[idx] = 1
+        dim = 2 * zoom_factor - 1
+        struct = _np.ones((dim, dim), dtype=_np.bool)
+        mask = binary_closing(bin_arr, structure=struct)
+
+        # interpolate the gaps in the expanded array
+        rel_idx = _np.arange(dim, dtype=_np.int) - int(zoom_factor / 2)
+        footprint = _np.tile(rel_idx, (dim, 1))
+        x_fp = footprint.flatten()
+        y_fp = footprint.T.flatten()
+        elev = _interpolate_gaps(elev, mask, y_fp, x_fp, ndv)
+
+        dt = _datetime.datetime.now() - start
+        self.logger.debug(f'Zooming completed in {dt} seconds')
+        return elev
+
+    def _insert_raster(self, bag_name, comb_bounds, comb_array, comb_res):
+        """
+        Insert the provided BAG file into the provided array.
+        """
+        self.logger.debug(f'Inserting {bag_name}')
+        # open this file and extract the needed metadata
+        bagfile_obj = Open(bag_name, pixel_is_area=False)
+        nw, se = bagfile_obj.bounds
+        res = bagfile_obj.resolution[0]
+        ndv = bagfile_obj.nodata
+        # if the data is lower res, expand array and fill in missing nodes
+        if res > comb_res:
+            if res % comb_res != 0:
+                self.logger.warning(f'WARNING!!! Combine process will produce unintended results with {bag_name}')
+            zoom_factor = int(res / comb_res)
+            elev = self._zoom_array(bagfile_obj.elevation, zoom_factor, ndv)
+        else:
+            elev = bagfile_obj.elevation
+        # determine offset from lower left for this array
+        xoff = int(round((nw[0] - comb_bounds[0][0]) / comb_res))
+        yoff = int(round((comb_bounds[0][1] - nw[1]) / comb_res))
+        # insert the array
+        idx = _np.nonzero(elev != ndv)
+        yidx = idx[0] + yoff
+        xidx = idx[1] + xoff
+        comb_array[0, yidx, xidx] = elev[idx]
+        del bagfile_obj
+        return comb_array
+
+    def _combined_surface(self, metadata_list: [dict]) -> [dict]:
+        """
+        Build a combine surface from the BAG files referenced in the metadata
+        list provided.
+
+        This method works with the data as nodes rather than cells.
+        """
+        # distill the information about the provided files.
+        num_files = len(metadata_list)
+        res = []
+        files = []
+        x = []
+        y = []
+        proj = []
+        have_support_files = False
+        for m in metadata_list:
+            f = m['from_path']
+            files.append(f)
+            res.append(m['res'])
+            if 'support_files' in m:
+                for support_file in m['support_files']:
+                    root, ext = _os.path.splitext(support_file)
+                    if ext.lower() in ('.tif', '.tiff', '.gpkg'):
+                        have_support_files = True
+            bagfile_obj = Open(f, pixel_is_area=False)
+            nw, se = bagfile_obj.bounds
+            x.append([nw[0], se[0]])
+            y.append([se[1], nw[1]])
+            proj.append(bagfile_obj.wkt)
+            ndv = bagfile_obj.nodata
+            del bagfile_obj
+        x = _np.array(x).flatten()
+        y = _np.array(y).flatten()
+        res = _np.array(res)
+        resx = res[:, 0]
+        minres = _np.abs(resx).min()
+
+        # sort the file names by accending resolution
+        order = _np.argsort(resx)
+
+        # build the metadata
+        combined_surface_metadata = {}
+        combined_surface_metadata = metadata_list[order[0]].copy()
+        survey_id = _os.path.basename(combined_surface_metadata['from_filename']).split('_')[0]
+        combined_surface_metadata['from_filename'] = f"{survey_id}_Xof{num_files}.combined"
+
+        if have_support_files:
+            combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}.bag")
+            combined_surface_metadata['interpolate'] = True
+
+            # build an array to house the combined dataset
+            comb_bounds = ((min(x), max(y)), (max(x), min(y)))
+            comb_shape = (int((max(y) - min(y)) / minres + 1), int((max(x) - min(x)) / minres + 1))
+            comb_array = _np.zeros((2, comb_shape[0], comb_shape[1])) + ndv
+
+            for n in order[::-1]:
+                bag_file = files[n]
+                comb_array = self._insert_raster(bag_file, comb_bounds, comb_array, minres)
+
+            # convert the bounds to cell, aka pixel_is_area, and to (nw, se) format
+            bounds = ((comb_bounds[0][0] - minres / 2., comb_bounds[0][1] + minres / 2.),
+                      (comb_bounds[1][0] + minres / 2., comb_bounds[1][1] - minres / 2.))
+            dataset_wkt = proj[order[0]]
+            convert_dataset = BagToGDALConverter()
+            convert_dataset.components2gdal(comb_array, bounds, res[order[0]], dataset_wkt)
+            output_driver = _gdal.GetDriverByName('BAG')
+            output_driver.CreateCopy(combined_surface_metadata['from_path'], convert_dataset.dataset)
+        else:
+            self.logger.warning('No support files found. Creating metadata entry but not creating combined surface for interpoaltion.')
+
+        for bag_file in metadata_list:
+            bag_file['interpolate'] = False if 'interpolate' in bag_file else False
+
+        metadata_list.append(combined_surface_metadata)
+
+        return metadata_list
+
+    def _single_surface(self, metadata_list: dict) -> [dict]:
+        metadata = metadata_list[0]
+        if 'interpolate' in metadata and metadata['interpolate']:
+            interp_meta = metadata.copy()
+            interp_meta['from_filename'] = f"{metadata['from_filename']}.interpolated"
+            # interp_meta['from_path'] = _os.path.join(self.out_file_location, f"{metadata['from_filename']}.bag")
+            metadata['interpolate'] = False
+            return [metadata, interp_meta]
+        else:
+            return metadata_list
+
+
 class BagFile:
     """This class serves as the main container for BAG data."""
 
-    def __init__(self):
+    def __init__(self, pixel_is_area=True, logger: _logging.Logger = None):
+        if logger is None:
+            logger = _logging.getLogger('fuse.read')
+        self.logger = logger
+
         self.name = None
         self.nodata = 1000000.0
         self.elevation = None
         self.uncertainty = None
         self.shape = None
+        self.pixel_is_area = pixel_is_area
         self.bounds = None
         self.resolution = None
         self.wkt = None
@@ -1088,17 +1418,12 @@ class BagFile:
         except TypeError:
             # TODO: Find a solution for this blasphemous hack
             pass
-        #            self.size = 100001
-        #            print('No files returned by gdal.Dataset.GetFileList()')
         self.elevation = self._gdalreadarray(dataset, 1)
         self.uncertainty = self._gdalreadarray(dataset, 2)
         self.shape = self.elevation.shape
-        print(dataset.GetGeoTransform())
         self.bounds, self.resolution = self._gt2bounds(dataset.GetGeoTransform(), self.shape)
         self.wkt = dataset.GetProjectionRef()
         self.version = dataset.GetMetadata()
-
-        print(self.bounds)
 
     def _file_gdal(self, filepath: str):
         """
@@ -1118,12 +1443,10 @@ class BagFile:
         self.elevation = self._gdalreadarray(bag_obj, 1)
         self.uncertainty = self._gdalreadarray(bag_obj, 2)
         self.shape = self.elevation.shape
-        print(bag_obj.GetGeoTransform())
         self.bounds, self.resolution = self._gt2bounds(bag_obj.GetGeoTransform(), self.shape)
         self.wkt = bag_obj.GetProjectionRef()
         self.version = bag_obj.GetMetadata()
 
-        print(self.bounds)
         del bag_obj
 
     def _file_hack(self, filepath: str):
@@ -1131,6 +1454,9 @@ class BagFile:
         Used to read a BAG file using pytables and HDF5.
 
         This function reads and populates this object's attributes
+
+        Object attribute 'pixel_is_area' will shift the bounds outward from the
+        values reported in the BAG to the GDAL standard if set to True.
 
         Parameters
         ----------
@@ -1145,36 +1471,27 @@ class BagFile:
             self.elevation = _np.flipud(bagfile.root.BAG_root.elevation.read())
             self.uncertainty = _np.flipud(bagfile.root.BAG_root.uncertainty.read())
             self.shape = self.elevation.shape
-            meta_read = [str(x, 'utf-8', 'ignore') for x in bagfile.root.BAG_root.metadata.read()]
-            # print (meta_read)
-            meta_xml = ''.join(meta_read)
-            # print (meta_xml)
-            encodeVal = 0
+            meta_xml = ''.join(str(line, 'utf-8', 'ignore') for line in bagfile.root.BAG_root.metadata.read())
+            xml_tree = _et.XML(_re.sub(r'<\?.+\?>', '', meta_xml))
 
-            for x in meta_xml:
-                if meta_xml[encodeVal] == '>':
-                    meta_xml = meta_xml[encodeVal:]
-                    break
-                else:
-                    encodeVal += 1
-            startVal = 0
-
-            for x in meta_xml:
-                if meta_xml[startVal] == '<':
-                    meta_xml = meta_xml[startVal:]
-                    break
-                else:
-                    startVal += 1
-
-            xml_tree = _et.XML(meta_xml)
             self.wkt = self._read_wkt_prj(xml_tree)
+            if self.wkt is None:
+                self.wkt = BAGRawReader().read_metadata(filepath)['from_horiz_datum']
+
             self.resolution = self._read_res_x_and_y(xml_tree)
             sw, ne = self._read_corners_sw_and_ne(xml_tree)
             sx, sy = sw
-            nx = (sx + (self.resolution[0] * self.shape[1]))
-            ny = (sy + (self.resolution[0] * self.shape[0]))
-            print(ne, (nx, ny))
-            self.bounds = ([sx, ny], [nx, sy])
+
+            # BAGs are a node-based convention; 1 cell is subtracted to account
+            nx = (sx + (self.resolution[0] * (self.shape[1] - 1)))
+            ny = (sy + (self.resolution[0] * (self.shape[0] - 1)))
+
+            if self.pixel_is_area:
+                # Convert to cell based-convention
+                half_cell = 0.5 * self.resolution[0]
+                self.bounds = ([sx - half_cell, ny + half_cell], [nx + half_cell, sy - half_cell])
+            else:
+                self.bounds = ([sx, ny], [nx, sy])
 
     def _known_data(self, filepath: str):
         """
@@ -1263,6 +1580,9 @@ class BagFile:
         This function takes a GeoTransform object and array shape and
         calculates the NW and SE corners.
 
+        Object attribute 'pixel_is_area' will shift the bounds inward from the
+        gdal geotransform standard to the BAG standard if set to False.
+
         Parameters
         ----------
         meta : gdal.GetGeoTransform
@@ -1283,8 +1603,11 @@ class BagFile:
         ulx, uly = meta[0], meta[3]
         lrx = ulx + (x * res[0])
         lry = uly + (y * res[1])
-        print([ulx, uly], [lrx, lry])
         # res = (_np.round(meta[1], 2), _np.round(meta[5], 2))
+        if not self.pixel_is_area:
+            # shift from cell bounds to node bounds
+            ulx, lry = ulx - res[0] / 2., lry - res[1] / 2.
+            lrx, uly = lrx + res[0] / 2., uly + res[1] / 2.
         return ([ulx, uly], [lrx, lry]), res
 
     def _gdalreadarray(self, bag_obj, band: int) -> _np.array:
@@ -1356,7 +1679,7 @@ class BagFile:
                                  'gmd:axisDimensionProperties/gmd:MD_Dimension/gmd:resolution/gco:Measure',
                                  namespaces=_ns)
         except _et.Error as e:
-            print(f"unable to read res x and y: {e}")
+            self.logger.error(f"unable to read res x and y: {e}")
             return
 
         if len(ret) == 0:
@@ -1366,7 +1689,7 @@ class BagFile:
                                      'smXML:Measure/smXML:value',
                                      namespaces=_ns2)
             except _et.Error as e:
-                print(f"unable to read res x and y: {e}")
+                self.logger.error(f"unable to read res x and y: {e}")
                 return
 
         try:
@@ -1374,7 +1697,7 @@ class BagFile:
             res_y = -float(ret[1].text)
             return res_x, res_y
         except (ValueError, IndexError) as e:
-            print(f"unable to read res x and y: {e}")
+            self.logger.error(f"unable to read res x and y: {e}")
             return
 
     def _read_corners_sw_and_ne(self, xml_tree):
@@ -1389,14 +1712,14 @@ class BagFile:
                                      'cornerPoints/gml:Point/gml:coordinates',
                                      namespaces=_ns2)[0].text.split()
             except (_et.Error, IndexError) as e:
-                print(f"unable to read corners SW and NE: {e}")
+                self.logger.error(f"unable to read corners SW and NE: {e}")
                 return
         try:
             sw = [float(c) for c in ret[0].split(',')]
             ne = [float(c) for c in ret[1].split(',')]
             return sw, ne
         except (ValueError, IndexError) as e:
-            print(f"unable to read corners SW and NE: {e}")
+            self.logger.error(f"unable to read corners SW and NE: {e}")
             return
 
     def _read_wkt_prj(self, xml_tree):
@@ -1406,24 +1729,24 @@ class BagFile:
                                  'gmd:referenceSystemIdentifier/gmd:RS_Identifier/gmd:code/gco:CharacterString',
                                  namespaces=_ns)
         except _et.Error as e:
-            print(f"unable to read the WKT projection string: {e}")
+            self.logger.error(f"unable to read the WKT projection string: {e}")
             return
         if len(ret) == 0:
             try:
                 ret = xml_tree.xpath('//*/referenceSystemInfo/smXML:MD_CRS',
                                      namespaces=_ns2)
             except _et.Error as e:
-                print(f"unable to read the WKT projection string: %s: {e}")
+                self.logger.error(f"unable to read the WKT projection string: %s: {e}")
                 return
             if len(ret) != 0:
-                print("unsupported method to describe CRS")
+                self.logger.warning("unsupported method to describe CRS")
                 return
 
         try:
             wkt_srs = ret[0].text
             return wkt_srs
         except (ValueError, IndexError) as e:
-            print(f"unable to read the WKT projection string: {e}")
+            self.logger.error(f"unable to read the WKT projection string: {e}")
             return
 
 
@@ -1433,12 +1756,31 @@ class Open(BagFile):
     :func:`BagFile.from_gdal` method
     """
 
-    def __init__(self, dataset):
-        BagFile.__init__(self)
+    def __init__(self, dataset, pixel_is_area=True):
+        BagFile.__init__(self, pixel_is_area)
         if type(dataset) == str:
             self.open_file(dataset, 'hack')
         elif type(dataset) == _gdal.Dataset:
             self.from_gdal(dataset)
+
+
+def _from_rasterio(bag_file: str) -> _rio.MemoryFile:
+    bagfile_obj = Open(bag_file)
+    resx, resy = bagfile_obj.resolution
+    nw, se = bagfile_obj.bounds
+    transform = _rio.Affine(resx, 0, nw[0], 0, resy, nw[1])
+    height = bagfile_obj.shape[0]
+    width = bagfile_obj.shape[1]
+    dtype = bagfile_obj.elevation.dtype
+
+    with _rio.MemoryFile() as memfile:
+        with memfile.open(**{'driver': 'GTiff', 'dtype': dtype, 'nodata': 1000000.0,
+                             'width': width, 'height': height, 'count': 2, 'crs': _rio.crs.CRS.from_wkt(bagfile_obj.wkt),
+                             'transform': transform, 'tiled': False, 'compress': 'lzw', 'interleave': 'band'}) as dataset:
+            dataset.write(_np.array([bagfile_obj.elevation, bagfile_obj.uncertainty]))
+            del bagfile_obj
+
+        return memfile.open()
 
 
 class BagToGDALConverter:
@@ -1461,14 +1803,14 @@ class BagToGDALConverter:
         self.out_verdat = out_verdat
         self.flip = flip
 
-    def bag2gdal(self, bag):
+    def bag2gdal(self, bag: BagFile):
         """
         Converts a :obj:`bag` object into a :obj:`gdal.Dataset`
 
         Parameters
         ----------
-        bag : :obj:`bag`
-            TODO write description
+        bag
+            BAG file object
         """
 
         arrays = [bag.elevation, bag.uncertainty]
@@ -1480,17 +1822,16 @@ class BagToGDALConverter:
         res_x, res_y = bag.resolution[0], bag.resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
-        target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=bag.wkt)
-        srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
+        #        if not srs.IsCompound():
+        #            srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
         wkt = srs.ExportToWkt()
         target_ds.SetProjection(wkt)
-        x = 1
 
-        for item in arrays:
-            band = target_ds.GetRasterBand(x)
-            band.SetDescription(self._descriptions[x - 1])
+        for index, item in enumerate(arrays):
+            band = target_ds.GetRasterBand(index + 1)
+            band.SetDescription(self._descriptions[index])
             band.SetNoDataValue(bag.nodata)
 
             if self.flip:
@@ -1498,12 +1839,11 @@ class BagToGDALConverter:
 
             band.WriteArray(item)
             del band
-            x += 1
 
         self.dataset = target_ds
         del target_ds
 
-    def components2gdal(self, arrays: [_np.array], shape: (int, int), bounds: ((float, float), (float, float)),
+    def components2gdal(self, arrays: [_np.array], bounds: ((float, float), (float, float)),
                         resolution: (float, float), prj: str, nodata: float = 1000000.0):
         """
         Converts raw dataset components into a :obj:`gdal.Dataset` object
@@ -1512,8 +1852,6 @@ class BagToGDALConverter:
         ----------
         arrays : list of numpy.array
             Arrays [elevation, uncertainty]
-        shape : tuple of int
-            (y, x) shape of the arrays
         bounds : tuple of tuple of float
             (NW, SE) corners of the data
         resolution : tuple of float
@@ -1525,19 +1863,23 @@ class BagToGDALConverter:
 
 
         """
-
-        bands = len(arrays)
+        dims = arrays.shape
+        if len(dims) == 3:
+            bands, y_cols, x_cols = dims
+        elif len(dims) == 2:
+            raise ValueError('Only one band in array found.  Missing uncertainty layer?')
+        else:
+            raise ValueError('Shape of provided array is nonsensical')
         nw, se = bounds
         nwx, nwy = nw
         scx, scy = se
-        y_cols, x_cols = shape
         res_x, res_y = resolution[0], resolution[1]
         target_ds = _gdal.GetDriverByName('MEM').Create('', x_cols, y_cols, bands, _gdal.GDT_Float32)
         target_gt = (nwx, res_x, 0, nwy, 0, res_y)
-        target_gt = self.translate_bag2gdal_extents(target_gt)
         target_ds.SetGeoTransform(target_gt)
         srs = _osr.SpatialReference(wkt=prj)
-        srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
+        #        if not srs.IsCompound():
+        #            srs.SetVertCS(self.out_verdat, self.out_verdat, 2000)
         wkt = srs.ExportToWkt()
         target_ds.SetProjection(wkt)
         x = 1
@@ -1557,8 +1899,28 @@ class BagToGDALConverter:
         self.dataset = target_ds
         del target_ds
 
-    def translate_bag2gdal_extents(self, geotransform: (float, float, float, float, float, float)):
-        orig_x, res_x, skew_x, orig_y, skew_y, res_y = geotransform
-        new_x = orig_x - (res_x / 2)
-        new_y = orig_y + (res_y / 2)
-        return new_x, res_x, skew_x, new_y, skew_y, res_y
+
+@jit(nopython=True)
+def _interpolate_gaps(data, mask, y_footprint, x_footprint, ndv):
+    """
+    Return the provided 2d data with the missing nodes not covered by the mask.
+    """
+    y_idx, x_idx = _np.nonzero((mask == 1) & (data == ndv))
+    numpts = x_idx.shape[0]
+    interp_vals = _np.zeros(numpts)
+    for n in range(numpts):
+        # need to add a check for bounds
+        y = y_footprint + y_idx[n]
+        x = x_footprint + x_idx[n]
+        count = 0
+        tmp = 0
+        for m in range(x_footprint.shape[0]):
+            val = data[y[m], x[m]]
+            if val != ndv:
+                count = count + 1
+                tmp = tmp + val
+        if count != 0:
+            interp_vals[n] = tmp / count
+    for n in range(numpts):
+        data[y_idx[n], x_idx[n]] = interp_vals[n]
+    return data

@@ -70,7 +70,7 @@ class BDB51:
         self.database_loc = database_loc
         self.database_name = database_name
         self.caris_environment_name = caris_env_name
-        self._logger = logging.getLogger('fuse')
+        self._logger = logging.getLogger('fuse.bdb')
 
         if len(self._logger.handlers) == 0:
             ch = logging.StreamHandler(sys.stdout)
@@ -103,7 +103,7 @@ class BDB51:
 
         while True:
             self._conn, addr = self.sock.accept()
-            self._logger.log(logging.DEBUG, 'accepted connection from {} at {}'.format(addr, self._conn))
+            self._logger.info('accepted connection from {} at {}'.format(addr, self._conn))
             data = self._conn.recv(self._bufsize)
 
             if len(data) > 0:
@@ -131,7 +131,7 @@ class BDB51:
                         self.alive = False
                         break
                     except Exception as error:
-                        self._logger.log(logging.DEBUG, str(error))
+                        self._logger.error(error)
             if not self.alive:
                 break
 
@@ -165,14 +165,12 @@ class BDB51:
                 python_path, db_obj, str(port), str(self._bufsize),  # call the script for the object
                 ]
         args = ' '.join(args)
-        self._logger.log(logging.DEBUG, args)
+        self._logger.debug(args)
 
         try:
             self.db = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_CONSOLE)
-        except:
-            err = 'Error executing: {}'.format(args)
-            print(err)
-            self._logger.log(logging.DEBUG, err)
+        except Exception as error:
+            self._logger.warning('Execution error: {}'.format(error))
 
     def connect(self) -> bool:
         """
@@ -271,11 +269,7 @@ class BDB51:
                 while True:
                     if self._response is not None:  # we need a way to check if the connection is alive
                         response = self._response
-                        if 'log' in response:
-                            msg = response['log']
-                        else:
-                            msg = str(response)
-                        self._logger.log(logging.DEBUG, msg)
+                        self._logger.info(response['log'] if 'log' in response else response)
 
                         if not response['success']:
                             print('{} failed!'.format(response['command']))

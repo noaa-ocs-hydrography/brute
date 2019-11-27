@@ -33,20 +33,20 @@ class Interpolator:
         """Set up and configure the interpolation tools."""
 
         if self._interp_engine == 'point':
-            self._engine = pinterp.PointInterpolator()
+            self._engine = pinterp
         elif self._interp_engine == 'raster':
             self._engine = binterp.process.RasterInterpolator()
         else:
             raise ValueError('No interpolation engine type specified')
 
-    def interpolate(self, points: gdal.Dataset, metadata: dict) -> (gdal.Dataset, dict):
+    def interpolate(self, dataset: gdal.Dataset, metadata: dict) -> (gdal.Dataset, dict):
         """
         Take a gdal dataset and run the interpolation, returning a gdal raster.
 
         Parameters
         ----------
-        points
-            GDAL point cloud dataset
+        dataset
+            GDAL dataset
         metadata
             dictionary of metadata
 
@@ -67,37 +67,32 @@ class Interpolator:
 
         root, filename = _os.path.split(metadata['outpath'])
         base, ext = _os.path.splitext(filename)
-        metadata['from_filename'] = self.gettag(base)
 
         # Point Interpolation
         if self._interp_engine == 'point':
-            if not support_files:
-                interpolated_dataset = self._engine.interpolate(points, self._interp_type, self._resolution)
+            if len(support_files) == 0:
+                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, self._resolution)
+                metadata['from_filename'] = self.gettag(base)
+                metadata['interpolated'] = True
             else:
-                interpolated_dataset = self._engine.interpolate(points, self._interp_type, self._resolution,
-                                                                support_files[0])
-
-            dataset_resolution = interpolated_dataset.GetGeoTransform()[1]
-            if dataset_resolution < 1:
-                resolution = f'{int(dataset_resolution * 100)}cm'
-            elif dataset_resolution >= 1:
-                resolution = f'{int(dataset_resolution)}m'
-
-            metadata['to_filename'] = f"{_os.path.join(root, base)}_{resolution}_interp.{metadata['new_ext']}"
+                interpolated_dataset = self._engine.interpolate(dataset, self._resolution, support_files)
+            resolution = interpolated_dataset.GetGeoTransform()[1]
+            metadata['to_filename'] = f"{_os.path.join(root, base)}_{int(resolution if resolution >= 1 else resolution * 100)}" + \
+                                      f"{'m' if resolution >= 1 else 'cm'}_interp.{metadata['point_ext']}"
 
         # Raster Interpolation
         elif self._interp_engine == 'raster':
-            if not support_files:
+            if len(support_files) == 0:
                 raise ValueError("No coverage files provided; no interpolation can occur")
             else:
-                interpolated_dataset = self._engine.interpolate(points, self._interp_type, support_files, file_size)
-
-            metadata['to_filename'] = f"{_os.path.join(root, base)}_interp.{metadata['new_ext']}"
-
-        metadata['interpolated'] = True
+                interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, support_files, file_size)
+                metadata['from_filename'] = self.gettag(base)
+                metadata['interpolated'] = True
+            resolution = interpolated_dataset.GetGeoTransform()[1]
+            metadata['to_filename'] = f"{_os.path.join(root, base)}_interp.{metadata['raster_ext']}"
 
         return interpolated_dataset, metadata
-    
+
     def gettag(self, from_name: str) -> str:
         """
         Return the tag for the interpolated dataset given the original filename.

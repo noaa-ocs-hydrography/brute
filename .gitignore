@@ -4,10 +4,10 @@
 *.rst
 *.spyproject
 autointerp/Documentation/*
-eHydro_scrape/_misc/*
-eHydro_scrape/downloads/*
-eHydro_scrape/logs/*
-eHydro_scrape/runs/*
+data_management/eHydro_scrape/_misc/*
+data_management/eHydro_scrape/downloads/*
+data_management/eHydro_scrape/logs/*
+data_management/eHydro_scrape/runs/*
 New_Directory
 
 

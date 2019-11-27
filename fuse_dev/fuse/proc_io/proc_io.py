@@ -11,14 +11,18 @@ import logging
 import os
 import pickle
 import subprocess
-import sys
 from tempfile import TemporaryDirectory as tempdir
+from typing import Union
 
 import fiona
 import fiona.crs
 import numpy as np
-from osgeo import gdal, ogr, osr
+from osgeo import gdal, osr
+from shapely.geometry import MultiPoint, MultiPolygon, shape as shapely_shape
 
+import rasterio
+from rasterio.features import shapes as rasterio_shapes
+from affine import Affine
 gdal.UseExceptions()
 from fuse.proc_io import caris
 
@@ -28,9 +32,9 @@ __version__ = 'Test'
 class ProcIO:
     """ A class to abstract the reading and writing of bathymetry data. """
 
-    def __init__(self, in_data_type: str, out_data_type: str, work_dir: str = None, z_up: bool = True,
-                 nodata: float = 1000000.0, caris_env_name: str = 'CARIS35', overwrite: bool = True,
-                 db_loc: str = None, db_name: str = None):
+    def __init__(self, in_data_type: str, out_data_type: str, work_dir: str = None, z_up: bool = True, nodata: float = 1000000.0,
+                 caris_env_name: str = 'CARIS35', overwrite: bool = True, db_loc: str = None, db_name: str = None,
+                 logger: logging.Logger = None):
         """
         Create a new bathymetric data input / output object, reading and writing in the given input and output formats.
 
@@ -59,7 +63,7 @@ class ProcIO:
         self._in_data_type = in_data_type
         self._out_data_type = out_data_type
         self._z_up = z_up
-        self._write_nodata = nodata
+        self._nodata = nodata
         self._caris_environment_name = caris_env_name
         self.overwrite = overwrite
 
@@ -69,12 +73,7 @@ class ProcIO:
         else:
             self._work_dir_name = work_dir
 
-        self._logger = logging.getLogger('fuse')
-
-        if len(self._logger.handlers) == 0:
-            ch = logging.StreamHandler(sys.stdout)
-            ch.setLevel(logging.DEBUG)
-            self._logger.addHandler(ch)
+        self._logger = logger if logger is not None else logging.getLogger('fuse.proc')
 
         if self._out_data_type == "carisbdb51":
             if db_name is not None and db_loc is not None:
@@ -83,6 +82,7 @@ class ProcIO:
                 self._bdb.connect()
             else:
                 raise ValueError('No database name or location provided')
+
 
     def write(self, dataset: gdal.Dataset, filename: str, metadata: dict = None, show_console: bool = False):
         """
@@ -100,15 +100,19 @@ class ProcIO:
             whether to show the console of the CARIS subprocess (if writing to a CSAR file)
         """
 
-        self._logger.log(logging.DEBUG, f'Begin {self._out_data_type} write to {filename}')
+        self._logger.info(f'Begin {self._out_data_type} write to {filename}')
 
         if os.path.exists(filename) and self.overwrite:
-            self._logger.log(logging.DEBUG, f'Overwriting {filename}')
+            self._logger.info(f'Overwriting {filename}')
             os.remove(filename)
-            if self._out_data_type == 'bag':
-                caris_xml = f'{filename}.aux.xml'
-                if os.path.exists(caris_xml):
-                    os.remove(caris_xml)
+            if self._out_data_type == 'csar':
+                csar_data = f'{filename}0'
+                if os.path.exists(csar_data):
+                    os.remove(csar_data)
+            elif self._out_data_type == 'bag':
+                bag_xml = f'{filename}.aux.xml'
+                if os.path.exists(bag_xml):
+                    os.remove(bag_xml)
 
         if self._out_data_type == 'csar':
             self._write_csar(dataset, filename, show_console=show_console)
@@ -121,11 +125,13 @@ class ProcIO:
         else:
             raise ValueError(f'writer type unknown: {self._out_data_type}')
 
+
     def close_connection(self):
         """ Closes connection to the bathymetric database """
 
         if self._out_data_type == 'carisbdb51':
             self._bdb.die()
+
 
     def _write_csar(self, raster: gdal.Dataset, filename: str, show_console: bool = False):
         """
@@ -181,35 +187,35 @@ class ProcIO:
                 # data type
                 f'"{self._in_data_type.replace("&", "^&")}"'
             ))
-            self._logger.log(logging.DEBUG, argument_string)
+            self._logger.debug(argument_string)
 
             try:
-                caris_process = subprocess.Popen(argument_string,
-                                                 creationflags=subprocess.CREATE_NEW_CONSOLE if show_console else 0)
+                caris_process = subprocess.Popen(argument_string, creationflags=subprocess.CREATE_NEW_CONSOLE if show_console else 0)
             except Exception as error:
-                self._logger.log(logging.DEBUG, f'Error when executing "{argument_string}"\n{error}')
+                self._logger.warning(f'Error when executing "{argument_string}"\n{error}')
 
             try:
                 stdout, stderr = caris_process.communicate()
                 if stdout is not None:
-                    self._logger.log(logging.DEBUG, stdout)
+                    self._logger.debug(stdout)
                 else:
-                    self._logger.log(logging.DEBUG, 'No information returned from csar write process.')
+                    self._logger.info('No information returned from csar write process.')
                 if stderr is not None:
-                    self._logger.log(logging.DEBUG, stderr)
+                    self._logger.warning(stderr)
                 else:
-                    self._logger.log(logging.DEBUG, 'No errors returned from csar write process.')
+                    self._logger.info('No errors returned from csar write process.')
             except Exception as error:
-                self._logger.log(logging.DEBUG, f'Error when logging subprocess error\n{error}')
+                self._logger.warning(f'Error when logging subprocess error\n{error}')
 
             if not os.path.exists(metadata['outfilename']):
                 error_string = f'Unable to create file {metadata["outfilename"]}'
-                self._logger.log(logging.DEBUG, error_string)
+                self._logger.error(error_string)
                 raise RuntimeError(error_string)
         else:
             error_string = f'Unable to overwrite file {metadata["outfilename"]}'
-            self._logger.log(logging.DEBUG, error_string)
+            self._logger.error(error_string)
             raise RuntimeError(error_string)
+
 
     def _write_bag(self, raster: gdal.Dataset, filename: str, metadata: dict = None):
         """
@@ -228,7 +234,7 @@ class ProcIO:
         if self._in_data_type == 'gdal':
             raster = self._set_raster_nodata(raster)
         else:
-            raise ValueError(f'unknown input data type "{self._in_data_type}"')
+            raise NotImplementedError(f'BAG writing not supported for "{self._in_data_type}"')
 
         if metadata is not None:
             raise NotImplementedError('Writing XML metadata to a BAG has not yet been implemented in GDAL.')
@@ -236,12 +242,32 @@ class ProcIO:
         # Prepare destination file
         bag_driver = gdal.GetDriverByName("BAG")
 
-        # write and close output raster dataset
-        output_raster = bag_driver.CreateCopy(filename, raster)
-        del output_raster
-        self._logger.log(logging.DEBUG, 'BAG file created')
+        # template_xml_dir = tempdir()
+        # template_xml_filename = os.path.join(template_xml_dir.name, 'bag_template.xml')
+        # with open(template_xml_filename, 'w') as template_xml:
+        #     template_xml.write(requests.get('https://raw.githubusercontent.com/OSGeo/gdal/master/gdal/data/bag_template.xml').text)
 
-    def _write_points(self, points: gdal.Dataset, filename: str, layer_index: int = 0, output_layer: str = 'Elevation'):
+        # write and close output raster dataset
+        try:
+            output_raster = bag_driver.CreateCopy(filename, raster)
+            del output_raster
+            self._logger.debug('BAG file created')
+        except RuntimeError as error:
+            self._logger.warning(f'Failed to create bag: {error}\n Attempting to pass correct well-known text using OSR')
+            old_crs_wkt = raster.GetProjectionRef()
+            self._logger.debug(f'Old reference: {old_crs_wkt}')
+            spatial_reference = osr.SpatialReference(wkt=old_crs_wkt)
+            new_crs_wkt = spatial_reference.ExportToWkt()
+            self._logger.debug(f'New reference: {new_crs_wkt}')
+            raster.SetProjection(new_crs_wkt)
+            output_raster = bag_driver.CreateCopy(filename, raster)
+            del output_raster
+            self._logger.info(f'Created BAG file at {filename}')
+
+        # template_xml_dir.cleanup()
+
+
+    def _write_points(self, points: gdal.Dataset, filename: str, layer: int = 0, output_layer: str = 'Elevation'):
         """
         Write provided GDAL point cloud dataset to a geopackage file.
 
@@ -251,7 +277,7 @@ class ProcIO:
             GDAL point cloud dataset
         filename
             filename to write geopackage
-        layer_index
+        layer
             index of vector layer containing points
         output_layer
             name of layer to create
@@ -261,8 +287,12 @@ class ProcIO:
         if os.path.exists(filename):
             os.remove(filename)
 
-        points, meta = self._gdal_points_to_array(points, layer_index=layer_index)
-        projection = fiona.crs.from_string(meta['crs'])
+        point_layer = points.GetLayerByIndex(layer)
+        crs_wkt = point_layer.GetSpatialRef().ExportToWkt()
+        del point_layer
+
+        points = gdal_to_xyz(points, layer)
+        projection = fiona.crs.from_string(crs_wkt)
 
         layer_schema = {
             'geometry': 'Point',
@@ -293,44 +323,8 @@ class ProcIO:
         with fiona.open(filename, 'w', 'GPKG', schema=layer_schema, crs=projection, layer=output_layer) as output_file:
             output_file.writerecords(point_records)
 
-    def _write_vectorized_raster(self, raster: gdal.Dataset, filename: str, band_index: int = 1):
-        """
-        Write the given GDAL raster dataset to a GDAL vector dataset (vectorizing to a multipolygon).
 
-        Parameters
-        ----------
-        raster
-            GDAL raster dataset
-        filename
-            filename to write GDAL vector dataset containing vectorized multipolygon
-        band_index
-            raster band (1-indexed)
-        """
-
-        splits = os.path.split(filename)[1]
-        name = os.path.splitext(filename)[0]
-        filename = os.path.join(splits[0], f'{name}_Vector.gpkg')
-
-        projection = osr.SpatialReference(wkt=raster.GetProjection())
-        band = raster.GetRasterBand(band_index)
-
-        driver = ogr.GetDriverByName('GPKG')
-        vector_dataset = driver.CreateDataSource(filename)
-        layer = vector_dataset.CreateLayer(name, projection, ogr.wkbMultiPolygon)
-
-        # Add one attribute
-        layer.CreateField(ogr.FieldDefn('Survey', ogr.OFTString))
-
-        # Create a new feature (attribute and geometry)
-        feature = ogr.Feature(layer.GetLayerDefn())
-        feature.SetField('Survey', name)
-
-        gdal.Polygonize(band, None, layer, 0, [], callback=None)
-
-        del band
-        del vector_dataset
-
-    def _gdal_raster_to_array(self, raster: gdal.Dataset, band_index: int = 1) -> (np.array, dict):
+    def _gdal_raster_to_array(self, raster: gdal.Dataset) -> (np.array, dict):
         """
         Extract data and metadata from the given band of a GDAL raster dataset.
         The dataset should have the `nodata` value set appropriately.
@@ -348,8 +342,11 @@ class ProcIO:
             array of raster data and a dictionary of metadata
         """
 
-        raster_band = raster.GetRasterBand(band_index)
         geotransform = raster.GetGeoTransform()
+
+        raster_band = raster.GetRasterBand(1)
+        nodata = raster_band.GetNoDataValue()
+        del raster_band
 
         metadata = {
             'resx': geotransform[1],
@@ -359,13 +356,12 @@ class ProcIO:
             'dimx': raster.RasterXSize,
             'dimy': raster.RasterYSize,
             'crs': raster.GetProjection(),
-            'nodata': raster_band.GetNoDataValue()
+            'nodata': nodata
         }
 
-        # return the gdal data raster and metadata
         return raster.ReadAsArray(), metadata
 
-    def _gdal_points_to_array(self, points: gdal.Dataset, layer_index: int = 0) -> (np.array, dict):
+    def _gdal_points_to_array(self, points: gdal.Dataset, layer: int = 0) -> (np.array, dict):
         """
         Extract points and metadata from the given layer of a GDAL point cloud dataset.
         The dataset should have the `nodata` value set appropriately.
@@ -374,7 +370,7 @@ class ProcIO:
         ----------
         points
             GDAL point cloud dataset with `nodata` value set
-        layer_index
+        layer
             index of vector layer containing points
 
         Returns
@@ -383,19 +379,13 @@ class ProcIO:
             N x M array of points and a dictionary of metadata
         """
 
-        point_layer = points.GetLayerByIndex(layer_index)
-
+        point_layer = points.GetLayerByIndex(layer)
         metadata = {'crs': point_layer.GetSpatialRef().ExportToWkt()}
+        del point_layer
 
-        num_points = point_layer.GetFeatureCount()
-        output_points = np.empty((num_points, 3))
-        for point_index in range(num_points):
-            feature = point_layer.GetFeature(point_index)
-            output_points[point_index, :] = feature.geometry().GetPoint()
+        return gdal_to_xyz(points, layer), metadata
 
-        return output_points, metadata
-
-    def _gdal_points_to_wkt(self, points: gdal.Dataset, layer_index: int = 0) -> ([dict], dict):
+    def _gdal_points_to_wkt(self, points: gdal.Dataset, layer: int = 0) -> (str, dict):
         """
         Extract WKT and metadata from the given layer of a GDAL point cloud dataset.
         The dataset should have the `nodata` value set appropriately.
@@ -404,39 +394,19 @@ class ProcIO:
         ----------
         points
             GDAL point cloud dataset with `nodata` value set
-        layer_index
+        layer
             index of vector layer containing points
 
         Returns
         ----------
-        [dict], dict
-            list of dictionaries of point information and a dictionary of metadata
+        str, dict
+            well-known text of points and a dictionary of metadata
         """
 
-        output_points = []
-        # multipoint = ogr.Geometry(ogr.wkbMultiPoint)
-        point_layer = points.GetLayerByIndex(layer_index)
+        points, metadata = self._gdal_points_to_array(points, layer)
+        return MultiPoint(points.tolist()).wkt, metadata
 
-        metadata = {'crs': point_layer.GetSpatialRef().ExportToWkt()}
-
-        num_points = point_layer.GetFeatureCount()
-        for point_index in range(num_points):
-            feature = point_layer.GetFeature(point_index)
-            x, y, z = feature.geometry().GetPoint()
-
-            point = ogr.Geometry(ogr.wkbPoint)
-            point.AddPoint(x, y, z)
-            # multipoint.AddGeometry(point)
-
-            output_points.append({
-                'x': x, 'y': y, 'z': z,
-                'wkt': point.ExportToWkt()
-                # 'wkt': multipoint.ExportToWkt()
-            })
-
-        return output_points, metadata
-
-    def _set_raster_nodata(self, raster: gdal.Dataset, band_index: int = 1) -> gdal.Dataset:
+    def _set_raster_nodata(self, raster: gdal.Dataset, band: int = 1) -> gdal.Dataset:
         """
         Ensure the `nodata` value of the given GDAL raster dataset is equal to the set `nodata` value.
 
@@ -444,7 +414,7 @@ class ProcIO:
         ----------
         raster
             GDAL raster array with `nodata` value set
-        band_index
+        band
             raster band (1-indexed)
 
         Returns
@@ -453,13 +423,179 @@ class ProcIO:
             dataset with `nodata` value set
         """
 
-        raster_band = raster.GetRasterBand(band_index)
+        raster_band = raster.GetRasterBand(band)
 
         # check the no data value
         nodata = raster_band.GetNoDataValue()
-        if self._write_nodata != nodata:
+        if self._nodata != nodata:
             band_data = raster_band.ReadAsArray()
-            band_data[band_data == nodata] = self._write_nodata
-            raster.GetRasterBand(band_index).WriteArray(band_data)
+            band_data[band_data == nodata] = self._nodata
+            raster.GetRasterBand(band).WriteArray(band_data)
 
+        del raster_band
         return raster
+
+def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> np.array:
+    """
+    Extract XYZ points from a GDAL dataset.
+
+    Parameters
+    ----------
+    dataset
+        GDAL dataset (point cloud or raster)
+    index
+        zero-based index of layer / band to read from the given dataset
+    nodata
+        value to exclude from point creation
+
+    Returns
+    -------
+    numpy.array
+        N x 3 array of XYZ points
+    """
+
+    is_raster = dataset.GetProjectionRef() != ''
+
+    if index < 0:
+        index += dataset.RasterCount if is_raster else dataset.GetLayerCount()
+
+    if is_raster:
+        raster_band = dataset.GetRasterBand(index + 1)
+        geotransform = dataset.GetGeoTransform()
+
+        if nodata is None:
+            nodata = raster_band.GetNoDataValue()
+
+        return geoarray_to_xyz(raster_band.ReadAsArray(), origin=(geotransform[0], geotransform[3]),
+                               resolution=(geotransform[1], geotransform[5]), nodata=nodata)
+    else:
+        point_layer = dataset.GetLayerByIndex(index)
+        num_points = point_layer.GetFeatureCount()
+
+        output_points = np.empty((num_points, 3))
+        for point_index in range(num_points):
+            feature = point_layer.GetFeature(point_index)
+            output_point = feature.geometry().GetPoint()
+
+            if output_point[2] != nodata:
+                output_points[point_index, :] = output_point
+
+        return output_points
+    
+def vectorize_raster(raster: Union[gdal.Dataset, str], band: int = 0) -> MultiPolygon:
+    """
+    Vectorize the extent of the given raster where data exists.
+
+    Parameters
+    ----------
+    raster
+        GDAL raster dataset or filename of raster
+    band
+        zero-based index of raster band
+
+    Returns
+    -------
+    MultiPolygon
+        Shapely multipolygon of coverage extent
+    """
+
+    if type(raster) is gdal.Dataset:
+        raster_band = raster.GetRasterBand(band + 1)
+        raster_array = raster_band.ReadAsArray()
+        del raster_band
+        transform = Affine.from_gdal(*raster.GetGeoTransform())
+    elif type(raster) is str:
+        with rasterio.open(raster) as raster:
+            raster_array = raster.read()
+            transform = raster.transform
+    else:
+        raise NotImplementedError(f'unsupported input type {type(raster)}')
+
+    return vectorize_geoarray(raster_array, transform)
+
+
+def vectorize_geoarray(array: np.array, transform: Affine, nodata: float = None) -> MultiPolygon:
+    """
+    Vectorize the extent of the given georeferenced array where data exists.
+
+    Parameters
+    ----------
+
+    array
+        array of gridded data
+    transform
+        Affine transform of geoarray
+    nodata
+        value where there is no data
+
+    Returns
+    -------
+    MultiPolygon
+        Shapely polygon or multipolygon of coverage extent
+    """
+
+    raster_mask = array_coverage(array, nodata)
+    return MultiPolygon(shapely_shape(shape[0]) for shape in rasterio_shapes(np.where(raster_mask, 1, 0), mask=raster_mask,
+                                                                             transform=transform))
+
+
+def geoarray_to_xyz(data: np.array, origin: (float, float), resolution: (float, float), nodata: float = None) -> np.array:
+    """
+    Extract XYZ points from an array of data using the given raster-like georeference (origin  and resolution).
+
+    Parameters
+    ----------
+    data
+        2D array of gridded data
+    origin
+        X, Y coordinates of northwest corner
+    resolution
+        cell size
+    nodata
+        value to exclude from point creation from the input grid
+
+    Returns
+    -------
+    numpy.array
+        N x 3 array of XYZ points
+    """
+
+    if nodata is None:
+        nodata = np.nan
+
+    x_values, y_values = np.meshgrid(np.linspace(origin[0], origin[0] + resolution[0] * data.shape[1], data.shape[1]),
+                                        np.linspace(origin[1], origin[1] + resolution[1] * data.shape[0], data.shape[0]))
+
+    return np.stack((x_values[data != nodata], y_values[data != nodata], data[data != nodata]), axis=1)
+
+
+def array_coverage(array: np.array, nodata: float = None) -> np.array:
+    """
+    Get a boolean array of where data exists in the given array.
+
+    Parameters
+    ----------
+    array
+        array of gridded data with dimensions (Z)YX
+    nodata
+        value where there is no data in the given array
+
+    Returns
+    -------
+    numpy.array
+        array of booleans indicating where data exists
+    """
+
+    if len(array.shape) > 2:
+        array = np.squeeze(array)
+
+    if nodata is None:
+        nodata = np.nan
+
+    # TODO find reduced generalization of band coverage
+    if array.shape[0] == 3:
+        coverage = (array[0, :, :] != nodata) | (array[1, :, :] != nodata) | (array[2, :, :] != nodata)
+    else:
+        coverage = array != nodata
+
+    return coverage

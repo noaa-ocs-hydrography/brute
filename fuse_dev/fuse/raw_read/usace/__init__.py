@@ -6,4 +6,3 @@ from . import cesam
 from . import cespl
 from . import ceswg
 from . import usace
-from . import parse_usace_pickle

@@ -4,11 +4,12 @@ Created on Thu Aug 16 15:26:20 2018
 
 @author: grice
 """
-
+import logging
 import os as _os
+import sys
 
 
-def fips2wkt(fips: int, units: str = 'FEET') -> str:
+def fips2wkt(fips: int, units: str = 'FEET', logger: logging.Logger = None) -> str:
     """
     Given an ESRI FIPS code, return the associated wkt string as found in the
     gdal module data file 'esri_StatePlane_extra.wkt'.
@@ -23,11 +24,17 @@ def fips2wkt(fips: int, units: str = 'FEET') -> str:
         ESRI FIPS code
     units
         (Default value = 'FEET')
+    logger
+        logging object
 
     Returns
     -------
-
+    str
+        well-known text of FIPS
     """
+
+    if logger is None:
+        logger = logging.getLogger('fuse.fips')
 
     # combine the fips code with units to get the ERSI code
     if units == 'FEET':
@@ -35,10 +42,13 @@ def fips2wkt(fips: int, units: str = 'FEET') -> str:
     elif units == 'METER':
         esri_code = f'{fips}1,'
     else:
-        print("Unit type not recognized")
+        logger.warning("Unit type not recognized")
         esri_code = "-1"
     # search the file 'esri_StatePlane_extra.wkt' for the code
-    gdal_data_path = _os.environ['GDAL_DATA']  # path to the gdal data
+    # path to the gdal data
+    gdal_data_path = _os.environ['GDAL_DATA'] if 'GDAL_DATA' in _os.environ \
+        else _os.path.join(sys.exec_prefix, 'Library', 'share', 'gdal')
+
     wktfilename = _os.path.join(gdal_data_path, 'esri_StatePlane_extra.wkt')
     wktline = ''
     with open(wktfilename, 'r') as wktfile:

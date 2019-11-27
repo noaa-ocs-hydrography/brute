@@ -703,10 +703,10 @@ def align2grid(coverage, bounds: ((float, float), (float, float)), shape: (int, 
     if resolution_ratio == 1:
         resampled_coverage_array = coverage.array
     else:
-        print('_zoom', _dt.now())
-        resampled_coverage_array = _zoom(coverage.array, zoom=[resolution_ratio, resolution_ratio], order=3,
+         resampled_coverage_array = _zoom(coverage.array, zoom=[resolution_ratio, resolution_ratio], order=3,
                                          prefilter=False)
-        print('zoomed', _dt.now())
+#        resampled_coverage_array = _np.kron(coverage.array, _np.ones((resolution_ratio, resolution_ratio)))
+
     resampled_coverage_array = resampled_coverage_array.astype('float64')
     resampled_coverage_array[resampled_coverage_array > 0] = _np.nan
     resampled_coverage_array[resampled_coverage_array < 1] = float(nodata)
@@ -720,8 +720,8 @@ def align2grid(coverage, bounds: ((float, float), (float, float)), shape: (int, 
     if bag_ul[0] > cov_lr[0] or bag_lr[0] < cov_ul[0] or bag_lr[1] > cov_ul[1] or bag_ul[1] < cov_lr[1]:
         raise ValueError('bag dataset is outside the bounds of coverage dataset')
 
-    ul_index_delta = _np.round((bag_ul - cov_ul) / _np.array(resolution)).astype(int)
-    lr_index_delta = _np.round((bag_lr - cov_ul) / _np.array(resolution)).astype(int)
+    ul_index_delta = _np.floor((bag_ul - cov_ul) / _np.array(resolution)).astype(int)
+    lr_index_delta = _np.floor((bag_lr - cov_ul) / _np.array(resolution)).astype(int)
 
     # indices to be written onto the output array
     output_array_index_slices = [slice(0, None), slice(0, None)]

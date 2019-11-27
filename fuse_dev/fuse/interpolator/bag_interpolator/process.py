@@ -29,7 +29,7 @@ class RasterInterpolator:
         pass
 
     def interpolate(self, dataset: gdal.Dataset, method: str, support_files: [str], size: int, catzoc: str = 'A2/B',
-                    io: bool = False) -> gdal.Dataset:
+                    io: bool = True) -> gdal.Dataset:
         """
 
         Parameters
@@ -52,6 +52,7 @@ class RasterInterpolator:
 
         uval = _catZones.get(catzoc)
         bag = _bag.Open(dataset)
+        del dataset
 
         if size is not None:
             bag.size = int(size)
@@ -93,17 +94,17 @@ class RasterInterpolator:
             ts = _dt.now()
             print('\nTile 1 of 1 -', ts)
             print('interp is next')
-            interp = _itp.Interpolate(method, bag.elevation, bag.uncertainty, coverage.array, uval)
+            interp = _itp.Interpolate(method, bag.elevation, bag.uncertainty, coverage.array, catzoc=uval)
             ugrids = [interp.bathy, interp.uncrt, interp.unint]
             del interp
             td = _dt.now()
             tdelt = td - ts
             print('Tile complete -', td, '| Tile took:', tdelt)
 
-        bag.elevation, bag.uncertainty, coverage.array = _itp.rePrint(bag.elevation, bag.uncertainty, coverage.array,
-                                                                      ugrids, bag.nodata, io)
+        bag.elevation, bag.uncertainty = _itp.rePrint(bag.elevation, bag.uncertainty, coverage.array,
+                                                      ugrids, bag.nodata, io)
 
-        save = _bag.BagToGDALConverter('MLLW')
+        save = _bag.BagToGDALConverter()
         save.bag2gdal(bag)
 
         del coverage, bag, ugrids
@@ -201,19 +202,17 @@ class Intitializor:
             tdelt = td - ts
             print('Tile complete -', td, '| Tile took:', tdelt)
 
-        bag.elevation, bag.uncertainty, coverage.array = _itp.rePrint(bag.elevation, bag.uncertainty,
+        bag.elevation, bag.uncertainty = _itp.rePrint(bag.elevation, bag.uncertainty,
                                                                       coverage.array, ugrids, bag.nodata, self._io)
         print(coverage.array)
 
-        save = _bag.BagToGDALConverter('MLLW')
-        #        save.components2gdal([bag.elevation, bag.uncertainty], bag.shape,
-        #                             bag.bounds, bag.resolution, bag.wkt, bag.nodata)
+        save = _bag.BagToGDALConverter()
         save.bag2gdal(bag)
 
         writer = ProcIO('gdal', 'bag')
         print(save.dataset.GetGeoTransform())
         writer.write(save.dataset, bag.outfilename)
 
-        _cvg.write_vector(coverage, self._outlocation)
+#        _cvg.write_vector(coverage, self._outlocation)
 
         del coverage, bag, save, ugrids

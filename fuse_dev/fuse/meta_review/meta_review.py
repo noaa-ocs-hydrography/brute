@@ -5,322 +5,689 @@ Created on Thu Jan 31 10:47:59 2019
 @author: grice
 """
 
-import ast as _ast
 import csv as _csv
 import os
 import shutil as _shutil
+from abc import ABC, abstractmethod
+from ast import literal_eval
+from collections import OrderedDict
+from datetime import date, datetime
 from tempfile import NamedTemporaryFile as _NamedTemporaryFile
+from typing import Union, Any
+
+import psycopg2
+
+DATABASE_CREDENTIALS_FILENAME = r"D:\credentials\postgres_scripting.txt"
+POSTGRES_DEFAULT_PORT = '5432'
+
+# this map translates the names used here to the ID used in the database
+S57_BASE_TRANSLATIONS = {
+    'from_filename': 'OBJNAM',
+    'start_date': 'SURSTA',
+    'end_date': 'SUREND',
+    'horiz_uncert': 'POSACC',
+    'to_horiz_datum': 'HORDAT',
+    'agency': 'AGENCY',
+    'source_type': 's_ftyp',
+    'complete_coverage': 'flcvrg',
+    'complete_bathymetry': 'flbath',
+    'to_vert_key': 'VERDAT',
+    'to_vert_units': 'DUNITS',
+    'vert_uncert_fixed': 'vun_fx',
+    'vert_uncert_vari': 'vun_vb',
+    'feat_size': 'f_size',
+    'feat_detect': 'f_dtct',
+    'feat_least_depth': 'f_lstd',
+    'interpolated': 'interp',
+    'reviewed': 'r_name',
+    'script_version': 's_scpv',
+    'source_indicator': 'SORIND',
+    'catzoc': 'CATZOC',
+    'supersession_score': 'supscr'
+}
+S57_VERTICAL_DATUM_TRANSLATIONS = {
+    'MLWS': '1',
+    'MLLWS': '2',
+    'MSL': '3',
+    'LLW': '4',
+    'MLW': '5',
+    'ISLW': '8',
+    'MLLW': '12',
+    'MHW': '16',
+    'MHWS': '17',
+    'MHHW': '21',
+    'LAT': '23',
+    'LOC': '24',
+    'IGLD': '25',
+    'LLWLT': '27',
+    'HHWLT': '28',
+    'HAT': '30',
+    'Unknown': '701',
+    'Other': '703',
+    'HRD': '24'  # Hudson River Datum
+}
+S57_HORIZONTAL_DATUM_TRANSLATIONS = {
+    'WGS72': '1',
+    'WGS84': '2',
+    'WGS_1984': '2',
+    'NAD27': '74',
+    'NAD83': '75',
+    'North_American_Datum_1983': '75',
+    'Local': '131'
+}
+
+FIELDS_EXCLUDED_FROM_PREFIX = ('from_filename', 'from_path')
+
+CATZOC_UNCERTAINTY = {'A1': 5, 'A2': 20, 'B': 50, 'C': 500}
+
+FIELD_TYPES = {
+    'from_filename': str,
+    'from_path': str,
+    'to_filename': str,
+    'support_files': list,
+    'start_date': date,
+    'end_date': date,
+    'from_horiz_datum': str,
+    'from_horiz_frame': str,
+    'from_horiz_type': str,
+    'from_horiz_units': str,
+    'from_horiz_key': str,
+    'from_vert_datum': str,
+    'from_vert_key': str,
+    'from_vert_units': str,
+    'from_vert_direction': str,
+    'to_horiz_frame': str,
+    'to_horiz_type': str,
+    'to_horiz_units': str,
+    'to_horiz_key': str,
+    'to_vert_datum': str,
+    'to_vert_key': str,
+    'to_vert_units': str,
+    'to_vert_direction': str,
+    'from_horiz_unc': float,
+    'from_horiz_resolution': float,
+    'from_vert_unc': float,
+    'complete_coverage': bool,
+    'bathymetry': bool,
+    'vert_uncert_fixed': float,
+    'vert_uncert_vari': float,
+    'horiz_uncert_fixed': float,
+    'horiz_uncert_vari': float,
+    'to_horiz_resolution': float,
+    'feat_size': float,
+    'feat_detect': bool,
+    'feat_least_depth': bool,
+    'catzoc': str,
+    'supersession_score': str,
+    'agency': str,
+    'source_indicator': str,
+    'source_type': str,
+    'interpolated': bool,
+    'posted': bool,
+    'license': str,
+    'logfilename': str,
+    'version_reference': str,
+    'interpolate': bool,
+    'file_size': float
+}
 
 
-class MetaReviewer:
-    """The ehydro metadata object."""
+class MetadataTable(ABC):
+    """abstract class representing a table containing metadata records of bathymetric surveys"""
 
-    # ordered dict to ensure looping through the keys always gets 'manual' last.
-    _prefixes = {
-        'manual': 'manual: ',
-        'script': 'script: '
+    column_prefixes: OrderedDict
+    metadata_fields: [str]
+    primary_key: str
+
+    @property
+    def column_names(self) -> [str]:
+        columns = []
+        for metadata_key in self.metadata_fields:
+            if metadata_key in FIELDS_EXCLUDED_FROM_PREFIX or metadata_key == 'script_version':
+                columns.append(metadata_key)
+            else:
+                columns.extend(f'{self.column_prefixes[prefix]}{metadata_key}' for prefix in self.column_prefixes)
+        columns.extend(('reviewed', 'last_updated', 'notes'))
+        return columns
+
+    @property
+    @abstractmethod
+    def records(self) -> [dict]:
+        """ all records in the table """
+        raise NotImplementedError
+
+    @abstractmethod
+    def records_where(self, where: dict) -> [dict]:
+        """
+        records in the table that match the given key-value pairs
+
+        Parameters
+        ----------
+        where
+            dictionary mapping keys to values, with which to match records
+
+        Returns
+        -------
+        [dict]
+            dictionaries of matching records
+        """
+
+        raise NotImplementedError
+
+    @abstractmethod
+    def __getitem__(self, primary_key_value: Any) -> dict:
+        """
+        Query table for the given value of the primary key.
+
+        Parameters
+        ----------
+        primary_key_value
+            value to query from primary key
+
+        Returns
+        -------
+        dict
+            dictionary of matching record
+        """
+
+        raise NotImplementedError
+
+    def __setitem__(self, primary_key_value: Any, record: dict):
+        """
+        Insert the given record into the table with the given primary key value.
+
+        Parameters
+        ----------
+        primary_key_value
+            value of primary key at which to insert record
+        record
+            dictionary record
+        """
+
+        self.insert_records([record])
+
+    @abstractmethod
+    def insert_records(self, records: [dict]):
+        """
+        Insert the list of metadata records into the table.
+
+        Parameters
+        ----------
+        records
+            metadata dictionaries
+        """
+
+        raise NotImplementedError
+
+    def _prepend_script_to_keys(self, metadata: [dict]) -> [dict]:
+        """
+        Prepend 'script' prefix to each applicable key in the list of metadata dictionaries.
+
+        Parameters
+        ----------
+        metadata
+            list of metadata dictionaries
+
+        Returns
+        -------
+        [dict]
+            list of metadata dictionaries with `script: ` prepended to keys
+        """
+
+        # TODO is `script_version` needed? if so, set the value to f'{row[key]},{__version__}' if provided in the key
+        return [{f'{self.column_prefixes["script"]}{key}' if key not in FIELDS_EXCLUDED_FROM_PREFIX else key: value
+                 for key, value in row.items()} for row in metadata]
+
+    def _simplify_record(self, record: dict) -> dict:
+        """
+        Combine `manual` and `script` fields in the given record, preferring manual entries.
+
+        Parameters
+        ----------
+        record
+            dictionary of keys and values from a single record of the metadata
+
+        Returns
+        -------
+        dict
+            simplified dictionary
+        """
+
+        # make dictionaries for sorting data into
+        entries_by_prefix = {'base': {}}
+        for prefix_name in self.column_prefixes:
+            entries_by_prefix[prefix_name] = {}
+
+        # sort each key (that has information) into the dictionary by prefix
+        for column_name, value in record.items():
+            if value is not None and value != '':
+                for prefix_name, prefix in self.column_prefixes.items():
+                    if prefix in column_name:
+                        metadata_key = column_name.replace(prefix, '')
+                        prefix_key = prefix_name
+                        break
+                else:
+                    metadata_key = column_name
+                    prefix_key = 'base'
+
+                entries_by_prefix[prefix_key][metadata_key] = value
+
+        # combine the dictionaries, overwriting the prefixed columns according to the order specified in the class attribute
+        simplified_row = entries_by_prefix['base']
+        for prefix_name in self.column_prefixes:
+            simplified_row.update(entries_by_prefix[prefix_name])
+        return simplified_row
+
+
+class MetadataDatabase(MetadataTable):
+    """PostGreSQL database table containing metadata records of bathymetric surveys"""
+
+    column_prefixes = OrderedDict([('script', 'script_'), ('manual', 'manual_')])
+
+    postgres_types = {
+        'str': 'VARCHAR',
+        'float': 'REAL',
+        'int': 'INTEGER',
+        'list': 'VARCHAR[]',
+        'date': 'DATE'
     }
 
-    # this map translates the names used here to the ID used in the database
-    _database_keys = {
-        'from_filename': 'OBJNAM',
-        'start_date': 'SURSTA',
-        'end_date': 'SUREND',
-        'horiz_uncert': 'POSACC',
-        'to_horiz_datum': 'HORDAT',
-        'agency': 'AGENCY',
-        'source_type': 's_ftyp',
-        'complete_coverage': 'flcvrg',
-        'complete_bathymetry': 'flbath',
-        'to_vert_datum': 'VERDAT',
-        'to_vert_units': 'DUNITS',
-        'vert_uncert_fixed': 'vun_fx',
-        'vert_uncert_vari': 'vun_vb',
-        'feat_size': 'f_size',
-        'feat_detect': 'f_dtct',
-        'feat_least_depth': 'f_lstd',
-        'interpolated': 'interp',
-        'reviewed': 'r_name',
-        'script_version': 's_scpv',
-        'source_indicator': 'SORIND',
-        'catzoc': 'CATZOC',
-        'supersession_score': 'supscr',
-    }
-
-    _vertical_datums = {
-        'MLWS': '1',
-        'MLLWS': '2',
-        'MSL': '3',
-        'LLW': '4',
-        'MLW': '5',
-        'ISLW': '8',
-        'MLLW': '12',
-        'MHW': '16',
-        'MHWS': '17',
-        'MHHW': '21',
-        'LAT': '23',
-        'LOC': '24',
-        'IGLD': '25',
-        'LLWLT': '27',
-        'HHWLT': '28',
-        'HAT': '30',
-        'Unknown': '701',
-        'Other': '703',
-        'HRD': '24',  # Hudson River Datum
-    }
-
-    _horizontal_datums = {
-        'WGS72': '1',
-        'WGS84': '2',
-        'WGS_1984': '2',
-        'NAD27': '74',
-        'NAD83': '75',
-        'North_American_Datum_1983': '75',
-        'Local': '131',
-    }
-
-    def __init__(self, metadata_filename: str, metadata_keys: [str]):
+    def __init__(self, hostname: str, database: str, table: str, fields: [str], primary_key: str = 'from_filename'):
         """
         Create new metadata review object from the given CSV filename and a dictionary of metadata.
 
         Parameters
         ----------
-        metadata_filename
-            path to CSV file
-        metadata_keys
-            dictionary of metadata
+        hostname
+            hostname of PostGres server
+        database
+            name of metadata database
+        table
+            name of metadata table
+        fields
+            list of metadata entry names
         """
 
-        self._metadata_filename = metadata_filename
-        self._metadata_keys = metadata_keys
-        self._fieldnames = self._csv_header()
+        # parse port from URL
+        self.hostname, self.port = split_URL_port(hostname)
+        if self.port is None:
+            self.port = POSTGRES_DEFAULT_PORT
 
-    def _csv_header(self) -> [str]:
-        """get CSV header as a list of strings"""
+        self.database_name = database
+        self.table_name = table
+        self.metadata_fields = fields
+        self.primary_key = primary_key
 
-        csv_cols = []
-        for metadata_key in self._metadata_keys:
-            if metadata_key in ('from_filename', 'from_path', 'script_version'):
-                csv_cols.append(metadata_key)
-            else:
-                csv_cols.extend(MetaReviewer._prefixes[prefix] + metadata_key for prefix in ('script', 'manual'))
-        csv_cols.extend(('reviewed', 'Last Updated', 'Notes'))
-        return csv_cols
+        with open(DATABASE_CREDENTIALS_FILENAME) as database_credentials_file:
+            lines = [line.strip() for line in database_credentials_file.readlines()]
+            database_username, database_password = lines[:2]
 
-    def write_meta_record(self, metadata: [dict]):
+        self.connection = psycopg2.connect(database=self.database_name, user=database_username, password=database_password,
+                                           host=self.hostname, port=self.port)
+
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                if not database_has_table(cursor, self.table_name):
+                    data_types = {key: self.postgres_types[value.__name__] for key, value in FIELD_TYPES.items() if
+                                  key in FIELDS_EXCLUDED_FROM_PREFIX}
+                    data_types.update({f'{prefix}{key}': self.postgres_types[value.__name__]
+                                       for prefix_name, prefix in self.column_prefixes.items()
+                                       for key, value in FIELD_TYPES.items() if key not in FIELDS_EXCLUDED_FROM_PREFIX})
+                    data_types.update({key: self.postgres_types[str] for key in self.column_names if key not in data_types})
+
+                    schema = ['from_filename VARCHAR PRIMARY KEY'] + [f'{field_name} {data_types[field_name]}'
+                                                                      for field_name in self.column_names if field_name != 'from_filename']
+                    cursor.execute(f'CREATE TABLE {self.table_name} ({", ".join(schema)});')
+
+    @property
+    def records(self) -> [dict]:
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                cursor.execute(f'SELECT * FROM {self.table_name}')
+                records = cursor.fetchall()
+
+        return [self._simplify_record(dict(zip(self.column_names, record))) for record in records]
+
+    def records_where(self, where: dict) -> [dict]:
+        where_clause = ' AND '.join(f'{key} = %s' for key in where.keys())
+
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                cursor.execute(f'SELECT * FROM {self.table_name} WHERE {where_clause}', [*where.values()])
+                records = cursor.fetchall()
+
+        return [self._simplify_record(dict(zip(self.column_names, record))) for record in records]
+
+    def __getitem__(self, primary_key_value: Any) -> dict:
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                cursor.execute(f'SELECT * FROM {self.table_name} WHERE {self.primary_key} = %s', [primary_key_value])
+                record = cursor.fetchone()
+
+        if record is not None:
+            return self._simplify_record(dict(zip(self.column_names, record)))
+        else:
+            raise KeyError(f'could not find primary key ("{self.primary_key}") value of \'{primary_key_value}\'')
+
+    def insert_records(self, records: [dict]):
+        if type(records) is dict:
+            records = [records]
+
+        assert all(self.primary_key in record for record in records), f'one or more records does not contain "{self.primary_key}"'
+
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                for record in records:
+                    if 'script_feat_size' in record:
+                        if record['script_feat_size'] == 9999:
+                            del record['script_feat_size']
+
+                    fields_in_record = [field for field in self.metadata_fields if field in record]
+
+                    for uncertainty_field in [field for field in fields_in_record if 'unc' in field]:
+                        value = record[uncertainty_field]
+                        if type(value) is str and 'CATZOC' in value:
+                            catzoc_score = value.split()[-1]
+                            record[uncertainty_field] = CATZOC_UNCERTAINTY[catzoc_score]
+
+                    columns = [self.column_prefixes["script"] + field if field not in FIELDS_EXCLUDED_FROM_PREFIX else field
+                               for field in fields_in_record]
+                    values = [record[field] for field in fields_in_record]
+
+                    if table_has_record(cursor, self.table_name, record, self.primary_key):
+                        columns, values = tuple(zip(*((column, value)
+                                                      for column, value in zip(columns, values) if column != self.primary_key)))
+                        cursor.execute(f'UPDATE {self.table_name} SET ({", ".join(columns)}) = %s WHERE {self.primary_key} = %s;',
+                                       [tuple(values), record[self.primary_key]])
+                    else:
+                        cursor.execute(f'INSERT INTO {self.table_name} ({", ".join(columns)}) VALUES %s;', [tuple(values)])
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}("{self.hostname}:{self.port}", "{self.database_name}", "{self.table_name}", {self.metadata_fields}, "{self.primary_key}")'
+
+
+class MetadataFile(MetadataTable):
+    """CSV table containing metadata records of bathymetric surveys"""
+
+    column_prefixes = OrderedDict([('script', 'script: '), ('manual', 'manual: ')])
+
+    def __init__(self, filename: str, fields: [str], primary_key: str = 'from_filename'):
         """
-        Add the list of metadata to the CSV file.
+        Create new metadata review object from the given CSV filename and a dictionary of metadata.
 
         Parameters
         ----------
-        metadata
+        filename
+            path to CSV file
+        fields
             dictionary of metadata
         """
 
-        if os.path.exists(self._metadata_filename):
-            # check if only a single record was provided
-            if type(metadata) is dict:
-                self._add_to_csv([metadata])
+        self.filename = filename
+        self.metadata_fields = fields
+        self.primary_key = primary_key
+
+    @property
+    def records(self) -> [dict]:
+        with open(self.filename, 'r', encoding='utf-8') as csv_file:
+            return [parse_record_values(self._simplify_record(row)) for row in _csv.DictReader(csv_file)]
+
+    def records_where(self, where: dict) -> [dict]:
+        records = []
+        with open(self.filename, 'r', encoding='utf-8') as csv_file:
+            for row in _csv.DictReader(csv_file):
+                if all(row[key] == value for key, value in where):
+                    records.append(row)
+
+        return [parse_record_values(self._simplify_record(record)) for record in records]
+
+    def __getitem__(self, primary_key_value: str) -> dict:
+        with open(self.filename, 'r', encoding='utf-8') as csv_file:
+            for row in _csv.DictReader(csv_file):
+                if row['from_filename'] == primary_key_value:
+                    return parse_record_values(self._simplify_record(row))
             else:
-                self._add_to_csv(metadata)
+                raise KeyError(f'could not find primary key ("{self.primary_key}") value of \'{primary_key_value}\'')
+
+    def __setitem__(self, primary_key_value: str, record: dict):
+        super().__setitem__(primary_key_value, record)
+
+    def insert_records(self, records: [dict]):
+        # check if only a single record was provided
+        if type(records) is dict:
+            records = [records]
+
+        assert all(self.primary_key in record for record in records), f'one or more records does not contain "{self.primary_key}"'
+
+        if os.path.exists(self.filename):
+            self._add_to_csv(records)
         # just write a new file since there is not one already
         else:
-            self._write_new_csv([metadata])
+            self._write_new_csv(records)
 
-    def _add_to_csv(self, metadata: [dict]):
+    def _add_to_csv(self, records: [dict]):
         """
         Add the provided metadata to the CSV file.
 
         Parameters
         ----------
-        metadata
+        records
             list of metadata dictionaries
         """
 
         orig = []
         # get the names of all the files in the new metadata
         new_meta_files = []
-        for m in metadata:
-            new_meta_files.append(m['from_filename'])
+        for record in records:
+            new_meta_files.append(record['from_filename'])
         # update the metadata keys
-        metadata = self._prepend_script_to_keys(metadata)
+        records = self._prepend_script_to_keys(records)
         # get all the metadata that is in the file already
-        with open(self._metadata_filename, 'r', encoding='utf-8') as csvfile:
-            reader = _csv.DictReader(csvfile, fieldnames=self._fieldnames)
-            for row in reader:
-                orig.append(row)
+        with open(self.filename, 'r', encoding='utf-8') as csv_file:
+            orig.extend(row for row in _csv.DictReader(csv_file, fieldnames=self.column_names))
         # move the data into a new temp file
         with _NamedTemporaryFile(mode='w', newline='', encoding='utf-8', delete=False) as tempfile:
-            writer = _csv.DictWriter(tempfile, fieldnames=self._fieldnames, extrasaction='ignore')
+            writer = _csv.DictWriter(tempfile, fieldnames=self.column_names, extrasaction='ignore')
             # check to see if the new metadata is the same as an existing entry
             for row in orig:
                 fname = row['from_filename']
                 # if the file is being updated, move over the updated info
                 if fname in new_meta_files:
                     idx = new_meta_files.index(fname)
-                    m = metadata.pop(idx)
+                    record = records.pop(idx)
                     new_meta_files.pop(idx)
-                    for key in m.keys():
-                        row[key] = m[key]
+                    for key in record.keys():
+                        row[key] = record[key]
                 writer.writerow(row)
             # append what remains to the file
-            for row in metadata:
+            for row in records:
                 writer.writerow(row)
         # replace the original file with the temp file
-        _shutil.move(tempfile.name, self._metadata_filename)
+        _shutil.move(tempfile.name, self.filename)
 
-    def _write_new_csv(self, metadata: [dict]):
+    def _write_new_csv(self, records: [dict]):
         """
         Write the provided metadata to a new CSV file.
 
         Parameters
         ----------
-        metadata
+        records
             list of metadata dictionaries
         """
 
-        # check if only a single record was provided
-        if type(metadata) is dict:
-            metadata = self._prepend_script_to_keys([metadata])
-        else:
-            metadata = self._prepend_script_to_keys(metadata)
+        records = self._prepend_script_to_keys(records)
 
-        with open(self._metadata_filename, 'w', newline='', encoding='utf-8') as csv_file:
-            writer = _csv.DictWriter(csv_file, fieldnames=self._fieldnames, extrasaction='ignore')
+        with open(self.filename, 'w', newline='', encoding='utf-8') as csv_file:
+            writer = _csv.DictWriter(csv_file, fieldnames=self.column_names, extrasaction='ignore')
             writer.writeheader()
-            writer.writerows(metadata)
+            writer.writerows(records)
 
-    def _prepend_script_to_keys(self, metadata: [dict]) -> [dict]:
-        """
-        Prepend 'script: ' to each key in the list of metadata such that the list goes to the right column when written to a CSV
+    def __repr__(self):
+        return f'{self.__class__.__name__}(r"{self.filename}", {self.metadata_fields}, "{self.primary_key}")'
 
-        Parameters
-        ----------
-        metadata
-            list of metadata dictionaries
 
-        Returns
-        -------
-            list of metadata dictionaries with `script: ` prepended to keys
-        """
+def parse_record_values(record: dict, field_types: dict = None) -> dict:
+    """
+    Parse the values in the given metadata record into their respective field types.
 
-        # TODO is `script_version` needed? if so, set the value to f'{row[key]},{__version__}' if provided in the key
-        return [{f'script: {key}' if key not in ('from_filename', 'from_path') else key: value for key, value in
-                 row.items()} for row in metadata]
+    Parameters
+    ----------
+    record
+        dictionary mapping metadata fields to values
+    field_types
+        dictionary mapping metadata fields to types
 
-    def read_metadata(self) -> [dict]:
-        """
-        Get a list of combined metadata rows from the CSV.
+    Returns
+    -------
+    dict
+        metadata record with values parsed into their respective types
+    """
 
-        Returns
-        -------
-            list of dictionaries of simplified metadata rows
-        """
+    if field_types is None:
+        field_types = FIELD_TYPES
 
-        with open(self._metadata_filename, 'r', encoding='utf-8') as csv_file:
-            return [self._simplify_row(row) for row in _csv.DictReader(csv_file)]
+    for key, value in record.items():
+        field_type = field_types[key]
 
-    def read_meta_record(self, search_value: str, meta_key: str = 'from_filename') -> dict:
-        """
-        Extract the simplified metadata row in the given CSV file where the value of the given key matches the given key.
+        if type(value) is not field_type:
+            if field_type is list:
+                value = literal_eval(str(value))
+            elif field_type is bool:
+                value = literal_eval(str(value).capitalize())
+            elif field_type is date:
+                value = datetime.strptime(value, '%Y%m%d').date()
+            elif field_type is int:
+                value = int(value)
+            elif field_type is float:
+                value = float(value)
 
-        Parameters
-        ----------
-        search_value
-            value to find in the CSV file
-        meta_key
-            key to search
+        record[key] = value
 
-        Returns
-        -------
-            dictionary of matching row
-        """
+    return record
 
-        with open(self._metadata_filename, 'r', encoding='utf-8') as csv_file:
-            for row in _csv.DictReader(csv_file):
-                if row[meta_key] == search_value:
-                    return self._simplify_row(row)
+
+def csv_to_s57(row: dict) -> dict:
+    """
+    Convert the expanded column names used in the CSV to S57 names / values.
+
+    Parameters
+    ----------
+    row
+        dictionary of CSV row
+
+    Returns
+    -------
+    dict
+        dictionary with S57 names / values
+    """
+
+    s57_row = {}
+
+    # remap the keys
+    for key, value in row.items():
+        if key in S57_BASE_TRANSLATIONS:
+            key_in_s57 = S57_BASE_TRANSLATIONS[key]
+
+            if value in ('TRUE', 'True'):
+                s57_row[key_in_s57] = 1
+            elif value in ('FALSE', 'False'):
+                s57_row[key_in_s57] = 0
             else:
-                return {}
+                s57_row[key_in_s57] = value
 
-    def _simplify_row(self, row: dict) -> dict:
-        """
-        Combine `manual: ` and `script: ` fields in the given CSV row, preferring manual entries.
+    # enforce additional required formatting
+    if 'VERDAT' in s57_row:
+        s57_row['VERDAT'] = S57_VERTICAL_DATUM_TRANSLATIONS[s57_row['VERDAT'].upper()]
+    elif 'HORDAT' in s57_row:
+        h_datum = s57_row['HORDAT']
+        for name in S57_HORIZONTAL_DATUM_TRANSLATIONS:
+            if name in h_datum:
+                s57_row['HORDAT'] = S57_HORIZONTAL_DATUM_TRANSLATIONS[name]
+                break
+    elif 'SUREND' in s57_row:
+        s57_row['SORDAT'] = s57_row['SUREND']
 
-        Parameters
-        ----------
-        row
-            dicitonary of keys and values from a single row of the metadata CSV
+    return s57_row
 
-        Returns
-        -------
-            simplified dictionary
-        """
 
-        metarow = {}
-        # make dictionaries for sorting data into
-        for name in MetaReviewer._prefixes:
-            metarow[name] = {}
-        metarow['base'] = {}
-        # sort each key (that has information) into the right dictionary
-        for key in row:
-            # only do stuff with keys that have information
-            if len(row[key]) > 0:
-                named = False
-                for name in MetaReviewer._prefixes:
-                    if name in key:
-                        named = True
-                        val = key.replace(MetaReviewer._prefixes[name], '')
-                        if val == 'support_files':
-                            metarow[name][val] = _ast.literal_eval(row[key])
-                        else:
-                            metarow[name][val] = row[key]
-                if not named:
-                    metarow['base'][key] = row[key]
-        # combine the dictionaries
-        simplified_row = {}
-        for name in sorted(list(metarow.keys()), reverse=True):
-            simplified_row = {**simplified_row, **metarow[name]}
-        return simplified_row
+def database_has_table(cursor: psycopg2._psycopg.cursor, table: str) -> bool:
+    """
+    Whether the given table exists within the given database.
 
-    def csv_to_s57(self, row: dict) -> dict:
-        """
-        Convert the expanded column names used in the CSV to S57 names / values.
+    Parameters
+    ----------
+    cursor
+        psycopg2 cursor
+    table
+        name of table
 
-        Parameters
-        ----------
-        row
-            dictionary of CSV row
+    Returns
+    -------
+    bool
+        whether table exists
+    """
 
-        Returns
-        -------
-            dictionary with S57 names / values
-        """
+    cursor.execute(f'SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name=\'{table}\');')
+    return cursor.fetchone()[0]
 
-        s57_row = {}
 
-        # remap the keys
-        for key, value in row.items():
-            if key in MetaReviewer._database_keys:
-                database_key = MetaReviewer._database_keys[key]
+def table_has_record(cursor: psycopg2._psycopg.cursor, table: str, record: dict, primary_key: str) -> bool:
+    """
+    Whether the given table exists within the given database.
 
-                if value in ('TRUE', 'True'):
-                    s57_row[database_key] = 0
-                elif value in ('FALSE', 'False'):
-                    s57_row[database_key] = 1
-                else:
-                    s57_row[database_key] = value
+    Parameters
+    ----------
+    cursor
+        psycopg2 cursor
+    table
+        name of table
+    record
+        dictionary record
+    primary_key
+        name of primary key
 
-        # enforce additional required formating
-        if 'VERDAT' in s57_row:
-            s57_row['VERDAT'] = MetaReviewer._vertical_datums[s57_row['VERDAT']]
-        elif 'HORDAT' in s57_row:
-            h_datum = s57_row['HORDAT']
-            for name in MetaReviewer._horizontal_datums:
-                if name in h_datum:
-                    s57_row['HORDAT'] = MetaReviewer._horizontal_datums[name]
-                    break
-        elif 'SUREND' in s57_row:
-            s57_row['SORDAT'] = s57_row['SUREND']
+    Returns
+    -------
+    bool
+        whether table exists
+    """
 
-        return s57_row
+    # if primary_key is None:
+    #     cursor.execute(f'SELECT 1 FROM information_schema.table_constraints ' +
+    #                    f'WHERE table_name=\'{table}\' AND constraint_type= \'PRIMARY KEY\';')
+    #     primary_key_index = cursor.fetchone()[0] - 1
+    #
+    #     cursor.execute(f'SELECT * FROM information_schema.columns WHERE table_name=\'{table}\';')
+    #     primary_key = cursor.fetchall()[primary_key_index]
+
+    cursor.execute(f'SELECT EXISTS(SELECT 1 FROM {table} WHERE {primary_key}=\'{record[primary_key]}\');')
+    return cursor.fetchone()[0]
+
+
+def split_URL_port(url: str) -> (str, Union[str, None]):
+    """
+    Split the given URL into host and port, assuming port is appended after a colon.
+
+    Parameters
+    ----------
+    url
+        URL string
+
+    Returns
+    ----------
+    str, Union[str, None]
+        URL and port (if found)
+    """
+
+    port = None
+
+    if url.count(':') > 0:
+        url = url.split(':')
+        if 'http' in url:
+            url = ':'.join(url[:2])
+            if len(url) > 2:
+                port = url[2]
+        else:
+            url, port = url
+
+    return url, port
