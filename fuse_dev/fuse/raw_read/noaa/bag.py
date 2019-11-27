@@ -1291,7 +1291,10 @@ class BAGSurvey(BAGRawReader):
             files.append(f)
             res.append(m['res'])
             if 'support_files' in m:
-                have_support_files = True
+                for support_file in m['support_files']:
+                    root, ext = _os.path.splitext(support_file)
+                    if ext.lower() in ('.tif', '.tiff', '.gpkg'):
+                        have_support_files = True
             bagfile_obj = Open(f, pixel_is_area=False)
             nw, se = bagfile_obj.bounds
             x.append([nw[0], se[0]])
@@ -1315,10 +1318,10 @@ class BAGSurvey(BAGRawReader):
         combined_surface_metadata['from_filename'] = f"{survey_id}_Xof{num_files}.combined"
 
         if have_support_files:
-            combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}_Combined.bag")
+            combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}.bag")
+            combined_surface_metadata['interpolate'] = True
 
             # build an array to house the combined dataset
-
             comb_bounds = ((min(x), max(y)), (max(x), min(y)))
             comb_shape = (int((max(y) - min(y)) / minres + 1), int((max(x) - min(x)) / minres + 1))
             comb_array = _np.zeros((2, comb_shape[0], comb_shape[1])) + ndv

@@ -229,7 +229,7 @@ def _reproject_geopackage(input_filename: str, output_filename: str, output_crs:
     return output_filename
 
 
-def _reproject_geotiff(input_filename: str, output_filename: str, output_crs: osr.SpatialReference, input_layer: str = None, logger: logging.Logger = None) -> str:
+def _reproject_geotiff(input_filename: str, output_filename: str, output_crs: osr.SpatialReference, logger: logging.Logger = None) -> str:
     """
     Horizontally transform the given support files, writing reprojected files to the given output file.
 
@@ -251,6 +251,11 @@ def _reproject_geotiff(input_filename: str, output_filename: str, output_crs: os
     str
         file name of the resulting file
     """
+
+    # Open dataset to get original crs info
+    input_dataset = gdal.Open(input_filename)
+    input_crs = osr.SpatialReference(wkt=input_dataset.GetProjectionRef())
+
     # Transform data if needed
     if not input_crs.IsSame(output_crs):
 
@@ -269,9 +274,10 @@ def _reproject_geotiff(input_filename: str, output_filename: str, output_crs: os
 
     # If no transformation is needed, still output a new geotiff
     else:
-        input_dataset = gdal.Open(input_filename)
         output_driver = gdal.GetDriverByName('GTiff')
         output_driver.CreateCopy(output_filename, input_dataset)
+
+    del input_dataset
 
     if not os.path.exists(output_filename) and logger is not None:
         logger.warning(f'file not created: {output_filename}')
