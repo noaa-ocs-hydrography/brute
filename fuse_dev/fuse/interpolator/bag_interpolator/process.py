@@ -29,7 +29,7 @@ class RasterInterpolator:
         pass
 
     def interpolate(self, dataset: gdal.Dataset, method: str, support_files: [str], size: int, catzoc: str = 'A2/B',
-                    io: bool = False) -> gdal.Dataset:
+                    io: bool = True) -> gdal.Dataset:
         """
 
         Parameters

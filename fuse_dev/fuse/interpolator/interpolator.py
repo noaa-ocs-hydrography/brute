@@ -76,6 +76,9 @@ class Interpolator:
                 metadata['interpolated'] = True
             else:
                 interpolated_dataset = self._engine.interpolate(dataset, self._resolution, support_files)
+            resolution = interpolated_dataset.GetGeoTransform()[1]
+            metadata['to_filename'] = f"{_os.path.join(root, base)}_{int(resolution if resolution >= 1 else resolution * 100)}" + \
+                                      f"{'m' if resolution >= 1 else 'cm'}_interp.{metadata['point_ext']}"
 
         # Raster Interpolation
         elif self._interp_engine == 'raster':
@@ -85,10 +88,8 @@ class Interpolator:
                 interpolated_dataset = self._engine.interpolate(dataset, self._interp_type, support_files, file_size)
                 metadata['from_filename'] = self.gettag(base)
                 metadata['interpolated'] = True
-
-        resolution = interpolated_dataset.GetGeoTransform()[1]
-        metadata['to_filename'] = f"{_os.path.join(root, base)}_{int(resolution if resolution >= 1 else resolution * 100)}" + \
-                                  f"{'m' if resolution >= 1 else 'cm'}_interp.{metadata['new_ext']}"
+            resolution = interpolated_dataset.GetGeoTransform()[1]
+            metadata['to_filename'] = f"{_os.path.join(root, base)}_interp.{metadata['raster_ext']}"
 
         return interpolated_dataset, metadata
 
