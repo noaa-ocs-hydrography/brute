@@ -95,7 +95,7 @@ def interpolate(dataset: gdal.Dataset, resolution: float, ancillary_coverage_fil
         # but if there are many, see if we can sort out if this is a set line spacing survey
         uniform_density = ((np.sqrt(approximate_alpha_hull.area) / max_neighbor_distance) - 1) ** 2 / approximate_alpha_hull.area
         actual_density = len(points) / approximate_alpha_hull.area
-        _logger.info('Many areas found using initial interpolation radius.  Estimated point density : {uniform_density}, Calculated point density : {actual_density}')
+        _logger.info(f'Many areas found using initial interpolation radius.  Estimated point density : {uniform_density}, Calculated point density : {actual_density}')
         # if the point density is less than if uniformly distributed, this is set line spacing
         if actual_density < max((uniform_density, max_neighbor_distance)):
             _logger.info('Assuming set line spacing survey since calculated density appears low.')
