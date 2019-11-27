@@ -24,21 +24,17 @@ from fuse.fuse_processor import FuseProcessor
 SCRIPT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 
 if __name__ == '__main__':
-    logger = logging.Logger('usace2meta')
-    console = logging.StreamHandler()
-    console.setLevel(logging.DEBUG)
-    console.setFormatter(logging.Formatter('[%(asctime)s] %(name)-30s %(levelname)-8s: %(message)s'))
-    logger.addHandler(console)
+    logger = logging.getLogger('proc')
 
     # wx_frame = wx_window.Open_Frame('USACE')
     start_time = datetime.now()
-    logger.info(f'starting USACE processing')
+    log_name = f'fuse_process_{datetime.now():%Y%m%d_%H%M%S}.log'
     config_filenames = glob(os.path.join(SCRIPT_DIRECTORY, 'ce*.config'))
 
     total_files = 0
 
     for config_index, config_filename in enumerate(config_filenames):
-        usace_processor = FuseProcessor(config_filename)
+        usace_processor = FuseProcessor(config_filename, log_name)
         config_input_root = usace_processor.rawdata_path[0]
 
         survey_directories = [os.path.join(config_input_root, filename) for filename in os.listdir(config_input_root)]
@@ -61,7 +57,6 @@ if __name__ == '__main__':
             else:
                 for xyz_filename in xyz_filenames:
                     try:
-                        logger.info(f'processing {xyz_filename}')
                         usace_processor.process(xyz_filename)
                     except Exception as error:
                         _, _, error_traceback = sys.exc_info()

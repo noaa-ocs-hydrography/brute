@@ -32,15 +32,13 @@ _ehydro_quality_metrics = {
 
 
 class USACERawReader(RawReader):
-    def __init__(self, district: str = None, logger: _logging.Logger = None):
+    def __init__(self, district: str = None):
         self.district = district
         self.survey_feet_per_meter = 0.30480060960121924  # US survey feet to meters
         self.xyz_suffixes = ('_A', '_FULL')
         self.xyz_files = {}
-
-        if logger is None:
-            logger = _logging.getLogger('fuse')
-        self._logger = logger
+ 
+        self._logger = _logging.getLogger('fuse.read')
 
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)

@@ -15,7 +15,7 @@ import caris.coverage as cc
 import numpy as np
 
 
-def write_csar(dataset, m: dict):
+def write_raster(dataset, m: dict):
     """
     Convert a gdal dataset into a csar.
     http://www.teledynecaris.com/en/support/caris-python-api/5-1/coverage/raster/intro.html#creating-a-raster
@@ -33,93 +33,77 @@ def write_csar(dataset, m: dict):
     -------
 
     """
-    band_names = {0: 'Elevation', 1: 'Uncertainty'}
-
-    print('write_csar')
-    name = m['outfilename']
-
-    while os.path.exists(name) and os.path.exists(name + '0'):
+    # set the names of the layers in an assumed order
+    band_names = ['Elevation', 'Uncertainty', 'NBSa', 'NBSb', 'NBSc']
+    # make sure the file does not exist before we write because it corrupts the file.
+    csarname = m['outfilename']
+    while os.path.exists(csarname):
         try:
-            os.remove(name)
+            os.remove(csarname)
         except:
-            pass
+            raise RuntimeError('Unable to remove csar file: {}'.format(csarname))
+    while os.path.exists(csarname + '0'):
         try:
-            os.remove(name + '0')
+            os.remove(csarname + '0')
         except:
-            pass
-
-    resolution = [m['resy'], m['resx']]
-    origin = [m['originx'], m['originy']]
-    dimensions = [m['dimx'], m['dimy']]
-    crs = m['crs']
-    name = m['outfilename']
-
-    dataset = np.array(dataset)
-
+            raise RuntimeError('Unable to remove csar0 file: {}'.format(csarname))
+    # make sure the data has the assumed shape and get the number of layers
     if len(dataset.shape) == 3:
-        print('Two Band Grid')
-        bands = []
-        for band_index, layerName in band_names.items():
-            dataset_band = np.array(dataset[band_index])
-            # print('{}\n{}\n{}'.format(m, dataset, dataset.shape))
-            dataset_band[dataset_band == m['nodata']] = np.nan
+        numlayers, dimy, dimx = dataset.shape
+    elif len(dataset.shape) == 2:
+        print('Single Band Grid')
+        dimy, dimx = dataset.shape
+        numlayers = 1
+        dataset.shape = (1, dimx, dimy)
+    else:
+        msg = 'Array with shape {} provided to csar write process'.format(dataset.shape)
+        raise ValueError(msg)
+    if numlayers > len(band_names):
+        raise ValueError('Too many layers provided: {}'.format(numlayers))
+    # get the metadata for building the layers
+    resolution = [m['resx'], m['resy']]
+    origin = [m['originx'], m['originy']]
+    dimensions = [dimx, dimy]
+    area = ((0, 0), (dimx, dimy))
+    crs = m['crs']
+    ndv = int(m['nodata'])
+
+    bands = []
+    for n in range(numlayers):
+        # get the min / max, and change the vertical direction if needed.
+        dataset_band = np.flipud(dataset[n, :, :])
+        ndv_idx = np.nonzero(dataset_band == ndv)
+        dataset_band[ndv_idx] = np.nan
+        if n == 0:
+            z_type = cc.Direction.HEIGHT
             d_min = np.nanmax(dataset_band)
             d_max = np.nanmin(dataset_band)
-            dataset_band[dataset_band == np.nan] = m['nodata']
-            z_dir = cc.Direction.HEIGHT
-            band_info = cc.BandInfo(name=layerName, type=cc.DataType.FLOAT32, tuple_length=1, direction=z_dir, units='m',
-                                    category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.MAX, minimum=d_min,
-                                    maximum=d_max)
-            bands.append(band_info)
-
-            del dataset_band
-        raster = cc.create_raster(name, crs, origin, resolution, dimensions, bands)
-
-        for band_index, layerName in band_names.items():
-            dataset_band = dataset[band_index]
-            idx = (dataset_band < m['nodata']).astype(np.int)
             if not m['z_up']:
-                dataset_band = np.where(idx, -dataset_band, raster.band_info[layerName].ndv)
-            else:
-                dataset_band = np.where(idx, dataset_band, raster.band_info[layerName].ndv)
-
-            # write the data into the csar container
-            band_dtype = raster.band_info[layerName].numpy_dtype
-            area = ((0, 0), (dimensions[0], dimensions[1]))
-            raster.write(layerName, area, dataset_band.astype(band_dtype))
-
-            del dataset_band
-        del raster
-
-    else:
-        print('Single Band Grid')
-        # print('{}\n{}\n{}'.format(m, dataset, dataset.shape))
-        dataset[dataset == m['nodata']] = np.nan
-        d_min = np.nanmax(dataset)
-        dataset[dataset == np.nan] = m['nodata']
-        d_max = np.nanmin(dataset)
-        z_dir = cc.Direction.HEIGHT
-        band_info = cc.BandInfo(name='Elevation', type=cc.DataType.FLOAT32, tuple_length=1, direction=z_dir, units='m',
-                                    category=cc.Category.SCALAR, level_policy=cc.LevelPolicy.MAX, minimum=d_min,
-                                    maximum=d_max)
-        bands = [band_info]
-        raster = cc.create_raster(name, crs, origin, resolution, dimensions, bands)
-        idx = (dataset < m['nodata']).astype(np.int)
-
-        if not m['z_up']:
-            dataset = np.where(idx, -dataset, raster.band_info['Elevation'].ndv)
+                print('Reversing vertical direction of data')
+                dataset_band *= -1
         else:
-            dataset = np.where(idx, dataset, raster.band_info['Elevation'].ndv)
+            z_type = cc.Direction.NAP
+            d_min = np.nanmin(dataset_band)
+            d_max = np.nanmax(dataset_band)
 
-        # write the data into the csar container
-        band_dtype = raster.band_info['Elevation'].numpy_dtype
-        area = ((0, 0), (dimensions[0], dimensions[1]))
-        raster.write("Elevation", area, dataset.astype(band_dtype))
+            # build the band and create the layer
 
-        del raster
+        band_info = cc.BandInfo(name=band_names[n], type=cc.DataType.FLOAT32, tuple_length=1, direction=z_type, units='m',
+                                category=cc.Category.SCALAR, minimum=d_min, maximum=d_max, level_policy=cc.LevelPolicy.MAX)
+
+        bands.append(band_info)
+
+    raster = cc.create_raster(csarname, crs, origin, resolution, dimensions, bands)
+    for n in range(numlayers):
+        dataset_band = np.flipud(dataset[n, :, :])
+        # set no data value and write the data to the layer
+        dataset_band[ndv_idx] = raster.band_info[band_names[n]].ndv
+        band_dtype = band_info.numpy_dtype
+        raster.write(band_names[n], area, dataset_band.astype(band_dtype))
+    del raster
 
 
-def write_cloud(dataset, m: dict):
+def write_points(dataset, m: dict):
     """
     Convert a set of GDAL points to a CSAR point cloud.  The provided data is
     assumed to be a depth (positive down) and is assigned to a height
@@ -252,10 +236,13 @@ def main():
     # read the metadata into variables and send to the write method
     check_metadata(metadata, outfile_type)
 
-    if outfile_type == 'gdal':
-        write_csar(data, metadata)
-    elif outfile_type == 'point':
-        write_cloud(data, metadata)
+    try:
+        if outfile_type == 'gdal':
+            write_raster(data, metadata)
+        elif outfile_type == 'point':
+            write_points(data, metadata)
+    except Exception as error:
+        print('{}: {}'.format(error.__class__.__name__, error), file=sys.stderr)
 
 
 if __name__ == '__main__':

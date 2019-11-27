@@ -10,6 +10,7 @@ Created on Thu Jan 31 10:03:30 2019
 import configparser as _cp
 import logging as _logging
 import os as _os
+from datetime import datetime as _datetime
 
 import fuse.datum_transform.transform as _trans
 import fuse.interpolator.interpolator as _interp
@@ -92,7 +93,7 @@ class FuseProcessor:
         'supersession_score',
     ]
 
-    def __init__(self, config_filename: str = 'generic.config'):
+    def __init__(self, config_filename: str = 'generic.config', log_filename: str = None):
         """
         Initialize with the metadata file to use and the horizontal and
         vertical datums of the workflow.
@@ -109,6 +110,7 @@ class FuseProcessor:
         self.procdata_path = self._config['outpath']
         self._cols = FuseProcessor._paths + FuseProcessor._dates + FuseProcessor._datums + FuseProcessor._quality_metrics + FuseProcessor._scores + FuseProcessor._source_info + FuseProcessor._processing_info
 
+        self._meta = {}  # initialize the metadata holder
         if 'metatable' in self._config:
             hostname, database, table = self._config['metatable'].split('/')
             self._meta_obj = _mr.MetadataDatabase(hostname, database, table, self._cols)
@@ -116,8 +118,13 @@ class FuseProcessor:
             self._meta_obj = _mr.MetadataFile(self._config['metapath'], self._cols)
         else:
             raise ConfigParseError('configuration does not specify metadata table or file')
-
-        self.logger = self._set_log('fuse')
+        
+        # build the process logger
+        if log_filename == None:
+            self.process_log_name = f'fuse_process_{_datetime.now():%Y%m%d_%H%M%S}.log'
+        else:
+            self.process_log_name = log_filename
+        self.logger = self._set_log(self.process_log_name)
         self.logger.info(f'configuration file: {self._config_filename}')
         self.logger.info(f'data input: {self.rawdata_path}')
         self.logger.info(f'data output: {self.procdata_path}')
@@ -128,7 +135,6 @@ class FuseProcessor:
         self._set_data_interpolator()
         self._set_data_writer()
         self._db = None
-        self._meta = {}  # initialize the metadata holder
 
         self.logger.info('ready to start processing')
 
@@ -235,31 +241,31 @@ class FuseProcessor:
         try:
             reader_type = self._config['raw_reader_type'].casefold()
             if reader_type == 'cenan':
-                self._reader = _usace.cenan.CENANRawReader(self.logger)
+                self._reader = _usace.cenan.CENANRawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'cemvn':
-                self._reader = _usace.cemvn.CEMVNRawReader(self.logger)
+                self._reader = _usace.cemvn.CEMVNRawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'cesaj':
-                self._reader = _usace.cesaj.CESAJRawReader(self.logger)
+                self._reader = _usace.cesaj.CESAJRawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'cesam':
-                self._reader = _usace.cesam.CESAMRawReader(self.logger)
+                self._reader = _usace.cesam.CESAMRawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'ceswg':
-                self._reader = _usace.ceswg.CESWGRawReader(self.logger)
+                self._reader = _usace.ceswg.CESWGRawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'cespl':
-                self._reader = _usace.cespl.CESPLRawReader(self.logger)
+                self._reader = _usace.cespl.CESPLRawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'cenae':
-                self._reader = _usace.cenae.CENAERawReader(self.logger)
+                self._reader = _usace.cenae.CENAERawReader()
                 self._read_type = 'ehydro'
             elif reader_type == 'bag':
-                self._reader = _noaa.bag.BAGSurvey(self._config['outpath'], self.logger)
+                self._reader = _noaa.bag.BAGSurvey(self._config['outpath'])
                 self._read_type = 'bag'
             elif reader_type == 'bps':
-                self._reader = _noaa.bps.BPSRawReader(self.logger)
+                self._reader = _noaa.bps.BPSRawReader()
                 self._read_type = 'bps'
             else:
                 raise ValueError('reader type not implemented')
@@ -286,8 +292,8 @@ class FuseProcessor:
             self._point_extension = 'csar'
         else:
             self._point_extension = self._raster_extension
-        self._raster_writer = ProcIO('gdal', self._raster_extension, logger=self.logger)
-        self._point_writer = ProcIO('point', self._point_extension, logger=self.logger)
+        self._raster_writer = ProcIO('gdal', self._raster_extension)
+        self._point_writer = ProcIO('point', self._point_extension)
 
     def read(self, dataid: str) -> [str]:
         """
@@ -315,13 +321,14 @@ class FuseProcessor:
                 metadata = [metadata]
         except (RuntimeError, TypeError) as error:
             logger.warning(f'{error.__class__.__name__} {error}')
+            self.logger.warning(f'{error.__class__.__name__} {error}')
             return []
         from_id = []
         for m in metadata:
             # get the config file information
             m = self._add_config_metadata(m)
             # check to see if the quality metadata is available.
-            if not self._quality_metadata_ready(m, logger):
+            if not self._quality_metadata_ready(m):
                 logger.warning('Not all quality metadata was found during read.')
             else:
                 logger.info('All quality metadata was found during read.')
@@ -402,6 +409,7 @@ class FuseProcessor:
                 dataset, metadata, transformed = self._transform.reproject(frompath, metadata)
             except (ValueError, RuntimeError, IndexError) as error:
                 logger.warning(f'transformation error: {error.__class__.__name__} - {error}')
+                self.logger.warning(f'transformation error: {error.__class__.__name__} - {error}')
                 metadata['interpolate'] = False
 
             self._meta_obj.insert_records(metadata)
@@ -421,7 +429,7 @@ class FuseProcessor:
                         self._raster_writer.write(dataset, metadata['to_filename'])
                     except (ValueError, RuntimeError, IndexError) as error:
                         logger.warning(f'interpolation error: {error.__class__.__name__} - {error}')
-
+                        self.logger.warning(f'interpolation error: {error.__class__.__name__} - {error}')
                 else:
                     if self._read_type in ['ehydro', 'bps']:
                         metadata['to_filename'] = f'{metadata["outpath"]}.{metadata["new_ext"]}'
@@ -528,7 +536,7 @@ class FuseProcessor:
             else:
                 raise ValueError('No database location defined in the configuration file.')
 
-    def _set_log(self, name: str, file_level: str = _logging.DEBUG, console_level: str = _logging.INFO) -> _logging.Logger:
+    def _set_log(self, name: str, file_level: int = _logging.NOTSET, console_level: int = _logging.NOTSET) -> _logging.Logger:
         """
         Set the global logger to the given filename.
 
@@ -546,29 +554,36 @@ class FuseProcessor:
         logging.Logger
             logging object
         """
-
-        name = _os.path.splitext(_os.path.basename(name))[0]
         log_directory = _os.path.dirname(self._config['metapath']) if 'metapath' in self._config else self._config['outpath']
-        log_filename = _os.path.join(log_directory, f'{name}.log')
-        self._config['logfilename'] = log_filename
-
-        logger = _logging.Logger(name)
-
+        if name == self.process_log_name:
+            logger = _logging.getLogger('proc')
+            log_filename = _os.path.join(log_directory, self.process_log_name)
+        else:
+            if 'logfilename' in self._meta:
+                log_filename = self._meta['logfilename']
+            else:
+                name = _os.path.splitext(_os.path.basename(name))[0]
+                log_filename = _os.path.join(log_directory, f'{name}.log')
+            
+            logger = _logging.getLogger('fuse')
+            self._meta['logfilename'] = log_filename
         # remove handlers that might have existed from previous files
-        # self._close_log(logger)
+        self._close_log(logger)
 
-        log_format = '[%(asctime)s] %(name)-30s %(levelname)-8s: %(message)s'
+        log_format = '[%(asctime)s] %(name)-9s %(levelname)-8s: %(message)s'
 
         # create handlers for this filename
         log_file = _logging.FileHandler(log_filename)
         log_file.setLevel(file_level)
         log_file.setFormatter(_logging.Formatter(log_format))
         logger.addHandler(log_file)
-
-        console = _logging.StreamHandler()
-        console.setLevel(console_level)
-        console.setFormatter(_logging.Formatter(log_format))
-        logger.addHandler(console)
+        logger.setLevel(_logging.DEBUG)
+        
+        if name == self.process_log_name:
+            console = _logging.StreamHandler()
+            console.setLevel(console_level)
+            console.setFormatter(_logging.Formatter(log_format))
+            logger.addHandler(console)
 
         return logger
 
@@ -643,7 +658,7 @@ class FuseProcessor:
 
         return all(key in metadata for key in datum_keys if key != 'to_horiz_key')
 
-    def _quality_metadata_ready(self, metadata, logger: _logging.Logger = None):
+    def _quality_metadata_ready(self, metadata):
         """
         Check the metadata to see if the required fields are populated.
 
@@ -659,8 +674,7 @@ class FuseProcessor:
             whether metadata has all quality fields
         """
 
-        if logger is None:
-            logger = self._set_log(metadata['from_filename'])
+        logger = self._set_log(metadata['from_filename'])
 
         # check the feature metadata
         if 'feat_detect' in metadata:

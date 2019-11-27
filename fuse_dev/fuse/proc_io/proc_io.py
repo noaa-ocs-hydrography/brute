@@ -12,14 +12,17 @@ import os
 import pickle
 import subprocess
 from tempfile import TemporaryDirectory as tempdir
+from typing import Union
 
 import fiona
 import fiona.crs
 import numpy as np
-from fuse.utilities import vectorize_raster, gdal_to_xyz
 from osgeo import gdal, osr
-from shapely.geometry import MultiPoint
+from shapely.geometry import MultiPoint, MultiPolygon, shape as shapely_shape
 
+import rasterio
+from rasterio.features import shapes as rasterio_shapes
+from affine import Affine
 gdal.UseExceptions()
 from fuse.proc_io import caris
 
@@ -70,7 +73,7 @@ class ProcIO:
         else:
             self._work_dir_name = work_dir
 
-        self._logger = logger if logger is not None else logging.getLogger('fuse')
+        self._logger = logger if logger is not None else logging.getLogger('fuse.proc')
 
         if self._out_data_type == "carisbdb51":
             if db_name is not None and db_loc is not None:
@@ -79,6 +82,7 @@ class ProcIO:
                 self._bdb.connect()
             else:
                 raise ValueError('No database name or location provided')
+
 
     def write(self, dataset: gdal.Dataset, filename: str, metadata: dict = None, show_console: bool = False):
         """
@@ -121,11 +125,13 @@ class ProcIO:
         else:
             raise ValueError(f'writer type unknown: {self._out_data_type}')
 
+
     def close_connection(self):
         """ Closes connection to the bathymetric database """
 
         if self._out_data_type == 'carisbdb51':
             self._bdb.die()
+
 
     def _write_csar(self, raster: gdal.Dataset, filename: str, show_console: bool = False):
         """
@@ -210,6 +216,7 @@ class ProcIO:
             self._logger.error(error_string)
             raise RuntimeError(error_string)
 
+
     def _write_bag(self, raster: gdal.Dataset, filename: str, metadata: dict = None):
         """
         Write the given GDAL raster dataset to a BAG file.
@@ -258,6 +265,7 @@ class ProcIO:
             self._logger.info(f'Created BAG file at {filename}')
 
         # template_xml_dir.cleanup()
+
 
     def _write_points(self, points: gdal.Dataset, filename: str, layer: int = 0, output_layer: str = 'Elevation'):
         """
@@ -315,23 +323,6 @@ class ProcIO:
         with fiona.open(filename, 'w', 'GPKG', schema=layer_schema, crs=projection, layer=output_layer) as output_file:
             output_file.writerecords(point_records)
 
-    def _write_vectorized_raster(self, filename: str, raster: gdal.Dataset, crs_wkt: str, band_index: int = 1, layer: str = 'Elevation'):
-        """
-        Write the given GDAL raster dataset to a GDAL vector dataset (vectorizing to a multipolygon).
-
-        Parameters
-        ----------
-        filename
-            file path to write
-        raster
-            GDAL raster dataset
-        band_index
-            raster band (1-indexed)
-        layer
-            name of output layer
-        """
-
-        write_geometry(filename, vectorize_raster(raster, band_index), crs_wkt, name=os.path.basename(filename), layer=layer)
 
     def _gdal_raster_to_array(self, raster: gdal.Dataset) -> (np.array, dict):
         """
@@ -443,3 +434,168 @@ class ProcIO:
 
         del raster_band
         return raster
+
+def gdal_to_xyz(dataset: gdal.Dataset, index: int = 0, nodata: float = None) -> np.array:
+    """
+    Extract XYZ points from a GDAL dataset.
+
+    Parameters
+    ----------
+    dataset
+        GDAL dataset (point cloud or raster)
+    index
+        zero-based index of layer / band to read from the given dataset
+    nodata
+        value to exclude from point creation
+
+    Returns
+    -------
+    numpy.array
+        N x 3 array of XYZ points
+    """
+
+    is_raster = dataset.GetProjectionRef() != ''
+
+    if index < 0:
+        index += dataset.RasterCount if is_raster else dataset.GetLayerCount()
+
+    if is_raster:
+        raster_band = dataset.GetRasterBand(index + 1)
+        geotransform = dataset.GetGeoTransform()
+
+        if nodata is None:
+            nodata = raster_band.GetNoDataValue()
+
+        return geoarray_to_xyz(raster_band.ReadAsArray(), origin=(geotransform[0], geotransform[3]),
+                               resolution=(geotransform[1], geotransform[5]), nodata=nodata)
+    else:
+        point_layer = dataset.GetLayerByIndex(index)
+        num_points = point_layer.GetFeatureCount()
+
+        output_points = np.empty((num_points, 3))
+        for point_index in range(num_points):
+            feature = point_layer.GetFeature(point_index)
+            output_point = feature.geometry().GetPoint()
+
+            if output_point[2] != nodata:
+                output_points[point_index, :] = output_point
+
+        return output_points
+    
+def vectorize_raster(raster: Union[gdal.Dataset, str], band: int = 0) -> MultiPolygon:
+    """
+    Vectorize the extent of the given raster where data exists.
+
+    Parameters
+    ----------
+    raster
+        GDAL raster dataset or filename of raster
+    band
+        zero-based index of raster band
+
+    Returns
+    -------
+    MultiPolygon
+        Shapely multipolygon of coverage extent
+    """
+
+    if type(raster) is gdal.Dataset:
+        raster_band = raster.GetRasterBand(band + 1)
+        raster_array = raster_band.ReadAsArray()
+        del raster_band
+        transform = Affine.from_gdal(*raster.GetGeoTransform())
+    elif type(raster) is str:
+        with rasterio.open(raster) as raster:
+            raster_array = raster.read()
+            transform = raster.transform
+    else:
+        raise NotImplementedError(f'unsupported input type {type(raster)}')
+
+    return vectorize_geoarray(raster_array, transform)
+
+
+def vectorize_geoarray(array: np.array, transform: Affine, nodata: float = None) -> MultiPolygon:
+    """
+    Vectorize the extent of the given georeferenced array where data exists.
+
+    Parameters
+    ----------
+
+    array
+        array of gridded data
+    transform
+        Affine transform of geoarray
+    nodata
+        value where there is no data
+
+    Returns
+    -------
+    MultiPolygon
+        Shapely polygon or multipolygon of coverage extent
+    """
+
+    raster_mask = array_coverage(array, nodata)
+    return MultiPolygon(shapely_shape(shape[0]) for shape in rasterio_shapes(np.where(raster_mask, 1, 0), mask=raster_mask,
+                                                                             transform=transform))
+
+
+def geoarray_to_xyz(data: np.array, origin: (float, float), resolution: (float, float), nodata: float = None) -> np.array:
+    """
+    Extract XYZ points from an array of data using the given raster-like georeference (origin  and resolution).
+
+    Parameters
+    ----------
+    data
+        2D array of gridded data
+    origin
+        X, Y coordinates of northwest corner
+    resolution
+        cell size
+    nodata
+        value to exclude from point creation from the input grid
+
+    Returns
+    -------
+    numpy.array
+        N x 3 array of XYZ points
+    """
+
+    if nodata is None:
+        nodata = np.nan
+
+    x_values, y_values = np.meshgrid(np.linspace(origin[0], origin[0] + resolution[0] * data.shape[1], data.shape[1]),
+                                        np.linspace(origin[1], origin[1] + resolution[1] * data.shape[0], data.shape[0]))
+
+    return np.stack((x_values[data != nodata], y_values[data != nodata], data[data != nodata]), axis=1)
+
+
+def array_coverage(array: np.array, nodata: float = None) -> np.array:
+    """
+    Get a boolean array of where data exists in the given array.
+
+    Parameters
+    ----------
+    array
+        array of gridded data with dimensions (Z)YX
+    nodata
+        value where there is no data in the given array
+
+    Returns
+    -------
+    numpy.array
+        array of booleans indicating where data exists
+    """
+
+    if len(array.shape) > 2:
+        array = np.squeeze(array)
+
+    if nodata is None:
+        nodata = np.nan
+
+    # TODO find reduced generalization of band coverage
+    if array.shape[0] == 3:
+        coverage = (array[0, :, :] != nodata) | (array[1, :, :] != nodata) | (array[2, :, :] != nodata)
+    else:
+        coverage = array != nodata
+
+    return coverage

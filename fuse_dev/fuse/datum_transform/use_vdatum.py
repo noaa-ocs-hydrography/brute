@@ -74,7 +74,7 @@ class VDatum:
         else:
             raise ValueError(f'Invalid java path: {java_path}')
 
-        self._logger = logger if logger is not None else logging.getLogger('fuse')
+        self._logger = logger if logger is not None else logging.getLogger('fuse.tran')
 
     def translate(self, filename: str, instructions: dict) -> gdal.Dataset:
         """

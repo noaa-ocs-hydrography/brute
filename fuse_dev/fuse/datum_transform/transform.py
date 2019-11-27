@@ -48,7 +48,7 @@ class DatumTransformer:
         """
 
         self._reader = reader
-        self._logger = logger if logger is not None else logging.getLogger('fuse')
+        self._logger = logger if logger is not None else logging.getLogger('fuse.tran')
         self._engine = uv.VDatum(vdatum_path, java_path, self._reader, self._logger)
 
     def reproject(self, filename: str, metadata: dict) -> (gdal.Dataset, dict, bool):

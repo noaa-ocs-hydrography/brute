@@ -126,7 +126,7 @@ class BAGRawReader(RawReader):
         """
         self.data = {}
         self.out_file_location = out_file_location
-        self._logger = _logging.getLogger('fuse')
+        self._logger = _logging.getLogger('fuse.read')
 
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)
@@ -1117,10 +1117,8 @@ class BAGSurvey(BAGRawReader):
     """
     survey_meta = []
 
-    def __init__(self, out_file_location, logger: _logging.Logger = None):
-        if logger is None:
-            logger = _logging.getLogger('fuse')
-        self.logger = logger
+    def __init__(self, out_file_location):
+        self.logger = _logging.getLogger('data.read')
         BAGRawReader.__init__(self, out_file_location)
 
     def read_metadata(self, survey_folder: str) -> [dict]:
@@ -1364,7 +1362,7 @@ class BagFile:
 
     def __init__(self, pixel_is_area=True, logger: _logging.Logger = None):
         if logger is None:
-            logger = _logging.getLogger('fuse')
+            logger = _logging.getLogger('fuse.read')
         self.logger = logger
 
         self.name = None

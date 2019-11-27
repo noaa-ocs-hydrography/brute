@@ -31,12 +31,8 @@ __version__ = 'FUSE'
 class CESAJRawReader(USACERawReader):
     """ This class passes back bathymetry & a metadata dictionary from the e-Hydro files """
 
-    def __init__(self, logger: logging.Logger = None):
-        if logger is None:
-            logger = logging.getLogger('fuse')
-        self.logger = logger
-
-        super().__init__('CESAJ', self.logger)
+    def __init__(self):
+        super().__init__('CESAJ')
 
     def read_metadata(self, filename: str) -> dict:
         """
@@ -283,7 +279,7 @@ class EhydroPickleReader(object):
         """
 
         if logger is None:
-            logger = logging.getLogger('fuse')
+            logger = logging.getLogger('fuse.read')
         self.logger = logger
 
         self.filename = infilename
@@ -435,7 +431,7 @@ class XYZMetaReader(object):
         """
 
         if logger is None:
-            logger = logging.getLogger('fuse')
+            logger = logging.getLogger('fuse.read')
         self.logger = logger
 
         self.filename = preloadeddata

@@ -34,7 +34,7 @@ def fips2wkt(fips: int, units: str = 'FEET', logger: logging.Logger = None) -> s
     """
 
     if logger is None:
-        logger = logging.getLogger('fuse')
+        logger = logging.getLogger('fuse.fips')
 
     # combine the fips code with units to get the ERSI code
     if units == 'FEET':

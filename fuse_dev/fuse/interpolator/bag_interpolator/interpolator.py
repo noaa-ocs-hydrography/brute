@@ -13,9 +13,6 @@ import numpy as _np
 import scipy as _scipy
 
 
-#from fuse.utilities import array_edge_points
-
-
 def tupleGrid(grid: _np.array, nodata: int):
     """
     Takes an input matrix and an assumed nodata value. The function iterates

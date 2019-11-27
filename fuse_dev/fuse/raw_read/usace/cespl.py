@@ -21,9 +21,5 @@ from fuse.raw_read.usace.usace import USACERawReader
 
 
 class CESPLRawReader(USACERawReader):
-    def __init__(self, logger: logging.Logger = None):
-        if logger is None:
-            logger = logging.getLogger('fuse')
-        self.logger = logger
-
-        super().__init__('CESPL', self.logger)
+    def __init__(self):
+        super().__init__('CESPL')

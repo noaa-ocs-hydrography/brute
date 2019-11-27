@@ -73,14 +73,12 @@ class BPSRawReader(RawReader):
     data types.
     """
 
-    def __init__(self, logger: _logging.Logger = None):
+    def __init__(self):
         """
         Initialize the logger for the read process.
         """
 
-        if logger is None:
-            logger = _logging.getLogger('fuse')
-        self._logger = logger
+        self._logger = _logging.getLogger('data.read')
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)
             ch.setLevel(_logging.DEBUG)
