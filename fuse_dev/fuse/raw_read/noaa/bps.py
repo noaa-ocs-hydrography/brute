@@ -78,7 +78,7 @@ class BPSRawReader(RawReader):
         Initialize the logger for the read process.
         """
 
-        self._logger = _logging.getLogger('data_log')
+        self._logger = _logging.getLogger('data.read')
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)
             ch.setLevel(_logging.DEBUG)

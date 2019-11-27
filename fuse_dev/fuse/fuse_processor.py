@@ -536,7 +536,7 @@ class FuseProcessor:
             else:
                 raise ValueError('No database location defined in the configuration file.')
 
-    def _set_log(self, name: str, file_level: str = _logging.NOTSET, console_level: str = _logging.NOTSET) -> _logging.Logger:
+    def _set_log(self, name: str, file_level: int = _logging.NOTSET, console_level: int = _logging.NOTSET) -> _logging.Logger:
         """
         Set the global logger to the given filename.
 
@@ -554,28 +554,30 @@ class FuseProcessor:
         logging.Logger
             logging object
         """
-        if 'logfilename' in self._meta:
-            log_filename = self._meta['logfilename']
-        else:
-            name = _os.path.splitext(_os.path.basename(name))[0]
-            log_directory = _os.path.dirname(self._config['metapath']) if 'metapath' in self._config else self._config['outpath']
-            log_filename = _os.path.join(log_directory, f'{name}.log')
-        
+        log_directory = _os.path.dirname(self._config['metapath']) if 'metapath' in self._config else self._config['outpath']
         if name == self.process_log_name:
-            logger = _logging.Logger(name)
+            logger = _logging.getLogger('proc')
+            log_filename = _os.path.join(log_directory, self.process_log_name)
         else:
-            logger = _logging.Logger('data_log')
+            if 'logfilename' in self._meta:
+                log_filename = self._meta['logfilename']
+            else:
+                name = _os.path.splitext(_os.path.basename(name))[0]
+                log_filename = _os.path.join(log_directory, f'{name}.log')
+            
+            logger = _logging.getLogger('fuse')
             self._meta['logfilename'] = log_filename
-            # remove handlers that might have existed from previous files
-            # self._close_log(logger)
+        # remove handlers that might have existed from previous files
+        self._close_log(logger)
 
-        log_format = '[%(asctime)s] %(name)-30s %(levelname)-8s: %(message)s'
+        log_format = '[%(asctime)s] %(name)-9s %(levelname)-8s: %(message)s'
 
         # create handlers for this filename
         log_file = _logging.FileHandler(log_filename)
         log_file.setLevel(file_level)
         log_file.setFormatter(_logging.Formatter(log_format))
         logger.addHandler(log_file)
+        logger.setLevel(_logging.DEBUG)
         
         if name == self.process_log_name:
             console = _logging.StreamHandler()

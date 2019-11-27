@@ -73,7 +73,7 @@ class ProcIO:
         else:
             self._work_dir_name = work_dir
 
-        self._logger = logger if logger is not None else logging.getLogger('fuse')
+        self._logger = logger if logger is not None else logging.getLogger('fuse.proc')
 
         if self._out_data_type == "carisbdb51":
             if db_name is not None and db_loc is not None:

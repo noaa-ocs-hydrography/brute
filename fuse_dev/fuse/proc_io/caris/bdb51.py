@@ -70,7 +70,7 @@ class BDB51:
         self.database_loc = database_loc
         self.database_name = database_name
         self.caris_environment_name = caris_env_name
-        self._logger = logging.getLogger('fuse')
+        self._logger = logging.getLogger('fuse.bdb')
 
         if len(self._logger.handlers) == 0:
             ch = logging.StreamHandler(sys.stdout)

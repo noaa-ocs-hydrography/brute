@@ -112,7 +112,7 @@ class XMLMetadata:
         """
 
         if logger is None:
-            logger = _logging.getLogger('fuse')
+            logger = _logging.getLogger('fuse.read')
         self.logger = logger
 
         self.filename = filename
@@ -128,7 +128,7 @@ class XMLMetadata:
         self._set_format()
         self.get_fields()
 
-        self._logger = _logging.getLogger('fuse')
+        self._logger = _logging.getLogger('fuse.read')
 
         if len(self._logger.handlers) == 0:
             ch = _logging.StreamHandler(_sys.stdout)

@@ -10,8 +10,6 @@ An abstraction for data interpolation.
 """
 
 import os as _os
-import sys as _sys
-import logging as _logging
 
 import fuse.interpolator.bag_interpolator as binterp
 import fuse.interpolator.point_interpolator as pinterp
@@ -25,10 +23,7 @@ class Interpolator:
         """
         Set the interpolation method.
         """
-        self._logger = _logging.getLogger('data_log')
-        if len(self._logger.handlers) == 0:
-            ch = _logging.StreamHandler(_sys.stdout)
-            self._logger.addHandler(ch)
+
         self._interp_engine = interpolation_engine
         self._interp_type = interp_type
         self._resolution = resolution

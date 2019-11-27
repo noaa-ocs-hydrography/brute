@@ -36,7 +36,7 @@ def read_pickle(filename: str, pickle_ext: bool = False, logger: logging.Logger 
     """
 
     if logger is None:
-        logger = logging.getLogger('fuse')
+        logger = logging.getLogger('fuse.read')
 
     pickle_metadata = {}
 

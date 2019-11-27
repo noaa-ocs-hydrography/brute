@@ -273,7 +273,7 @@ class EhydroPickleReader(object):
         """
 
         if logger is None:
-            logger = logging.getLogger('fuse')
+            logger = logging.getLogger('fuse.read')
         self.logger = logger
         self.filename = infilename
 
@@ -415,7 +415,7 @@ class XYZMetaReader(object):
         """
 
         if logger is None:
-            logger = logging.getLogger('fuse')
+            logger = logging.getLogger('fuse.read')
         self.logger = logger
         self.filename = preloadeddata
         if filename != "" or None:

@@ -37,10 +37,7 @@ CATZOC = {
     'C': [.05, 2]
 }
 
-_logger = _logging.getLogger('data_log')
-if len(_logger.handlers) == 0:
-    ch = _logging.StreamHandler(_sys.stdout)
-    _logger.addHandler(ch)
+_logger = _logging.getLogger('fuse.intp')
 
 # ============================================================================
 
