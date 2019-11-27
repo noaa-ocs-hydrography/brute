@@ -1318,7 +1318,7 @@ class BAGSurvey(BAGRawReader):
         combined_surface_metadata['from_filename'] = f"{survey_id}_Xof{num_files}.combined"
 
         if have_support_files:
-            combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}_Combined.bag")
+            combined_surface_metadata['from_path'] = _os.path.join(self.out_file_location, f"{survey_id}_Xof{num_files}.bag")
             combined_surface_metadata['interpolate'] = True
 
             # build an array to house the combined dataset
