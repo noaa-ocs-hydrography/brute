@@ -5,12 +5,13 @@ Created on Thu Jan 31 10:47:59 2019
 @author: grice
 """
 
-import ast as _ast
 import csv as _csv
 import os
 import shutil as _shutil
 from abc import ABC, abstractmethod
+from ast import literal_eval
 from collections import OrderedDict
+from datetime import date, datetime
 from tempfile import NamedTemporaryFile as _NamedTemporaryFile
 from typing import Union, Any
 
@@ -78,6 +79,57 @@ S57_HORIZONTAL_DATUM_TRANSLATIONS = {
 FIELDS_EXCLUDED_FROM_PREFIX = ('from_filename', 'from_path')
 
 CATZOC_UNCERTAINTY = {'A1': 5, 'A2': 20, 'B': 50, 'C': 500}
+
+FIELD_TYPES = {
+    'from_filename': str,
+    'from_path': str,
+    'to_filename': str,
+    'support_files': list,
+    'start_date': date,
+    'end_date': date,
+    'from_horiz_datum': str,
+    'from_horiz_frame': str,
+    'from_horiz_type': str,
+    'from_horiz_units': str,
+    'from_horiz_key': str,
+    'from_vert_datum': str,
+    'from_vert_key': str,
+    'from_vert_units': str,
+    'from_vert_direction': str,
+    'to_horiz_frame': str,
+    'to_horiz_type': str,
+    'to_horiz_units': str,
+    'to_horiz_key': str,
+    'to_vert_datum': str,
+    'to_vert_key': str,
+    'to_vert_units': str,
+    'to_vert_direction': str,
+    'from_horiz_unc': float,
+    'from_horiz_resolution': float,
+    'from_vert_unc': float,
+    'complete_coverage': bool,
+    'bathymetry': bool,
+    'vert_uncert_fixed': float,
+    'vert_uncert_vari': float,
+    'horiz_uncert_fixed': float,
+    'horiz_uncert_vari': float,
+    'to_horiz_resolution': float,
+    'feat_size': float,
+    'feat_detect': bool,
+    'feat_least_depth': bool,
+    'catzoc': str,
+    'supersession_score': str,
+    'agency': str,
+    'source_indicator': str,
+    'source_type': str,
+    'interpolated': bool,
+    'posted': bool,
+    'license': str,
+    'logfilename': str,
+    'version_reference': str,
+    'interpolate': bool,
+    'file_size': float
+}
 
 
 class MetadataTable(ABC):
@@ -212,20 +264,13 @@ class MetadataTable(ABC):
                 for prefix_name, prefix in self.column_prefixes.items():
                     if prefix in column_name:
                         metadata_key = column_name.replace(prefix, '')
-                        if type(value) is str:
-                            if metadata_key == 'support_files':
-                                value = _ast.literal_eval(value)
-                            elif value.capitalize() in ['True', 'False']:
-                                value = _ast.literal_eval(value.capitalize())
-                            elif metadata_key not in ['from_horiz_key', 'from_vert_key', 'to_horiz_key', 'to_vert_key']:
-                                try:
-                                    value = float(value)
-                                except ValueError:
-                                    pass
-                        entries_by_prefix[prefix_name][metadata_key] = value
+                        prefix_key = prefix_name
                         break
                 else:
-                    entries_by_prefix['base'][column_name] = value
+                    metadata_key = column_name
+                    prefix_key = 'base'
+
+                entries_by_prefix[prefix_key][metadata_key] = value
 
         # combine the dictionaries, overwriting the prefixed columns according to the order specified in the class attribute
         simplified_row = entries_by_prefix['base']
@@ -239,55 +284,12 @@ class MetadataDatabase(MetadataTable):
 
     column_prefixes = OrderedDict([('script', 'script_'), ('manual', 'manual_')])
 
-    postgres_field_types = {
-        'from_filename': 'VARCHAR',
-        'from_path': 'VARCHAR',
-        'to_filename': 'VARCHAR',
-        'support_files': 'VARCHAR[]',
-        'start_date': 'DATE',
-        'end_date': 'DATE',
-        'from_horiz_datum': 'VARCHAR',
-        'from_horiz_frame': 'VARCHAR',
-        'from_horiz_type': 'VARCHAR',
-        'from_horiz_units': 'VARCHAR',
-        'from_horiz_key': 'VARCHAR',
-        'from_vert_datum': 'VARCHAR',
-        'from_vert_key': 'VARCHAR',
-        'from_vert_units': 'VARCHAR',
-        'from_vert_direction': 'VARCHAR',
-        'to_horiz_frame': 'VARCHAR',
-        'to_horiz_type': 'VARCHAR',
-        'to_horiz_units': 'VARCHAR',
-        'to_horiz_key': 'VARCHAR',
-        'to_vert_datum': 'VARCHAR',
-        'to_vert_key': 'VARCHAR',
-        'to_vert_units': 'VARCHAR',
-        'to_vert_direction': 'VARCHAR',
-        'from_horiz_unc': 'REAL',
-        'from_horiz_resolution': 'REAL',
-        'from_vert_unc': 'REAL',
-        'complete_coverage': 'BOOL',
-        'bathymetry': 'BOOL',
-        'vert_uncert_fixed': 'REAL',
-        'vert_uncert_vari': 'REAL',
-        'horiz_uncert_fixed': 'REAL',
-        'horiz_uncert_vari': 'REAL',
-        'to_horiz_resolution': 'REAL',
-        'feat_size': 'REAL',
-        'feat_detect': 'BOOL',
-        'feat_least_depth': 'BOOL',
-        'catzoc': 'VARCHAR',
-        'supersession_score': 'VARCHAR',
-        'agency': 'VARCHAR',
-        'source_indicator': 'VARCHAR',
-        'source_type': 'VARCHAR',
-        'interpolated': 'BOOL',
-        'posted': 'BOOL',
-        'license': 'VARCHAR',
-        'logfilename': 'VARCHAR',
-        'version_reference': 'VARCHAR',
-        'interpolate': 'BOOL',
-        'file_size': 'REAL'
+    postgres_types = {
+        'str': 'VARCHAR',
+        'float': 'REAL',
+        'int': 'INTEGER',
+        'list': 'VARCHAR[]',
+        'date': 'DATE'
     }
 
     def __init__(self, hostname: str, database: str, table: str, fields: [str], primary_key: str = 'from_filename'):
@@ -326,10 +328,12 @@ class MetadataDatabase(MetadataTable):
         with self.connection:
             with self.connection.cursor() as cursor:
                 if not database_has_table(cursor, self.table_name):
-                    data_types = {key: value for key, value in self.postgres_field_types.items() if key in FIELDS_EXCLUDED_FROM_PREFIX}
-                    data_types.update({f'{prefix}{key}': value for prefix_name, prefix in self.column_prefixes.items()
-                                       for key, value in self.postgres_field_types.items() if key not in FIELDS_EXCLUDED_FROM_PREFIX})
-                    data_types.update({key: 'VARCHAR' for key in self.column_names if key not in data_types})
+                    data_types = {key: self.postgres_types[value.__name__] for key, value in FIELD_TYPES.items() if
+                                  key in FIELDS_EXCLUDED_FROM_PREFIX}
+                    data_types.update({f'{prefix}{key}': self.postgres_types[value.__name__]
+                                       for prefix_name, prefix in self.column_prefixes.items()
+                                       for key, value in FIELD_TYPES.items() if key not in FIELDS_EXCLUDED_FROM_PREFIX})
+                    data_types.update({key: self.postgres_types[str] for key in self.column_names if key not in data_types})
 
                     schema = ['from_filename VARCHAR PRIMARY KEY'] + [f'{field_name} {data_types[field_name]}'
                                                                       for field_name in self.column_names if field_name != 'from_filename']
@@ -426,7 +430,7 @@ class MetadataFile(MetadataTable):
     @property
     def records(self) -> [dict]:
         with open(self.filename, 'r', encoding='utf-8') as csv_file:
-            return [self._simplify_record(row) for row in _csv.DictReader(csv_file)]
+            return [parse_record_values(self._simplify_record(row)) for row in _csv.DictReader(csv_file)]
 
     def records_where(self, where: dict) -> [dict]:
         records = []
@@ -435,13 +439,13 @@ class MetadataFile(MetadataTable):
                 if all(row[key] == value for key, value in where):
                     records.append(row)
 
-        return [self._simplify_record(record) for record in records]
+        return [parse_record_values(self._simplify_record(record)) for record in records]
 
     def __getitem__(self, primary_key_value: str) -> dict:
         with open(self.filename, 'r', encoding='utf-8') as csv_file:
             for row in _csv.DictReader(csv_file):
                 if row['from_filename'] == primary_key_value:
-                    return self._simplify_record(row)
+                    return parse_record_values(self._simplify_record(row))
             else:
                 raise KeyError(f'could not find primary key ("{self.primary_key}") value of \'{primary_key_value}\'')
 
@@ -520,6 +524,46 @@ class MetadataFile(MetadataTable):
 
     def __repr__(self):
         return f'{self.__class__.__name__}(r"{self.filename}", {self.metadata_fields}, "{self.primary_key}")'
+
+
+def parse_record_values(record: dict, field_types: dict = None) -> dict:
+    """
+    Parse the values in the given metadata record into their respective field types.
+
+    Parameters
+    ----------
+    record
+        dictionary mapping metadata fields to values
+    field_types
+        dictionary mapping metadata fields to types
+
+    Returns
+    -------
+    dict
+        metadata record with values parsed into their respective types
+    """
+
+    if field_types is None:
+        field_types = FIELD_TYPES
+
+    for key, value in record.items():
+        field_type = field_types[key]
+
+        if type(value) is not field_type:
+            if field_type is list:
+                value = literal_eval(str(value))
+            elif field_type is bool:
+                value = literal_eval(str(value).capitalize())
+            elif field_type is date:
+                value = datetime.strptime(value, '%Y%m%d').date()
+            elif field_type is int:
+                value = int(value)
+            elif field_type is float:
+                value = float(value)
+
+        record[key] = value
+
+    return record
 
 
 def csv_to_s57(row: dict) -> dict:
