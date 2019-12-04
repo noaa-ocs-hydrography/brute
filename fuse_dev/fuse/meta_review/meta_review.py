@@ -597,11 +597,14 @@ def csv_to_s57(row: dict) -> dict:
     for key, value in row.items():
         if key in S57_BASE_TRANSLATIONS:
             key_in_s57 = S57_BASE_TRANSLATIONS[key]
+            value_type = type(value)
 
-            if value in ('TRUE', 'True'):
-                s57_row[key_in_s57] = 1
-            elif value in ('FALSE', 'False'):
-                s57_row[key_in_s57] = 0
+            if value_type is bool:
+                s57_row[key_in_s57] = 1 if value else 0
+            elif value_type is date:
+                s57_row[key_in_s57] = f'{value:%Y%m%d}'
+            elif value_type is datetime:
+                s57_row[key_in_s57] = f'{value:%Y%m%d%H%M%S}'
             else:
                 s57_row[key_in_s57] = value
 
