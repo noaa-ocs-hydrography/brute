@@ -459,6 +459,15 @@ class MetadataFile(MetadataTable):
 
         assert all(self.primary_key in record for record in records), f'one or more records does not contain "{self.primary_key}"'
 
+        # convert dates into `yyyymmdd` strings
+        for record in records:
+            for field, value in record.items():
+                value_type = type(value)
+                if value_type is date:
+                    record[field] = f'{value:%Y%m%d}'
+                elif value_type is datetime:
+                    record[field] = f'{value:%Y%m%d%H%M%S}'
+
         if os.path.exists(self.filename):
             self._add_to_csv(records)
         # just write a new file since there is not one already
@@ -548,14 +557,15 @@ def parse_record_values(record: dict, field_types: dict = None) -> dict:
 
     for key, value in record.items():
         field_type = field_types[key]
+        value_type = type(value)
 
-        if type(value) is not field_type:
-            if field_type is list:
-                value = literal_eval(str(value))
+        if value_type is not field_type:
+            if field_type is list and value_type is str:
+                value = literal_eval(value)
             elif field_type is bool:
-                value = literal_eval(str(value).capitalize())
+                value = literal_eval(value.capitalize()) if value_type is str else bool(value)
             elif field_type is date:
-                value = datetime.strptime(value, '%Y%m%d').date()
+                value = datetime.strptime(str(value), '%Y%m%d').date()
             elif field_type is int:
                 value = int(value)
             elif field_type is float:
