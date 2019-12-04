@@ -463,10 +463,8 @@ class MetadataFile(MetadataTable):
         for record in records:
             for field, value in record.items():
                 value_type = type(value)
-                if value_type is date:
+                if value_type in [date, datetime]:
                     record[field] = f'{value:%Y%m%d}'
-                elif value_type is datetime:
-                    record[field] = f'{value:%Y%m%d%H%M%S}'
 
         if os.path.exists(self.filename):
             self._add_to_csv(records)
@@ -601,10 +599,8 @@ def csv_to_s57(row: dict) -> dict:
 
             if value_type is bool:
                 s57_row[key_in_s57] = 1 if value else 0
-            elif value_type is date:
+            elif value_type in [date, datetime]:
                 s57_row[key_in_s57] = f'{value:%Y%m%d}'
-            elif value_type is datetime:
-                s57_row[key_in_s57] = f'{value:%Y%m%d%H%M%S}'
             else:
                 s57_row[key_in_s57] = value
 
