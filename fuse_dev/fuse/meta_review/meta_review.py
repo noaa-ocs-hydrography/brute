@@ -342,7 +342,7 @@ class MetadataDatabase(MetadataTable):
                     data_types.update({f'{prefix}{key}': self.postgres_types[value.__name__]
                                        for prefix_name, prefix in self.column_prefixes.items()
                                        for key, value in FIELD_TYPES.items() if key not in FIELDS_EXCLUDED_FROM_PREFIX})
-                    data_types.update({key: self.postgres_types[str] for key in self.column_names if key not in data_types})
+                    data_types.update({key: self.postgres_types['str'] for key in self.column_names if key not in data_types})
 
                     schema = ['from_filename VARCHAR PRIMARY KEY'] + [f'{field_name} {data_types[field_name]}'
                                                                       for field_name in self.column_names if field_name != 'from_filename']
