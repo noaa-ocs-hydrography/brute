@@ -284,12 +284,21 @@ class MetadataDatabase(MetadataTable):
 
     column_prefixes = OrderedDict([('script', 'script_'), ('manual', 'manual_')])
 
+    # http://initd.org/psycopg/docs/usage.html#adaptation-of-python-values-to-sql-types
     postgres_types = {
-        'str': 'VARCHAR',
+        'NoneType': 'NULL',
+        'bool': 'BOOL',
         'float': 'REAL',
         'int': 'INTEGER',
+        'str': 'VARCHAR',
+        'bytes': 'BYTEA',
+        'date': 'DATE',
+        'time': 'TIME',
+        'datetime': 'TIMESTAMP',
+        'timedelta': 'INTERVAL',
         'list': 'VARCHAR[]',
-        'date': 'DATE'
+        'dict': 'HSTORE',
+        'ipaddress': 'INET'
     }
 
     def __init__(self, hostname: str, database: str, table: str, fields: [str], primary_key: str = 'from_filename'):
