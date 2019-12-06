@@ -284,12 +284,21 @@ class MetadataDatabase(MetadataTable):
 
     column_prefixes = OrderedDict([('script', 'script_'), ('manual', 'manual_')])
 
+    # http://initd.org/psycopg/docs/usage.html#adaptation-of-python-values-to-sql-types
     postgres_types = {
-        'str': 'VARCHAR',
+        'NoneType': 'NULL',
+        'bool': 'BOOL',
         'float': 'REAL',
         'int': 'INTEGER',
+        'str': 'VARCHAR',
+        'bytes': 'BYTEA',
+        'date': 'DATE',
+        'time': 'TIME',
+        'datetime': 'TIMESTAMP',
+        'timedelta': 'INTERVAL',
         'list': 'VARCHAR[]',
-        'date': 'DATE'
+        'dict': 'HSTORE',
+        'ipaddress': 'INET'
     }
 
     def __init__(self, hostname: str, database: str, table: str, fields: [str], primary_key: str = 'from_filename'):
@@ -333,7 +342,7 @@ class MetadataDatabase(MetadataTable):
                     data_types.update({f'{prefix}{key}': self.postgres_types[value.__name__]
                                        for prefix_name, prefix in self.column_prefixes.items()
                                        for key, value in FIELD_TYPES.items() if key not in FIELDS_EXCLUDED_FROM_PREFIX})
-                    data_types.update({key: self.postgres_types[str] for key in self.column_names if key not in data_types})
+                    data_types.update({key: self.postgres_types['str'] for key in self.column_names if key not in data_types})
 
                     schema = ['from_filename VARCHAR PRIMARY KEY'] + [f'{field_name} {data_types[field_name]}'
                                                                       for field_name in self.column_names if field_name != 'from_filename']
