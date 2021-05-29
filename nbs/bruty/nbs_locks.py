@@ -127,52 +127,6 @@ if use_multiprocessing:
             else:
                 super().release()
 
-
-    # class ReadTileLock(Lock):  # actively being read, if fails then add to the waiting to read lock
-    #     pass
-    # class WriteTileLock(Lock):  # actively being modified, if fails then add to the waiting to write lock
-    #     pass
-    # class PendingReadLock(WriteLock):  # something wants to read but there are active/pending writes
-    #     pass
-    # class PendingWriteLock(WriteLock):  # something wants to modify but there are active reads
-    #     pass
-
-
-    class AreaLock1:
-        def __init__(self, tile_list, flags, conv_txy_to_path, sid=None):
-            self.locks = []
-            self.tile_list = tile_list
-            self.sid = sid
-            self.flags = flags
-            self.conv_txy_to_path = conv_txy_to_path
-
-        def acquire(self):
-            try:
-                print(f"Trying to lock {len(self.tile_list)} tiles")
-                for tx, ty in self.tile_list:
-                    self.locks.append(TileLock(tx, ty, self.sid, self.flags, self.conv_txy_to_path))
-                    self.locks[-1].acquire()
-            except (LockNotAcquired,):
-                self.release()
-                raise LockNotAcquired(f"Failed to acquire lock on {self.conv_txy_to_path}")
-            return True
-
-        def release(self):
-            # locks release automatically, but we'll force it rather than wait for garbage collection
-            for lock in self.locks:
-                lock.release()
-            self.locks = []
-
-        def __enter__(self):
-            self.acquire()
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            self.release()
-
-        def __del__(self):
-            self.release()
-
     # try this multilock idea to reduce the number of socket connections that result from calling many single lock instances
     class AreaLock(BaseLock):
         def __init__(self, tile_list, flags, conv_txy_to_path, sid=None, timeout=-1):

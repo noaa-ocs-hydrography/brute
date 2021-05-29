@@ -27,15 +27,34 @@ from nbs.bruty.nbs_locks import LockNotAcquired, AreaLock, Lock, EXCLUSIVE, SHAR
 geo_debug = False
 _debug = False
 
-no_lock = False
+no_lock = True
 
 if no_lock:  # too many file locks for windows is preventing some surveys from processing.  Use this when I know only one process is running.
-    class AreaLock(AreaLock):
-        def __init__(self, *args, **kywds):
-            pass
-        def acquire(self):
+    class Lock:
+        def __init__(self, fname, mode='r', **kywds):
+            self.fname = fname
+            self.mode = mode
+        def acquire(self, *args, **kywds):
             return True
         def release(self):
+            pass
+        def __enter__(self):
+            handle = open(self.fname, self.mode)
+            return handle
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+
+    class AreaLock:
+        def __init__(self, *args, **kywds):
+            pass
+        def acquire(self, *args, **kywds):
+            return True
+        def release(self):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, exc_type, exc_val, exc_tb):
             pass
 
 
