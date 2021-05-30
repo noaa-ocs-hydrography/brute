@@ -23,10 +23,13 @@ from nbs.bruty.raster_data import TiffStorage, LayersEnum
 from nbs.bruty.history import DiskHistory, RasterHistory, AccumulationHistory
 from nbs.bruty.world_raster_database import WorldDatabase, UTMTileBackend, UTMTileBackendExactRes
 from nbs.bruty.utils import onerr
-from nbs.bruty.utils import get_crs_transformer, compute_delta_coord, transform_rect
 from nbs.bruty.nbs_locks import LockNotAcquired, Lock
+from nbs.configs import get_logger, iter_configs, set_stream_logging, log_config
 
 _debug = True
+
+LOGGER = get_logger('bruty.insert')
+CONFIG_SECTION = 'insert'
 
 
 def make_serial_column(table_id, table_name, database, username, password, hostname='OCS-VS-NBS01', port='5434', big=False):
@@ -292,6 +295,7 @@ def process_nbs_database(world_db_path, table_name, database, username, password
 
 
 def convert_csar():
+    """Quick script that converts CSAR data using Caris' carisbatch.exe to convert to bag or xyz points"""
     cnt = 0
     for record in rc:
         fname = record[4]  # manual_to_filename
@@ -327,166 +331,98 @@ def convert_csar():
                             break
 
 if __name__ == '__main__':
-    # data_dir = pathlib.Path(__file__).parent.parent.parent.joinpath('tests').joinpath("test_data_output")
-    data_dir = pathlib.Path("c:\\data\\nbs\\test_data_output")  # avoid putting in the project directory as pycharm then tries to cache everything I think
-    build = True
-    export = False
-    def make_clean_dir(name):
-        use_dir = data_dir.joinpath(name)
-        if os.path.exists(use_dir):
-            shutil.rmtree(use_dir, onerror=onerr)
-        os.makedirs(use_dir)
-        return use_dir
-    subdir = r"test_pbc_19_exact_multi_locks"
-    db_path = data_dir.joinpath(subdir)
-    # make_clean_dir(subdir)
 
-    if not os.path.exists(db_path.joinpath("wdb_metadata.json")):
-        build = True
-        db = WorldDatabase(UTMTileBackendExactRes(4, 4, 26919, RasterHistory, DiskHistory, TiffStorage, db_path))  # NAD823 zone 19.  WGS84 would be 32619
-        del db
+    # default_config_name = "default.config"
 
-    # create logger with 'spam_application'
-    logger = logging.getLogger('process_nbs')
-    logger.setLevel(logging.DEBUG)
-    # create file handler which logs even debug messages
-    fh = logging.FileHandler(db_path.joinpath('process_nbs.log'))
-    fh.setLevel(logging.DEBUG)
-    # create console handler with a higher log level
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    # create formatter and add it to the handlers
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(message)s')
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
-    # add the handlers to the logger
-    logger.addHandler(fh)
-    logger.addHandler(ch)
+    if len(sys.argv) > 1:
+        use_configs = sys.argv[1:]
+    else:
+        use_configs = pathlib.Path(__file__).parent.resolve()  # (os.path.dirname(os.path.abspath(__file__))
 
     orig_print = print
-
-
     def print(*args, **kywds):
         f = io.StringIO()
         ky = kywds.copy()
         ky['file'] = f
         orig_print(*args, **ky)  # build the string
         # orig_print(f.getvalue())  # logger is printing to screen now
-        logger.info(f.getvalue()[:-1])  # strip the newline at the end
+        LOGGER.info(f.getvalue()[:-1])  # strip the newline at the end
 
+    warnings = ""
+    for config_filename, config_file in iter_configs(use_configs):
+        stringio_warnings = set_stream_logging("bruty", file_level=logging.WARNING, remove_other_file_loggers=False)
+        LOGGER.info(f'***************************** Start Run  *****************************')
+        LOGGER.info(f'reading "{config_filename}"')
+        log_config(config_file, LOGGER)
 
-    print("Using database at", db_path)
-    # db_path = make_clean_dir(r"test_pbc_19_db")  # reset the database
+        config = config_file[CONFIG_SECTION if CONFIG_SECTION in config_file else 'DEFAULT']
+        db_path = config['combined_datapath']
+        if not os.path.exists(db_path.joinpath("wdb_metadata.json")):
+            try:
+                resx, resy = config['export_resolution']
+            except:
+                resx = resy = config['export_resolution']
+            epsg = config['epsg']
+            db = WorldDatabase(
+                UTMTileBackendExactRes(resx, resy, epsg, RasterHistory, DiskHistory, TiffStorage, db_path))  # NAD823 zone 19.  WGS84 would be 32619
+            del db
 
-    if build:
         # logging.basicConfig(filename=db_path.joinpath("build.log"), format='%(asctime)s %(message)s', encoding='utf-8', level=logging.DEBUG)
-        URL_FILENAME = r"c:\data\nbs\postgres_hostname.txt"
-        CREDENTIALS_FILENAME = r"c:\data\nbs\postgres_scripting.txt"
+        # URL_FILENAME = r"c:\data\nbs\postgres_hostname.txt"
+        # CREDENTIALS_FILENAME = r"c:\data\nbs\postgres_scripting.txt"
         if _debug:
             hostname = None
             port = None
             username = None
             password = None
         else:
-            with open(URL_FILENAME) as hostname_file:
+            with open(config['URL_FILENAME']) as hostname_file:
                 url = hostname_file.readline()
             hostname, port = split_URL_port(url)
 
-            with open(CREDENTIALS_FILENAME) as database_credentials_file:
+            with open(config['CREDENTIALS_FILENAME']) as database_credentials_file:
                 username, password = [line.strip() for line in database_credentials_file][:2]
 
-        table_name = 'serial_19n_mllw'
-        database = 'metadata'
-        process_nbs_database(db_path, table_name, database, username, password, hostname, port)
+        # table_name = 'serial_19n_mllw'
+        # database = 'metadata'
+        # process_nbs_database(db_path, table_name, database, username, password, hostname, port)
 
-    if export:
-        db = WorldDatabase.open(db_path)
-        export_dir = make_clean_dir("pbc19_exports")
-        all_tiles_shape_fnames = ((r"G:\Data\NBS\Support_Files\MCD_Bands\Band3\Band3_V6.shp", (16, 16)),
-                                  (r"G:\Data\NBS\Support_Files\MCD_Bands\Band4\Band4_V6.shp", (8, 8)),
-                                  (r"G:\Data\NBS\Support_Files\MCD_Bands\Band5\Band5_V6.shp", (4, 4)),
-                             )
-        export_area_shp_fname = r"G:\Data\NBS\Support_Files\MCD_Bands\PBC_Review\PBC_UTM19N_Review.shp"
-        ds_pbc = gdal.OpenEx(export_area_shp_fname)  # this is the product branch area rough extents, PBC, PBD, PBG etc
-        pb_lyr = ds_pbc.GetLayer(0)
-        pb_srs = pb_lyr.GetSpatialRef()
-        pb_export_epsg = rasterio.crs.CRS.from_string(pb_srs.ExportToWkt()).to_epsg()
-        pb_minx, pb_maxx, pb_miny, pb_maxy = pb_lyr.GetExtent()  # this is the product branch area rough extents, PBC, PBD, PBG etc
-
-        for tiles_shape_fname, output_res in all_tiles_shape_fnames:
-            ds = gdal.OpenEx(tiles_shape_fname)
-            # ds.GetLayerCount()
-            lyr = ds.GetLayer(0)
-            srs = lyr.GetSpatialRef()
-            export_epsg = rasterio.crs.CRS.from_string(srs.ExportToWkt()).to_epsg()
-            lyr.GetFeatureCount()
-            lyrdef = lyr.GetLayerDefn()
-            for i in range(lyrdef.GetFieldCount()):
-                flddef = lyrdef.GetFieldDefn(i)
-                if flddef.name == "CellName":
-                    cell_field = i
-                    break
-            crs_transform = get_crs_transformer(export_epsg, db.db.tile_scheme.epsg)
-            inv_crs_transform = get_crs_transformer(db.db.tile_scheme.epsg, export_epsg)
-            for feat in lyr:
-                geom = feat.GetGeometryRef()
-                # geom.GetGeometryCount()
-                minx, maxx, miny, maxy = geom.GetEnvelope()  # (-164.7, -164.39999999999998, 67.725, 67.8)
-                # output in WGS84
-                cx = (minx + maxx) / 2.0
-                cy = (miny + maxy) / 2.0
-                # crop to the area around the output area (so we aren't evaluating everyone on Earth)
-                if pb_minx < cx < pb_maxx and pb_miny < cy < pb_maxy:
-                    cell_name = feat.GetField(cell_field)
-                    if _debug:
-                        pass
-                        # if cell_name not in ('US5BPGBD',):  # 'US5BPGCD'):
-                        #     continue
+        process_nbs_database(db_path, config['tablename'], config['database'], username, password, hostname, port)
 
 
-                    print(cell_name)
-                    # convert user res (4m in testing) size at center of cell for resolution purposes
-                    dx, dy = compute_delta_coord(cx, cy, *output_res, crs_transform, inv_crs_transform)
+    # data_dir = pathlib.Path("c:\\data\\nbs\\test_data_output")  # avoid putting in the project directory as pycharm then tries to cache everything I think
+    # def make_clean_dir(name):
+    #     use_dir = data_dir.joinpath(name)
+    #     if os.path.exists(use_dir):
+    #         shutil.rmtree(use_dir, onerror=onerr)
+    #     os.makedirs(use_dir)
+    #     return use_dir
+    # subdir = r"test_pbc_19_exact_multi_locks"
+    # db_path = data_dir.joinpath(subdir)
+    # make_clean_dir(subdir)
 
-                    bag_options_dict = {'VAR_INDIVIDUAL_NAME': 'Chief, Hydrographic Surveys Division',
-                                        'VAR_ORGANISATION_NAME': 'NOAA, NOS, Office of Coast Survey',
-                                        'VAR_POSITION_NAME': 'Chief, Hydrographic Surveys Division',
-                                        'VAR_DATE': datetime.now().strftime('%Y-%m-%d'),
-                                        'VAR_VERT_WKT': 'VERT_CS["unknown", VERT_DATUM["unknown", 2000]]',
-                                        'VAR_ABSTRACT': "This multi-layered file is part of NOAA Office of Coast Survey’s National Bathymetry. The National Bathymetric Source is created to serve chart production and support navigation. The bathymetry is compiled from multiple sources with varying quality and includes forms of interpolation. Soundings should not be extracted from this file as source data is not explicitly identified. The bathymetric vertical uncertainty is communicated through the associated layer. More generic quality and source metrics will be added with 2.0 version of the BAG format.",
-                                        'VAR_PROCESS_STEP_DESCRIPTION': f'Generated By GDAL {gdal.__version__} and NBS',
-                                        'VAR_DATETIME': datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
-                                        'VAR_VERTICAL_UNCERT_CODE': 'productUncert',
-                                        # 'VAR_RESTRICTION_CODE=' + restriction_code,
-                                        # 'VAR_OTHER_CONSTRAINTS=' + other_constraints,
-                                        # 'VAR_CLASSIFICATION=' + classification,
-                                        # 'VAR_SECURITY_USER_NOTE=' + security_user_note
-                                        }
-                    tif_tags = {'EMAIL_ADDRESS': 'OCS.NBS@noaa.gov',
-                                'ONLINE_RESOURCE': 'https://www.ngdc.noaa.gov',
-                                'LICENSE': 'License cc0-1.0',
-                                }
 
-                    export_utm = export_dir.joinpath(cell_name + "_utm.tif")
-                    export_wgs = export_dir.joinpath(cell_name + "_wgs.tif")
-                    # FIXME this is using the wrong score, need to use the nbs_database scoring when exporting as well as when combining.
-                    x1, y1, x2, y2 = transform_rect(minx, miny, maxx, maxy, crs_transform.transform)
-                    cnt, utm_dataset = db.export_area(export_utm, x1, y1, x2, y2, output_res)
-                    # export_path = export_dir.joinpath(cell_name + ".bag")
-                    # bag_options = [key + "=" + val for key, val in bag_options_dict.items()]
-                    # cnt2, ex_ds = db.export_area(export_path, minx, miny, maxx, maxy, (dx+dx*.1, dy+dy*.1), target_epsg=export_epsg,
-                    #                       driver='BAG', gdal_options=bag_options)
+    # # create logger with 'spam_application'
+    # logger = logging.getLogger('process_nbs')
+    # logger.setLevel(logging.DEBUG)
+    # # create file handler which logs even debug messages
+    # fh = logging.FileHandler(db_path.joinpath('process_nbs.log'))
+    # fh.setLevel(logging.DEBUG)
+    # # create console handler with a higher log level
+    # ch = logging.StreamHandler()
+    # ch.setLevel(logging.INFO)
+    # # create formatter and add it to the handlers
+    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(message)s')
+    # fh.setFormatter(formatter)
+    # ch.setFormatter(formatter)
+    # # add the handlers to the logger
+    # logger.addHandler(fh)
+    # logger.addHandler(ch)
+    #
 
-                    if cnt > 0:
-                        if not _debug:
-                            # output in native UTM -- Since the coordinates "twist" we need to check all four corners,
-                            # not just lower left and upper right
-                            cnt, exported_dataset = db.export_area(export_wgs, minx, miny, maxx, maxy, (dx + dx * .1, dy + dy * .1),
-                                                                   target_epsg=export_epsg)
-                    else:
-                        utm_dataset = None  # close the gdal file
-                        os.remove(export_utm)
-                    print('done', cell_name)
+    # db_path = make_clean_dir(r"test_pbc_19_db")  # reset the database
+
+
 
 # "V:\NBS_Data\PBA_Alaska_UTM03N_Modeling"
 # UTMN 03 through 07 folders exist
