@@ -17,10 +17,14 @@ from data_management.db_connection import connect_with_retries
 from fuse_dev.fuse.meta_review.meta_review import database_has_table, split_URL_port
 from nbs.bruty.raster_data import TiffStorage, LayersEnum
 from nbs.bruty.history import DiskHistory, RasterHistory, AccumulationHistory
-from nbs.bruty.world_raster_database import WorldDatabase, UTMTileBackend, UTMTileBackendExactRes
+from nbs.bruty.world_raster_database import NO_LOCK, WorldDatabase, UTMTileBackend, UTMTileBackendExactRes
 from nbs.bruty.utils import onerr
-from nbs.bruty.nbs_locks import LockNotAcquired, Lock
 from nbs.configs import get_logger, iter_configs, set_stream_logging, log_config
+
+if NO_LOCK:  # too many file locks for windows is preventing some surveys from processing.  Use this when I know only one process is running.
+    from nbs.bruty.nbs_no_locks import LockNotAcquired, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
+else:
+    from nbs.bruty.nbs_locks import LockNotAcquired, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
 
 _debug = True
 
@@ -345,12 +349,12 @@ def main():
         log_config(config_file, LOGGER)
 
         config = config_file[CONFIG_SECTION if CONFIG_SECTION in config_file else 'DEFAULT']
-        db_path = config['combined_datapath']
+        db_path = pathlib.Path(config['combined_datapath'])
         if not os.path.exists(db_path.joinpath("wdb_metadata.json")):
             try:
-                resx, resy = config['resolution']
+                resx, resy = map(float, config['resolution'].split(','))
             except:
-                resx = resy = config['resolution']
+                resx = resy = float(config['resolution'])
             epsg = int(config['epsg'])
             db = WorldDatabase(
                 UTMTileBackendExactRes(resx, resy, epsg, RasterHistory, DiskHistory, TiffStorage, db_path))  # NAD823 zone 19.  WGS84 would be 32619

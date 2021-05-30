@@ -21,42 +21,18 @@ from nbs.bruty.abstract import VABC, abstractmethod
 from nbs.bruty.tile_calculations import TMSTilesMercator, GoogleTilesMercator, GoogleTilesLatLon, UTMTiles, LatLonTiles, TilingScheme, \
             ExactUTMTiles, ExactTilingScheme
 from nbs.bruty import morton
-from nbs.bruty.nbs_locks import LockNotAcquired, AreaLock, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
 
 
 geo_debug = False
 _debug = False
 
-no_lock = True
+# @todo set up a config or environment variable to control if locks should be used
+NO_LOCK = True
 
-if no_lock:  # too many file locks for windows is preventing some surveys from processing.  Use this when I know only one process is running.
-    class Lock:
-        def __init__(self, fname, mode='r', **kywds):
-            self.fname = fname
-            self.mode = mode
-        def acquire(self, *args, **kywds):
-            return True
-        def release(self):
-            pass
-        def __enter__(self):
-            handle = open(self.fname, self.mode)
-            return handle
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            pass
-
-
-    class AreaLock:
-        def __init__(self, *args, **kywds):
-            pass
-        def acquire(self, *args, **kywds):
-            return True
-        def release(self):
-            pass
-        def __enter__(self):
-            return self
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            pass
-
+if NO_LOCK:  # too many file locks for windows is preventing some surveys from processing.  Use this when I know only one process is running.
+    from nbs.bruty.nbs_no_locks import AreaLock, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
+else:
+    from nbs.bruty.nbs_locks import AreaLock, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
 
 NO_OVERRIDE = -1
 
