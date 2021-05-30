@@ -1,6 +1,3 @@
-# import sys
-# sys.path.append(r"C:\Git_Repos\nbs")
-# sys.path.append(r"C:\Git_Repos\bruty")
 import os
 import sys
 import time
@@ -14,7 +11,6 @@ import logging
 import io
 
 import numpy
-import rasterio
 from osgeo import gdal, osr, ogr
 
 from data_management.db_connection import connect_with_retries
@@ -62,7 +58,7 @@ def get_nbs_records(table_name, database, username, password, hostname='OCS-VS-N
         # id_col = fields.index('sid')
         # thinned_records = []
         # for rec in records:
-        #     if rec[id_col] in (13586, 10220):  # (13470, 10316, 10245,  "w00546_mb_4m_mllw_1of1.bag" in rec[filename_col] or "h08177.csar.csv" in rec[filename_col]:
+        #     if rec[id_col] in (13586, 10220):
         #         thinned_records.append(rec)
         # records = thinned_records
     else:
@@ -77,6 +73,7 @@ def get_nbs_records(table_name, database, username, password, hostname='OCS-VS-N
 def nbs_survey_sort(id_to_score, pts, existing_arrays, pts_col_offset=0, existing_col_offset=0):
     return nbs_sort_values(id_to_score, pts[LayersEnum.CONTRIBUTOR + pts_col_offset], pts[LayersEnum.ELEVATION + pts_col_offset],
                            existing_arrays[LayersEnum.CONTRIBUTOR+existing_col_offset], existing_arrays[LayersEnum.ELEVATION+existing_col_offset])
+
 
 def nbs_sort_values(id_to_score, new_contrib, new_elev, accum_contrib, accum_elev):
     # return arrays that merge_arrays will use for sorting.
@@ -194,35 +191,35 @@ def process_nbs_database(world_db_path, table_name, database, username, password
                 # if i > 2:
                 #     break
 
-            path_e = path.lower().replace('\\\\nos.noaa\\ocs\\hsd\\projects\\nbs\\nbs_data\\pbc_northeast_utm19n_mllw',
-                                          r'E:\Data\nbs\PBC_Northeast_UTM19N_MLLW')
-            path_c = path.lower().replace('\\\\nos.noaa\\ocs\\hsd\\projects\\nbs\\nbs_data\\pbc_northeast_utm19n_mllw',
-                                          r'C:\Data\nbs\PBC_Northeast_UTM19N_MLLW')
-            copy_data = False
-            if copy_data:
-                try:
-                    os.makedirs(os.path.dirname(path_c), exist_ok=True)
-                    if not path_e.endswith("csar"):
-                        pass
-                        # shutil.copy(path_e, path_c)
-                    else:
-                        for mod_fname in (f"{path_e}.elev.tif", f"{path_e}.depth.tif", f"{path_e}.csv.zip"):
-                            if os.path.exists(mod_fname):
-                                shutil.copy(mod_fname, "c"+mod_fname[1:])
-                                try:
-                                    os.remove(path_c)  # take the csar off disk
-                                    os.remove(path_c+"0")
-                                except:
-                                    pass
-                except FileNotFoundError:
-                    print("File missing", sid, path)
-            # convert csar names to exported data, 1 of 3 types
-            if path.endswith("csar"):
-                for mod_fname in (f"{path_c}.elev.tif", f"{path_c}.depth.tif", f"{path_c}.csv.zip"):
-                    if os.path.exists(mod_fname):
-                        path = mod_fname
-            else:
-                path = path_c
+                path_e = path.lower().replace('\\\\nos.noaa\\ocs\\hsd\\projects\\nbs\\nbs_data\\pbc_northeast_utm19n_mllw',
+                                              r'E:\Data\nbs\PBC_Northeast_UTM19N_MLLW')
+                path_c = path.lower().replace('\\\\nos.noaa\\ocs\\hsd\\projects\\nbs\\nbs_data\\pbc_northeast_utm19n_mllw',
+                                              r'C:\Data\nbs\PBC_Northeast_UTM19N_MLLW')
+                copy_data = False
+                if copy_data:
+                    try:
+                        os.makedirs(os.path.dirname(path_c), exist_ok=True)
+                        if not path_e.endswith("csar"):
+                            pass
+                            # shutil.copy(path_e, path_c)
+                        else:
+                            for mod_fname in (f"{path_e}.elev.tif", f"{path_e}.depth.tif", f"{path_e}.csv.zip"):
+                                if os.path.exists(mod_fname):
+                                    shutil.copy(mod_fname, "c"+mod_fname[1:])
+                                    try:
+                                        os.remove(path_c)  # take the csar off disk
+                                        os.remove(path_c+"0")
+                                    except:
+                                        pass
+                    except FileNotFoundError:
+                        print("File missing", sid, path)
+                # convert csar names to exported data, 1 of 3 types
+                if path.endswith("csar"):
+                    for mod_fname in (f"{path_c}.elev.tif", f"{path_c}.depth.tif", f"{path_c}.csv.zip"):
+                        if os.path.exists(mod_fname):
+                            path = mod_fname
+                else:
+                    path = path_c
             if not os.path.exists(path):
                 print(path, "didn't exist")
                 names_list.pop(i)
@@ -246,11 +243,11 @@ def process_nbs_database(world_db_path, table_name, database, username, password
 
             if not sid_in_db:
                 try:
-                    if path.endswith(".csv.zip"):
-                        csv_path = path[:-4]
-                        print(f"Extract CSV {path}")
-                        lock = Lock(path)
-                        if lock.acquire():
+                    lock = Lock(path)  # this doesn't work with the file lock - just the multiprocessing locks
+                    if lock.acquire():
+                        if path.endswith(".csv.zip"):
+                            csv_path = path[:-4]
+                            print(f"Extract CSV {path}")
                             p = subprocess.Popen(f'python -m zipfile -e "{path}" "{os.path.dirname(path)}"')
                             p.wait()
                             if os.path.exists(csv_path):
@@ -275,17 +272,20 @@ def process_nbs_database(world_db_path, table_name, database, username, password
                                         print(f"failed to remove{csv_path}")
                             else:
                                 print("\n\nCSV was not extracted from zip\n\n\n")
+                        elif path.endswith(".npy"):
+                            db.insert_txt_survey(path, format=[('x', 'f8'), ('y', 'f8'), ('depth', 'f8'), ('uncertainty', 'f8')],
+                                                 override_epsg=db.db.epsg, contrib_id=sid, compare_callback=comp, reverse_z=True)
                         else:
-                            print("CSV was locked - probably another process is extracting it")
-                            raise LockNotAcquired()
+                            try:
+                                db.insert_survey(path, override_epsg=db.db.epsg, contrib_id=sid, compare_callback=comp)
+                            except ValueError:
+                                print("Value Error")
+                                print(traceback.format_exc())
+                        print('inserted', path)
+                        names_list.pop(i)
                     else:
-                        try:
-                            db.insert_survey(path, override_epsg=db.db.epsg, contrib_id=sid, compare_callback=comp)
-                        except ValueError:
-                            print("Value Error")
-                            print(traceback.format_exc())
-                    print('inserted', path)
-                    names_list.pop(i)
+                        # print(f"{path} was locked - probably another process is working on it")
+                        raise LockNotAcquired()
                 except LockNotAcquired:
                     print('files in use for ', sid, path)
                     print('skipping to next survey')
@@ -297,7 +297,7 @@ def process_nbs_database(world_db_path, table_name, database, username, password
 def convert_csar():
     """Quick script that converts CSAR data using Caris' carisbatch.exe to convert to bag or xyz points"""
     cnt = 0
-    for record in rc:
+    for record in records:
         fname = record[4]  # manual_to_filename
         if fname is None or not fname.strip():
             fname = record[3]  # script_to_filename
@@ -330,23 +330,12 @@ def convert_csar():
                             print("was raster")
                             break
 
-if __name__ == '__main__':
 
-    # default_config_name = "default.config"
-
+def main():
     if len(sys.argv) > 1:
         use_configs = sys.argv[1:]
     else:
         use_configs = pathlib.Path(__file__).parent.resolve()  # (os.path.dirname(os.path.abspath(__file__))
-
-    orig_print = print
-    def print(*args, **kywds):
-        f = io.StringIO()
-        ky = kywds.copy()
-        ky['file'] = f
-        orig_print(*args, **ky)  # build the string
-        # orig_print(f.getvalue())  # logger is printing to screen now
-        LOGGER.info(f.getvalue()[:-1])  # strip the newline at the end
 
     warnings = ""
     for config_filename, config_file in iter_configs(use_configs):
@@ -359,10 +348,10 @@ if __name__ == '__main__':
         db_path = config['combined_datapath']
         if not os.path.exists(db_path.joinpath("wdb_metadata.json")):
             try:
-                resx, resy = config['export_resolution']
+                resx, resy = config['resolution']
             except:
-                resx = resy = config['export_resolution']
-            epsg = config['epsg']
+                resx = resy = config['resolution']
+            epsg = int(config['epsg'])
             db = WorldDatabase(
                 UTMTileBackendExactRes(resx, resy, epsg, RasterHistory, DiskHistory, TiffStorage, db_path))  # NAD823 zone 19.  WGS84 would be 32619
             del db
@@ -389,7 +378,6 @@ if __name__ == '__main__':
 
         process_nbs_database(db_path, config['tablename'], config['database'], username, password, hostname, port)
 
-
     # data_dir = pathlib.Path("c:\\data\\nbs\\test_data_output")  # avoid putting in the project directory as pycharm then tries to cache everything I think
     # def make_clean_dir(name):
     #     use_dir = data_dir.joinpath(name)
@@ -400,7 +388,6 @@ if __name__ == '__main__':
     # subdir = r"test_pbc_19_exact_multi_locks"
     # db_path = data_dir.joinpath(subdir)
     # make_clean_dir(subdir)
-
 
     # # create logger with 'spam_application'
     # logger = logging.getLogger('process_nbs')
@@ -422,6 +409,20 @@ if __name__ == '__main__':
 
     # db_path = make_clean_dir(r"test_pbc_19_db")  # reset the database
 
+
+if __name__ == '__main__':
+
+    # default_config_name = "default.config"
+
+    # turn prints into logger messages
+    orig_print = print
+    def print(*args, **kywds):
+        f = io.StringIO()
+        ky = kywds.copy()
+        ky['file'] = f
+        orig_print(*args, **ky)  # build the string
+        LOGGER.info(f.getvalue()[:-1])  # strip the newline at the end
+    main()
 
 
 # "V:\NBS_Data\PBA_Alaska_UTM03N_Modeling"

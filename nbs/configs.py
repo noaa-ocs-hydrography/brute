@@ -34,8 +34,11 @@ if __name__ == '__main__':
 """
 
 def iter_configs(config_filenames:Union[list, str, os.PathLike], log_files:bool=True, default_config_name:Union[str, os.PathLike]=""):
-    """ Read all the configs using configparser and optionally modified by a default config file.
-    Looks for a subdirectory of the logged in user (os.getlogin()) and uses that if it exists.
+    """ Read all the configs using configparser and optionally modified by a default config file and base_configs.
+    A ConfigParser object is created.  Then the default_config_name is loaded, if applicable.
+    Then loads all configs from the base_configs directory (local to the script).
+    Then looks for a subdirectory of the logged in user (os.getlogin()) and uses that if it exists, otherwise uses the current dir.
+    Finally iterates each config in the user subdirectory or current directory so they have the highest priority.
 
     Parameters
     ----------

@@ -490,16 +490,25 @@ class WorldDatabase(VABC):
         transformer = get_crs_transformer(epsg, self.db.epsg)
 
         if not format:
-            format = [('y', 'f8'), ('x', 'f8'), ('depth', 'f4'), ('uncertainty', 'f4')]
-        data = numpy.loadtxt(path_to_survey_data, dtype=format)
-        x = data['x']
-        y = data['y']
+            format = [('x', 'f8'), ('y', 'f8'), ('depth', 'f4'), ('uncertainty', 'f4')]
+
+        if str(path_to_survey_data).lower().endswith(".npy") or str(path_to_survey_data).lower().endswith(".npz"):
+            # extract the numpy save into 4 arrays to insert into database
+            data = numpy.load(path_to_survey_data)
+            for i, entry in enumerate(format):
+                if not isinstance(entry, str):
+                    entry = entry[0]
+                exec(f"{entry} = data[:,{i}]")
+        else:
+            data = numpy.loadtxt(path_to_survey_data, dtype=format)
+            x = data['x']
+            y = data['y']
+            depth = data['depth']
+            uncertainty = data['uncertainty']
         if transformer:
             x, y = transformer.transform(x, y)
-        depth = data['depth']
         if reverse_z:
             depth *= -1
-        uncertainty = data['uncertainty']
         score = numpy.full(x.shape, survey_score)
         flags = numpy.full(x.shape, flags)
         txs, tys = self.db.tile_scheme.xy_to_tile_index(x, y)
@@ -566,7 +575,8 @@ class WorldDatabase(VABC):
 
         Returns
         -------
-        None
+        list
+            tiles indices that data was added to
         """
         # fixme for survey_data - use pandas?  structured arrays?
 
