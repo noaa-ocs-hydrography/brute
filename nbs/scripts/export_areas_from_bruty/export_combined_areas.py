@@ -24,7 +24,7 @@ CONFIG_SECTION = 'export'
 _debug = False
 
 
-def export(db_path, export_dir, export_areas_shape_filename, output_res, clip_to_shape_filename):
+def export(db_path, export_dir, export_areas_shape_filename, field_name, output_res, clip_to_shape_filename):
     db = WorldDatabase.open(db_path)
     # export_dir = make_clean_dir("pbc19_exports")
     # all_tiles_shape_fnames = ((r"G:\Data\NBS\Support_Files\MCD_Bands\Band3\Band3_V6.shp", (16, 16)),
@@ -32,11 +32,14 @@ def export(db_path, export_dir, export_areas_shape_filename, output_res, clip_to
     #                           (r"G:\Data\NBS\Support_Files\MCD_Bands\Band5\Band5_V6.shp", (4, 4)),
     #                           )
     # export_area_shp_fname = r"G:\Data\NBS\Support_Files\MCD_Bands\PBC_Review\PBC_UTM19N_Review.shp"
-    ds_pbc = gdal.OpenEx(clip_to_shape_filename)  # this is the product branch area rough extents, PBC, PBD, PBG etc
-    pb_lyr = ds_pbc.GetLayer(0)
-    pb_srs = pb_lyr.GetSpatialRef()
-    pb_export_epsg = rasterio.crs.CRS.from_string(pb_srs.ExportToWkt()).to_epsg()
-    pb_minx, pb_maxx, pb_miny, pb_maxy = pb_lyr.GetExtent()  # this is the product branch area rough extents, PBC, PBD, PBG etc
+    if clip_to_shape_filename is not None:
+        ds_clip = gdal.OpenEx(clip_to_shape_filename)  # this is the product branch area rough extents, PBC, PBD, PBG etc
+        clip_lyr = ds_clip.GetLayer(0)
+        # pb_srs = clip_lyr.GetSpatialRef()
+        # pb_export_epsg = rasterio.crs.CRS.from_string(pb_srs.ExportToWkt()).to_epsg()
+        clip_minx, clip_maxx, clip_miny, clip_maxy = clip_lyr.GetExtent()  # this is the product branch area rough extents, PBC, PBD, PBG etc
+    else:
+        clip_minx, clip_maxx, clip_miny, clip_maxy = 0, 0, 0, 0
 
     # for export_areas_shape_filename, output_res in all_tiles_shape_fnames:
     ds = gdal.OpenEx(export_areas_shape_filename)
@@ -48,7 +51,7 @@ def export(db_path, export_dir, export_areas_shape_filename, output_res, clip_to
     lyrdef = lyr.GetLayerDefn()
     for i in range(lyrdef.GetFieldCount()):
         flddef = lyrdef.GetFieldDefn(i)
-        if flddef.name == "CellName":
+        if flddef.name == field_name:
             cell_field = i
             break
     crs_transform = get_crs_transformer(export_epsg, db.db.tile_scheme.epsg)
@@ -61,7 +64,7 @@ def export(db_path, export_dir, export_areas_shape_filename, output_res, clip_to
         cx = (minx + maxx) / 2.0
         cy = (miny + maxy) / 2.0
         # crop to the area around the output area (so we aren't evaluating everyone on Earth)
-        if pb_minx < cx < pb_maxx and pb_miny < cy < pb_maxy:
+        if clip_to_shape_filename is None or (clip_minx < cx < clip_maxx and clip_miny < cy < clip_maxy):
             cell_name = feat.GetField(cell_field)
             if _debug:
                 pass
@@ -113,9 +116,7 @@ def export(db_path, export_dir, export_areas_shape_filename, output_res, clip_to
             print('done', cell_name)
 
 
-if __name__ == '__main__':
-
-    # default_config_name = "default.config"
+def main():
 
     if len(sys.argv) > 1:
         use_configs = sys.argv[1:]
@@ -130,5 +131,26 @@ if __name__ == '__main__':
         log_config(config_file, LOGGER)
 
         config = config_file[CONFIG_SECTION if CONFIG_SECTION in config_file else 'DEFAULT']
-        export(config['combined_datapath'], config['output_directory'], config['export_areas_shapefile'], config['export_resolution'],
-               config['clip_to_shapefile'])
+
+        try:
+            resx, resy = map(float, config['resolution'].split(','))
+        except:
+            resx = resy = float(config['resolution'])
+        clip = config['clip_to_shapefile'] if 'clip_to_shapefile' in config else None
+        export(config['combined_datapath'], config['output_directory'], config['export_areas_shapefile'], config['field_name'], (resx, resy), clip)
+
+
+if __name__ == '__main__':
+
+    # default_config_name = "default.config"
+
+    # turn prints into logger messages
+    orig_print = print
+    def print(*args, **kywds):
+        f = io.StringIO()
+        ky = kywds.copy()
+        ky['file'] = f
+        orig_print(*args, **ky)  # build the string
+        LOGGER.info(f.getvalue()[:-1])  # strip the newline at the end
+    main()
+
