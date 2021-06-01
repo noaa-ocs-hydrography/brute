@@ -563,7 +563,7 @@ def save_soundings_from_image(inputname, outputname, res, flip_depth=True):
     ogr.GetDriverByName('GPKG').CopyDataSource(dst_ds, dst_ds.GetName())
 
 
-def calc_area_array_params(x1, y1, x2, y2, res_x, res_y):
+def calc_area_array_params(x1, y1, x2, y2, res_x, res_y, align_x=None, align_y=None):
     """ Compute a coherent min and max position and shape given a resolution.
     Basically we may know the desired corners but they won't fit perfectly based on the resolution.
     So we will compute what the adjusted corners would be and number of cells needed based on the resolution provided.
@@ -586,7 +586,10 @@ def calc_area_array_params(x1, y1, x2, y2, res_x, res_y):
         pixel size in x direction
     res_y
         pixel size in y direction
-
+    align_x
+        if supplied the min_x will be shifted to align to an integer cell offset from the align_x, if None then no effect
+    align_y
+        if supplied the min_y will be shifted to align to an integer cell offset from the align_y, if None then no effect
     Returns
     -------
     min_x, min_y, max_x, max_y, cols (shape_x), rows (shape_y)
@@ -596,6 +599,10 @@ def calc_area_array_params(x1, y1, x2, y2, res_x, res_y):
     min_y = min(y1, y2)
     max_x = max(x1, x2)
     max_y = max(y1, y2)
+    if align_x:
+        min_x -= (min_x - align_x) % res_x
+    if align_y:
+        min_y -= (min_y - align_y) % res_y
     shape_x = int(numpy.ceil((max_x - min_x) / res_x))
     shape_y = int(numpy.ceil((max_y - min_y) / res_y))
     max_x = shape_x * res_x + min_x
@@ -719,7 +726,8 @@ def make_gdal_dataset_size(fname, bands, min_x, max_y, res_x, res_y, shape_x, sh
 
 
 def make_gdal_dataset_area(fname, bands, x1, y1, x2, y2, res_x, res_y, epsg,
-                           driver="GTiff", options=(), nodata=numpy.nan):
+                           driver="GTiff", options=(), nodata=numpy.nan,
+                           align_x=None, align_y=None):
     """ Makes a north up gdal dataset with nodata = numpy.nan and LZW compression.
     Specifying a positive res_y will be input as a negative value into the gdal file,
     since tif/gdal likes max_y and a negative Y pixel size.
@@ -765,7 +773,7 @@ def make_gdal_dataset_area(fname, bands, x1, y1, x2, y2, res_x, res_y, epsg,
     gdal.dataset
 
     """
-    min_x, min_y, max_x, max_y, shape_x, shape_y = calc_area_array_params(x1, y1, x2, y2, res_x, res_y)
+    min_x, min_y, max_x, max_y, shape_x, shape_y = calc_area_array_params(x1, y1, x2, y2, res_x, res_y, align_x=align_x, align_y=align_y)
     dataset = make_gdal_dataset_size(fname, bands, min_x, max_y, res_x, res_y, shape_x, shape_y, epsg, driver, options, nodata)
     return dataset
 

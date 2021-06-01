@@ -10,21 +10,13 @@ from functools import partial
 import logging
 import io
 
-import numpy
-from osgeo import gdal, osr, ogr
-
-from data_management.db_connection import connect_with_retries
-from fuse_dev.fuse.meta_review.meta_review import database_has_table, split_URL_port
 from nbs.bruty.raster_data import TiffStorage, LayersEnum
 from nbs.bruty.history import DiskHistory, RasterHistory, AccumulationHistory
-from nbs.bruty.world_raster_database import NO_LOCK, WorldDatabase, UTMTileBackend, UTMTileBackendExactRes
+from nbs.bruty.world_raster_database import WorldDatabase, UTMTileBackend, UTMTileBackendExactRes, \
+    LockNotAcquired, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
 from nbs.bruty.utils import onerr
 from nbs.configs import get_logger, iter_configs, set_stream_logging, log_config
-
-if NO_LOCK:  # too many file locks for windows is preventing some surveys from processing.  Use this when I know only one process is running.
-    from nbs.bruty.nbs_no_locks import LockNotAcquired, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
-else:
-    from nbs.bruty.nbs_locks import LockNotAcquired, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
+from nbs.bruty.nbs_postgres import id_to_scoring, get_nbs_records, nbs_survey_sort, connect_params_from_config
 
 _debug = True
 
@@ -32,156 +24,10 @@ LOGGER = get_logger('bruty.insert')
 CONFIG_SECTION = 'insert'
 
 
-def make_serial_column(table_id, table_name, database, username, password, hostname='OCS-VS-NBS01', port='5434', big=False):
-    connection = connect_with_retries(database=database, user=username, password=password, host=hostname, port=port)
-    cursor = connection.cursor()
-    # used admin credentials for this
-    # cursor.execute("create table serial_19n_mllw as (select * from pbc_utm19n_mllw)")
-    # connection.commit()
-    if big:
-        serial_str = "bigserial"  # use bigserial if 64bit is needed
-        bit_shift = 32  # allows 4 billion survey IDs and 4 billion table IDs
-    else:
-        serial_str = "serial"  # 32bit ints
-        bit_shift = 20  # allows for one million survey IDs and 4096 table IDs
-    start_val = table_id << bit_shift
-    cursor.execute(f'ALTER TABLE {table_name} ADD column sid {serial_str};')
-    cursor.execute(f'ALTER SEQUENCE {table_name}_sid_seq RESTART WITH 10000')
-    cursor.execute(f"update {table_name} set sid=sid+{start_val}")
-    connection.commit()
-
-
-def get_nbs_records(table_name, database, username, password, hostname='OCS-VS-NBS01', port='5434'):
-    if _debug and hostname is None:
-        import pickle
-        f = open(r"C:\data\nbs\pbc19_mllw_metadata.pickle", 'rb')
-        records = pickle.load(f)
-        fields = pickle.load(f)
-        ## trim back the records to a few for testing
-        # filename_col = fields.index('from_filename')
-        # id_col = fields.index('sid')
-        # thinned_records = []
-        # for rec in records:
-        #     if rec[id_col] in (13586, 10220):
-        #         thinned_records.append(rec)
-        # records = thinned_records
-    else:
-        connection = connect_with_retries(database=database, user=username, password=password, host=hostname, port=port)
-        cursor = connection.cursor()
-        cursor.execute(f'SELECT * FROM {table_name}')
-        records = cursor.fetchall()
-        fields = [desc[0] for desc in cursor.description]
-    return fields, records
-
-
-def nbs_survey_sort(id_to_score, pts, existing_arrays, pts_col_offset=0, existing_col_offset=0):
-    return nbs_sort_values(id_to_score, pts[LayersEnum.CONTRIBUTOR + pts_col_offset], pts[LayersEnum.ELEVATION + pts_col_offset],
-                           existing_arrays[LayersEnum.CONTRIBUTOR+existing_col_offset], existing_arrays[LayersEnum.ELEVATION+existing_col_offset])
-
-
-def nbs_sort_values(id_to_score, new_contrib, new_elev, accum_contrib, accum_elev):
-    # return arrays that merge_arrays will use for sorting.
-    # basically the nbs sort is 4 keys: Decay Score, resolution, depth, alphabetical.
-    # Decay and resolution get merged into one array since they are true for all points of the survey while depth varies with position.
-    # alphabetical is a final tie breaker to make sure the same contributor is picked in the cases where the first three tie.
-
-    # find all the contributors to look up
-    unique_contributors = numpy.unique(accum_contrib[~numpy.isnan(accum_contrib)])
-    # make arrays to store the integer scores in
-    existing_decay_and_res = accum_contrib.copy()
-    existing_alphabetical = accum_contrib.copy()
-    # for each unique contributor fill with the associated decay/resolution score and the alphabetical score
-    for contrib in unique_contributors:
-        existing_decay_and_res[accum_contrib == contrib] = id_to_score[contrib][0]
-        existing_alphabetical[accum_contrib == contrib] = id_to_score[contrib][1]
-    # @FIXME is contributor an int or float -- needs to be int 32 and maybe int 64 (or two int 32s)
-    unique_pts_contributors = numpy.unique(new_contrib[~numpy.isnan(new_contrib)])
-    decay_and_res_score = new_contrib.copy()
-    alphabetical = new_contrib.copy()
-    for contrib in unique_pts_contributors:
-        decay_and_res_score[new_contrib == contrib] = id_to_score[contrib][0]
-        alphabetical[new_contrib == contrib] = id_to_score[contrib][1]
-
-    return numpy.array((decay_and_res_score, new_elev, alphabetical)), \
-           numpy.array((existing_decay_and_res, accum_elev, existing_alphabetical)), \
-           (False, False, False)
-
-
-def id_to_scoring(fields, records):
-    # Create a dictionary that converts from the unique database ID to an ordering score
-    # Basically the standings of the surveys,
-    # First place is the highest decay score with a tie breaker of lowest resolution.  If both are the same they will have the same score
-    # Alphabetical will have no duplicate standings (unless there is duplicate names) and first place is A (ascending alphabetical)
-    # get the columns that have the important data
-    decay_col = fields.index("decay_score")
-    script_res_col = fields.index('script_resolution')
-    manual_res_col = fields.index('manual_resolution')
-    script_point_res_col = fields.index('script_point_spacing')
-    manual_point_res_col = fields.index('manual_point_spacing')
-
-    filename_col = fields.index('from_filename')
-    path_col = fields.index('script_to_filename')
-    manual_path_col = fields.index('manual_to_filename')
-    id_col = fields.index('sid')
-    rec_list = []
-    names_list = []
-    # make lists of the dacay/res with survey if and also one for name vs survey id
-    for rec in records:
-        decay = rec[decay_col]
-        sid = rec[id_col]
-        if decay is not None:
-            res = rec[manual_res_col]
-            if res is None:
-                res = rec[script_res_col]
-                if res is None:
-                    res = rec[script_point_res_col]
-                    if res is None:
-                        res = rec[manual_point_res_col]
-                        if res is None:
-                            print("missing res on record:", sid, rec[filename_col])
-                            continue
-            path = rec[manual_path_col]
-            # A manual string can be an empty string (not Null) and also protect against it looking empty (just a space " ")
-            if path is None or not path.strip():
-                path = rec[path_col]
-                if path is None or not path.strip():
-                    print("skipping missing to_path", sid, rec[filename_col])
-                    continue
-            rec_list.append((sid, res, decay))
-            # Switch to lower case, these were from filenames that I'm not sure are case sensitive
-            names_list.append((rec[filename_col].lower(), sid, path))  # sid would be the next thing sorted if the names match
-    # sort the names so we can use an integer to use for sorting by name
-    names_list.sort()
-    # do an ordered 2 key sort on decay then res (lexsort likes them backwards)
-    rec_array = numpy.array(rec_list)
-    sorted_indices = numpy.lexsort([-rec_array[:, 1], rec_array[:, 2]])  # resolution, decay (flip the res so lowest score and largest res is first)
-    sorted_recs = rec_array[sorted_indices]
-    sort_val = 0
-    prev_res, prev_decay = None, None
-    sort_dict = {}
-    # set up a dictionary that has the sorted value of the decay followed by resolution
-    for n, (sid, res, decay) in enumerate(sorted_recs):
-        # don't incremenet when there was a tie, this allows the next sort criteria to be checked
-        if res != prev_res or decay != prev_decay:
-            sort_val += 1
-        sort_dict[sid] = [sort_val]
-    # the NBS sort order then uses depth after decay but before alphabetical, so we can't merge the name sort with the decay+res
-    # add a second value for the alphabetical naming which is the last resort to maintain constistency of selection
-    for n, (filename, sid, path) in enumerate(names_list):
-        sort_dict[sid].append(n)
-    return sorted_recs, names_list, sort_dict
-
-
 def process_nbs_database(world_db_path, table_name, database, username, password, hostname='OCS-VS-NBS01', port='5434'):
     fields, records = get_nbs_records(table_name, database, username, password, hostname=hostname, port=port)
     sorted_recs, names_list, sort_dict = id_to_scoring(fields, records)
-    try:
-        db = WorldDatabase.open(world_db_path)
-    except FileNotFoundError:
-        epsg
-        db = WorldDatabase(UTMTileBackend(epsg, RasterHistory, DiskHistory, TiffStorage, world_db_path))  # NAD823 zone 19.  WGS84 would be 32619
-    path_col = fields.index('script_to_filename')
-    id_col = fields.index('sid')
+    db = WorldDatabase.open(world_db_path)
     comp = partial(nbs_survey_sort, sort_dict)
     print('------------   changing paths !!!!!!!!!!')
     while names_list:
@@ -356,31 +202,18 @@ def main():
             except:
                 resx = resy = float(config['resolution'])
             epsg = int(config['epsg'])
+            # NAD823 zone 19 = 26919.  WGS84 would be 32619
             db = WorldDatabase(
-                UTMTileBackendExactRes(resx, resy, epsg, RasterHistory, DiskHistory, TiffStorage, db_path))  # NAD823 zone 19.  WGS84 would be 32619
+                UTMTileBackendExactRes(resx, resy, epsg, RasterHistory, DiskHistory, TiffStorage, db_path))
             del db
 
-        # logging.basicConfig(filename=db_path.joinpath("build.log"), format='%(asctime)s %(message)s', encoding='utf-8', level=logging.DEBUG)
-        # URL_FILENAME = r"c:\data\nbs\postgres_hostname.txt"
-        # CREDENTIALS_FILENAME = r"c:\data\nbs\postgres_scripting.txt"
         if _debug:
-            hostname = None
-            port = None
-            username = None
-            password = None
+            hostname, port, username, password = None, None, None, None
+            tablename, database = config['tablename'], config['database']
         else:
-            with open(config['URL_FILENAME']) as hostname_file:
-                url = hostname_file.readline()
-            hostname, port = split_URL_port(url)
+            tablename, database, hostname, port, username, password = connect_params_from_config(config)
 
-            with open(config['CREDENTIALS_FILENAME']) as database_credentials_file:
-                username, password = [line.strip() for line in database_credentials_file][:2]
-
-        # table_name = 'serial_19n_mllw'
-        # database = 'metadata'
-        # process_nbs_database(db_path, table_name, database, username, password, hostname, port)
-
-        process_nbs_database(db_path, config['tablename'], config['database'], username, password, hostname, port)
+        process_nbs_database(db_path, tablename, database, username, password, hostname, port)
 
     # data_dir = pathlib.Path("c:\\data\\nbs\\test_data_output")  # avoid putting in the project directory as pycharm then tries to cache everything I think
     # def make_clean_dir(name):

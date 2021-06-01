@@ -30,9 +30,9 @@ _debug = False
 NO_LOCK = True
 
 if NO_LOCK:  # too many file locks for windows is preventing some surveys from processing.  Use this when I know only one process is running.
-    from nbs.bruty.nbs_no_locks import AreaLock, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
+    from nbs.bruty.nbs_no_locks import LockNotAcquired, AreaLock, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
 else:
-    from nbs.bruty.nbs_locks import AreaLock, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
+    from nbs.bruty.nbs_locks import LockNotAcquired, AreaLock, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
 
 NO_OVERRIDE = -1
 
@@ -195,6 +195,7 @@ class WorldTilesBackend(VABC):
         hist_path = self.get_history_path_by_index(tx, ty)
         history = self.history_class(self.storage_class(self.data_class, hist_path))
         lx, ly, ux, uy = self.tile_scheme.tile_index_to_xy(tx, ty)
+        # fixme -- does this need to be done here?  Isn't this leftover from before the tifs stored their metadata
         history.set_corners(lx, ly, ux, uy)
         history.set_epsg(self.epsg)
         return history
@@ -585,7 +586,7 @@ class WorldDatabase(VABC):
                 # if tx != 3325 or ty != 3207:  # utm 16, US5MSYAF_utm, H13193 (raw bag is in utm15 though) -- gaps in DB and exported enc cells  217849.73 (m), 3307249.86 (m)
                 # if tx != 4614 or ty != 3227:  # utm 15 h13190 -- area with res = 4.15m (larger than the 4m output)
                 # if tx != 4615 or ty != 3227:  # utm 15 h13190 -- area with res = 4.15m (larger than the 4m output)
-                # if tx != 4148 or ty != 4370:
+                # if tx != 3500 or ty != 4143:
                 #     continue
             print(f'processing tile {i_tile + 1} of {len(tile_list)}')
             tile_history = accumulation_db.get_tile_history_by_index(tx, ty)
@@ -904,7 +905,8 @@ class WorldDatabase(VABC):
 
     def export_area(self, fname, x1, y1, x2, y2, res, target_epsg=None, driver="GTiff",
                     layers=(LayersEnum.ELEVATION, LayersEnum.UNCERTAINTY, LayersEnum.CONTRIBUTOR),
-                    gdal_options=("BLOCKXSIZE=256", "BLOCKYSIZE=256", "TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"), compare_callback=None):
+                    gdal_options=("BLOCKXSIZE=256", "BLOCKYSIZE=256", "TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"),
+                    compare_callback=None, align=True):
         """ Retrieves an area from the database at the requested resolution.
 
         # 1) Create a single tif tile that covers the area desired
@@ -958,8 +960,13 @@ class WorldDatabase(VABC):
 
         fname = pathlib.Path(fname)
         score_name = fname.with_suffix(".score" + fname.suffix)
+        if align:
+            align_y, align_x = self.db.tile_scheme.min_y, self.db.tile_scheme.min_x
+        else:
+            align_x = align_y = None
 
-        dataset = make_gdal_dataset_area(fname, len(layers), x1, y1, x2, y2, dx, dy, target_epsg, driver, gdal_options)
+        dataset = make_gdal_dataset_area(fname, len(layers), x1, y1, x2, y2, dx, dy, target_epsg, driver,
+                                         gdal_options, align_x=align_x, align_y=align_y)
         # probably won't export the score layer but we need it when combining data into the export area
 
         dataset_score = make_gdal_dataset_area(score_name, 3, x1, y1, x2, y2, dx, dy, target_epsg, driver)
@@ -1126,8 +1133,9 @@ class CustomArea(WorldDatabase):
         y2 = self.db.tile_scheme.max_y - self.res_y
         x1 = self.db.tile_scheme.min_x
         x2 = self.db.tile_scheme.max_x - self.res_x
+        # we already aligned the data with minx, miny so we'll tell export_area that align=false
         return super().export_area(fname, x1, y1, x2, y2, (self.res_x, self.res_y), driver=driver,
-                    layers=layers, gdal_options=gdal_options)
+                    layers=layers, gdal_options=gdal_options, align=False)
 
     @property
     def res_x(self):

@@ -1,31 +1,36 @@
+import gc
 import os
 import sys
 import time
-import traceback
 from datetime import datetime
-import subprocess
 import pathlib
-import shutil
-from functools import partial
 import logging
 import io
+from functools import partial
 
-import numpy
 import rasterio
 from osgeo import gdal, osr, ogr
 
-from nbs.bruty.world_raster_database import WorldDatabase
+from nbs.bruty.world_raster_database import WorldDatabase, LockNotAcquired, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
 from nbs.bruty.utils import get_crs_transformer, compute_delta_coord, transform_rect
 from nbs.configs import get_logger, iter_configs, set_stream_logging, log_config
+from nbs.bruty.nbs_postgres import id_to_scoring, get_nbs_records, nbs_survey_sort, connect_params_from_config
 
 LOGGER = get_logger('bruty.export')
 CONFIG_SECTION = 'export'
 
-_debug = False
+_debug = True
 
 
-def export(db_path, export_dir, export_areas_shape_filename, field_name, output_res, clip_to_shape_filename):
+def export(db_path, export_dir, export_areas_shape_filename, name_from_field, output_res, clip_to_shape_filename,
+           table_name, database, username, password, hostname='OCS-VS-NBS01', port='5434'):
     db = WorldDatabase.open(db_path)
+    fields, records = get_nbs_records(table_name, database, username, password, hostname=hostname, port=port)
+    sorted_recs, names_list, sort_dict = id_to_scoring(fields, records)
+    comp = partial(nbs_survey_sort, sort_dict)
+    export_dir = pathlib.Path(export_dir)
+    os.makedirs(export_dir, exist_ok=True)
+
     # export_dir = make_clean_dir("pbc19_exports")
     # all_tiles_shape_fnames = ((r"G:\Data\NBS\Support_Files\MCD_Bands\Band3\Band3_V6.shp", (16, 16)),
     #                           (r"G:\Data\NBS\Support_Files\MCD_Bands\Band4\Band4_V6.shp", (8, 8)),
@@ -51,8 +56,8 @@ def export(db_path, export_dir, export_areas_shape_filename, field_name, output_
     lyrdef = lyr.GetLayerDefn()
     for i in range(lyrdef.GetFieldCount()):
         flddef = lyrdef.GetFieldDefn(i)
-        if flddef.name == field_name:
-            cell_field = i
+        if flddef.name == name_from_field:
+            name_field = i
             break
     crs_transform = get_crs_transformer(export_epsg, db.db.tile_scheme.epsg)
     inv_crs_transform = get_crs_transformer(db.db.tile_scheme.epsg, export_epsg)
@@ -65,13 +70,13 @@ def export(db_path, export_dir, export_areas_shape_filename, field_name, output_
         cy = (miny + maxy) / 2.0
         # crop to the area around the output area (so we aren't evaluating everyone on Earth)
         if clip_to_shape_filename is None or (clip_minx < cx < clip_maxx and clip_miny < cy < clip_maxy):
-            cell_name = feat.GetField(cell_field)
+            cell_name = str(feat.GetField(name_field))
             if _debug:
                 pass
-                # if cell_name not in ('US5BPGBD',):  # 'US5BPGCD'):
+                # if cell_name not in ('US4NY1CY', 'US5PVDBC'):
                 #     continue
 
-            print(cell_name)
+            print(f'processing area {name_from_field} = {cell_name}')
             # convert user res (4m in testing) size at center of cell for resolution purposes
             dx, dy = compute_delta_coord(cx, cy, *output_res, crs_transform, inv_crs_transform)
 
@@ -98,7 +103,7 @@ def export(db_path, export_dir, export_areas_shape_filename, field_name, output_
             export_wgs = export_dir.joinpath(cell_name + "_wgs.tif")
             # FIXME this is using the wrong score, need to use the nbs_database scoring when exporting as well as when combining.
             x1, y1, x2, y2 = transform_rect(minx, miny, maxx, maxy, crs_transform.transform)
-            cnt, utm_dataset = db.export_area(export_utm, x1, y1, x2, y2, output_res)
+            cnt, utm_dataset = db.export_area(export_utm, x1, y1, x2, y2, output_res, compare_callback=comp)
             # export_path = export_dir.joinpath(cell_name + ".bag")
             # bag_options = [key + "=" + val for key, val in bag_options_dict.items()]
             # cnt2, ex_ds = db.export_area(export_path, minx, miny, maxx, maxy, (dx+dx*.1, dy+dy*.1), target_epsg=export_epsg,
@@ -109,15 +114,16 @@ def export(db_path, export_dir, export_areas_shape_filename, field_name, output_
                     # output in native UTM -- Since the coordinates "twist" we need to check all four corners,
                     # not just lower left and upper right
                     cnt, exported_dataset = db.export_area(export_wgs, minx, miny, maxx, maxy, (dx + dx * .1, dy + dy * .1),
-                                                           target_epsg=export_epsg)
+                                                           target_epsg=export_epsg, compare_callback=comp)
             else:
                 utm_dataset = None  # close the gdal file
+                gc.collect()  # make sure the gdal dataset released its lock
+                # time.sleep(.3)
                 os.remove(export_utm)
             print('done', cell_name)
 
 
 def main():
-
     if len(sys.argv) > 1:
         use_configs = sys.argv[1:]
     else:
@@ -137,7 +143,14 @@ def main():
         except:
             resx = resy = float(config['resolution'])
         clip = config['clip_to_shapefile'] if 'clip_to_shapefile' in config else None
-        export(config['combined_datapath'], config['output_directory'], config['export_areas_shapefile'], config['field_name'], (resx, resy), clip)
+        if _debug:
+            hostname, port, username, password = None, None, None, None
+            tablename, database = config['tablename'], config['database']
+        else:
+            tablename, database, hostname, port, username, password = connect_params_from_config(config)
+
+        export(config['combined_datapath'], config['output_directory'], config['export_areas_shapefile'], config['name_from_field'],
+               (resx, resy), clip, tablename, database, username, password, hostname, port)
 
 
 if __name__ == '__main__':
