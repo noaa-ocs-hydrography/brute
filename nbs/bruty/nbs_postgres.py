@@ -63,7 +63,7 @@ def get_nbs_records(table_name, database, username, password, hostname='OCS-VS-N
 
 
 
-def id_to_scoring(fields, records):
+def id_to_scoring(fields, records, use_for_navigation_flag=True, use_never_post_flag=True):
     # Create a dictionary that converts from the unique database ID to an ordering score
     # Basically the standings of the surveys,
     # First place is the highest decay score with a tie breaker of lowest resolution.  If both are the same they will have the same score
@@ -78,11 +78,17 @@ def id_to_scoring(fields, records):
     filename_col = fields.index('from_filename')
     path_col = fields.index('script_to_filename')
     manual_path_col = fields.index('manual_to_filename')
+    for_navigation_col = fields.index('for_navigation')
+    never_post_col = fields.index('never_post')
     id_col = fields.index('sid')
     rec_list = []
     names_list = []
     # make lists of the dacay/res with survey if and also one for name vs survey id
     for rec in records:
+        if use_for_navigation_flag and not rec[for_navigation_col]:
+            continue
+        if use_never_post_flag and rec[never_post_col]:
+            continue
         decay = rec[decay_col]
         sid = rec[id_col]
         if decay is not None:

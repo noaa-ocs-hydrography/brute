@@ -724,7 +724,8 @@ class WorldDatabase(VABC):
                         raise Exception("mismatch")
 
                     if _debug:
-                        print("debugging")
+                        pass
+                        # print("debugging")
                         # inspect_x, inspect_y = 690134.03, 3333177.81  # ti, tj = (655, 265) in H13190
                         # if min(x) <  inspect_x and max(x) >inspect_x and min(y)< inspect_y and max(y) > inspect_y:
                         #     mdata = vr.varres_metadata[ti, tj]
