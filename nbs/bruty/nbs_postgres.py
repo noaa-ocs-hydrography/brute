@@ -1,3 +1,6 @@
+import pathlib
+
+from osgeo import gdal
 import numpy
 
 from nbs.bruty.raster_data import TiffStorage, LayersEnum
@@ -159,6 +162,43 @@ def nbs_sort_values(id_to_score, new_contrib, new_elev, accum_contrib, accum_ele
            numpy.array((existing_decay_and_res, accum_elev, existing_alphabetical)), \
            (False, False, False)
 
+
+def make_contributor_csv(filename, band_num, table_name, database, username, password, hostname='OCS-VS-NBS01', port='5434'):
+    # nbs_postgres.make_contributor_csv(pathlib.Path(root).joinpath("4_utm.tif"), 3, "pbc19_mllw_metadata", 'metadata', None, None, None, None)
+    # tile_name = r"C:\data\nbs\test_data_output\test_pbc_19_exact_multiprocesing_locks\exports\4m\4_utm.tif"
+    # fields, records = get_nbs_records("pbc19_mllw_metadata", 'metadata', None, None, None, None)
+    fields, records = get_nbs_records(table_name, database, username, password, hostname=hostname, port=port)
+    sorted_recs, names_list, sort_dict = id_to_scoring(fields, records)
+
+    ds = gdal.Open(str(filename))
+    cb = ds.GetRasterBand(band_num)
+    contributors = cb.ReadAsArray()
+    unique_contributors = numpy.unique(contributors[~numpy.isnan(contributors)])
+    records_dict = {rec[-1]: rec for rec in records}
+    res_decay_dict = {sid: (res, decay) for sid, res, decay in sorted_recs}
+
+    manual_date_col = fields.index("manual_start_date")
+    script_date_col = fields.index("script_start_date")
+    manual_catzoc_col = fields.index("manual_catzoc")
+    script_catzoc_col = fields.index("script_catzoc")
+    filename_col = fields.index('from_filename')
+    csv = open(pathlib.Path(filename).with_suffix(".contrib.csv"), "w")
+    for n, contrib_number in enumerate(unique_contributors):
+        rec = records_dict[int(contrib_number)]
+        man_date = rec[manual_date_col]
+        if man_date is not None:
+            survey_date = man_date
+        else:
+            survey_date = rec[script_date_col]
+        man_catzoc = rec[manual_catzoc_col]
+        if man_catzoc is not None and man_catzoc.strip():
+            survey_catzoc = man_catzoc
+        else:
+            survey_catzoc = rec[script_catzoc_col]
+        res, decay = res_decay_dict[int(contrib_number)]
+        score_pos, alpha_pos = sort_dict[int(contrib_number)]
+        s = f'{int(contrib_number)},res:{res};sort:{score_pos};alpha:{alpha_pos},{rec[filename_col]},{survey_date.strftime("%Y%m%d")},{decay},{survey_catzoc}\n'
+        csv.write(s)
 
 
 
