@@ -522,7 +522,7 @@ def test_custom_scoring():
     txt_filename = use_dir.joinpath("SW.txt")
     numpy.savetxt(txt_filename, numpy.array([z.reshape(-1), c.reshape(-1), r.reshape(-1), uncertainty.reshape(-1)]).T)
     # db.insert_survey_array((c, r, z, uncertainty, score, flags), "origin", contrib_id=1)
-    db.insert_txt_survey(txt_filename, contrib_id=1, format=[('depth', 'f4'), ('x', 'f8'), ('y', 'f8'), ('uncertainty', 'f4')],
+    db.insert_txt_survey(txt_filename, contrib_id=1, dformat=[('depth', 'f4'), ('x', 'f8'), ('y', 'f8'), ('uncertainty', 'f4')],
                          compare_callback=custom_scoring)
 
     # this SE with values 100-140 is retained in the original test, this time it should get overwritten due to custom scoring

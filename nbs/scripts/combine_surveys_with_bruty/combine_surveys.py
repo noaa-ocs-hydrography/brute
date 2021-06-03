@@ -103,7 +103,7 @@ def process_nbs_database(world_db_path, table_name, database, username, password
                             if os.path.exists(csv_path):
                                 try:
                                     # points are in opposite convention as BAGs and exported CSAR tiffs, so reverse the z component
-                                    db.insert_txt_survey(csv_path, format=[('x', 'f8'), ('y', 'f8'), ('depth', 'f4'), ('uncertainty', 'f4')],
+                                    db.insert_txt_survey(csv_path, dformat=[('x', 'f8'), ('y', 'f8'), ('depth', 'f4'), ('uncertainty', 'f4')],
                                                          override_epsg=db.db.epsg, contrib_id=sid, compare_callback=comp, reverse_z=True)
                                 except ValueError:
                                     print("Value Error")
@@ -123,7 +123,7 @@ def process_nbs_database(world_db_path, table_name, database, username, password
                             else:
                                 print("\n\nCSV was not extracted from zip\n\n\n")
                         elif path.endswith(".npy"):
-                            db.insert_txt_survey(path, format=[('x', 'f8'), ('y', 'f8'), ('depth', 'f8'), ('uncertainty', 'f8')],
+                            db.insert_txt_survey(path, dformat=[('x', 'f8'), ('y', 'f8'), ('depth', 'f8'), ('uncertainty', 'f8')],
                                                  override_epsg=db.db.epsg, contrib_id=sid, compare_callback=comp, reverse_z=True)
                         else:
                             try:
@@ -201,10 +201,13 @@ def main():
                 resx, resy = map(float, config['resolution'].split(','))
             except:
                 resx = resy = float(config['resolution'])
-            epsg = int(config['epsg'])
             # NAD823 zone 19 = 26919.  WGS84 would be 32619
+            epsg = int(config['epsg'])
+            # use this to align the database to something else (like caris for testing)
+            offset_x = config['offset_x'] if 'offset_x' in config else 0
+            offset_y = config['offset_y'] if 'offset_y' in config else 0
             db = WorldDatabase(
-                UTMTileBackendExactRes(resx, resy, epsg, RasterHistory, DiskHistory, TiffStorage, db_path))
+                UTMTileBackendExactRes(resx, resy, epsg, RasterHistory, DiskHistory, TiffStorage, db_path, offset_x=offset_x, offset_y=offset_y))
             del db
 
         if _debug:

@@ -209,8 +209,8 @@ class UTMTiles(TilingScheme):
         super().__init__(min_x=-1000000, min_y=-1000000, max_x=2000000, max_y=10000000, zoom=zoom, epsg=epsg)
 
 class ExactUTMTiles(ExactTilingScheme):
-    def __init__(self, res_x, res_y, zoom=13, epsg=None):
-        super().__init__(res_x, res_y, min_x=-1000000, min_y=-1000000, max_x=2000000, max_y=10000000, zoom=zoom, epsg=epsg)
+    def __init__(self, res_x, res_y, zoom=13, epsg=None, offset_x=0, offset_y=0):
+        super().__init__(res_x, res_y, min_x=-1000000-offset_x, min_y=-1000000-offset_y, max_x=2000000, max_y=10000000, zoom=zoom, epsg=epsg)
 
 
 def test():

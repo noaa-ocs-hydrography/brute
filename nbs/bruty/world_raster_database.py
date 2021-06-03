@@ -298,8 +298,8 @@ class UTMTileBackend(WorldTilesBackend):
 
 
 class UTMTileBackendExactRes(WorldTilesBackend):
-    def __init__(self, res_x, res_y, utm_epsg, history_class, storage_class, data_class, data_path, zoom_level=13):
-        tile_scheme = ExactUTMTiles(res_x, res_y, zoom=zoom_level, epsg=utm_epsg)
+    def __init__(self, res_x, res_y, utm_epsg, history_class, storage_class, data_class, data_path, zoom_level=13, offset_x=0, offset_y=0):
+        tile_scheme = ExactUTMTiles(res_x, res_y, zoom=zoom_level, epsg=utm_epsg, offset_x=offset_x, offset_y=offset_y)
         super().__init__(tile_scheme, history_class, storage_class, data_class, data_path)
 
 
@@ -437,7 +437,7 @@ class WorldDatabase(VABC):
                 # self.insert_txt_survey(path_to_survey_data, override_epsg=override_epsg, contrib_id=contrib_id, compare_callback=compare_callback, reverse_z=reverse_z)
                 done = True
 
-    def insert_txt_survey(self, path_to_survey_data, survey_score=100, flags=0, format=None, override_epsg=NO_OVERRIDE,
+    def insert_txt_survey(self, path_to_survey_data, survey_score=100, flags=0, dformat=None, override_epsg=NO_OVERRIDE,
                           contrib_id=numpy.nan, compare_callback=None, reverse_z=False):
         """ Reads a text file and inserts into the tiled database.
         The format parameter is passed to numpy.loadtxt and needs to have names of x, y, depth, uncertainty.
@@ -466,8 +466,8 @@ class WorldDatabase(VABC):
             epsg = override_epsg
         transformer = get_crs_transformer(epsg, self.db.epsg)
 
-        if not format:
-            format = [('x', 'f8'), ('y', 'f8'), ('depth', 'f4'), ('uncertainty', 'f4')]
+        if not dformat:
+            dformat = [('x', 'f8'), ('y', 'f8'), ('depth', 'f4'), ('uncertainty', 'f4')]
 
         if str(path_to_survey_data).lower().endswith(".npy") or str(path_to_survey_data).lower().endswith(".npz"):
             # extract the numpy save into 4 arrays to insert into database
@@ -477,7 +477,7 @@ class WorldDatabase(VABC):
                     entry = entry[0]
                 exec(f"{entry} = data[:,{i}]")
         else:
-            data = numpy.loadtxt(path_to_survey_data, dtype=format)
+            data = numpy.loadtxt(path_to_survey_data, dtype=dformat)
             x = data['x']
             y = data['y']
             depth = data['depth']
@@ -504,13 +504,11 @@ class WorldDatabase(VABC):
         # store the tiles filled by this survey as a convenience lookup for the future when removing or querying.
         print('locking metadata for exclusive at ', datetime.now().isoformat())
         with Lock(self.metadata_filename(), 'r+', EXCLUSIVE) as metadata_file:
-            backup_path1 = self.metadata_filename().parent.joinpath("wdb_metadata.bak1")
-            backup_path2 = self.metadata_filename().parent.joinpath("wdb_metadata.bak2")
-            self.to_file(backup_path1)
+            # backup_path1 = self.metadata_filename().parent.joinpath("wdb_metadata.bak1")
+            # self.to_file(backup_path1)
+
             # update the metadata in case another process wrote to it since the last time we updated/loaded
             self.update_metadata_from_disk(locked_file=metadata_file)
-            # make a backup of the metadata in case something breaks here
-            self.to_file(backup_path2)
             # add the new survey to the metadata and store to disk
             # json doesn't like pathlib.Paths to be stored -- convert to strings
             self.included_surveys[str(path_to_survey_data)] = (contrib_id, list(tiles))  # json doesn't like sets, convert to list
@@ -785,7 +783,6 @@ class WorldDatabase(VABC):
                 self.db.append_accumulation_db(storage_db)
                 shutil.rmtree(storage_db.data_path, onerror=onerr)
                 # @fixme make sure vr.name is correct for full path
-                # fixme need to use a blocking locker on writing the metadata to the world_database
                 self.finished_survey_insertion(vr.name, all_tiles, contrib_id)
             else:
                 raise Exception(f"Survey Exists already in database {contrib_id}")
@@ -898,7 +895,6 @@ class WorldDatabase(VABC):
                 self.db.append_accumulation_db(storage_db)
                 shutil.rmtree(storage_db.data_path)
                 # @fixme -- turn all_tiles into one consistent, unique list.  Is list of lists with duplicates right now
-                # fixme need to use a blocking locker on writing the metadata to the world_database
                 self.finished_survey_insertion(path_to_survey_data, all_tiles, contrib_id)
             else:
                 raise Exception(f"Survey Exists already in database {contrib_id}")
