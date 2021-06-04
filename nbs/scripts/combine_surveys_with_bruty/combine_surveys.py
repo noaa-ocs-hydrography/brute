@@ -204,8 +204,8 @@ def main():
             # NAD823 zone 19 = 26919.  WGS84 would be 32619
             epsg = int(config['epsg'])
             # use this to align the database to something else (like caris for testing)
-            offset_x = config['offset_x'] if 'offset_x' in config else 0
-            offset_y = config['offset_y'] if 'offset_y' in config else 0
+            offset_x = float(config['offset_x']) if 'offset_x' in config else 0
+            offset_y = float(config['offset_y']) if 'offset_y' in config else 0
             db = WorldDatabase(
                 UTMTileBackendExactRes(resx, resy, epsg, RasterHistory, DiskHistory, TiffStorage, db_path, offset_x=offset_x, offset_y=offset_y))
             del db

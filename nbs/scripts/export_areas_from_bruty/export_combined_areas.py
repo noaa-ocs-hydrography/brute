@@ -14,7 +14,7 @@ from osgeo import gdal, osr, ogr
 from nbs.bruty.world_raster_database import WorldDatabase, LockNotAcquired, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
 from nbs.bruty.utils import get_crs_transformer, compute_delta_coord, transform_rect
 from nbs.configs import get_logger, iter_configs, set_stream_logging, log_config
-from nbs.bruty.nbs_postgres import id_to_scoring, get_nbs_records, nbs_survey_sort, connect_params_from_config
+from nbs.bruty.nbs_postgres import id_to_scoring, get_nbs_records, nbs_survey_sort, connect_params_from_config, make_contributor_csv
 
 LOGGER = get_logger('bruty.export')
 CONFIG_SECTION = 'export'
@@ -110,6 +110,8 @@ def export(db_path, export_dir, export_areas_shape_filename, name_from_field, ou
             #                       driver='BAG', gdal_options=bag_options)
 
             if cnt > 0:
+                make_contributor_csv(export_utm.with_name(export_utm.stem+"_contrib.csv"), 3,
+                                     table_name, database, username, password, hostname=hostname, port=port)
                 if not _debug:
                     # output in native UTM -- Since the coordinates "twist" we need to check all four corners,
                     # not just lower left and upper right
