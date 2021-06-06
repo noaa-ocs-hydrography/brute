@@ -173,6 +173,7 @@ def make_contributor_csv(filename, band_num, table_name, database, username, pas
     # nbs_postgres.make_contributor_csv(pathlib.Path(root).joinpath("4_utm.tif"), 3, "pbc19_mllw_metadata", 'metadata', None, None, None, None)
     # tile_name = r"C:\data\nbs\test_data_output\test_pbc_19_exact_multiprocesing_locks\exports\4m\4_utm.tif"
     # fields, records = get_nbs_records("pbc19_mllw_metadata", 'metadata', None, None, None, None)
+    filename = pathlib.Path(filename)
     fields, records = get_nbs_records(table_name, database, username, password, hostname=hostname, port=port)
     sorted_recs, names_list, sort_dict = id_to_scoring(fields, records)
 
@@ -188,7 +189,7 @@ def make_contributor_csv(filename, band_num, table_name, database, username, pas
     manual_catzoc_col = fields.index("manual_catzoc")
     script_catzoc_col = fields.index("script_catzoc")
     filename_col = fields.index('from_filename')
-    csv = open(pathlib.Path(filename).with_suffix(".contrib.csv"), "w")
+    csv = open(filename.with_name(filename.stem+"_contrib.csv"), "w")
     for n, contrib_number in enumerate(unique_contributors):
         rec = records_dict[int(contrib_number)]
         man_date = rec[manual_date_col]

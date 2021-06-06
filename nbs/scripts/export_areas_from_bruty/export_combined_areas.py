@@ -110,7 +110,7 @@ def export(db_path, export_dir, export_areas_shape_filename, name_from_field, ou
             #                       driver='BAG', gdal_options=bag_options)
 
             if cnt > 0:
-                make_contributor_csv(export_utm.with_name(export_utm.stem+"_contrib.csv"), 3,
+                make_contributor_csv(export_utm, 3,
                                      table_name, database, username, password, hostname=hostname, port=port)
                 if not _debug:
                     # output in native UTM -- Since the coordinates "twist" we need to check all four corners,
