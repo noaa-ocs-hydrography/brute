@@ -14,14 +14,13 @@ from osgeo import gdal, osr, ogr
 
 from HSTB.drivers import bag
 from nbs.bruty.utils import merge_arrays, merge_array, get_crs_transformer, onerr, tqdm, make_gdal_dataset_size, make_gdal_dataset_area, \
-            calc_area_array_params, compute_delta_coord, iterate_gdal_image, add_uncertainty_layer, transform_rect
+    calc_area_array_params, compute_delta_coord, iterate_gdal_image, add_uncertainty_layer, transform_rect
 from nbs.bruty.raster_data import TiffStorage, LayersEnum, RasterData, affine, inv_affine, affine_center, arrays_dont_match
 from nbs.bruty.history import DiskHistory, RasterHistory, AccumulationHistory
 from nbs.bruty.abstract import VABC, abstractmethod
 from nbs.bruty.tile_calculations import TMSTilesMercator, GoogleTilesMercator, GoogleTilesLatLon, UTMTiles, LatLonTiles, TilingScheme, \
-            ExactUTMTiles, ExactTilingScheme
+    ExactUTMTiles, ExactTilingScheme
 from nbs.bruty import morton
-
 
 geo_debug = False
 _debug = False
@@ -35,6 +34,7 @@ else:
     from nbs.bruty.nbs_locks import LockNotAcquired, AreaLock, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
 
 NO_OVERRIDE = -1
+
 
 class WorldTilesBackend(VABC):
     """ Class to control Tile addressing.
@@ -428,10 +428,11 @@ class WorldDatabase(VABC):
                 done = True
         if not done:
             if extension in ['.bag', '.tif', '.tiff']:
-                self.insert_survey_gdal(path_to_survey_data, override_epsg=override_epsg, contrib_id=contrib_id, compare_callback=compare_callback, reverse_z=reverse_z)
+                self.insert_survey_gdal(path_to_survey_data, override_epsg=override_epsg, contrib_id=contrib_id, compare_callback=compare_callback,
+                                        reverse_z=reverse_z)
                 done = True
         if not done:
-            if extension in ['.csar',]:
+            if extension in ['.csar', ]:
                 # export to xyz
                 # FIXME -- export points from csar and support LAS or whatever points file is decided on.
                 # self.insert_txt_survey(path_to_survey_data, override_epsg=override_epsg, contrib_id=contrib_id, compare_callback=compare_callback, reverse_z=reverse_z)
@@ -490,7 +491,7 @@ class WorldDatabase(VABC):
         flags = numpy.full(x.shape, flags)
         txs, tys = self.db.tile_scheme.xy_to_tile_index(x, y)
         tile_list = numpy.unique(numpy.array((txs, tys)).T, axis=0)
-        with AreaLock(tile_list, EXCLUSIVE|NON_BLOCKING, self.db.get_history_path_by_index) as lock:
+        with AreaLock(tile_list, EXCLUSIVE | NON_BLOCKING, self.db.get_history_path_by_index) as lock:
             if contrib_id is None or contrib_id not in self.included_ids:
                 tiles = self.insert_survey_array(numpy.array((x, y, depth, uncertainty, score, flags)), path_to_survey_data,
                                                  contrib_id=contrib_id, compare_callback=compare_callback)
@@ -657,7 +658,7 @@ class WorldDatabase(VABC):
             # get the x,y bounds and figure out how many pixels (cells) would fit
             lx, ly, ux, uy = self.db.tile_scheme.tile_index_to_xy(tx, ty)
             #  -- since it is supposed to be an exact fit round up any numerical errors and truncate to an int
-            return int(0.00001 + (uy-ly)/self.db.tile_scheme.res_y), int(0.00001+(ux-lx)/self.db.tile_scheme.res_x)
+            return int(0.00001 + (uy - ly) / self.db.tile_scheme.res_y), int(0.00001 + (ux - lx) / self.db.tile_scheme.res_x)
         else:
             return 512, 512
 
@@ -694,7 +695,7 @@ class WorldDatabase(VABC):
         if crs_transformer is not None:
             ((x1, y1), (x2, y2)) = crs_transformer.transform((x1, x2), (y1, y2))
         tile_list = self.db.get_tiles_indices(x1, y1, x2, y2)
-        with AreaLock(tile_list, EXCLUSIVE|NON_BLOCKING, self.db.get_history_path_by_index) as lock:
+        with AreaLock(tile_list, EXCLUSIVE | NON_BLOCKING, self.db.get_history_path_by_index) as lock:
             if contrib_id is None or contrib_id not in self.included_ids:
                 refinement_list = numpy.argwhere(vr.get_valid_refinements())
                 # in order to speed up the vr processing, which would have narrow strips being processed
@@ -716,11 +717,12 @@ class WorldDatabase(VABC):
                     pts = numpy.array([r, c, refinement.depth, refinement.uncertainty]).reshape(4, -1)
                     pts = pts[:, pts[2] != vr.fill_value]  # remove nodata points
 
-                    x, y = affine_center(pts[0], pts[1], *refinement.geotransform)  # refinement_llx, resolution_x, 0, refinement_lly, 0, resolution_y)
+                    x, y = affine_center(pts[0], pts[1],
+                                         *refinement.geotransform)  # refinement_llx, resolution_x, 0, refinement_lly, 0, resolution_y)
                     ptsnew = refinement.get_xy_pts_arrays()
                     xnew, ynew = ptsnew[:2]
                     ptsnew = ptsnew[2:]
-                    if not ((x==xnew).all() and (y==ynew).all() and (pts==ptsnew).all()):
+                    if not ((x == xnew).all() and (y == ynew).all() and (pts == ptsnew).all()):
                         raise Exception("mismatch")
 
                     if _debug:
@@ -762,8 +764,10 @@ class WorldDatabase(VABC):
                     # dump the accumulated arrays to the database if they are about to overflow the accumulation arrays
                     if last_index + len(x) > max_len:
                         tiles = self.insert_survey_array(numpy.array((x_accum[:last_index], y_accum[:last_index], depth_accum[:last_index],
-                                                              uncertainty_accum[:last_index], scores_accum[:last_index], flags_accum[:last_index])),
-                                                 vr.filename, accumulation_db=storage_db, contrib_id=contrib_id, compare_callback=compare_callback)
+                                                                      uncertainty_accum[:last_index], scores_accum[:last_index],
+                                                                      flags_accum[:last_index])),
+                                                         vr.filename, accumulation_db=storage_db, contrib_id=contrib_id,
+                                                         compare_callback=compare_callback)
                         all_tiles.update(tiles)
                         last_index = 0
                     # append the new data to the end of the accumulation arrays
@@ -778,8 +782,10 @@ class WorldDatabase(VABC):
 
                 if last_index > 0:
                     tiles = self.insert_survey_array(numpy.array((x_accum[:last_index], y_accum[:last_index], depth_accum[:last_index],
-                                                          uncertainty_accum[:last_index], scores_accum[:last_index], flags_accum[:last_index])),
-                                             vr.filename, accumulation_db=storage_db, contrib_id=contrib_id, compare_callback=compare_callback)
+                                                                  uncertainty_accum[:last_index], scores_accum[:last_index],
+                                                                  flags_accum[:last_index])),
+                                                     vr.filename, accumulation_db=storage_db, contrib_id=contrib_id,
+                                                     compare_callback=compare_callback)
                     all_tiles.update(tiles)
                 self.db.append_accumulation_db(storage_db)
                 shutil.rmtree(storage_db.data_path, onerror=onerr)
@@ -826,9 +832,9 @@ class WorldDatabase(VABC):
         x1, y1 = affine_center(0, 0, *geotransform)
         x2, y2 = affine_center(ds.RasterYSize, ds.RasterXSize, *geotransform)
         if crs_transformer is not None:
-            ((x1, y1), (x2, y2)) = crs_transformer.transform((x1, x2), (y1,y2))
+            ((x1, y1), (x2, y2)) = crs_transformer.transform((x1, x2), (y1, y2))
         tile_list = self.db.get_tiles_indices(x1, y1, x2, y2)
-        with AreaLock(tile_list, EXCLUSIVE|NON_BLOCKING, self.db.get_history_path_by_index) as lock:
+        with AreaLock(tile_list, EXCLUSIVE | NON_BLOCKING, self.db.get_history_path_by_index) as lock:
             if contrib_id is None or contrib_id not in self.included_ids:
                 temp_path = tempfile.mkdtemp(dir=self.db.data_path)
                 storage_db = self.db.make_accumulation_db(temp_path)
@@ -840,59 +846,59 @@ class WorldDatabase(VABC):
 
                 # @fixme -- bands 1,2 means bag works but single band will fail
                 for ic, ir, nodata, (data, uncert) in iterate_gdal_image(ds, (data_band, uncert_band)):
-                        # if _debug:
-                        #     if ic > 1:
-                        #         break
+                    # if _debug:
+                    #     if ic > 1:
+                    #         break
 
-                        # read the uncertainty as an array (if it exists)
-                        r, c = numpy.indices(data.shape)  # make indices into array elements that can be converted to x,y coordinates
-                        r += ir  # adjust the block r,c to the global raster r,c
-                        c += ic
-                        # pts = numpy.dstack([r, c, data, uncert]).reshape((-1, 4))
-                        pts = numpy.array([r, c, data, uncert]).reshape(4, -1)
-                        pts = pts[:, pts[2] != nodata]  # remove nodata points
-                        # pts = pts[:, pts[2] > -18.2]  # reduce points to debug
-                        if pts.size > 0:
-                            # if driver_name == 'BAG':
-                            x, y = affine_center(pts[0], pts[1], *geotransform)
-                            # else:
-                            #     x, y = affine(pts[0], pts[1], *geotransform)
-                            if _debug:
+                    # read the uncertainty as an array (if it exists)
+                    r, c = numpy.indices(data.shape)  # make indices into array elements that can be converted to x,y coordinates
+                    r += ir  # adjust the block r,c to the global raster r,c
+                    c += ic
+                    # pts = numpy.dstack([r, c, data, uncert]).reshape((-1, 4))
+                    pts = numpy.array([r, c, data, uncert]).reshape(4, -1)
+                    pts = pts[:, pts[2] != nodata]  # remove nodata points
+                    # pts = pts[:, pts[2] > -18.2]  # reduce points to debug
+                    if pts.size > 0:
+                        # if driver_name == 'BAG':
+                        x, y = affine_center(pts[0], pts[1], *geotransform)
+                        # else:
+                        #     x, y = affine(pts[0], pts[1], *geotransform)
+                        if _debug:
+                            pass
+                            ## clip data to an area of given tolerance around a point
+                            # px, py, tol = 400200, 3347921, 8
+                            # pts = pts[:, x < px + tol]  # thing the r,c,depth, uncert array
+                            # y = y[x < px + tol]  # then thin the y to match the new r,c,depth
+                            # x = x[x < px + tol]  # finally thin the x to match y and r,c,depth arrays
+                            # pts = pts[:, x > px - tol]
+                            # y = y[x > px - tol]
+                            # x = x[x > px - tol]
+                            # pts = pts[:, y < py + tol]
+                            # x = x[y < py + tol]
+                            # y = y[y < py + tol]
+                            # pts = pts[:, y > py - tol]
+                            # x = x[y > py - tol]
+                            # y = y[y > py - tol]
+                            # if pts.size == 0:
+                            #     continue
+                        if geo_debug and False:
+                            s_pts = numpy.array((x, y, pts[0], pts[1], pts[2]))
+                            txs, tys = storage_db.tile_scheme.xy_to_tile_index(x, y)
+                            isle_tx, isle_ty = 3532, 4141
+                            isle_pts = s_pts[:, numpy.logical_and(txs == isle_tx, tys == isle_ty)]
+                            if isle_pts.size > 0:
                                 pass
-                                ## clip data to an area of given tolerance around a point
-                                # px, py, tol = 400200, 3347921, 8
-                                # pts = pts[:, x < px + tol]  # thing the r,c,depth, uncert array
-                                # y = y[x < px + tol]  # then thin the y to match the new r,c,depth
-                                # x = x[x < px + tol]  # finally thin the x to match y and r,c,depth arrays
-                                # pts = pts[:, x > px - tol]
-                                # y = y[x > px - tol]
-                                # x = x[x > px - tol]
-                                # pts = pts[:, y < py + tol]
-                                # x = x[y < py + tol]
-                                # y = y[y < py + tol]
-                                # pts = pts[:, y > py - tol]
-                                # x = x[y > py - tol]
-                                # y = y[y > py - tol]
-                                # if pts.size == 0:
-                                #     continue
-                            if geo_debug and False:
-                                s_pts = numpy.array((x, y, pts[0], pts[1], pts[2]))
-                                txs, tys = storage_db.tile_scheme.xy_to_tile_index(x, y)
-                                isle_tx, isle_ty = 3532, 4141
-                                isle_pts = s_pts[:, numpy.logical_and(txs == isle_tx, tys == isle_ty)]
-                                if isle_pts.size > 0:
-                                    pass
-                            if crs_transformer:
-                                x, y = crs_transformer.transform(x, y)
-                            depth = pts[2]
-                            if reverse_z:
-                                depth *= -1
-                            uncertainty = pts[3]
-                            scores = numpy.full(x.shape, survey_score)
-                            flags = numpy.full(x.shape, flag)
-                            tiles = self.insert_survey_array(numpy.array((x, y, depth, uncertainty, scores, flags)), path_to_survey_data,
-                                                             accumulation_db=storage_db, contrib_id=contrib_id, compare_callback=compare_callback)
-                            all_tiles.update(tiles)
+                        if crs_transformer:
+                            x, y = crs_transformer.transform(x, y)
+                        depth = pts[2]
+                        if reverse_z:
+                            depth *= -1
+                        uncertainty = pts[3]
+                        scores = numpy.full(x.shape, survey_score)
+                        flags = numpy.full(x.shape, flag)
+                        tiles = self.insert_survey_array(numpy.array((x, y, depth, uncertainty, scores, flags)), path_to_survey_data,
+                                                         accumulation_db=storage_db, contrib_id=contrib_id, compare_callback=compare_callback)
+                        all_tiles.update(tiles)
                 self.db.append_accumulation_db(storage_db)
                 shutil.rmtree(storage_db.data_path)
                 # @fixme -- turn all_tiles into one consistent, unique list.  Is list of lists with duplicates right now
@@ -910,7 +916,7 @@ class WorldDatabase(VABC):
         # 2) Get the master db tile indices that the area overlaps and iterate them
         # 3) Read the single tif sub-area as an array that covers this tile being processed
         # 4) Use the db.tile_scheme function to convert points from the tiles to x,y
-        # 5) @todo make sure the tiles aren't locked, and put in a read lock so the data doesn't get changed while we are reading
+        # 5) Make sure the tiles aren't locked, and put in a read lock so the data doesn't get changed while we are reading
         # 6) Sort on score in case multiple points go into a position that the right value is retained
         #      sort based on score then on depth so the shoalest top score is kept
         # 7) Use affine crs_transform convert x,y into the i,j for the exported area
@@ -945,11 +951,28 @@ class WorldDatabase(VABC):
 
         """
         # 1) Create a single tif tile that covers the area desired
-        if not target_epsg:
-            target_epsg = self.db.tile_scheme.epsg
-        crs_transform = get_crs_transformer(self.db.tile_scheme.epsg, target_epsg)
-        inv_crs_transform = get_crs_transformer(target_epsg, self.db.tile_scheme.epsg)
+        # probably won't export the score layer but we need it when combining data into the export area
+        dataset, dataset_score = self.make_export_rasters(fname, x1, y1, x2, y2, res,
+                                                          target_epsg=target_epsg, driver=driver, layers=layers,
+                                                          gdal_options=gdal_options, align=align)
 
+        tile_count = self.export_into_raster(dataset, dataset_score, target_epsg=target_epsg, layers=layers, compare_callback=compare_callback)
+        score_name = dataset_score.GetDescription()
+        del dataset_score
+        try:
+            os.remove(score_name)
+        except PermissionError:
+            gc.collect()
+            try:
+                os.remove(score_name)
+            except PermissionError:
+                print(f"Failed to remove {score_name}, permission denied (in use?)")
+        return tile_count, dataset
+
+    def make_export_rasters(self, fname, x1, y1, x2, y2, res, target_epsg=None, driver="GTiff",
+                            layers=(LayersEnum.ELEVATION, LayersEnum.UNCERTAINTY, LayersEnum.CONTRIBUTOR),
+                            gdal_options=("BLOCKXSIZE=256", "BLOCKYSIZE=256", "TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"),
+                            align=True):
         try:
             dx, dy = res
         except TypeError:
@@ -961,19 +984,27 @@ class WorldDatabase(VABC):
             align_y, align_x = self.db.tile_scheme.min_y, self.db.tile_scheme.min_x
         else:
             align_x = align_y = None
-
         dataset = make_gdal_dataset_area(fname, len(layers), x1, y1, x2, y2, dx, dy, target_epsg, driver,
                                          gdal_options, align_x=align_x, align_y=align_y)
         # probably won't export the score layer but we need it when combining data into the export area
+        dataset_score = make_gdal_dataset_area(score_name, 3, x1, y1, x2, y2, dx, dy, target_epsg, driver, align_x=align_x, align_y=align_y)
+        return dataset, dataset_score
 
-        dataset_score = make_gdal_dataset_area(score_name, 3, x1, y1, x2, y2, dx, dy, target_epsg, driver)
+    def export_into_raster(self, dataset, dataset_score, target_epsg=None,
+                           layers=(LayersEnum.ELEVATION, LayersEnum.UNCERTAINTY, LayersEnum.CONTRIBUTOR),
+                           compare_callback=None):
+        if not target_epsg:
+            target_epsg = self.db.tile_scheme.epsg
+        crs_transform = get_crs_transformer(self.db.tile_scheme.epsg, target_epsg)
+        inv_crs_transform = get_crs_transformer(target_epsg, self.db.tile_scheme.epsg)
 
         affine_transform = dataset.GetGeoTransform()  # x0, dxx, dyx, y0, dxy, dyy
-        score_band = dataset_score.GetRasterBand(1)
-        score_key2_band = dataset_score.GetRasterBand(2)
-        max_cols, max_rows = score_band.XSize, score_band.YSize
+
+        max_cols, max_rows = dataset.RasterXSize, dataset.RasterYSize
 
         # 2) Get the master db tile indices that the area overlaps and iterate them
+        x1, y1 = affine(0, 0, *affine_transform)
+        x2, y2 = affine(max_rows - 1, max_cols - 1, *affine_transform)
         if crs_transform:
             overview_x1, overview_y1, overview_x2, overview_y2 = transform_rect(x1, y1, x2, y2, inv_crs_transform.transform)
         else:
@@ -1025,16 +1056,7 @@ class WorldDatabase(VABC):
             # send the data to disk, I forget if this has any affect other than being able to look at the data in between steps to debug progress
             dataset.FlushCache()
             dataset_score.FlushCache()
-        del score_key2_band, score_band, dataset_score
-        try:
-            os.remove(score_name)
-        except PermissionError:
-            gc.collect()
-            try:
-                os.remove(score_name)
-            except PermissionError:
-                print(f"Failed to remove {score_name}, permission denied (in use?)")
-        return tile_count, dataset
+        return tile_count
 
     @staticmethod
     def merge_rasters(tile_layers, tile_scoring, raster_data,
@@ -1070,9 +1092,8 @@ class WorldDatabase(VABC):
             band = dataset.GetRasterBand(band_num + 1)
             band.WriteArray(export_sub_area[band_num], start_col, start_row)
         for i in range(len(tile_scoring)):
-            score_band = dataset_score.GetRasterBand(i+1)
+            score_band = dataset_score.GetRasterBand(i + 1)
             score_band.WriteArray(sort_key_scores[i], start_col, start_row)
-
 
     def extract_soundings(self):
         # this is the same as extract area except score = depth
@@ -1105,9 +1126,8 @@ class WorldDatabase(VABC):
         pass
 
 
-
 class CustomBackend(WorldTilesBackend):
-    def __init__(self, utm_epsg, res_x, res_y,  x1, y1, x2, y2, history_class, storage_class, data_class, data_path, zoom_level=13):
+    def __init__(self, utm_epsg, res_x, res_y, x1, y1, x2, y2, history_class, storage_class, data_class, data_path, zoom_level=13):
         tile_scheme = ExactTilingScheme(res_x, res_y, min_x=x1, min_y=y1, max_x=x2, max_y=y2, zoom=zoom_level, epsg=utm_epsg)
         super().__init__(tile_scheme, history_class, storage_class, data_class, data_path)
 
@@ -1116,7 +1136,7 @@ class CustomArea(WorldDatabase):
     def __init__(self, epsg, x1, y1, x2, y2, res_x, res_y, storage_directory):
         min_x, min_y, max_x, max_y, shape_x, shape_y = calc_area_array_params(x1, y1, x2, y2, res_x, res_y)
         shape = max(shape_x, shape_y)
-        tiles = shape/512  # this should result in tiles max sizes between 512 and 1024 pixels
+        tiles = shape / 512  # this should result in tiles max sizes between 512 and 1024 pixels
         zoom = int(numpy.log2(tiles))
         if zoom < 0:
             zoom = 0
@@ -1124,7 +1144,7 @@ class CustomArea(WorldDatabase):
                                        storage_directory, zoom_level=zoom))
 
     def export(self, fname, driver="GTiff", layers=(LayersEnum.ELEVATION, LayersEnum.UNCERTAINTY, LayersEnum.CONTRIBUTOR),
-                    gdal_options=("BLOCKXSIZE=256", "BLOCKYSIZE=256", "TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES")):
+               gdal_options=("BLOCKXSIZE=256", "BLOCKYSIZE=256", "TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES")):
         """Export the full area of the 'single file database' in the epsg the data is stored in"""
         y1 = self.db.tile_scheme.min_y
         y2 = self.db.tile_scheme.max_y - self.res_y
@@ -1132,7 +1152,7 @@ class CustomArea(WorldDatabase):
         x2 = self.db.tile_scheme.max_x - self.res_x
         # we already aligned the data with minx, miny so we'll tell export_area that align=false
         return super().export_area(fname, x1, y1, x2, y2, (self.res_x, self.res_y), driver=driver,
-                    layers=layers, gdal_options=gdal_options, align=False)
+                                   layers=layers, gdal_options=gdal_options, align=False)
 
     @property
     def res_x(self):
@@ -1169,7 +1189,7 @@ if __name__ == "__main__":
     ds = None
     # db = WorldDatabase(UTMTileBackendExactRes(4, 4, epsg, RasterHistory, DiskHistory, TiffStorage,
     #                                     r"G:\Data\NBS\Speed_test\test_db_world"))
-    db = CustomArea(epsg, x1, y1, x1+(numx+1)*resx, y1+(numy+1)*resy, 4, 4, r"G:\Data\NBS\Speed_test\test_cust4")
+    db = CustomArea(epsg, x1, y1, x1 + (numx + 1) * resx, y1 + (numy + 1) * resy, 4, 4, r"G:\Data\NBS\Speed_test\test_cust4")
     db.insert_survey_gdal(fname, override_epsg=epsg)
     db.export(r"G:\Data\NBS\Speed_test\test_cust4\export.tif")
     raise Exception("Done")
@@ -1209,7 +1229,7 @@ if __name__ == "__main__":
                       (r"G:\Data\NBS\Mississipi\UTM15\NCEI\H13192_MB_VR_LWRP.bag", 99),
                       # (r"G:\Data\NBS\Mississipi\UTM15\NCEI\H13190_MB_VR_LWRP.bag.resampled_4m.uncert.tif", 77),
                       # (r"G:\Data\NBS\Mississipi\UTM15\NCEI\H13192_MB_VR_LWRP.bag.resampled_4m.uncert.tif", 79),
-                   ]
+                      ]
         resamples = []
         # [r"G:\Data\NBS\Mississipi\UTM15\NCEI\H13190_MB_VR_LWRP.bag",
         #            r"G:\Data\NBS\Mississipi\UTM15\NCEI\H13192_MB_VR_LWRP.bag",]
@@ -1231,14 +1251,14 @@ if __name__ == "__main__":
                       (r"G:\Data\NBS\Mississipi\UTM16\NCEI\H13196_MB_VR_LWRP.bag", 91),
                       (r"G:\Data\NBS\Mississipi\UTM16\NCEI\H13193_MB_VR_LWRP.bag", 100),
                       (r"G:\Data\NBS\Mississipi\UTM16\NCEI\H13194_MB_VR_LWRP.bag", 92),
-                   ]
+                      ]
 
     if build_mississippi:
         if os.path.exists(use_dir):
             shutil.rmtree(use_dir, onerror=onerr)
 
     db = WorldDatabase(UTMTileBackendExactRes(*output_res, epsg, RasterHistory, DiskHistory, TiffStorage,
-                                      use_dir))  # NAD823 zone 19.  WGS84 would be 32619
+                                              use_dir))  # NAD823 zone 19.  WGS84 would be 32619
     if 0:  # find a specific point in the tiling database
         y, x = 30.120484, -91.030685
         px, py = crs_transform.transform(x, y)
@@ -1259,7 +1279,7 @@ if __name__ == "__main__":
             else:
                 override_epsg = epsg
             # db.insert_survey_gdal(bag_file, override_epsg=epsg)  # single res
-            if str(data_file)[-4:] in (".bag", ):
+            if str(data_file)[-4:] in (".bag",):
                 db.insert_survey_vr(data_file, survey_score=score, override_epsg=override_epsg)
             elif str(data_file)[-4:] in ("tiff", ".tif"):
                 db.insert_survey_gdal(data_file, survey_score=score)
@@ -1311,26 +1331,26 @@ if __name__ == "__main__":
                 dx, dy = compute_delta_coord(cx, cy, *output_res, crs_transform, inv_crs_transform)
 
                 bag_options_dict = {'VAR_INDIVIDUAL_NAME': 'Chief, Hydrographic Surveys Division',
-                                     'VAR_ORGANISATION_NAME': 'NOAA, NOS, Office of Coast Survey',
-                                     'VAR_POSITION_NAME': 'Chief, Hydrographic Surveys Division',
-                                     'VAR_DATE': datetime.now().strftime('%Y-%m-%d'),
-                                     'VAR_VERT_WKT': 'VERT_CS["unknown", VERT_DATUM["unknown", 2000]]',
-                                     'VAR_ABSTRACT': "This multi-layered file is part of NOAA Office of Coast Survey’s National Bathymetry. The National Bathymetric Source is created to serve chart production and support navigation. The bathymetry is compiled from multiple sources with varying quality and includes forms of interpolation. Soundings should not be extracted from this file as source data is not explicitly identified. The bathymetric vertical uncertainty is communicated through the associated layer. More generic quality and source metrics will be added with 2.0 version of the BAG format.",
-                                     'VAR_PROCESS_STEP_DESCRIPTION': f'Generated By GDAL {gdal.__version__} and NBS',
-                                     'VAR_DATETIME': datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
-                                     'VAR_VERTICAL_UNCERT_CODE': 'productUncert',
-                                     # 'VAR_RESTRICTION_CODE=' + restriction_code,
-                                     # 'VAR_OTHER_CONSTRAINTS=' + other_constraints,
-                                     # 'VAR_CLASSIFICATION=' + classification,
-                                     #'VAR_SECURITY_USER_NOTE=' + security_user_note
-                                     }
+                                    'VAR_ORGANISATION_NAME': 'NOAA, NOS, Office of Coast Survey',
+                                    'VAR_POSITION_NAME': 'Chief, Hydrographic Surveys Division',
+                                    'VAR_DATE': datetime.now().strftime('%Y-%m-%d'),
+                                    'VAR_VERT_WKT': 'VERT_CS["unknown", VERT_DATUM["unknown", 2000]]',
+                                    'VAR_ABSTRACT': "This multi-layered file is part of NOAA Office of Coast Survey’s National Bathymetry. The National Bathymetric Source is created to serve chart production and support navigation. The bathymetry is compiled from multiple sources with varying quality and includes forms of interpolation. Soundings should not be extracted from this file as source data is not explicitly identified. The bathymetric vertical uncertainty is communicated through the associated layer. More generic quality and source metrics will be added with 2.0 version of the BAG format.",
+                                    'VAR_PROCESS_STEP_DESCRIPTION': f'Generated By GDAL {gdal.__version__} and NBS',
+                                    'VAR_DATETIME': datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
+                                    'VAR_VERTICAL_UNCERT_CODE': 'productUncert',
+                                    # 'VAR_RESTRICTION_CODE=' + restriction_code,
+                                    # 'VAR_OTHER_CONSTRAINTS=' + other_constraints,
+                                    # 'VAR_CLASSIFICATION=' + classification,
+                                    # 'VAR_SECURITY_USER_NOTE=' + security_user_note
+                                    }
                 tif_tags = {'EMAIL_ADDRESS': 'OCS.NBS@noaa.gov',
                             'ONLINE_RESOURCE': 'https://www.ngdc.noaa.gov',
                             'LICENSE': 'License cc0-1.0',
                             }
 
                 export_path = export_dir.joinpath(cell_name + ".tif")
-                cnt, exported_dataset = db.export_area(export_path, minx, miny, maxx, maxy, (dx+dx*.1, dy+dy*.1), target_epsg=export_epsg)
+                cnt, exported_dataset = db.export_area(export_path, minx, miny, maxx, maxy, (dx + dx * .1, dy + dy * .1), target_epsg=export_epsg)
 
                 # export_path = export_dir.joinpath(cell_name + ".bag")
                 # bag_options = [key + "=" + val for key, val in bag_options_dict.items()]
@@ -1341,7 +1361,7 @@ if __name__ == "__main__":
                     # output in native UTM -- Since the coordinates "twist" we need to check all four corners,
                     # not just lower left and upper right
                     x1, y1, x2, y2 = transform_rect(minx, miny, maxx, maxy, crs_transform.transform)
-                    cnt, utm_dataset = db.export_area(export_dir.joinpath(cell_name + "_utm.tif"),x1, y1, x2, y2, output_res)
+                    cnt, utm_dataset = db.export_area(export_dir.joinpath(cell_name + "_utm.tif"), x1, y1, x2, y2, output_res)
                 else:
                     exported_dataset = None  # close the gdal file
                     os.remove(export_path)
@@ -1386,7 +1406,6 @@ if __name__ == "__main__":
             # db.insert_survey_gdal(str(soundings_file))
             # db.export_area_new(str(soundings_file.parent.joinpath("output_soundings_debug5.tiff")), x1, y1, x2, y2, (res_x, res_y), )
             save_soundings_from_image(soundings_file, str(soundings_file) + "_3.gpkg", 50)
-
 
 # test positions -- H13190, US5GPGBD, Mississipi\vrbag_utm15_full_db\4615\3227\_000001_.tif, Mississipi\UTM15\NCEI\H13190_MB_VR_LWRP_resampled.tif
 # same approx position

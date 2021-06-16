@@ -222,7 +222,7 @@ def test_export_area():
     232  242  144
     234  244  nan
     """
-    db.export_area(use_dir.joinpath("new4.tif"), -1, -1, 11, 11, (4, 4))
+    db.export_area(use_dir.joinpath("new4.tif"), -1, -1, 11, 11, (4, 4), align=False)
     ds4 = gdal.Open(str(use_dir.joinpath("new4.tif")))
     b4 = ds4.GetRasterBand(1)
     a4 = b4.ReadAsArray()

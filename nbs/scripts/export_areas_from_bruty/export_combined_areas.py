@@ -13,7 +13,7 @@ from osgeo import gdal, osr, ogr
 
 from nbs.bruty.world_raster_database import WorldDatabase, LockNotAcquired, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
 from nbs.bruty.utils import get_crs_transformer, compute_delta_coord, transform_rect
-from nbs.configs import get_logger, iter_configs, set_stream_logging, log_config
+from nbs.configs import get_logger, iter_configs, set_stream_logging, log_config, parse_multiple_values
 from nbs.bruty.nbs_postgres import id_to_scoring, get_nbs_records, nbs_survey_sort, connect_params_from_config, make_contributor_csv
 
 LOGGER = get_logger('bruty.export')
@@ -22,11 +22,25 @@ CONFIG_SECTION = 'export'
 _debug = True
 
 
-def export(db_path, export_dir, export_areas_shape_filename, name_from_field, output_res, clip_to_shape_filename,
-           table_name, database, username, password, hostname='OCS-VS-NBS01', port='5434'):
-    db = WorldDatabase.open(db_path)
-    fields, records = get_nbs_records(table_name, database, username, password, hostname=hostname, port=port)
-    sorted_recs, names_list, sort_dict = id_to_scoring(fields, records)
+def export(db_paths, export_dir, export_areas_shape_filename, name_from_field, output_res, clip_to_shape_filename,
+           table_names, database, username, password, hostname='OCS-VS-NBS01', port='5434'):
+    epsgs = []
+    # FIXME this is only working if the coordinate systems of the databases match -- x1,x2,y1,y2 are all computed from the first db crs
+    for db_path in db_paths:
+        db = WorldDatabase.open(db_path)
+        epsgs.append(db.db.tile_scheme.epsg)
+    epsgs_match = [epsg == epsgs[0] for epsg in epsgs]
+    if not all(epsgs_match):
+        raise ValueError(f"EPSGs must all match from world databases, found{epsgs}")
+    # @todo - make a class to encapsulate NBS data tables rather than passing as lists.  Also to contain the logic about 'script vs manual' values etc
+    all_fields = []
+    all_records = []
+    for table_name in table_names:
+        fields, records = get_nbs_records(table_name, database, username, password, hostname=hostname, port=port)
+        all_records.append(records)
+        all_fields.append(fields)
+    sorted_recs, names_list, sort_dict = id_to_scoring(all_fields, all_records)
+
     comp = partial(nbs_survey_sort, sort_dict)
     export_dir = pathlib.Path(export_dir)
     os.makedirs(export_dir, exist_ok=True)
@@ -59,6 +73,7 @@ def export(db_path, export_dir, export_areas_shape_filename, name_from_field, ou
         if flddef.name == name_from_field:
             name_field = i
             break
+    db = WorldDatabase.open(db_paths[0])
     crs_transform = get_crs_transformer(export_epsg, db.db.tile_scheme.epsg)
     inv_crs_transform = get_crs_transformer(db.db.tile_scheme.epsg, export_epsg)
     for feat in lyr:
@@ -100,25 +115,41 @@ def export(db_path, export_dir, export_areas_shape_filename, name_from_field, ou
                         }
 
             export_utm = export_dir.joinpath(cell_name + "_utm.tif")
-            export_wgs = export_dir.joinpath(cell_name + "_wgs.tif")
-            # FIXME this is using the wrong score, need to use the nbs_database scoring when exporting as well as when combining.
             x1, y1, x2, y2 = transform_rect(minx, miny, maxx, maxy, crs_transform.transform)
-            cnt, utm_dataset = db.export_area(export_utm, x1, y1, x2, y2, output_res, compare_callback=comp)
+            dataset, dataset_score = db.make_export_rasters(export_utm, x1, y1, x2, y2, output_res)
+            tile_count = 0
+
+            for db_path in db_paths:
+                db = WorldDatabase.open(db_path)
+                tile_count += db.export_into_raster(dataset, dataset_score, compare_callback=comp)
+            score_name = dataset_score.GetDescription()
+            del dataset_score
+            try:
+                os.remove(score_name)
+            except PermissionError:
+                gc.collect()
+                try:
+                    os.remove(score_name)
+                except PermissionError:
+                    print(f"Failed to remove {score_name}, permission denied (in use?)")
+
+            # cnt, utm_dataset = db.export_area(export_utm, x1, y1, x2, y2, output_res, compare_callback=comp)
             # export_path = export_dir.joinpath(cell_name + ".bag")
             # bag_options = [key + "=" + val for key, val in bag_options_dict.items()]
             # cnt2, ex_ds = db.export_area(export_path, minx, miny, maxx, maxy, (dx+dx*.1, dy+dy*.1), target_epsg=export_epsg,
             #                       driver='BAG', gdal_options=bag_options)
 
-            if cnt > 0:
+            if tile_count > 0:
                 make_contributor_csv(export_utm, 3,
-                                     table_name, database, username, password, hostname=hostname, port=port)
-                if not _debug:
-                    # output in native UTM -- Since the coordinates "twist" we need to check all four corners,
-                    # not just lower left and upper right
-                    cnt, exported_dataset = db.export_area(export_wgs, minx, miny, maxx, maxy, (dx + dx * .1, dy + dy * .1),
-                                                           target_epsg=export_epsg, compare_callback=comp)
+                                     table_names, database, username, password, hostname=hostname, port=port)
+                # if not _debug:
+                #     # output in native UTM -- Since the coordinates "twist" we need to check all four corners,
+                #     # not just lower left and upper right
+                # export_wgs = export_dir.joinpath(cell_name + "_wgs.tif")
+                #     cnt, exported_dataset = db.export_area(export_wgs, minx, miny, maxx, maxy, (dx + dx * .1, dy + dy * .1),
+                #                                            target_epsg=export_epsg, compare_callback=comp)
             else:
-                utm_dataset = None  # close the gdal file
+                del dataset  # close the gdal file
                 gc.collect()  # make sure the gdal dataset released its lock
                 # time.sleep(.3)
                 os.remove(export_utm)
@@ -147,12 +178,13 @@ def main():
         clip = config['clip_to_shapefile'] if 'clip_to_shapefile' in config else None
         if _debug:
             hostname, port, username, password = None, None, None, None
-            tablename, database = config['tablename'], config['database']
+            tablenames_raw, database = config['tablenames'], config['database']
+            tablenames = parse_multiple_values(tablenames_raw)
         else:
-            tablename, database, hostname, port, username, password = connect_params_from_config(config)
-
-        export(config['combined_datapath'], config['output_directory'], config['export_areas_shapefile'], config['name_from_field'],
-               (resx, resy), clip, tablename, database, username, password, hostname, port)
+            tablenames, database, hostname, port, username, password = connect_params_from_config(config)
+        db_paths = parse_multiple_values(config['combined_datapaths'])
+        export(db_paths, config['output_directory'], config['export_areas_shapefile'], config['name_from_field'],
+               (resx, resy), clip, tablenames, database, username, password, hostname, port)
 
 
 if __name__ == '__main__':

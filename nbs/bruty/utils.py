@@ -437,7 +437,7 @@ class BufferedImageOps:
         """ See iterate_gdal_buffered_image() where dataset will be automatically supplied based on the __init__() for this instance """
         self.band_nums = band_nums
         for block in iterate_gdal_buffered_image(self.ds, row_buffer_size, col_buffer_size,
-                                                 band_nums=(1,), min_block_size=min_block_size, max_block_size=max_block_size):
+                                                 band_nums=band_nums, min_block_size=min_block_size, max_block_size=max_block_size):
             self.ic, self.ir, self.data_cols, self.data_rows, self.col_buffer_lower, self.row_buffer_lower, nodata, data = block
             self.read_shape = data[0].shape
             yield block

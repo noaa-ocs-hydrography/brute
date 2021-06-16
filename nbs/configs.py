@@ -33,7 +33,30 @@ if __name__ == '__main__':
         config = config_file[CONFIG_SECTION if CONFIG_SECTION in config_file else 'DEFAULT']
 """
 
-def iter_configs(config_filenames:Union[list, str, os.PathLike], log_files:bool=True, default_config_name:Union[str, os.PathLike]=""):
+def parse_multiple_values(val:str):
+    """ Split a multiline string based on newlines and commas and strip leading/trailing spaces.
+    Useful for multiple paths, names and such.
+
+    Parameters
+    ----------
+    val
+        Multiline string that has individual values separated by newlines and/or commas
+
+    Returns
+    -------
+    list
+        Return list of strings parsed from the input value
+    """
+    lines = val.split("\n")
+    full_list = []
+    for line in lines:
+        names = [name.strip() for name in line.split(",") if name.strip()]
+        full_list.extend(names)
+    return full_list
+
+
+def iter_configs(config_filenames:Union[list, str, os.PathLike], log_files:bool=True, default_config_name:Union[str, os.PathLike]="",
+                 multi:bool=False):
     """ Read all the configs using configparser and optionally modified by a default config file and base_configs.
     A ConfigParser object is created.  Then the default_config_name is loaded, if applicable.
     Then loads all configs from the base_configs directory (local to the script) listed in the [DEFAULT] section 'additional_configs' entry.
@@ -83,7 +106,7 @@ def iter_configs(config_filenames:Union[list, str, os.PathLike], log_files:bool=
         if default_config_name:
             config_file.read(os.path.join(config_path, default_config_name))
         try:
-            extra_confs = [fname.strip() for fname in config_file['DEFAULT']['additional_configs'].split(",")]
+            extra_confs = [fname.strip() for fname in parse_multiple_values(config_file['DEFAULT']['additional_configs'])]
             extra_confs.reverse()  # file should be in most significant to least - read in the opposite order
         except KeyError:
             extra_confs = []

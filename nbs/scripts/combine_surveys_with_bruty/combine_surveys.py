@@ -15,7 +15,7 @@ from nbs.bruty.history import DiskHistory, RasterHistory, AccumulationHistory
 from nbs.bruty.world_raster_database import WorldDatabase, UTMTileBackend, UTMTileBackendExactRes, \
     LockNotAcquired, Lock, EXCLUSIVE, SHARED, NON_BLOCKING
 from nbs.bruty.utils import onerr
-from nbs.configs import get_logger, iter_configs, set_stream_logging, log_config
+from nbs.configs import get_logger, iter_configs, set_stream_logging, log_config, parse_multiple_values
 from nbs.bruty.nbs_postgres import id_to_scoring, get_nbs_records, nbs_survey_sort, connect_params_from_config
 
 _debug = True
@@ -24,9 +24,15 @@ LOGGER = get_logger('bruty.insert')
 CONFIG_SECTION = 'insert'
 
 
-def process_nbs_database(world_db_path, table_name, database, username, password, hostname='OCS-VS-NBS01', port='5434'):
-    fields, records = get_nbs_records(table_name, database, username, password, hostname=hostname, port=port)
-    sorted_recs, names_list, sort_dict = id_to_scoring(fields, records)
+def process_nbs_database(world_db_path, table_names, database, username, password, hostname='OCS-VS-NBS01', port='5434'):
+    all_fields = []
+    all_records = []
+    for table_name in table_names:
+        fields, records = get_nbs_records(table_name, database, username, password, hostname=hostname, port=port)
+        all_records.append(records)
+        all_fields.append(fields)
+    sorted_recs, names_list, sort_dict = id_to_scoring(all_fields, all_records)
+
     db = WorldDatabase.open(world_db_path)
     comp = partial(nbs_survey_sort, sort_dict)
     print('------------   changing paths !!!!!!!!!!')
@@ -212,11 +218,12 @@ def main():
 
         if _debug:
             hostname, port, username, password = None, None, None, None
-            tablename, database = config['tablename'], config['database']
+            tablenames_raw, database = config['tablenames'], config['database']
+            tablenames = parse_multiple_values(tablenames_raw)
         else:
-            tablename, database, hostname, port, username, password = connect_params_from_config(config)
+            tablenames, database, hostname, port, username, password = connect_params_from_config(config)
 
-        process_nbs_database(db_path, tablename, database, username, password, hostname, port)
+        process_nbs_database(db_path, tablenames, database, username, password, hostname, port)
 
     # data_dir = pathlib.Path("c:\\data\\nbs\\test_data_output")  # avoid putting in the project directory as pycharm then tries to cache everything I think
     # def make_clean_dir(name):
