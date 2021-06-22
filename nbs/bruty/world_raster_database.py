@@ -736,11 +736,13 @@ class WorldDatabase(VABC):
                         #     sw_corner_x = mdata["sw_corner_x"]
                         #     sw_corner_y = mdata["sw_corner_y"]
                         #     bag_supergrid_dy = vr.cell_size_y
-                        #     bag_llx = vr.minx - bag_supergrid_dx / 2.0  # @todo seems the llx is center of the supergridd cel?????
+                        #     @todo seems the llx is center of the supergridd cel?????
+                        #     bag_llx = vr.minx - bag_supergrid_dx / 2.0
                         #     bag_lly = vr.miny - bag_supergrid_dy / 2.0
                         #     supergrid_x = tj * bag_supergrid_dx
                         #     supergrid_y = ti * bag_supergrid_dy
-                        #     refinement_llx = bag_llx + supergrid_x + sw_corner_x - resolution_x / 2.0  # @TODO implies swcorner is to the center and not the exterior
+                        #     @TODO implies swcorner is to the center and not the exterior
+                        #     refinement_llx = bag_llx + supergrid_x + sw_corner_x - resolution_x / 2.0
                         #     refinement_lly = bag_lly + supergrid_y + sw_corner_y - resolution_y / 2.0
                         # else:
                         #     continue
@@ -1058,6 +1060,60 @@ class WorldDatabase(VABC):
             dataset_score.FlushCache()
         return tile_count
 
+    def fast_extract(self, x1, y1, x2, y2, layers=(LayersEnum.ELEVATION,)):
+        """ Quickly extract data.  This can only be used by databases that used an ExactTilingScheme so the indexing is uniform.
+
+        This function will basically grab the data and just insert into an output array at the same resolution as the underlying data.
+        This is faster because the scoring comparison is not needed and the CRS transforms are not applicable.
+        The only thing needed is to figure out the database indices mapping to the output array.
+
+        Returns
+        -------
+
+        """
+        if not isinstance(self.db.tile_scheme, ExactTilingScheme):
+            raise TypeError("The tile scheme for this database is not dervied from ExactTilingScheme and this function can not be used since the tile sizes aren't uniform")
+
+        txs, tys = self.db.tile_scheme.xy_to_tile_index((x1, x2), (y1, y2))
+        txs = list(range(min(txs), max(txs) + 1))
+        tys = list(range(min(tys), max(tys) + 1))
+        cols = numpy.zeros(len(txs), numpy.int)
+        rows = numpy.zeros(len(tys), numpy.int)
+
+        # @todo figure out the starting position and what its row/column is and make that the origin
+        nr, nc = self.init_tile(txs[0], tys[0], None)
+        start_row, start_col = xy_to_rc_using_dims
+        # @todo figure out the amount to trim at the end also
+        nr, nc = self.init_tile(txs[-1], tys[-1], None)
+        end_row, end_col = xy_to_rc_using_dims
+
+        total_cols = 0
+        for itx, tx in enumerate(txs):
+            cols[itx] = total_cols
+            nr, nc = self.init_tile(tx, tys[0], None)
+            total_cols += nc
+
+        total_rows = 0
+        for ity, ty in enumerate(tys):
+            rows[ity] = total_rows
+            nr, nc = self.init_tile(txs[0], ty, None)
+            total_rows += nr
+        rr, cc = numpy.meshgrid(rows, cols)
+        indices = numpy.transpose([rr, cc])
+
+        # @FIXME is float32 going to work with contributor being a large integer value?
+        output_array = numpy.full([total_rows, total_cols, len(layers)], numpy.nan, numpy.float32)
+
+        for itx, tx in enumerate(txs):
+            for ity, ty in enumerate(tys):
+                tile_history = self.db.get_tile_history_by_index(tx, ty)
+                try:
+                    raster_data = tile_history[-1]
+
+                except IndexError:
+                    # if the db is empty then nothing to do
+                    pass
+
     @staticmethod
     def merge_rasters(tile_layers, tile_scoring, raster_data,
                       crs_transform, affine_transform, start_col, start_row, block_cols, block_rows,
@@ -1167,7 +1223,8 @@ if __name__ == "__main__":
 
     data_dir = pathlib.Path(r"G:\Data\NBS\H11305_for_Bruty")
     # orig_db = CustomArea(26916, 395813.2, 3350563.98, 406818.2, 3343878.98, 4, 4, data_dir.joinpath('bruty'))
-    new_db = CustomArea(None, 395813.20000000007, 3350563.9800000004, 406818.20000000007, 3343878.9800000004, 4, 4, data_dir.joinpath('bruty_debug_center'))
+    new_db = CustomArea(None, 395813.20000000007, 3350563.9800000004, 406818.20000000007, 3343878.9800000004, 4, 4,
+                        data_dir.joinpath('bruty_debug_center'))
     # use depth band for uncertainty since it's not in upsample data
     new_db.insert_survey_gdal(r"G:\Data\NBS\H11305_for_Bruty\1of3.tif", 0, uncert_band=1, override_epsg=None)
     # new_db.insert_survey_gdal(r"G:\Data\NBS\H11305_for_Bruty\2of3.tif", 0, uncert_band=1, override_epsg=None)
