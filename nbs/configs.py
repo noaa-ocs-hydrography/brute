@@ -118,6 +118,7 @@ def iter_configs(config_filenames:Union[list, str, os.PathLike], log_files:bool=
 
         yield(config_filename, config_file)
 
+
 def log_config(config_file, LOGGER, absolute=True):
     """ Writes the data from a config file into a log - so the parameters used are stored in the processing log.
 
@@ -197,6 +198,7 @@ def set_stream_logging(logger_name: str, file_level: int = None, log_format: str
     log_stream = logging.StreamHandler(io_string)
     set_file_logging(logger_name, log_stream, file_level, log_format, remove_other_file_loggers)
     return io_string
+
 
 def set_file_logging(logger_name: str, log_file: Union[str, logging.StreamHandler] = None, file_level: int = None, log_format: str = None,
                      remove_other_file_loggers: bool = True):
