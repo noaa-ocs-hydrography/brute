@@ -18,7 +18,7 @@ from nbs.bruty.utils import onerr
 from nbs.configs import get_logger, iter_configs, set_stream_logging, log_config, parse_multiple_values
 from nbs.bruty.nbs_postgres import id_to_scoring, get_nbs_records, nbs_survey_sort, connect_params_from_config
 
-_debug = True
+_debug = False
 
 LOGGER = get_logger('bruty.insert')
 CONFIG_SECTION = 'insert'
@@ -149,42 +149,6 @@ def process_nbs_database(world_db_path, table_names, database, username, passwor
                 print(f"{sid} already in database")
                 names_list.pop(i)
 
-
-def convert_csar():
-    """Quick script that converts CSAR data using Caris' carisbatch.exe to convert to bag or xyz points"""
-    cnt = 0
-    for record in records:
-        fname = record[4]  # manual_to_filename
-        if fname is None or not fname.strip():
-            fname = record[3]  # script_to_filename
-        if fname is not None and fname.strip().lower().endswith("csar"):
-            if record[67] or record[68]:  # has grid filled out
-                local_fname = fname.lower().replace('\\\\nos.noaa\\OCS\\HSD\\Projects\\NBS\\NBS_Data'.lower(), r"E:\Data\nbs")
-                if not os.path.exists(f"{local_fname}.csv.zip") and not os.path.exists(f"{local_fname}.depth.tif") and not os.path.exists(
-                        f"{local_fname}.elev.tif"):
-                    cnt += 1
-                    print(local_fname)
-                    cmd = f'{carisbatch} -r ExportRaster --output-format GEOTIFF --compression LZW --include-band Depth --include-band Uncertainty "{local_fname}" "{local_fname}.depth.tif"'
-                    p = subprocess.Popen(cmd)
-                    p.wait()
-                    if not os.path.exists(f"{local_fname}.depth.tif"):
-                        cmd = f'{carisbatch} -r ExportRaster --output-format GEOTIFF --compression LZW --include-band Elevation --include-band Uncertainty "{local_fname}" "{local_fname}.elev.tif"'
-                        p = subprocess.Popen(cmd)
-                        p.wait()
-                        if not os.path.exists(f"{local_fname}.elev.tif"):
-                            cmd = f'{carisbatch} -r exportcoveragetoascii --include-band Depth 3 --include-band Uncertainty 3 --output-crs EPSG:26919 --coordinate-format GROUND --coordinate-precision 2 --coordinate-unit m "{local_fname}" "{local_fname}.csv"'
-                            p = subprocess.Popen(cmd)
-                            p.wait()
-                            if os.path.exists(f"{local_fname}.csv"):
-                                p = subprocess.Popen(f'python -m zipfile -c "{local_fname}.csv.zip" "{local_fname}.csv"')
-                                p.wait()
-                                os.remove(f'{local_fname}.csv')
-                                print("was points")
-                            else:
-                                print("failed as points and raster????????????????????")
-                        else:
-                            print("was raster")
-                            break
 
 
 def main():
