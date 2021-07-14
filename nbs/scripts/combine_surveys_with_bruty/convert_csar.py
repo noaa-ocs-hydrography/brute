@@ -11,7 +11,7 @@ LOGGER = get_logger('bruty.convert_csar')
 CONFIG_SECTION = 'convert_csar'
 
 def convert_csar(carisbatch, epsg, table_names, database, username, password, hostname='OCS-VS-NBS01',
-                             port='5434', use_zip=False):
+                             port='5434', use_zip=False, dest_path=None):
     """Quick script that converts CSAR data using Caris' carisbatch.exe to convert to bag or xyz points"""
 
     for table_name in table_names:
@@ -24,7 +24,10 @@ def convert_csar(carisbatch, epsg, table_names, database, username, password, ho
                 fname = record[fields.index('script_to_filename')]
             if fname is not None and fname.strip().lower().endswith("csar"):
                 if record[fields.index('script_resolution')] or record[fields.index('manual_resolution')]:  # has grid filled out
-                    local_fname = fname.lower().replace('\\\\nos.noaa\\OCS\\HSD\\Projects\\NBS\\NBS_Data'.lower(), r"E:\Data\nbs")
+                    if dest_path is not None:
+                        local_fname = fname.lower().replace('\\\\nos.noaa\\OCS\\HSD\\Projects\\NBS\\NBS_Data'.lower(), local_path)
+                    else:
+                        local_fname = fname
                     if not os.path.exists(f"{local_fname}.csv.zip") and not not os.path.exists(f"{local_fname}.csv") and \
                        not os.path.exists(f"{local_fname}.depth.tif") and not os.path.exists(f"{local_fname}.elev.tif"):
                         cnt += 1
@@ -66,7 +69,7 @@ def main():
         epsg = pathlib.Path(config['epsg'])
 
         tablenames, database, hostname, port, username, password = connect_params_from_config(config)
-
+        caris_batch_path = config['carisbatch']
         convert_csar(caris_batch_path, epsg, tablenames, database, username, password, hostname, port)
 
 if __name__ == '__main__':
