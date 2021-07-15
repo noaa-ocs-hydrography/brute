@@ -3,6 +3,7 @@ import io
 import sys
 import pathlib
 import subprocess
+import logging
 
 from nbs.configs import get_logger, iter_configs, set_stream_logging, log_config, parse_multiple_values
 from nbs.bruty.nbs_postgres import get_nbs_records, connect_params_from_config
@@ -25,22 +26,22 @@ def convert_csar(carisbatch, epsg, table_names, database, username, password, ho
             if fname is not None and fname.strip().lower().endswith("csar"):
                 if record[fields.index('script_resolution')] or record[fields.index('manual_resolution')]:  # has grid filled out
                     if dest_path is not None:
-                        local_fname = fname.lower().replace('\\\\nos.noaa\\OCS\\HSD\\Projects\\NBS\\NBS_Data'.lower(), local_path)
+                        local_fname = fname.lower().replace('\\\\nos.noaa\\OCS\\HSD\\Projects\\NBS\\NBS_Data'.lower(), dest_path)
                     else:
                         local_fname = fname
-                    if not os.path.exists(f"{local_fname}.csv.zip") and not not os.path.exists(f"{local_fname}.csv") and \
+                    if not os.path.exists(f"{local_fname}.csv.zip") and not os.path.exists(f"{local_fname}.csv") and \
                        not os.path.exists(f"{local_fname}.depth.tif") and not os.path.exists(f"{local_fname}.elev.tif"):
                         cnt += 1
-                        print(local_fname)
-                        cmd = f'{carisbatch} -r ExportRaster --output-format GEOTIFF --compression LZW --include-band Depth --include-band Uncertainty "{local_fname}" "{local_fname}.depth.tif"'
+                        print(cnt, local_fname)
+                        cmd = f'"{carisbatch}" -r ExportRaster --output-format GEOTIFF --compression LZW --include-band Depth --include-band Uncertainty "{local_fname}" "{local_fname}.depth.tif"'
                         p = subprocess.Popen(cmd)
                         p.wait()
                         if not os.path.exists(f"{local_fname}.depth.tif"):
-                            cmd = f'{carisbatch} -r ExportRaster --output-format GEOTIFF --compression LZW --include-band Elevation --include-band Uncertainty "{local_fname}" "{local_fname}.elev.tif"'
+                            cmd = f'"{carisbatch}" -r ExportRaster --output-format GEOTIFF --compression LZW --include-band Elevation --include-band Uncertainty "{local_fname}" "{local_fname}.elev.tif"'
                             p = subprocess.Popen(cmd)
                             p.wait()
                             if not os.path.exists(f"{local_fname}.elev.tif"):
-                                cmd = f'{carisbatch} -r exportcoveragetoascii --include-band Depth 3 --include-band Uncertainty 3 --output-crs EPSG:{epsg} --coordinate-format GROUND --coordinate-precision 2 --coordinate-unit m "{local_fname}" "{local_fname}.csv"'
+                                cmd = f'"{carisbatch}" -r exportcoveragetoascii --include-band Depth 3 --include-band Uncertainty 3 --output-crs EPSG:{epsg} --coordinate-format GROUND --coordinate-precision 2 --coordinate-unit m "{local_fname}" "{local_fname}.csv"'
                                 p = subprocess.Popen(cmd)
                                 p.wait()
                                 if os.path.exists(f"{local_fname}.csv"):
