@@ -12,27 +12,35 @@ LOGGER = get_logger('bruty.convert_csar')
 CONFIG_SECTION = 'convert_csar'
 
 def convert_csar(carisbatch, epsg, table_names, database, username, password, hostname='OCS-VS-NBS01',
-                             port='5434', use_zip=False, dest_path=None):
+                             port='5434', use_zip=False, dest_path=None,
+                             use_never_post_flag=True):
     """Quick script that converts CSAR data using Caris' carisbatch.exe to convert to bag or xyz points"""
 
     for table_name in table_names:
         fields, records = get_nbs_records(table_name, database, username, password, hostname=hostname, port=port)
+        for_navigation_col = fields.index('for_navigation')
+        never_post_col = fields.index('never_post')
+        manual_filename_col = fields.index('manual_to_filename')
+        script_filename_col = fields.index('script_to_filename')
 
-        cnt = 0
-        for record in records:
-            fname = record[fields.index('manual_to_filename')]
+        for cnt, record in enumerate(records):
+            fname = record[manual_filename_col]
             if fname is None or not fname.strip():
-                fname = record[fields.index('script_to_filename')]
+                fname = record[script_filename_col]
             if fname is not None and fname.strip().lower().endswith("csar"):
                 if record[fields.index('script_resolution')] or record[fields.index('manual_resolution')]:  # has grid filled out
                     if dest_path is not None:
                         local_fname = fname.lower().replace('\\\\nos.noaa\\OCS\\HSD\\Projects\\NBS\\NBS_Data'.lower(), dest_path)
                     else:
                         local_fname = fname
+                    # if use_for_navigation_flag and not record[for_navigation_col]:
+                    #     continue
+                    if use_never_post_flag and record[never_post_col]:
+                        continue
                     if not os.path.exists(f"{local_fname}.csv.zip") and not os.path.exists(f"{local_fname}.csv") and \
                        not os.path.exists(f"{local_fname}.depth.tif") and not os.path.exists(f"{local_fname}.elev.tif"):
-                        cnt += 1
-                        print(cnt, local_fname)
+                        print("processing", cnt, table_name, local_fname)
+                        print(record[fields.index('manual_to_filename')], record[fields.index('script_to_filename')])
                         cmd = f'"{carisbatch}" -r ExportRaster --output-format GEOTIFF --compression LZW --include-band Depth --include-band Uncertainty "{local_fname}" "{local_fname}.depth.tif"'
                         p = subprocess.Popen(cmd)
                         p.wait()
@@ -52,7 +60,6 @@ def convert_csar(carisbatch, epsg, table_names, database, username, password, ho
                                     print("was points")
                                 else:
                                     print("failed as points and raster????????????????????")
-
 def main():
     if len(sys.argv) > 1:
         use_configs = sys.argv[1:]
