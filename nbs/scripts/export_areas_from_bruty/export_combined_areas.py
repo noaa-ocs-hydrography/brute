@@ -19,7 +19,7 @@ from nbs.bruty.nbs_postgres import id_to_scoring, get_nbs_records, nbs_survey_so
 LOGGER = get_logger('bruty.export')
 CONFIG_SECTION = 'export'
 
-_debug = True
+_debug = False
 
 
 def export(db_paths, export_dir, export_areas_shape_filename, name_from_field, output_res, clip_to_shape_filename,

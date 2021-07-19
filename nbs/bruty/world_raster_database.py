@@ -26,7 +26,7 @@ geo_debug = False
 _debug = False
 
 # @todo set up a config or environment variable to control if locks should be used
-NO_LOCK = True
+NO_LOCK = False
 
 if NO_LOCK:  # too many file locks for windows is preventing some surveys from processing.  Use this when I know only one process is running.
     from nbs.bruty.nbs_no_locks import LockNotAcquired, AreaLock, Lock, EXCLUSIVE, SHARED, NON_BLOCKING

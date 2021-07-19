@@ -35,11 +35,13 @@ def process_nbs_database(world_db_path, table_names, database, username, passwor
 
     db = WorldDatabase.open(world_db_path)
     comp = partial(nbs_survey_sort, sort_dict)
-    print('------------   changing paths !!!!!!!!!!')
+    if _debug:
+        print('\n\n\n------------   changing paths !!!!!!!!!!\n\n\n')
     while names_list:
         num_names = len(names_list)
         for i in range(num_names-1, -1, -1):
             (filename, sid, path) = names_list[i]
+            print('starting', path)
             if _debug:
                 pass
                 # if sid not in (13425, 13562, 10035):
@@ -69,19 +71,21 @@ def process_nbs_database(world_db_path, table_names, database, username, passwor
                                         pass
                     except FileNotFoundError:
                         print("File missing", sid, path)
-                # convert csar names to exported data, 1 of 3 types
-                if path.endswith("csar"):
-                    for mod_fname in (f"{path_c}.elev.tif", f"{path_c}.depth.tif", f"{path_c}.csv.zip"):
-                        if os.path.exists(mod_fname):
-                            path = mod_fname
-                else:
-                    path = path_c
+                path = path_c
+
+            # convert csar names to exported data, 1 of 3 types
+            if path.endswith("csar"):
+                for mod_fname in (f"{path}.elev.tif", f"{path}.depth.tif", f"{path}.csv.zip"):
+                    if os.path.exists(mod_fname):
+                        print(filename, "is using exported", mod_fname)
+                        path = mod_fname
+
             if not os.path.exists(path):
                 print(path, "didn't exist")
                 names_list.pop(i)
                 continue
+
             # # @FIXME is contributor an int or float -- needs to be int 32 and maybe int 64 (or two int 32s)
-            print('starting', path)
             print(datetime.now().isoformat(), num_names-i, "of", num_names)
             # FIXME there is the possibility that we load metadata looking for SID=xx while it is being processed.
             #    Then it gets written to disk as we figure out what tiles to lock.
