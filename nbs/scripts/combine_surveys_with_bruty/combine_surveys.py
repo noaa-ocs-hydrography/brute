@@ -24,14 +24,14 @@ LOGGER = get_logger('bruty.insert')
 CONFIG_SECTION = 'insert'
 
 
-def process_nbs_database(world_db_path, table_names, database, username, password, hostname='OCS-VS-NBS01', port='5434'):
+def process_nbs_database(world_db_path, table_names, database, username, password, hostname='OCS-VS-NBS01', port='5434', for_navigation_flag=(True, True)):
     all_fields = []
     all_records = []
     for table_name in table_names:
         fields, records = get_nbs_records(table_name, database, username, password, hostname=hostname, port=port)
         all_records.append(records)
         all_fields.append(fields)
-    sorted_recs, names_list, sort_dict = id_to_scoring(all_fields, all_records)
+    sorted_recs, names_list, sort_dict = id_to_scoring(all_fields, all_records, for_navigation_flag=for_navigation_flag)
 
     db = WorldDatabase.open(world_db_path)
     comp = partial(nbs_survey_sort, sort_dict)
@@ -141,6 +141,7 @@ def process_nbs_database(world_db_path, table_names, database, username, passwor
                             except ValueError:
                                 print("Value Error")
                                 print(traceback.format_exc())
+                                continue
                         print('inserted', path)
                         names_list.pop(i)
                     else:
@@ -190,8 +191,27 @@ def main():
             tablenames = parse_multiple_values(tablenames_raw)
         else:
             tablenames, database, hostname, port, username, password = connect_params_from_config(config)
+        if 'use_for_navigation_flag' in config:
+            if config['use_for_navigation_flag'].lower().strip() == "true":
+                use_nav_flag = True
+            elif config['use_for_navigation_flag'].lower().strip() == "false":
+                use_nav_flag = False
+            else:
+                raise ValueError("use_for_navigation_flag must be true or false")
+        else:
+            use_nav_flag = True
 
-        process_nbs_database(db_path, tablenames, database, username, password, hostname, port)
+        if 'for_navigation_equals' in config:
+            if config['for_navigation_equals'].lower().strip() == "true":
+                nav_flag_value = True
+            elif config['for_navigation_equals'].lower().strip() == "false":
+                nav_flag_value = False
+            else:
+                raise ValueError("for_navigation_equals must be true or false")
+        else:
+            nav_flag_value = True
+
+        process_nbs_database(db_path, tablenames, database, username, password, hostname, port, for_navigation_flag=(use_nav_flag, nav_flag_value))
 
     # data_dir = pathlib.Path("c:\\data\\nbs\\test_data_output")  # avoid putting in the project directory as pycharm then tries to cache everything I think
     # def make_clean_dir(name):

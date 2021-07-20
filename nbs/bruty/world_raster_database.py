@@ -437,6 +437,7 @@ class WorldDatabase(VABC):
                 # FIXME -- export points from csar and support LAS or whatever points file is decided on.
                 # self.insert_txt_survey(path_to_survey_data, override_epsg=override_epsg, contrib_id=contrib_id, compare_callback=compare_callback, reverse_z=reverse_z)
                 done = True
+                raise ValueError("Filename ends in csar which needs to be eported to a different format first")
 
     def insert_txt_survey(self, path_to_survey_data, survey_score=100, flags=0, dformat=None, override_epsg=NO_OVERRIDE,
                           contrib_id=numpy.nan, compare_callback=None, reverse_z=False):

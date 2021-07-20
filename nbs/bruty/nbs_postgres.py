@@ -73,7 +73,7 @@ def get_nbs_records(table_name, database, username, password, hostname='OCS-VS-N
 
 
 
-def id_to_scoring(fields_lists, records_lists, use_for_navigation_flag=True, use_never_post_flag=True):
+def id_to_scoring(fields_lists, records_lists, for_navigation_flag=(True, True), never_post_flag=(True, False)):
     # @todo finish docs and change fields/records into class instances
     """
     Parameters
@@ -82,8 +82,12 @@ def id_to_scoring(fields_lists, records_lists, use_for_navigation_flag=True, use
         list of list of field names in each respective field, record pair
     records : list of lists
         list of record lists -- matched to the fields lists
-    use_for_navigation_flag
-    use_never_post_flag
+    for_navigation_flag
+        tuple of two booleans, first is if navigation_flag should be checked and second is the value that is desired to be processed.
+        default is (True, True) meaning use the navigation flag and only process surveys that are "for navigation"
+    never_post_flag
+        tuple of two booleans, first is if never_post should be checked and second is the value that is desired to be processed.
+        default is (True, False) meaning use the never_post flag and only process surveys that have False (meaning yes, post)
 
     Returns
     -------
@@ -92,6 +96,8 @@ def id_to_scoring(fields_lists, records_lists, use_for_navigation_flag=True, use
     """
     rec_list = []
     names_list = []
+    use_for_navigation_flag, require_navigation_flag_value = for_navigation_flag
+    use_never_post_flag, require_never_post_flag_value = never_post_flag
     for fields, records in zip(fields_lists, records_lists):
         # Create a dictionary that converts from the unique database ID to an ordering score
         # Basically the standings of the surveys,
@@ -112,9 +118,9 @@ def id_to_scoring(fields_lists, records_lists, use_for_navigation_flag=True, use
         id_col = fields.index('nbs_id')
         # make lists of the dacay/res with survey if and also one for name vs survey id
         for rec in records:
-            if use_for_navigation_flag and not rec[for_navigation_col]:
+            if use_for_navigation_flag and bool(rec[for_navigation_col]) != require_navigation_flag_value:
                 continue
-            if use_never_post_flag and rec[never_post_col]:
+            if use_never_post_flag and bool(rec[never_post_col]) != require_never_post_flag_value:
                 continue
             decay = rec[decay_col]
             sid = rec[id_col]
@@ -123,9 +129,9 @@ def id_to_scoring(fields_lists, records_lists, use_for_navigation_flag=True, use
                 if res is None:
                     res = rec[script_res_col]
                     if res is None:
-                        res = rec[script_point_res_col]
+                        res = rec[manual_point_res_col]
                         if res is None:
-                            res = rec[manual_point_res_col]
+                            res = rec[script_point_res_col]
                             if res is None:
                                 print("missing res on record:", sid, rec[filename_col])
                                 continue

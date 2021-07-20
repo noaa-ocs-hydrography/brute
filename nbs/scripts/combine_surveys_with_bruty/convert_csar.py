@@ -22,44 +22,44 @@ def convert_csar(carisbatch, epsg, table_names, database, username, password, ho
         never_post_col = fields.index('never_post')
         manual_filename_col = fields.index('manual_to_filename')
         script_filename_col = fields.index('script_to_filename')
+        id_col = fields.index('nbs_id')
 
         for cnt, record in enumerate(records):
             fname = record[manual_filename_col]
             if fname is None or not fname.strip():
                 fname = record[script_filename_col]
             if fname is not None and fname.strip().lower().endswith("csar"):
-                if record[fields.index('script_resolution')] or record[fields.index('manual_resolution')]:  # has grid filled out
-                    if dest_path is not None:
-                        local_fname = fname.lower().replace('\\\\nos.noaa\\OCS\\HSD\\Projects\\NBS\\NBS_Data'.lower(), dest_path)
-                    else:
-                        local_fname = fname
-                    # if use_for_navigation_flag and not record[for_navigation_col]:
-                    #     continue
-                    if use_never_post_flag and record[never_post_col]:
-                        continue
-                    if not os.path.exists(f"{local_fname}.csv.zip") and not os.path.exists(f"{local_fname}.csv") and \
-                       not os.path.exists(f"{local_fname}.depth.tif") and not os.path.exists(f"{local_fname}.elev.tif"):
-                        print("processing", cnt, table_name, local_fname)
-                        print(record[fields.index('manual_to_filename')], record[fields.index('script_to_filename')])
-                        cmd = f'"{carisbatch}" -r ExportRaster --output-format GEOTIFF --compression LZW --include-band Depth --include-band Uncertainty "{local_fname}" "{local_fname}.depth.tif"'
+                if dest_path is not None:
+                    local_fname = fname.lower().replace('\\\\nos.noaa\\OCS\\HSD\\Projects\\NBS\\NBS_Data'.lower(), dest_path)
+                else:
+                    local_fname = fname
+                # if use_for_navigation_flag and not record[for_navigation_col]:
+                #     continue
+                if use_never_post_flag and record[never_post_col]:
+                    continue
+                if not os.path.exists(f"{local_fname}.csv.zip") and not os.path.exists(f"{local_fname}.csv") and \
+                   not os.path.exists(f"{local_fname}.depth.tif") and not os.path.exists(f"{local_fname}.elev.tif"):
+                    print("processing", cnt, table_name, local_fname)
+                    print(record[fields.index('manual_to_filename')], record[fields.index('script_to_filename')])
+                    cmd = f'"{carisbatch}" -r ExportRaster --output-format GEOTIFF --compression LZW --include-band Depth --include-band Uncertainty "{local_fname}" "{local_fname}.depth.tif"'
+                    p = subprocess.Popen(cmd)
+                    p.wait()
+                    if not os.path.exists(f"{local_fname}.depth.tif"):
+                        cmd = f'"{carisbatch}" -r ExportRaster --output-format GEOTIFF --compression LZW --include-band Elevation --include-band Uncertainty "{local_fname}" "{local_fname}.elev.tif"'
                         p = subprocess.Popen(cmd)
                         p.wait()
-                        if not os.path.exists(f"{local_fname}.depth.tif"):
-                            cmd = f'"{carisbatch}" -r ExportRaster --output-format GEOTIFF --compression LZW --include-band Elevation --include-band Uncertainty "{local_fname}" "{local_fname}.elev.tif"'
+                        if not os.path.exists(f"{local_fname}.elev.tif"):
+                            cmd = f'"{carisbatch}" -r exportcoveragetoascii --include-band Depth 3 --include-band Uncertainty 3 --output-crs EPSG:{epsg} --coordinate-format GROUND --coordinate-precision 2 --coordinate-unit m "{local_fname}" "{local_fname}.csv"'
                             p = subprocess.Popen(cmd)
                             p.wait()
-                            if not os.path.exists(f"{local_fname}.elev.tif"):
-                                cmd = f'"{carisbatch}" -r exportcoveragetoascii --include-band Depth 3 --include-band Uncertainty 3 --output-crs EPSG:{epsg} --coordinate-format GROUND --coordinate-precision 2 --coordinate-unit m "{local_fname}" "{local_fname}.csv"'
-                                p = subprocess.Popen(cmd)
-                                p.wait()
-                                if os.path.exists(f"{local_fname}.csv"):
-                                    if use_zip:
-                                        p = subprocess.Popen(f'python -m zipfile -c "{local_fname}.csv.zip" "{local_fname}.csv"')
-                                        p.wait()
-                                        os.remove(f'{local_fname}.csv')
-                                    print("was points")
-                                else:
-                                    print("failed as points and raster????????????????????")
+                            if os.path.exists(f"{local_fname}.csv"):
+                                if use_zip:
+                                    p = subprocess.Popen(f'python -m zipfile -c "{local_fname}.csv.zip" "{local_fname}.csv"')
+                                    p.wait()
+                                    os.remove(f'{local_fname}.csv')
+                                print("was points")
+                            else:
+                                print("failed as points and raster????????????????????")
 def main():
     if len(sys.argv) > 1:
         use_configs = sys.argv[1:]
