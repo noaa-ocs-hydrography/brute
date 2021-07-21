@@ -61,7 +61,7 @@ def process_nbs_database(world_db_path, table_names, database, username, passwor
                             pass
                             # shutil.copy(path_e, path_c)
                         else:
-                            for mod_fname in (f"{path_e}.elev.tif", f"{path_e}.depth.tif", f"{path_e}.csv.zip"):
+                            for mod_fname in (f"{path_e}.elev.tif", f"{path_e}.depth.tif", f"{path}.csv", f"{path_e}.csv.zip"):
                                 if os.path.exists(mod_fname):
                                     shutil.copy(mod_fname, "c"+mod_fname[1:])
                                     try:
@@ -75,7 +75,7 @@ def process_nbs_database(world_db_path, table_names, database, username, passwor
 
             # convert csar names to exported data, 1 of 3 types
             if path.endswith("csar"):
-                for mod_fname in (f"{path}.elev.tif", f"{path}.depth.tif", f"{path}.csv.zip"):
+                for mod_fname in (f"{path}.elev.tif", f"{path}.depth.tif", f"{path}.csv", f"{path}.csv.zip"):
                     if os.path.exists(mod_fname):
                         print(filename, "is using exported", mod_fname)
                         path = mod_fname
@@ -105,11 +105,14 @@ def process_nbs_database(world_db_path, table_names, database, username, passwor
                 try:
                     lock = Lock(path)  # this doesn't work with the file lock - just the multiprocessing locks
                     if lock.acquire():
-                        if path.endswith(".csv.zip"):
-                            csv_path = path[:-4]
-                            print(f"Extract CSV {path}")
-                            p = subprocess.Popen(f'python -m zipfile -e "{path}" "{os.path.dirname(path)}"')
-                            p.wait()
+                        if path.endswith(".csv.zip") or path.endswith(".csv"):
+                            if path.endswith(".csv.zip"):
+                                csv_path = path[:-4]
+                                print(f"Extract CSV {path}")
+                                p = subprocess.Popen(f'python -m zipfile -e "{path}" "{os.path.dirname(path)}"')
+                                p.wait()
+                            else:
+                                csv_path = path
                             if os.path.exists(csv_path):
                                 try:
                                     # points are in opposite convention as BAGs and exported CSAR tiffs, so reverse the z component
@@ -132,6 +135,7 @@ def process_nbs_database(world_db_path, table_names, database, username, passwor
                                         print(f"failed to remove{csv_path}")
                             else:
                                 print("\n\nCSV was not extracted from zip\n\n\n")
+                                continue
                         elif path.endswith(".npy"):
                             db.insert_txt_survey(path, dformat=[('x', 'f8'), ('y', 'f8'), ('depth', 'f8'), ('uncertainty', 'f8')],
                                                  override_epsg=db.db.epsg, contrib_id=sid, compare_callback=comp, reverse_z=True)
