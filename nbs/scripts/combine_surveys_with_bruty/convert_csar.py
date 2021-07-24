@@ -39,7 +39,7 @@ def convert_csar(carisbatch, epsg, table_names, database, username, password, ho
                     continue
                 if not os.path.exists(f"{local_fname}.csv.zip") and not os.path.exists(f"{local_fname}.csv") and \
                    not os.path.exists(f"{local_fname}.depth.tif") and not os.path.exists(f"{local_fname}.elev.tif"):
-                    print("processing", cnt, table_name, local_fname)
+                    print("processing", record[id_col], cnt, table_name, local_fname)
                     print(record[fields.index('manual_to_filename')], record[fields.index('script_to_filename')])
                     cmd = f'"{carisbatch}" -r ExportRaster --output-format GEOTIFF --compression LZW --include-band Depth --include-band Uncertainty "{local_fname}" "{local_fname}.depth.tif"'
                     p = subprocess.Popen(cmd)
