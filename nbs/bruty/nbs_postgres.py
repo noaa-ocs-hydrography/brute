@@ -145,27 +145,30 @@ def id_to_scoring(fields_lists, records_lists, for_navigation_flag=(True, True),
                 rec_list.append((sid, res, decay))
                 # Switch to lower case, these were from filenames that I'm not sure are case sensitive
                 names_list.append((rec[filename_col].lower(), sid, path))  # sid would be the next thing sorted if the names match
-    # sort the names so we can use an integer to use for sorting by name
-    names_list.sort()
-    # do an ordered 2 key sort on decay then res (lexsort likes them backwards)
-    rec_array = numpy.array(rec_list)
-    sorted_indices = numpy.lexsort([-rec_array[:, 1], rec_array[:, 2]])  # resolution, decay (flip the res so lowest score and largest res is first)
-    sorted_recs = rec_array[sorted_indices]
-    sort_val = 0
-    prev_res, prev_decay = None, None
-    sort_dict = {}
-    # set up a dictionary that has the sorted value of the decay followed by resolution
-    for n, (sid, res, decay) in enumerate(sorted_recs):
-        # don't incremenet when there was a tie, this allows the next sort criteria to be checked
-        if res != prev_res or decay != prev_decay:
-            sort_val += 1
-        prev_res = res
-        prev_decay = decay
-        sort_dict[sid] = [sort_val]
-    # the NBS sort order then uses depth after decay but before alphabetical, so we can't merge the name sort with the decay+res
-    # add a second value for the alphabetical naming which is the last resort to maintain constistency of selection
-    for n, (filename, sid, path) in enumerate(names_list):
-        sort_dict[sid].append(n)
+    if names_list:
+        # sort the names so we can use an integer to use for sorting by name
+        names_list.sort()
+        # do an ordered 2 key sort on decay then res (lexsort likes them backwards)
+        rec_array = numpy.array(rec_list)
+        sorted_indices = numpy.lexsort([-rec_array[:, 1], rec_array[:, 2]])  # resolution, decay (flip the res so lowest score and largest res is first)
+        sorted_recs = rec_array[sorted_indices]
+        sort_val = 0
+        prev_res, prev_decay = None, None
+        sort_dict = {}
+        # set up a dictionary that has the sorted value of the decay followed by resolution
+        for n, (sid, res, decay) in enumerate(sorted_recs):
+            # don't incremenet when there was a tie, this allows the next sort criteria to be checked
+            if res != prev_res or decay != prev_decay:
+                sort_val += 1
+            prev_res = res
+            prev_decay = decay
+            sort_dict[sid] = [sort_val]
+        # the NBS sort order then uses depth after decay but before alphabetical, so we can't merge the name sort with the decay+res
+        # add a second value for the alphabetical naming which is the last resort to maintain constistency of selection
+        for n, (filename, sid, path) in enumerate(names_list):
+            sort_dict[sid].append(n)
+    else:
+        sorted_recs, names_list, sort_dict = [], [], {}
     return sorted_recs, names_list, sort_dict
 
 
