@@ -391,10 +391,10 @@ def iterate_gdal_buffered_image(dataset, col_buffer_size, row_buffer_size, band_
     """
     bands = [dataset.GetRasterBand(num) for num in band_nums]
     block_sizes = bands[0].GetBlockSize()
-    row_block_size = min(max(block_sizes[1], min_block_size), max_block_size)
-    col_block_size = min(max(block_sizes[0], min_block_size), max_block_size)
     col_size = bands[0].XSize
     row_size = bands[0].YSize
+    row_block_size = min(max(block_sizes[1], min_block_size), max_block_size, row_size)  # don't let the block size be bigger than the data
+    col_block_size = min(max(block_sizes[0], min_block_size), max_block_size, col_size)  # don't let the block size be bigger than the data
     nodata = bands[0].GetNoDataValue()
     for ic in tqdm(range(0, col_size, col_block_size), mininterval=.7):
         cols = col_block_size
