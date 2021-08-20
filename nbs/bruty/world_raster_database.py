@@ -953,6 +953,8 @@ class WorldDatabase(VABC):
             number of database tiles that supplied data into the export area, open gdal dataset for the file location specified
 
         """
+        if not target_epsg:
+            target_epsg = self.db.tile_scheme.epsg
         # 1) Create a single tif tile that covers the area desired
         # probably won't export the score layer but we need it when combining data into the export area
         dataset, dataset_score = self.make_export_rasters(fname, x1, y1, x2, y2, res,
@@ -980,6 +982,8 @@ class WorldDatabase(VABC):
             dx, dy = res
         except TypeError:
             dx = dy = res
+        if not target_epsg:
+            target_epsg = self.db.tile_scheme.epsg
 
         fname = pathlib.Path(fname)
         score_name = fname.with_suffix(".score" + fname.suffix)
@@ -989,6 +993,10 @@ class WorldDatabase(VABC):
             align_x = align_y = None
         dataset = make_gdal_dataset_area(fname, len(layers), x1, y1, x2, y2, dx, dy, target_epsg, driver,
                                          gdal_options, align_x=align_x, align_y=align_y)
+        for index, band_info in enumerate(layers):
+            band = dataset.GetRasterBand(index+1)
+            band.SetDescription(LayersEnum(band_info).name)
+            del band
         # probably won't export the score layer but we need it when combining data into the export area
         dataset_score = make_gdal_dataset_area(score_name, 3, x1, y1, x2, y2, dx, dy, target_epsg, driver, align_x=align_x, align_y=align_y)
         return dataset, dataset_score
