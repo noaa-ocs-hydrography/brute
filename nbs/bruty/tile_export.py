@@ -1,14 +1,19 @@
 import os
+import shutil
 from shapely import wkt, wkb
 from osgeo import ogr, osr, gdal
 import pickle
 from functools import partial
 
+import numpy
+
 from data_management.db_connection import connect_with_retries
+from fuse_dev.fuse.meta_review import meta_review
 from nbs.bruty.utils import get_crs_transformer
 from nbs.bruty.nbs_postgres import id_to_scoring, get_nbs_records, nbs_survey_sort, connect_params_from_config, make_contributor_csv
 from nbs.bruty.world_raster_database import WorldDatabase
 from nbs.bruty.generalize import generalize
+from nbs.bruty.raster_attribute_table import make_raster_attr_table
 
 """
 1) Get tile geometries and attributes
@@ -51,6 +56,16 @@ else:
     records, fields = pickle.load(open(r"C:\Data\bruty_databases\\bluetopo.pickle", "rb"))
     metadata_records, metadata_fields = pickle.load(open(r"C:\Data\bruty_databases\\metadata.pickle", "rb"))
 
+all_meta_records = {}
+all_simple_records = {}
+for n, meta_table_recs in enumerate(metadata_records):
+    id_col = metadata_fields[n].index('nbs_id')
+    for record in meta_table_recs:
+        record_dict = dict(zip(metadata_fields[n], record))
+        simple_record = meta_review.MetadataDatabase.simplify_record(record_dict)  # todo - make this a static method
+        simple_fuse_record = meta_review.records_to_fusemetadata(simple_record)  # re-casts the db values into other/desired types
+        all_simple_records[record[id_col]] = simple_fuse_record
+    all_meta_records.update({rec[id_col]: rec for rec in meta_table_recs})
 name_index = fields.index("name")
 resolution_index = fields.index("resolution")
 closing_index = fields.index("closing_distance")
@@ -100,7 +115,7 @@ for r in records:
 #  None,
 #  '01030000000100000009000000CDCCCCCCCC7C52C09A9999999919444066666666668652C09A9999999919444066666666668652C066666666663644409A999999999952C066666666663644409A999999999952C0000000000040444066666666666E52C0000000000040444066666666666E52C0CDCCCCCCCC2C4440CDCCCCCCCC7C52C0CDCCCCCCCC2C4440CDCCCCCCCC7C52C09A99999999194440')
 
-for r in [r18_square, r18_complex]:
+for r in records:
     # USING GDAL
     if use_gdal:
         g = ogr.CreateGeometryFromWkb(bytes.fromhex(r[-1]))
@@ -131,7 +146,13 @@ for r in [r18_square, r18_complex]:
     closing_dist = r[closing_index]
 
     target_epsg = 4326  # MCD WGS84
-    db_epsg = 26918
+    if 'PBC18' in r[0].upper():
+        db_epsg = 26918
+        base_db = "pbc_utm18n_mllw"
+    else:
+        db_epsg = 26919
+        base_db = "pbc_utm19n_mllw"
+
     crs_transform = get_crs_transformer(target_epsg, db_epsg)
     if crs_transform:
         xs, ys = [], []
@@ -148,7 +169,6 @@ for r in [r18_square, r18_complex]:
     # 3) Extract data from all necessary Bruty DBs
     db_base_path = r"C:\Data\bruty_databases"
     output_base_path = r"C:\Data\bruty_databases\output"
-    base_db = "pbc_utm18n_mllw"
     REVIEWED = ""
     NOT_NAV = "_not_for_navigation"
     PREREVIEW = "_prereview"
@@ -166,25 +186,34 @@ for r in [r18_square, r18_complex]:
     sorted_recs, names_list, sort_dict = id_to_scoring(metadata_fields, metadata_records, for_navigation_flag=(False, False), never_post_flag=(False, False))
     comp = partial(nbs_survey_sort, sort_dict)
     dataset, dataset_score = None, None
-    if not _debug:
-        for db_name in databases:
-            db = WorldDatabase.open(os.path.join(db_base_path, db_name))
-            if dataset is None:
-                dataset, dataset_score = db.make_export_rasters(os.path.join(output_base_path, r[name_index]+".tif"), minx-closing_dist, miny-closing_dist,
-                                                                maxx+closing_dist, maxy+closing_dist, r[resolution_index])
-                exported_filename = dataset.GetFileList()[0]
-            db.export_into_raster(dataset, dataset_score, compare_callback=comp)
-            # centerx, centery, sz = 588959, 4632703, 10000  # tile20_pbc18_4
-            # centerx, centery, sz = 686230, 4553204, 10000  # tile4_pbc18_8b
-            # dataset, dataset_score = db.make_export_rasters(os.path.join(output_base_path, "testutm18_b.tif"), centerx - 20000,
-            #                                             centery - 20000,
-            #                                             centerx + 20000, centery + 20000, 4, target_epsg=26918)
-            # dataset, dataset_score = db.make_export_rasters(os.path.join(output_base_path, "testutm18_tile4_8b.tif"), centerx - sz,
-            #                                                 centery - sz,
-            #                                                 centerx + sz, centery + sz, 4, target_epsg=26918)
-            # db.export_into_raster(dataset, dataset_score, compare_callback=comp)
-    else:
-        exported_filename = os.path.join(output_base_path, r[name_index]+".tif")
+    export_filename = os.path.join(output_base_path, r[name_index]+".tif")
+    for db_name in databases:
+        db = WorldDatabase.open(os.path.join(db_base_path, db_name))
+        if dataset is None:
+            dataset, dataset_score = db.make_export_rasters(os.path.join(output_base_path, r[name_index]+" - original.tif"), minx-closing_dist, miny-closing_dist,
+                                                            maxx+closing_dist, maxy+closing_dist, r[resolution_index])
+            exported_filename = dataset.GetFileList()[0]
+        db.export_into_raster(dataset, dataset_score, compare_callback=comp)
+    # else:
+    #     exported_filename = os.path.join(output_base_path, r[name_index]+" - original.tif")
+    # FIXME -- remove this temprary copy and exporting to "-original"
+    try:
+        os.remove(export_filename)
+    except FileNotFoundError:
+        pass
+    # FIXME - remove this change of nodata value once NBS is fixed to accept NaN in addition to 1000000
+    shutil.copyfile(exported_filename, export_filename)
+    ds = gdal.Open(export_filename, gdal.GA_Update)
+    new_nodata = 1000000
+    for b in range(1,4):
+        band = ds.GetRasterBand(b)
+        data = band.ReadAsArray()
+        data[numpy.isnan(data)] = new_nodata
+        band.SetNoDataValue(new_nodata)
+        band.WriteArray(data)
+    del band
+    del ds
+
 
     # 4) Combine if more than one DB used
     # @todo if we use export_into_raster the combine would already be done
@@ -197,9 +226,9 @@ for r in [r18_square, r18_complex]:
         # @todo -- just call copy of process_csar instead
         # srs = osr.SpatialReference()
         # srs.ImportFromEPSG(target_epsg)
-        generalize(exported_filename, closing_dist, output_crs=target_epsg)  # call the generalize function which used to be process_csar script
+        generalize(export_filename, closing_dist, output_crs=target_epsg)  # call the generalize function which used to be process_csar script
         # FIXME - make raster attr table based on database -- was hack.make_enc_raster_attr_table_modified(raster_filename, contributor_table_filename)
-        create_RAT(exported_filename)  # make a raster attribute table for the generalized dataset
+        make_raster_attr_table(export_filename, all_simple_records)  # make a raster attribute table for the generalized dataset
         # create_RAT(dataset)  # make a raster attribute table for the raw dataset
 
     else:

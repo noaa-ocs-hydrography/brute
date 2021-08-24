@@ -98,8 +98,8 @@ def generalize(raster_filename, closing_distance, output_crs=None, gen_contribut
 
     # try:
     if 1:
-        # FIXME should the reproject happen in Bruty or Xipe, but if we don't reporject here there may be holes in the raster after the reproject
-        reproject_raster(raster_filename, input_crs, output_crs)
+        # reproject happens in Xipe
+        # reproject_raster(raster_filename, input_crs, output_crs)
         
         try:
             elevation_band_index = raster_band_name_index(raster_filename, ELEVATION_BAND_NAME)
@@ -118,8 +118,8 @@ def generalize(raster_filename, closing_distance, output_crs=None, gen_contribut
         band_names = []
         for band_num in range(raster.RasterCount):
             band = raster.GetRasterBand(band_num + 1)
-            band_names.append(band.GetDescription())
-        elev_idx = band_names.index('Elevation') + 1
+            band_names.append(band.GetDescription().upper())
+        elev_idx = band_names.index('ELEVATION') + 1
         elev_band = raster.GetRasterBand(elev_idx)
         raster_transform = raster.GetGeoTransform()
         nodata = elev_band.GetNoDataValue()
@@ -130,7 +130,8 @@ def generalize(raster_filename, closing_distance, output_crs=None, gen_contribut
 
         LOGGER.info(f'performing generalized interpolation on "{raster_filename}"')
         LOGGER.info(f'Using a closing distance of {closing_distance} meters for {raster_filename}')
-        generalized_interpolation = raster_interp.process.RasterInterpolator().interpolate(raster, 'linear', buffer = closing_distance)
+        generalized_interpolation = raster_interp.process.RasterInterpolator().interpolate(raster, 'linear', buffer=closing_distance)
+        LOGGER.info('generalized interpolation completed.  Begin closing.')
         LOGGER.info('generalized interpolation completed.  Begin closing.')
         # This step is to be moved to Xipe
 
@@ -185,7 +186,9 @@ def generalize(raster_filename, closing_distance, output_crs=None, gen_contribut
                 f'adding new contributor {dict([(generalized_interpolated_contributor[3 - 1], generalized_interpolated_contributor[0])])}')
             raster_array[2][changed_idx] = gen_contributor_idx
             # add the new contributor to the contributor table
-
+# @todo - is this not updating since the interpolated dataset seems to have data in it?
+            # closed_mask[int(13184/4):int(13184/4)+90, int(0/4):3]
+            # interpolated_dataset.GetRasterBand(1).ReadAsArray()[int(13184/4):int(13184/4)+90, int(0/4):3]
             update_raster(raster_filename, raster_array=raster_array)
         # @todo - confirm we are removing the clipping and leave that to Xipe
         # clip_nbs_tile(raster_filename, nbs_area_polygons, nbs_polygon_buffer)
