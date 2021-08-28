@@ -389,6 +389,10 @@ def iterate_gdal_buffered_image(dataset, col_buffer_size, row_buffer_size, band_
         data = list of arrays from the dataset
 
     """
+    # cast to ints since gdal will throw exception if float gets through (even if it's 1.0)
+    col_buffer_size, row_buffer_size = int(col_buffer_size), int(row_buffer_size)
+    min_block_size, max_block_size = int(min_block_size), int(max_block_size)
+
     bands = [dataset.GetRasterBand(num) for num in band_nums]
     block_sizes = bands[0].GetBlockSize()
     col_size = bands[0].XSize

@@ -14,6 +14,7 @@ from nbs.bruty.nbs_postgres import id_to_scoring, get_nbs_records, nbs_survey_so
 from nbs.bruty.world_raster_database import WorldDatabase
 from nbs.bruty.generalize import generalize
 from nbs.bruty.raster_attribute_table import make_raster_attr_table
+from xipe_dev.xipe.raster import where_not_nodata
 
 """
 1) Get tile geometries and attributes
@@ -74,6 +75,10 @@ reviewed_index = fields.index('data_qualified')
 prereview_index = fields.index('data_unqualified')
 not_for_nav_index = fields.index('quality_filter')
 
+sorted_recs, names_list, sort_dict = id_to_scoring(metadata_fields, metadata_records, for_navigation_flag=(False, False),
+                                                   never_post_flag=(False, False))
+comp = partial(nbs_survey_sort, sort_dict)
+
 # print(fields)
 # ['name',
 #  'active',
@@ -116,6 +121,9 @@ for r in records:
 #  '01030000000100000009000000CDCCCCCCCC7C52C09A9999999919444066666666668652C09A9999999919444066666666668652C066666666663644409A999999999952C066666666663644409A999999999952C0000000000040444066666666666E52C0000000000040444066666666666E52C0CDCCCCCCCC2C4440CDCCCCCCCC7C52C0CDCCCCCCCC2C4440CDCCCCCCCC7C52C09A99999999194440')
 
 for r in records:
+    # if "Tile18_PBC18_4" not in r[0]:
+    #     continue
+    print("exporting ", r[0])
     # USING GDAL
     if use_gdal:
         g = ogr.CreateGeometryFromWkb(bytes.fromhex(r[-1]))
@@ -181,19 +189,27 @@ for r in records:
             if r[not_for_nav_index]:  # should we add the "not for navigation" data?
                 databases.append(base_db + ext + NOT_NAV)
 
-    # @todo Use db.export_into_raster from each DB?
-    #   Would just need to retain the score layers too?
-    sorted_recs, names_list, sort_dict = id_to_scoring(metadata_fields, metadata_records, for_navigation_flag=(False, False), never_post_flag=(False, False))
-    comp = partial(nbs_survey_sort, sort_dict)
     dataset, dataset_score = None, None
     export_filename = os.path.join(output_base_path, r[name_index]+".tif")
+    if os.path.exists(os.path.join(output_base_path, r[name_index]+" - original.tif")) or os.path.exists(export_filename+".aux.xml"):
+        print("Already exported - skipping")
+        continue
+    cnt = 0
     for db_name in databases:
         db = WorldDatabase.open(os.path.join(db_base_path, db_name))
         if dataset is None:
             dataset, dataset_score = db.make_export_rasters(os.path.join(output_base_path, r[name_index]+" - original.tif"), minx-closing_dist, miny-closing_dist,
                                                             maxx+closing_dist, maxy+closing_dist, r[resolution_index])
             exported_filename = dataset.GetFileList()[0]
-        db.export_into_raster(dataset, dataset_score, compare_callback=comp)
+        try:
+            cnt += db.export_into_raster(dataset, dataset_score, compare_callback=comp)
+        except KeyError:
+            print("KeyError")
+            open(os.path.join(output_base_path, r[name_index]+" - keyerror"), "w")
+            continue
+    if cnt == 0:
+        print("no data found in the databases for this area - skipping")
+        continue
     # else:
     #     exported_filename = os.path.join(output_base_path, r[name_index]+" - original.tif")
     # FIXME -- remove this temprary copy and exporting to "-original"
@@ -211,6 +227,9 @@ for r in records:
         data[numpy.isnan(data)] = new_nodata
         band.SetNoDataValue(new_nodata)
         band.WriteArray(data)
+    if not where_not_nodata(data, new_nodata).any():
+        print("no data found in the databases for this area - skipping")
+        continue
     del band
     del ds
 
